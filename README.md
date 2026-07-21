@@ -11,9 +11,14 @@ auto-update metadata. The app is built elsewhere and published here, to the
 
 Grab the latest from [Releases](../../releases):
 
-- **macOS:** the `.dmg`. Pick `-arm64` for Apple Silicon or `-x64` for Intel. Signed and notarized.
+- **macOS:** the `-arm64` `.dmg`, for any Mac with Apple Silicon (2020 onward). Signed and notarized.
 - **Windows:** the `Setup` `.exe`.
 - **Linux:** the `.AppImage`.
+
+There is also an `-x64` macOS `.dmg` for Intel Macs. It is offered, not supported: Apple is winding
+Rosetta down, the app is tested only on Apple Silicon, and a problem that appears only on the Intel
+build is not one we chase. If you have an Apple Silicon Mac, take the `-arm64` build even though the
+Intel one will run.
 
 Open the app and connect your GitHub account once (Settings, Git Host). That is what lets you
 install plugins and lets the app fetch its own updates from this private repo.
