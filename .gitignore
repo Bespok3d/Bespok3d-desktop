@@ -1,0 +1,46 @@
+# Editor
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# Ladle component-catalog build output (npm run catalog:build)
+.ladle/build/
+
+# Generated from the daemon's version.py by scripts/generate-daemon-version.mjs (single source of truth)
+src/main/daemon-client/version.ts
+
+# Test coverage reports
+coverage/
+
+# Mutation testing
+.stryker-tmp/
+
+# Playwright E2E artifacts
+test-results/
+playwright-report/
+
+# Python (the em-dash guard)
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example

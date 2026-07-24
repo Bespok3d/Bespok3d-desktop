@@ -1,0 +1,18 @@
+/* Catalog chrome tweaks (Ladle's own UI, not app components).
+   Let long story names wrap in the sidebar instead of truncating with an ellipsis. */
+.ladle-aside li a {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Ladle renders each story directly in .ladle-main (no iframe by default), so a story's
+   `position: fixed` overlay (our Modal scrim) sizes itself against the real browser viewport - both
+   overlapping the sidebar's screen region and, if the sidebar is raised above it, hiding modal content
+   that would render underneath. `contain: layout` makes .ladle-main the containing block for its
+   fixed-position descendants (CSS Containment spec), so a story-rendered overlay is confined to the
+   story pane's own box - the same footprint Ladle's iframe mode already gives it - and never reaches
+   under the sidebar in either direction. No touch to Modal.tsx or any component CSS. */
+.ladle-main {
+  contain: layout;
+}

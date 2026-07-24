@@ -1,0 +1,195 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Bespok3d: Design Tokens
+   One palette, sage, in light and dark. The two themes share every token
+   except color; activate dark by setting `data-theme="dark"` on the root.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Type ─────────────────────────────────────────────────────────────── */
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --text-4xl: 40px;
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-base: 1.5;
+  --leading-loose: 1.7;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semi: 600;
+  --weight-bold: 700;
+
+  /* ── Space (4-base) ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+
+  /* ── Modal layout ─────────────────────────────────────────────────────── */
+  /* The app header (z 120) is opaque and ~79px tall. Modals sit in the shaded area BELOW it so the
+     printer dropdown stays clickable and a tall dialog never slips under the header bar. Scrims pad
+     their top by the header height; --modal-max-h is the surface ceiling that keeps every dialog inside
+     that area. Stacking ORDER within the band is owned by the Modal scaffold (overlay/modal-stack.ts). */
+  --header-h: 79px;
+  --modal-max-h: calc(100dvh - var(--header-h) - 2 * var(--space-6));
+
+  /* ── Radii ────────────────────────────────────────────────────────────── */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-2xl: 28px;
+  --r-pill: 999px;
+
+  /* ── Shadows (soft, layered, match an app-store sensibility) ─────────── */
+  --shadow-1: 0 1px 2px rgba(38, 30, 22, 0.04), 0 1px 1px rgba(38, 30, 22, 0.03);
+  --shadow-2: 0 2px 6px rgba(38, 30, 22, 0.05), 0 1px 2px rgba(38, 30, 22, 0.04);
+  --shadow-3: 0 8px 24px rgba(38, 30, 22, 0.08), 0 2px 4px rgba(38, 30, 22, 0.04);
+  --shadow-4: 0 24px 48px rgba(38, 30, 22, 0.14), 0 4px 8px rgba(38, 30, 22, 0.05);
+  --shadow-focus: 0 0 0 3px var(--accent-soft);
+
+  /* ── Motion ───────────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.5, 0, 0.2, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+
+  /* ── Semantic status (shared light/dark unless overridden below) ──────── */
+  --ok-fg: oklch(46% 0.13 155);
+  --ok-bg: oklch(95% 0.04 155);
+  --warn-fg: oklch(54% 0.14 65);
+  --warn-bg: oklch(96% 0.05 80);
+  --err-fg: oklch(52% 0.18 25);
+  --err-bg: oklch(96% 0.04 25);
+  --info-fg: oklch(50% 0.13 245);
+  --info-bg: oklch(96% 0.03 245);
+
+  /* ── Trust tiers ── ordered low→high:
+     Any (yellow) → Community (blue) → Project (green) → Manufacturer (magenta).
+     Red is reserved for banned keys (ADR-0013); never used as a tier. */
+  --trust-any-fg: oklch(50% 0.12 75);
+  --trust-any-bg: oklch(95% 0.06 80);
+  --trust-community-fg: oklch(48% 0.14 245);
+  --trust-community-bg: oklch(95% 0.04 245);
+  --trust-project-fg: oklch(42% 0.14 155);
+  --trust-project-bg: oklch(94% 0.05 155);
+  --trust-manufacturer-fg: oklch(46% 0.2 330);
+  --trust-manufacturer-bg: oklch(95% 0.05 330);
+
+  /* ── Release channels ── stability scale, low→high risk:
+     LTS (teal) → Stable (green) → RC (blue) → Testing (amber) → Experiment (magenta) */
+  --chan-lts-fg: oklch(44% 0.1 200);
+  --chan-lts-bg: oklch(94% 0.04 200);
+  --chan-stable-fg: oklch(42% 0.14 155);
+  --chan-stable-bg: oklch(94% 0.05 155);
+  --chan-rc-fg: oklch(48% 0.14 245);
+  --chan-rc-bg: oklch(95% 0.04 245);
+  --chan-testing-fg: oklch(50% 0.12 75);
+  --chan-testing-bg: oklch(95% 0.06 80);
+  --chan-experiment-fg: oklch(46% 0.2 330);
+  --chan-experiment-bg: oklch(95% 0.05 330);
+
+  /* ── Sage palette (light) ── the one and only ────────────────────────── */
+  --bg: oklch(96.5% 0.008 180); /* bone */
+  --bg-elev: oklch(99% 0.004 180);
+  --bg-sunken: oklch(94% 0.012 180);
+  --bg-overlay: oklch(18% 0.01 200 / 0.4);
+
+  --ink: oklch(20% 0.02 220);
+  --ink-2: oklch(36% 0.018 220);
+  --ink-3: oklch(52% 0.015 220);
+  --ink-4: oklch(70% 0.012 220);
+
+  --line: oklch(89% 0.012 200);
+  --line-strong: oklch(80% 0.018 200);
+
+  --accent: oklch(52% 0.1 195); /* sage-teal */
+  --accent-hover: oklch(46% 0.11 195);
+  --accent-fg: oklch(99% 0.005 180);
+  --accent-soft: oklch(52% 0.1 195 / 0.22);
+  --accent-tint: oklch(94% 0.025 195);
+
+  --grid-dot: oklch(50% 0.02 200 / 0.12);
+}
+
+/* The old data-variant="a"/"b" attribute system is retired; sage is the only
+   palette. Selector left out intentionally; the root rules above already
+   apply to everything. */
+
+/* ── Dark theme ───────────────────────────────────────────────────────────
+   Activate by setting `data-theme="dark"` on the root element (or any
+   container; child shells can override the page). */
+[data-theme='dark'] {
+  --bg: oklch(20% 0.012 215);
+  --bg-elev: oklch(24% 0.014 215);
+  --bg-sunken: oklch(17% 0.012 215);
+  --bg-overlay: oklch(10% 0.01 215 / 0.58);
+
+  --ink: oklch(96% 0.006 180);
+  --ink-2: oklch(82% 0.01 200);
+  --ink-3: oklch(64% 0.014 210);
+  --ink-4: oklch(48% 0.014 215);
+
+  --line: oklch(32% 0.014 210);
+  --line-strong: oklch(42% 0.018 205);
+
+  --accent: oklch(74% 0.11 195);
+  --accent-hover: oklch(80% 0.12 195);
+  --accent-fg: oklch(15% 0.02 215);
+  --accent-soft: oklch(74% 0.11 195 / 0.28);
+  --accent-tint: oklch(30% 0.05 195);
+
+  --grid-dot: oklch(75% 0.04 200 / 0.1);
+
+  /* Shared status palettes: brighten for dark surfaces */
+  --ok-fg: oklch(80% 0.14 155);
+  --ok-bg: oklch(28% 0.06 155);
+  --warn-fg: oklch(80% 0.13 75);
+  --warn-bg: oklch(28% 0.06 75);
+  --err-fg: oklch(76% 0.16 25);
+  --err-bg: oklch(30% 0.08 25);
+  --info-fg: oklch(78% 0.13 245);
+  --info-bg: oklch(28% 0.06 245);
+
+  /* Trust palettes: same order, dark-surface tuned */
+  --trust-any-fg: oklch(82% 0.13 80);
+  --trust-any-bg: oklch(30% 0.07 75);
+  --trust-community-fg: oklch(78% 0.13 245);
+  --trust-community-bg: oklch(28% 0.07 245);
+  --trust-project-fg: oklch(80% 0.13 155);
+  --trust-project-bg: oklch(28% 0.07 155);
+  --trust-manufacturer-fg: oklch(80% 0.16 330);
+  --trust-manufacturer-bg: oklch(28% 0.08 330);
+
+  /* Release channels: dark tuned */
+  --chan-lts-fg: oklch(78% 0.1 200);
+  --chan-lts-bg: oklch(28% 0.06 200);
+  --chan-stable-fg: oklch(80% 0.13 155);
+  --chan-stable-bg: oklch(28% 0.07 155);
+  --chan-rc-fg: oklch(78% 0.13 245);
+  --chan-rc-bg: oklch(28% 0.07 245);
+  --chan-testing-fg: oklch(82% 0.13 80);
+  --chan-testing-bg: oklch(30% 0.07 75);
+  --chan-experiment-fg: oklch(80% 0.16 330);
+  --chan-experiment-bg: oklch(28% 0.08 330);
+}

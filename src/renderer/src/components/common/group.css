@@ -1,0 +1,43 @@
+.set-pane-intro {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  padding: 8px 12px;
+  background: color-mix(in oklab, var(--info-bg) 50%, transparent);
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in oklab, var(--info-fg) 25%, transparent);
+}
+
+.set-group {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: visible;
+}
+.set-group-head {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-sunken);
+  border-radius: var(--r-md) var(--r-md) 0 0;
+}
+.set-group-body > *:last-child {
+  border-radius: 0 0 var(--r-md) var(--r-md);
+}
+.set-group-head h3 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semi);
+  color: var(--ink-2);
+  letter-spacing: -0.005em;
+}
+.set-group-body {
+  display: flex;
+  flex-direction: column;
+}
+.set-empty {
+  padding: 14px;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  text-align: center;
+}

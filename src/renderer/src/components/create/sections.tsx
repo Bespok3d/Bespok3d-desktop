@@ -1,0 +1,7 @@
+export { FilesSection } from './sections/files'
+export { VariablesSection } from './sections/variables'
+export { ServicesSection } from './sections/services'
+export { ManagedSection } from './sections/managed'
+export { InstrumentSection } from './sections/instrument'
+export { MetadataSection } from './sections/metadata'
+export { PermissionsSection } from './sections/permissions'

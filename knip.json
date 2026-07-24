@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/main/index.ts",
+    "src/preload/index.ts",
+    "src/renderer/src/main.tsx",
+    "electron.vite.config.ts",
+    "vitest.invitro.config.ts",
+    "src/**/*.test.{ts,tsx}",
+    "src/**/*.prop.test.ts",
+    "src/**/*.stories.tsx",
+    "tests/invitro/**/*.invitro.test.ts",
+    "tests/invitro/electron-stub.ts",
+    "e2e/**/*.spec.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "tests/**/*.ts", "e2e/**/*.ts"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": ["@adapter-sdk", "@adapters", "@plugins", "@ladle/react"]
+}

@@ -1,0 +1,18 @@
+/* Bespok3d: language pane (locale list + contribute row). */
+
+.locale-list-divided {
+  border-top: 1px solid var(--line);
+}
+
+.set-row-centered {
+  align-items: center;
+}
+
+.set-row.set-row-top {
+  align-items: flex-start;
+}
+
+.locale-system-code {
+  font-family: var(--font-mono);
+  color: var(--ink-3);
+}

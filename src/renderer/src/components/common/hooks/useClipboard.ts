@@ -1,0 +1,25 @@
+import { useEffect, useRef, useState } from 'react'
+
+const COPIED_FEEDBACK_MS = 2000
+
+// Copies text to the clipboard and flips `copied` true briefly so a button can show feedback. The
+// hand-rolled copies (the bug-report + capture views) set the flag and never cleared it, so the
+// "Copied" label stuck forever; this resets after a beat and guards its timer against unmount.
+export function useClipboard() {
+  const [copied, setCopied] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  function copy(text: string) {
+    void navigator.clipboard?.writeText(text)
+    setCopied(true)
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS)
+  }
+
+  function clearTimerOnUnmount() {
+    return () => { if (timer.current) clearTimeout(timer.current) }
+  }
+  useEffect(clearTimerOnUnmount, [])
+
+  return { copied, copy }
+}

@@ -1,0 +1,13 @@
+.key-gen-form {
+  padding: var(--space-3) var(--space-4);
+}
+
+.key-gen-error {
+  color: var(--err-fg);
+  font-size: var(--text-sm);
+  margin-top: var(--space-2);
+}
+
+.key-published-icon {
+  color: oklch(65% 0.17 145);
+}

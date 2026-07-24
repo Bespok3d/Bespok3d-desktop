@@ -1,0 +1,56 @@
+/* The snap-to-place tool as a contained, centered modal (it was a fullscreen takeover). The
+   dev-tool app (.ps-app) is height: 100vh by design, so cap it to the modal box instead. */
+
+.snap-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: var(--bg-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  animation: snapScrimIn var(--dur-2) ease-out;
+}
+
+.snap-modal {
+  position: relative;
+  width: min(1180px, 94vw);
+  height: min(760px, 88vh);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform-origin: center;
+  animation: snapModalIn var(--dur-3) var(--ease-out);
+}
+
+.snap-modal .ps-app {
+  height: 100%;
+}
+
+.snap-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--ink-3);
+}
+
+.snap-error {
+  padding: var(--space-6);
+  color: var(--err-fg);
+}
+
+@keyframes snapScrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes snapModalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}

@@ -1,0 +1,107 @@
+.printer-row-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.printer-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.printer-status-badge {
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  z-index: 2;
+}
+
+.printer-model-suffix {
+  font-weight: 400;
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+/* The "Enrolled <date>" link that opens the enrollment history. A plain text link, not a button. */
+.enroll-log-link {
+  display: inline;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: color 120ms, text-decoration-color 120ms;
+}
+.enroll-log-link:hover {
+  color: var(--ink-2);
+  text-decoration-color: var(--ink-3);
+}
+
+/* The prominent "Deactivated" banner that fills a deactivated row's otherwise empty space. */
+.printer-deactivated-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--warn-fg);
+  border-radius: var(--r-md);
+  background: var(--warn-bg);
+}
+.printer-deactivated-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.02em;
+  color: var(--warn-fg);
+}
+.printer-deactivated-hint {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+/* The enroll call-to-action: a primary button with a slow sheen sweeping across it to invite the
+   first setup. Reuses the shared `shimmer` keyframe (app.css); the sheen rides an ::after overlay so
+   the label stays put. The overlay is non-interactive and the sweep stops under reduced-motion. */
+.enroll-cta {
+  position: relative;
+  overflow: hidden;
+}
+.enroll-cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+  transform: translateX(-100%);
+  animation: shimmer 2.6s var(--ease-in-out) infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .enroll-cta::after {
+    animation: none;
+  }
+}
+
+.printer-remove-teardown {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.printer-remove-teardown-label {
+  display: block;
+  font-weight: var(--weight-medium);
+}
+.printer-remove-teardown-hint {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  margin-top: 2px;
+}

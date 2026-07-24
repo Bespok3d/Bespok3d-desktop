@@ -1,0 +1,276 @@
+.modal.enrollment {
+  max-width: 520px;
+  width: 100%;
+}
+
+.enroll-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.enroll-body > .enroll-step-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Credentials form */
+
+.enroll-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.enroll-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.enroll-field label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-2);
+}
+
+.enroll-field input {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  outline: none;
+  transition: border-color var(--dur-1), box-shadow var(--dur-1);
+}
+
+.enroll-field input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+
+.enroll-row-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.enroll-connection-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  min-height: 20px;
+}
+
+.enroll-connection-result.ok {
+  color: var(--ok-fg);
+}
+
+.enroll-connection-result.err {
+  color: var(--err-fg);
+}
+
+/* Progress */
+
+.enroll-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.enroll-current-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.enroll-current-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.enroll-current-label-text {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  flex: 1;
+}
+
+.enroll-expand-icon {
+  flex-shrink: 0;
+  color: var(--ink-3);
+  transition: transform var(--dur-1);
+}
+
+.enroll-expand-icon.open {
+  transform: rotate(180deg);
+}
+
+.enroll-chevron-gap {
+  margin-left: var(--space-1);
+}
+
+.enroll-step-error {
+  font-size: var(--text-xs);
+  color: var(--err-fg);
+  margin-top: 2px;
+}
+
+.enroll-step-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-sunken);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.enroll-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 8px var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.enroll-step-row:last-child {
+  border-bottom: none;
+}
+
+.enroll-step-row.running {
+  background: var(--accent-tint);
+}
+
+.enroll-step-row.failed {
+  background: var(--err-bg);
+}
+
+.enroll-step-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.enroll-step-icon.done {
+  color: var(--ok-fg);
+}
+
+.enroll-step-icon.running {
+  color: var(--accent);
+}
+
+.enroll-step-icon.failed {
+  color: var(--err-fg);
+}
+
+.enroll-step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.enroll-step-label {
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.enroll-step-label.running {
+  font-weight: var(--weight-medium);
+}
+
+.enroll-step-label.failed {
+  color: var(--err-fg);
+  font-weight: var(--weight-medium);
+}
+
+/* Reboot countdown bar */
+
+.enroll-reboot-countdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-bar.reboot {
+  background: var(--ink-3);
+  transition: width 200ms linear;
+}
+
+.enroll-reboot-pct {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* WiFi / progress hint banner */
+
+.enroll-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--warn-bg, #fff8e1);
+  border: 1px solid var(--warn-line, #f0c040);
+  border-radius: var(--r-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--warn-fg, #7a5800);
+}
+
+.enroll-spin {
+  animation: spin 1s linear infinite;
+  display: inline-flex;
+}
+
+
+/* Success */
+
+.enroll-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.enroll-success-icon {
+  color: var(--ok-fg);
+}
+
+.enroll-success-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+}
+
+.enroll-success-sub {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+.access-steps {
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-5);
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+}

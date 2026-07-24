@@ -1,0 +1,56 @@
+/* Bespok3d: git-host pane (PAT form + repo adder + account). */
+
+.gh-pat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 380px;
+}
+.set-text.gh-pat-input {
+  width: 100%;
+}
+.gh-private-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.gh-form-error {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--err-fg);
+}
+
+.gh-waiting-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.gh-repo-picker-wrap {
+  flex-wrap: wrap;
+}
+
+.gh-adder-bar {
+  padding: 6px 0;
+}
+
+.gh-adder-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0;
+}
+
+.key-meta.gh-token-warning {
+  margin-top: 6px;
+  color: var(--warn-fg, #9a6700);
+}
+
+.key-meta.gh-storage-warning {
+  margin-top: var(--space-1);
+  color: var(--warn-fg, #9a6700);
+}

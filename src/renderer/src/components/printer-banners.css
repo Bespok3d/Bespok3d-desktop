@@ -1,0 +1,20 @@
+/* The top-of-window printer banner (repair / recover / drift / jinni-update / deactivated).
+   A soft warn bar; colors come from the semantic warn tokens (tokens.css) so it tracks the theme. */
+
+.printer-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  background: var(--warn-bg);
+  border-bottom: 1px solid var(--warn-fg);
+  font-size: var(--text-sm);
+}
+
+.printer-banner-msg {
+  flex: 1;
+}
+
+.printer-banner-action {
+  flex-shrink: 0;
+}

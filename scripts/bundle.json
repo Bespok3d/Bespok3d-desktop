@@ -1,0 +1,4 @@
+{
+  "_comment": "RELEASE bundling. Canonical behaviour is FULLY ONLINE: every plugin is served from the online registry (main-index) and a release ships no bundled catalog, so `bundle` is empty. Ids placed here are packed into the bundled index of RELEASE builds too (offline/pre-installed). For dev-only bundles (local testing, never shipped) use bundle.dev.json. Read by scripts/app-bundle.mjs and scripts/pack-plugins.sh.",
+  "bundle": []
+}

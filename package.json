@@ -1,0 +1,228 @@
+{
+  "name": "bespok3d",
+  "version": "0.1.0-alpha.30",
+  "description": "Plugin manager for Klipper 3D printers",
+  "main": "./out/main/index.js",
+  "author": "unlucio",
+  "scripts": {
+    "predev": "node ./scripts/generate-daemon-version.mjs && sh ./scripts/pack-plugins.sh || true",
+    "dev": "electron-vite dev",
+    "prebuild": "node ./scripts/generate-daemon-version.mjs && sh ./scripts/pack-plugins.sh",
+    "pretest": "node ./scripts/generate-daemon-version.mjs",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc -b",
+    "typecheck:node": "tsc -b tsconfig.node.json",
+    "typecheck:web": "tsc -b tsconfig.web.json",
+    "release": "bash ./scripts/release.sh",
+    "package": "npm run build && electron-builder",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:win": "npm run build && electron-builder --win --x64",
+    "package:linux": "npm run build && electron-builder --linux",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
+    "lint": "eslint src/ tests/ e2e/",
+    "lint:fix": "eslint src/ tests/ e2e/ --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:invitro": "vitest run --config vitest.invitro.config.ts",
+    "test:e2e": "playwright test",
+    "mutation": "stryker run",
+    "knip": "knip --include files,exports,types",
+    "catalog": "ladle serve",
+    "catalog:build": "ladle build",
+    "inventory": "node ./scripts/component-inventory.mjs"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@types/ssh2": "^1.15.5",
+    "adm-zip": "^0.5.17",
+    "bonjour-service": "^1.4.0",
+    "electron-updater": "^6.4.0",
+    "openpgp": "^6.3.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-markdown": "^10.1.0",
+    "ssh2": "^1.17.0",
+    "ws": "^8.21.0"
+  },
+  "build": {
+    "appId": "io.bespok3d.app",
+    "productName": "Bespok3d",
+    "copyright": "Copyright © 2026 Bespok3d contributors",
+    "protocols": [
+      {
+        "name": "Bespok3d Deep Link",
+        "schemes": [
+          "b3d"
+        ]
+      }
+    ],
+    "directories": {
+      "buildResources": "resources",
+      "output": "./dist/release"
+    },
+    "npmRebuild": false,
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!release/**",
+      "!**/node_modules/cpu-features/**"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Bespok3d",
+        "repo": "Bespok3d-desktop",
+        "private": true,
+        "releaseType": "prerelease"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "./dist/plugins",
+        "to": "plugins",
+        "filter": [
+          "*.b3",
+          "index.json",
+          "index.json.sig"
+        ]
+      },
+      {
+        "from": "../daemon",
+        "to": "daemon",
+        "filter": [
+          "**/*.py",
+          "**/*.whl",
+          "S99bespok3d",
+          "s10bespok3d-daemon",
+          "!__pycache__",
+          "!**/__pycache__/**",
+          "!tests/**",
+          "!.venv/**",
+          "!.mypy_cache/**",
+          "!.pytest_cache/**",
+          "!.ruff_cache/**"
+        ]
+      },
+      {
+        "from": "../adapters/klipper-jinni/jinni",
+        "to": "adapters/klipper-jinni/jinni",
+        "filter": [
+          "**/*.py",
+          "!__pycache__",
+          "!**/__pycache__/**",
+          "!tests/**"
+        ]
+      },
+      {
+        "from": "../adapters/snapmaker-u1/jinni",
+        "to": "adapters/snapmaker-u1/jinni",
+        "filter": [
+          "**/*",
+          "!__pycache__",
+          "!**/__pycache__/**",
+          "!tests/**"
+        ]
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "b3",
+        "name": "Bespok3d Plugin",
+        "description": "Signed Bespok3d plugin package",
+        "icon": "resources/icons/b3-file.icns",
+        "role": "Viewer"
+      },
+      {
+        "ext": "b3p",
+        "name": "Bespok3d Bundle",
+        "description": "Bespok3d airgap plugin bundle",
+        "icon": "resources/icons/b3-package.icns",
+        "role": "Viewer"
+      }
+    ],
+    "mac": {
+      "icon": "resources/icons/icon.icns",
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "Bespok3d uses the local network to discover Klipper printers.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "Bespok3d Deep Link",
+            "CFBundleURLSchemes": [
+              "b3d"
+            ]
+          }
+        ]
+      },
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "icon": "resources/icons/icon.png",
+      "target": "nsis"
+    },
+    "linux": {
+      "icon": "resources/icons/icon.png",
+      "category": "Utility",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@electron-toolkit/tsconfig": "^2.0.0",
+    "@eslint/js": "^10.0.1",
+    "@ladle/react": "^5.1.1",
+    "@playwright/test": "^1.60.0",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^22.19.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^5.1.1",
+    "@vitest/coverage-v8": "^2.1.9",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "fast-check": "^4.8.0",
+    "jscpd": "5.0.9",
+    "jsdom": "^25.0.1",
+    "knip": "^5.88.1",
+    "prettier": "^3.8.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.59.4",
+    "vite": "^7.3.3",
+    "vitest": "^2.0.0"
+  }
+}

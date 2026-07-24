@@ -1,0 +1,50 @@
+// The sibling b3-builder checkout, as the two bundle rails need it. Both build a REAL bundle through
+// app-bundle.mjs, which imports the builder's compiled core, so both have to make sure that core is
+// compiled and both write a scratch output dir worth ~60MB of packages. One home for that, so a change
+// to how the checkout is prepared cannot land in one rail and leave the other stale.
+
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { after } from 'node:test'
+
+const HERE = dirname(fileURLToPath(import.meta.url))
+export const APP_REPO_DIR = dirname(dirname(HERE))
+export const WORKSPACE_DIR = dirname(APP_REPO_DIR)
+export const B3_BUILDER_DIR = join(WORKSPACE_DIR, 'b3-builder')
+
+export function ensureBuilderBuilt() {
+  if (!existsSync(join(B3_BUILDER_DIR, 'node_modules'))) {
+    execFileSync('npm', ['install'], { cwd: B3_BUILDER_DIR, stdio: 'inherit' })
+  }
+  execFileSync('npm', ['run', 'build', '--silent'], { cwd: B3_BUILDER_DIR, stdio: 'inherit' })
+}
+
+// Bespok3d/scripts has no package of its own, so a rail's zip reader and openpgp come from the sibling
+// checkout it already depends on, exactly as app-bundle.mjs sources the builder core. Resolved lazily,
+// after ensureBuilderBuilt has had its chance to install them.
+export function builderDependency(packageName) {
+  return createRequire(join(B3_BUILDER_DIR, 'package.json'))(packageName)
+}
+
+export function builderCore() {
+  return import(pathToFileURL(join(B3_BUILDER_DIR, 'dist', 'core', 'index.js')).href)
+}
+
+// A bundled build writes ~60MB of packages per output dir, so a rail deletes the ones it created rather
+// than leaving them in the system temp dir once per check.sh run.
+const scratchOutputDirs = []
+
+after(function removeScratchOutputDirs() {
+  scratchOutputDirs.forEach((outputDir) => rmSync(outputDir, { recursive: true, force: true }))
+})
+
+export function makeScratchOutputDir(namePrefix) {
+  const outputDir = mkdtempSync(join(tmpdir(), namePrefix))
+  scratchOutputDirs.push(outputDir)
+
+  return outputDir
+}

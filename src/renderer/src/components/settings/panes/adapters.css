@@ -1,0 +1,263 @@
+.adapter-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.adapter-card:last-child {
+  border-bottom: none;
+}
+
+.adapter-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.adapter-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.adapter-card-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+}
+
+.adapter-card-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.adapter-sep {
+  color: var(--line-strong);
+}
+
+.adapter-card-desc {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.adapter-defaults {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--bg-sunken);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+}
+
+.adapter-defaults-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.adapter-defaults-key {
+  color: var(--ink-3);
+  flex-shrink: 0;
+  width: 110px;
+}
+
+.adapter-defaults-val {
+  color: var(--ink);
+}
+
+.adapter-steps-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--ink-2);
+  text-align: left;
+}
+
+.adapter-steps-toggle:hover {
+  color: var(--ink);
+}
+
+.adapter-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-sunken);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.adapter-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 7px var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.adapter-step-row:last-child {
+  border-bottom: none;
+}
+
+.adapter-step-num {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semi);
+  color: var(--ink-3);
+  background: var(--bg);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  margin-top: 1px;
+}
+
+.adapter-step-content {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+/* Paths & environment table */
+
+.adapter-env-table {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-sunken);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.adapter-env-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 1fr;
+  gap: var(--space-3);
+  padding: 6px var(--space-3);
+  border-bottom: 1px solid var(--line);
+  align-items: baseline;
+  font-size: var(--text-xs);
+}
+
+.adapter-env-row:last-child {
+  border-bottom: none;
+}
+
+.adapter-env-name {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.adapter-env-value {
+  color: var(--ink-2);
+  word-break: break-all;
+}
+
+.adapter-env-desc {
+  color: var(--ink-3);
+}
+
+/* Interface contract */
+
+.adapter-contract {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.adapter-contract-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.adapter-contract-intro {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.adapter-contract-table {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-sunken);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.adapter-contract-header {
+  display: grid;
+  grid-template-columns: 160px 140px 1fr;
+  gap: var(--space-3);
+  padding: 6px var(--space-3);
+  background: var(--bg);
+  border-bottom: 1px solid var(--line-strong);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semi);
+  color: var(--ink-3);
+}
+
+.adapter-contract-row {
+  display: grid;
+  grid-template-columns: 160px 140px 1fr;
+  gap: var(--space-3);
+  padding: 6px var(--space-3);
+  border-bottom: 1px solid var(--line);
+  align-items: baseline;
+}
+
+.adapter-contract-row:last-child {
+  border-bottom: none;
+}
+
+.adapter-id {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.adapter-contract-field {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--accent);
+}
+
+.adapter-contract-type {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.adapter-contract-desc {
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.adapter-contract-wrap {
+  padding: var(--space-3) var(--space-4);
+}
+
+.adapter-jinni-empty {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  line-height: 1.5;
+}

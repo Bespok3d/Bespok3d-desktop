@@ -1,0 +1,99 @@
+/* Bespok3d: layout/text utilities. Pairs with tokens.css + app.css.
+
+   These replace the static inline style={{...}} objects that had crept across the
+   renderer (one literal per element, impossible to theme or dedup). Each utility is a
+   single token-driven rule; compose them on an element instead of inlining literals.
+   A genuinely component-specific shape stays a named class in the component's sibling
+   stylesheet, not here. */
+
+/* ── Flex / sizing ────────────────────────────────────────────────────── */
+.u-flex-1 {
+  flex: 1;
+}
+.u-fill {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+.u-w-full {
+  width: 100%;
+}
+.u-shrink-0 {
+  flex-shrink: 0;
+}
+.u-min-w-0 {
+  min-width: 0;
+}
+.u-relative {
+  position: relative;
+}
+.u-inline-flex {
+  display: inline-flex;
+}
+.u-hidden {
+  display: none;
+}
+.u-nowrap {
+  white-space: nowrap;
+}
+
+/* ── Flex rows / columns + gaps (compose: `u-row u-gap-2`) ────────────── */
+.u-row {
+  display: flex;
+  align-items: center;
+}
+.u-gap-2 {
+  gap: var(--space-2);
+}
+.u-gap-3 {
+  gap: var(--space-3);
+}
+
+/* ── Margins ──────────────────────────────────────────────────────────── */
+.u-ml-auto {
+  margin-left: auto;
+}
+.u-mr-auto {
+  margin-right: auto;
+}
+.u-mt-1 {
+  margin-top: var(--space-1);
+}
+.u-mt-2 {
+  margin-top: var(--space-2);
+}
+.u-mt-3 {
+  margin-top: var(--space-3);
+}
+.u-p-3 {
+  padding: var(--space-3);
+}
+
+/* ── Muted / status text ──────────────────────────────────────────────── */
+.u-hint {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+.u-hint-sm {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+.u-ink-3 {
+  color: var(--ink-3);
+}
+.u-ink-4 {
+  color: var(--ink-4);
+}
+.u-accent {
+  color: var(--accent);
+}
+.u-ok {
+  color: var(--ok-fg);
+}
+.u-warn {
+  color: var(--warn-fg);
+}
+.u-err {
+  color: var(--err-fg);
+}

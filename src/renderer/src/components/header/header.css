@@ -1,0 +1,7 @@
+/* Bespok3d: header dropdown avatar bits. */
+
+.avatar-status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+}

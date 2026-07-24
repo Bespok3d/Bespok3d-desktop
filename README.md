@@ -1,10 +1,9 @@
 # Bespok3d Desktop
 
-Release host for the **Bespok3d** desktop app, the printer-agnostic plugin manager for Klipper
-printers that works on stock firmware. Look mom, custom printer and no SSH.
+The **Bespok3d** desktop app: the printer-agnostic plugin manager for Klipper printers that works on
+stock firmware. Look mom, custom printer and no SSH.
 
-There is no source code in this repo for now. It exists to host the built installers and the
-auto-update metadata. The app is built elsewhere and published here, to the
+This repo holds the app source and hosts its built installers, so the app auto-updates from its own
 [Releases](../../releases) page.
 
 ## Install (testers)
@@ -34,6 +33,40 @@ The app updates itself from this repo's Releases:
 
 The first install is delivered out of band (you download it here once). Every release after that is
 offered to you inside the app.
+
+## Develop
+
+Electron main/preload/renderer, React + TypeScript, built with electron-vite.
+
+```sh
+npm install
+npm run dev          # the app against a live daemon
+npm run catalog      # the Ladle component catalog, no printer needed
+./scripts/check.sh   # the gate: vitest, eslint, tsc, knip, ratchet, conventions
+```
+
+`./scripts/check.sh` defaults to the smart gate (the always-on floor plus whatever changed vs HEAD).
+`./scripts/check.sh full` runs every block and is what CI runs; add `e2e` for the packaged-app
+Playwright suite.
+
+| Path | What it holds |
+| --- | --- |
+| `src/main`, `src/preload`, `src/renderer` | the three Electron processes |
+| `tests/`, `e2e/` | the invitro suites and the packaged-app Playwright suite |
+| `scripts/` | the gate, the release cut, the bundle builder |
+| `tools/` | the engineering-health ratchet and its detectors |
+| `CLAUDE.md`, `AGENTS.md` | the rules any AI assistant working here must follow |
+
+### Checking out on its own
+
+This repo builds and tests standalone. Two things reach outside it, and both come from sibling
+repos in the same workspace:
+
+- **`lib_bespok3d`**, the shared contract types (`@bespok3d/contract`). The one intentional common
+  dependency across every Bespok3d repo.
+- **The payloads a packaged build bakes in**: the daemon, the printer adapters, and the plugin
+  packages. You need those siblings only to package an installer, never to develop or to run the
+  gate.
 
 ## Notes
 

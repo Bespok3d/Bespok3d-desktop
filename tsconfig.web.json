@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "composite":          true,
+    "incremental":        true,
+    "emitDeclarationOnly": true,
+    "outDir":             "./node_modules/.cache/tsc/web",
+    "tsBuildInfoFile":    "./node_modules/.cache/tsc/web.tsbuildinfo",
+    "module":             "ESNext",
+    "moduleResolution":   "bundler",
+    "target":             "ES2022",
+    "lib":                ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx":                "react-jsx",
+    "strict":             true,
+    "skipLibCheck":       true,
+    "esModuleInterop":    true,
+    "resolveJsonModule":  true,
+    "paths": {
+      "@renderer/*":        ["./src/renderer/src/*"],
+      "@plugins/*":         ["../plugins/*"],
+      "@bespok3d/contract": ["../lib_bespok3d/ts/contract/index.ts"]
+    }
+  },
+  "references": [{ "path": "./tsconfig.node.json" }],
+  "include": ["src/renderer/src/**/*", "src/renderer/src/**/*.json", "../lib_bespok3d/ts/contract/**/*"],
+  "exclude": ["../lib_bespok3d/ts/contract/**/*.test.ts"]
+}

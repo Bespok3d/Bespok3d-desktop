@@ -1,0 +1,34 @@
+/* The Toggle primitive owns its styles so any component using <Toggle> is styled wherever it renders
+   (the app, the catalog, in isolation) without depending on a pane stylesheet being loaded first. */
+.toggle {
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--ink-4);
+  border: none;
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--dur-1);
+}
+.toggle.on {
+  background: oklch(56% 0.15 145);
+}
+.toggle.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+.toggle.on .toggle-thumb {
+  transform: translateX(14px);
+}

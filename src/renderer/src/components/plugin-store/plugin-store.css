@@ -1,0 +1,871 @@
+/* ── Plugin Store shell ────────────────────────────────────────────────── */
+/* Card, panel, and main styles live in design-system/app.css.             */
+
+.store {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+/* The toolbar is a single row; the filter facets live in a left shoulder below it. */
+.store-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Outer clips the width as it grows/shrinks; the inner keeps a fixed width so the chips do not reflow
+   while the shoulder opens or closes. The width transition runs in both directions. */
+.filter-shoulder {
+  flex-shrink: 0;
+  width: 0;
+  overflow: hidden;
+  border-right: 1px solid transparent;
+  transition: width 240ms var(--ease-out), border-color 240ms var(--ease-out);
+}
+
+.filter-shoulder.open {
+  width: 220px;
+  border-right-color: var(--line);
+}
+
+.filter-shoulder-inner {
+  width: 220px;
+  box-sizing: border-box;
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Newly surfaced cards (a filter widening the set) ease in; cards that merely move are handled by the
+   FLIP pass in useGridFlip, so they slide rather than re-run this entrance. */
+.plugin-grid .card {
+  animation: cardIn 240ms var(--ease-out) both;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-shoulder { transition: none; }
+  .plugin-grid .card { animation: none; }
+}
+
+.shoulder-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.shoulder-group-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+
+.filter-shoulder .filter-group {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.plugin-count {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+/* ── Filter active indicator dot (anchored by .btn.icon's position:relative, set in app.css) ──*/
+
+.filter-active-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+/* ── View controls ───────────────────────────────────────────────────────*/
+
+.view-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.btn.icon.active {
+  background: var(--bg-sunken);
+  color: var(--ink);
+}
+
+/* ── Category dot: toolbar chips ────────────────────────────────────────*/
+
+.cat-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: 1px;
+  flex-shrink: 0;
+}
+.cat-dot.cam { background: oklch(50% 0.13 245); }
+.cat-dot.fil { background: oklch(55% 0.15 35); }
+.cat-dot.scr { background: oklch(50% 0.13 285); }
+.cat-dot.mac { background: oklch(50% 0.13 75); }
+.cat-dot.tun { background: oklch(50% 0.13 320); }
+.cat-dot.sen { background: oklch(50% 0.13 195); }
+.cat-dot.sys { background: oklch(50% 0.13 350); }
+.cat-dot.prn { background: oklch(50% 0.13 105); }
+
+/* ── Category chip: on card in flat/mixed view ──────────────────────────*/
+
+.cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  background: var(--bg-sunken);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* ── Category section subtitle ───────────────────────────────────────────*/
+
+.cat-sub {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+/* ── Density overrides ───────────────────────────────────────────────────*/
+
+.plugin-grid[data-density="compact"]  { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.plugin-grid[data-density="spacious"] { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+
+/* ── Collections shelf ────────────────────────────────────────────────────*/
+
+/* A collection tile is twice as wide as a plugin card; the span clamps to 1 column at narrow widths
+   (auto-fill drops to a single column), so it degrades gracefully. */
+.collection-card { grid-column: span 2; }
+
+.card-icon.col {
+  background: oklch(95% 0.04 290);
+  color: oklch(50% 0.14 290);
+}
+[data-theme='dark'] .card-icon.col {
+  background: oklch(28% 0.06 290);
+  color: oklch(82% 0.12 290);
+}
+.cat-icon.col { color: oklch(50% 0.14 290); }
+
+.collection-count { font-size: var(--text-sm); color: var(--ink-2); font-weight: var(--weight-medium); }
+.collection-installed { font-size: var(--text-sm); color: var(--ink-3); font-family: var(--font-mono); }
+
+/* Member rows in the detail modal reuse the .dep-row shape but are clickable (jump to the plugin).
+   Only properties .dep-row does NOT set are declared here, so the two classes never collide on a
+   shared property (the hover ring uses box-shadow, which .dep-row never sets). */
+.collection-member {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  border: none;
+}
+.collection-member:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.collection-member-add { font-size: var(--text-sm); color: var(--ink-3); }
+/* The trailing "drill into the plugin" cue: a down-chevron rotated to point right, brighter on hover. */
+.collection-member-go { transform: rotate(-90deg); color: var(--ink-3); flex-shrink: 0; }
+.collection-member:hover .collection-member-go { color: var(--ink); }
+.collection-member.unavailable { cursor: default; opacity: 0.6; }
+
+/* ── List layout ─────────────────────────────────────────────────────────*/
+
+.plugin-grid[data-layout="list"] {
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+}
+
+.card.list {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+
+.card.list .card-top {
+  flex-shrink: 0;
+  align-items: center;
+  width: auto;
+}
+
+.card.list .card-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.card.list .card-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.card.list .card-desc {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.card.list .card-deps {
+  display: none;
+}
+
+.card.list .card-foot {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+/* ── Install zone (compact bar between panel-body and panel-foot) ──────── */
+
+.install-zone {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--line);
+  background: var(--bg-sunken);
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  width: 100%;
+  text-align: left;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+
+button.install-zone {
+  cursor: pointer;
+}
+
+button.install-zone:hover {
+  background: var(--bg-hover);
+  color: var(--ink);
+}
+
+.install-zone.working {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.install-zone-working-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.install-progress-indet {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+.install-progress-indet-bar {
+  position: absolute;
+  height: 100%;
+  width: 35%;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: install-indet 1.1s ease-in-out infinite;
+}
+@keyframes install-indet {
+  0% { left: -35%; }
+  100% { left: 100%; }
+}
+.panel-body.panel-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.panel-log-caption {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+/* Higher specificity than the bare `.log-body` rule below, whose horizontal padding would otherwise
+   win by source order and pull the steps tight to the modal edge. Aligns with the header padding. */
+.log-body.live-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5) var(--space-5);
+}
+.install-live-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-base);
+  color: var(--ink-2);
+}
+.install-live-step:last-child {
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+}
+.au-spinner.install-step-spinner {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+}
+.au-spinner.install-zone-spinner {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+.install-icon-ok {
+  flex-shrink: 0;
+  color: var(--success, #22c55e);
+}
+.install-live-hint {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.install-zone.done {
+  color: var(--ink-2);
+}
+
+.install-zone.fail {
+  color: var(--err-fg);
+}
+
+.install-zone-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.install-zone-link {
+  font-size: var(--text-xs, 11px);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.install-zone.history {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.history-events {
+  display: flex;
+  flex-direction: column;
+}
+
+.history-event {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  border-top: 1px solid var(--line);
+}
+
+.history-event-label {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.history-event.install .history-event-label {
+  color: var(--success, #22c55e);
+}
+
+.history-event.fail .history-event-label {
+  color: var(--err-fg);
+}
+
+.history-event-time {
+  flex: 1;
+  font-size: var(--text-xs, 11px);
+  color: var(--ink-4);
+}
+
+/* ── Install log modal ─────────────────────────────────────────────────── */
+
+.modal-scrim.install-log-scrim {
+  position: fixed;
+}
+
+.modal.install-log {
+  max-width: 580px;
+}
+
+.modal.install-log .modal-head {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+/* The close button is a 32px box; nudge it so its glyph optically centers on the title's first line
+   instead of the full two-line title block (which left it sitting visibly low). */
+.modal.install-log .modal-head > button {
+  margin-top: -4px;
+}
+
+.modal.install-log .modal-title {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modal.install-log .modal-title span:first-child {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.modal-subtitle {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.log-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) 0 var(--space-3);
+}
+
+.install-run-foot {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+.log-phase {
+  border-bottom: 1px solid var(--line);
+}
+
+.log-phase:last-child {
+  border-bottom: none;
+}
+
+.log-phase-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background var(--dur-1);
+}
+
+.log-phase-head:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.log-phase-head:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.log-phase-label {
+  flex: 1;
+  font-weight: var(--weight-medium);
+}
+
+.log-phase-count {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--bg-sunken);
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+}
+
+.log-phase.fail .log-phase-label {
+  color: var(--err-fg);
+}
+
+.log-phase-items {
+  border-top: 1px solid var(--line);
+  background: var(--bg-sunken);
+}
+
+.log-item {
+  border-bottom: 1px solid var(--line);
+}
+
+.log-item:last-child {
+  border-bottom: none;
+}
+
+.log-item-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5) var(--space-2) var(--space-8);
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  transition: background var(--dur-1);
+}
+
+.log-item-head:not(:disabled) {
+  cursor: pointer;
+}
+
+.log-item-head:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.log-item.fail .log-item-head {
+  color: var(--err-fg);
+}
+
+.log-item-label {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.log-item-output {
+  margin: 0;
+  padding: var(--space-3) var(--space-5) var(--space-3) var(--space-8);
+  background: var(--bg-deep, var(--bg-sunken));
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-all;
+  border-top: 1px solid var(--line);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* Plugin detail modal (centered; replaces the old right slide-in panel) */
+.plugin-modal {
+  position: relative;
+  width: 80%;
+  max-width: 80%;
+  max-height: var(--modal-max-h);
+  background: var(--bg-elev);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalIn 220ms var(--ease-out);
+}
+.plugin-modal .panel-head { flex-shrink: 0; }
+.plugin-modal .panel-body { min-height: 0; }
+
+.panel-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: 0 var(--space-6);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.panel-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-3) var(--space-2);
+  margin-bottom: -1px;
+  font-size: var(--text-sm);
+  font-weight: 550;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.panel-tab:hover { color: var(--ink-2); }
+.panel-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+/* Versions tab scrolls as one column so a long source list never overflows or hides under the footer. */
+.panel-versions {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The single scrollable region between the fixed head/tabs and the fixed footer. Owning the scroll
+   here (instead of each tab managing its own) is what keeps a long tab from growing the modal past
+   the window. Tab roots inside render at natural height; only this wrapper scrolls. */
+.plugin-modal .panel-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.plugin-modal .panel-scroll > .panel-body,
+.plugin-modal .panel-scroll > .panel-versions {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+/* Per-plugin channel picker above the source rows. Without this the title/pill/hint touched the modal
+   edges and the pill stretched full width (the reported "margins all fucked up"). */
+.channel-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6) var(--space-3);
+}
+.channel-selector .filter-group { align-self: flex-start; }
+
+.panel-body.panel-doc { gap: var(--space-4); }
+.panel-doc-empty { color: var(--ink-3); }
+.doc-homepage-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+}
+
+.sort-group .sort-arrow {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  transition: transform 150ms var(--ease-out);
+}
+.sort-group .sort-arrow.desc { transform: rotate(180deg); }
+
+.macro-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.macro-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.macro-name {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: var(--bg-sunken);
+  border-radius: var(--r-sm);
+  padding: 0.15em 0.4em;
+  align-self: flex-start;
+}
+.macro-desc {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.panel-body.capture-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.capture-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-sunken);
+  border-radius: var(--r-sm);
+}
+.capture-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  word-break: break-all;
+}
+.capture-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.panel-config-section {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.config-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.config-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.config-field > label {
+  font-size: var(--text-sm);
+  font-weight: 550;
+  color: var(--ink-2);
+}
+.config-input,
+.config-select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+.config-value {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+}
+.config-value:disabled {
+  cursor: default;
+  color: var(--ink-3);
+}
+.config-value:not(:disabled):hover {
+  border-color: var(--accent);
+}
+.config-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.config-make-primary {
+  align-self: flex-start;
+  margin-top: var(--space-1);
+}
+
+/* The per-field scope control row (edit mode): the All printers / This printer segments plus the
+   one-line microcopy shown when the choice differs from the manifest hint. */
+.config-scope {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+.config-scope .seg {
+  font-size: var(--text-xs);
+}
+.config-scope-note {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.config-error {
+  color: var(--err-fg);
+  font-size: 0.85em;
+  margin: var(--space-1) 0 0;
+}
+
+/* The truth-ladder provenance line: "as sent from this computer on ..." / "could not be read". */
+.config-truth-note {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── Multi-select install ────────────────────────────────────────────────*/
+
+.card.selecting { position: relative; cursor: pointer; }
+.card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.card.inert { opacity: 0.45; cursor: default; }
+
+.card-select {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1.5px solid var(--line);
+  background: var(--surface, var(--bg-2));
+  color: #fff;
+  font-size: var(--text-xs);
+  line-height: 1;
+  pointer-events: none;
+}
+.card-select.on { background: var(--accent); border-color: var(--accent); }
+
+.select-action-bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-5);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-3, 12px);
+  border: 1px solid var(--line);
+  background: var(--surface, var(--bg-2));
+  box-shadow: var(--shadow-4);
+  z-index: 5;
+}
+.select-count { font-size: var(--text-sm); color: var(--ink-2); white-space: nowrap; }
+.select-actions { display: flex; align-items: center; gap: var(--space-2); }
+
+.modal.batch-config-modal {
+  display: flex;
+  flex-direction: column;
+  min-width: 460px;
+  max-width: 560px;
+  overflow: hidden;
+}
+.batch-config-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--space-6) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.batch-config-group { display: flex; flex-direction: column; gap: var(--space-3); }
+.batch-config-plugin { font-weight: 600; font-size: var(--text-sm); }
+.batch-config-foot {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--line);
+}
+.config-req { color: var(--err-fg); margin-left: 2px; }

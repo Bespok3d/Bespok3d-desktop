@@ -1,0 +1,66 @@
+/* The shared bug-report modal scaffold (BugReportModal): install-failure + safety auto-deactivate.
+   Colors come from the semantic status tokens (tokens.css), so the report blocks track the theme. */
+
+.modal.report-modal {
+  min-width: 440px;
+  max-width: 600px;
+}
+
+.report-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 var(--space-6) var(--space-3);
+}
+
+.report-guidance {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.report-tech-toggle {
+  align-self: flex-start;
+}
+
+.report-tech {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+}
+
+.report-tech.danger {
+  background: var(--err-bg);
+  border-left: 3px solid var(--err-fg);
+}
+
+.report-callout {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--warn-fg);
+  background: var(--warn-bg);
+  font-size: var(--text-sm);
+}
+
+.report-callout-mark {
+  color: var(--warn-fg);
+}
+
+.report-foot {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.report-close {
+  margin-left: auto;
+}

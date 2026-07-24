@@ -1,0 +1,163 @@
+{
+  "install": {
+    "plugin_id": "spoolman",
+    "ok": true,
+    "log": [
+      {
+        "id": "extract",
+        "label": "Unpack package",
+        "ok": true,
+        "items": [
+          {
+            "label": "extract files",
+            "ok": true,
+            "output": ""
+          }
+        ]
+      },
+      {
+        "id": "restart",
+        "label": "Restart services",
+        "ok": true,
+        "items": [
+          {
+            "label": "restart klipper",
+            "ok": true,
+            "output": "klipper ready"
+          },
+          {
+            "label": "restart moonraker",
+            "ok": true,
+            "output": ""
+          }
+        ]
+      }
+    ]
+  },
+  "reconfigure": {
+    "plugin_id": "spoolman",
+    "ok": true,
+    "log": [
+      {
+        "id": "extract",
+        "label": "Unpack package",
+        "ok": true,
+        "items": [
+          {
+            "label": "extract files",
+            "ok": true,
+            "output": ""
+          }
+        ]
+      },
+      {
+        "id": "restart",
+        "label": "Restart services",
+        "ok": true,
+        "items": [
+          {
+            "label": "restart klipper",
+            "ok": true,
+            "output": "klipper ready"
+          },
+          {
+            "label": "restart moonraker",
+            "ok": true,
+            "output": ""
+          }
+        ]
+      }
+    ]
+  },
+  "recover": {
+    "ok": true,
+    "results": [
+      {
+        "plugin_id": "spoolman",
+        "ok": true,
+        "skipped": false,
+        "reason": "",
+        "log": [
+          {
+            "id": "extract",
+            "label": "Unpack package",
+            "ok": true,
+            "items": [
+              {
+                "label": "extract files",
+                "ok": true,
+                "output": ""
+              }
+            ]
+          },
+          {
+            "id": "restart",
+            "label": "Restart services",
+            "ok": true,
+            "items": [
+              {
+                "label": "restart klipper",
+                "ok": true,
+                "output": "klipper ready"
+              },
+              {
+                "label": "restart moonraker",
+                "ok": true,
+                "output": ""
+              }
+            ]
+          }
+        ],
+        "auto_deactivated": null,
+        "fix_detail": ""
+      }
+    ]
+  },
+  "capabilities": {
+    "adapter": "snapmaker-u1",
+    "hardware": [
+      "camera-mipi",
+      "rfid-spi"
+    ],
+    "installed": {
+      "spoolman": "0.1.8"
+    },
+    "deactivated": [],
+    "stored_signatures": [
+      "spoolman"
+    ],
+    "firmware_version": "1.4.1",
+    "arch": "aarch64",
+    "board_class": "standard",
+    "kernel": {
+      "release": "6.1.99",
+      "vermagic": "6.1.99 SMP preempt mod_unload aarch64"
+    },
+    "klipper_version": "0.12.0",
+    "jinni_version": "0.1.1",
+    "capability_flags": [
+      "overlay",
+      "managed-service"
+    ],
+    "interface_extras": [],
+    "preferred_registries": [
+      "github:Bespok3d/main-index/index.json"
+    ],
+    "endpoints": [
+      {
+        "label": "Spoolman",
+        "url": "http://{host}:7912"
+      }
+    ]
+  },
+  "status": {
+    "ok": true,
+    "version": "0.12.12-dev",
+    "printer_uuid": "11111111-2222-3333-4444-555555555555"
+  },
+  "plugin_config": {
+    "vars": {
+      "SPOOLMAN_SERVER": "http://spoolman.example:7912"
+    }
+  }
+}

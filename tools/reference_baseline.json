@@ -1,0 +1,63 @@
+{
+  "_comment": "The reference baseline for the cleanup ratchet (tools/ratchet.mjs, wired into scripts/check.sh). It records the accepted level of every health metric and is the tool's memory. The ratchet enforces three anti-tamper rules against it: (1) every metric current==baseline, current>baseline FAILs as a regression, current<baseline FAILs asking you to tighten the number here (the ratchet click - an improvement is only banked once it is an explicit, reviewed edit to this file); (2) no working-tree value may be HIGHER than git HEAD's copy of this file (a session cannot raise a baseline to swallow a regression, because it cannot commit - code review is the root of trust); (3) the pinned tool versions must match what is installed. Lower a number ONLY when you genuinely drove it down. Raising a number requires explicit maintainer sign-off. See tools/README.md.",
+  "tools": {
+    "jscpd": "5.0.9"
+  },
+  "jscpd": {
+    "path": "src",
+    "format": "typescript,tsx",
+    "minTokens": 45,
+    "ignore": "**/*.test.*,**/*.stories.*"
+  },
+  "metrics": {
+    "jscpd_clones": 0,
+    "css_cross_file_dup": 0,
+    "css_same_file_dup": 0,
+    "css_collision_sites": 0,
+    "css_important": 0,
+    "css_dead_class": 0,
+    "i18n_components_zero_t": 0,
+    "i18n_hardcoded_labels": 0,
+    "inline_style": 0,
+    "inline_button": 0,
+    "multi_exported_component_tsx": 0,
+    "stories_fake_component": 0,
+    "prod_standin_component": 0,
+    "components_without_story": 145,
+    "weak_identifiers": 19,
+    "unguarded_fetch_effects": 3
+  },
+  "godFiles": {
+    "tsCeiling": 300,
+    "tsxCeiling": 350,
+    "_note": "Frozen line counts of every non-test .ts/.tsx file currently over its ceiling (.ts>300, .tsx>350). The daemon left this repo (its Python god files are tracked by the daemon repo's own ratchet now). The ratchet fails on growth of any listed file and on any NEW non-test .ts/.tsx going over ceiling that is not listed here. When a split drives a file down, lower its number (or delete the key once it is under ceiling). The metrics.multi_exported_component_tsx gate (renamed for honesty from a prior broader-sounding name) counts only EXPORTED React components per .tsx by design: internal/private-component co-location (cohesive sets like the design-system icon files, or a pane's private rows) is good code and intentionally NOT counted. A true kitchen-sink file is caught by the size ceiling instead. PatchSnapApp.tsx here is the worked example proving broadening was rejected: it exports 1 component yet co-locates 25 internal ones, so the export-count metric reads a clean 1 while the size ceiling (1040 lines) is what flags it.",
+    "allowlist": {
+      "src/renderer/src/components/dev-tools/patch-snap/PatchSnapApp.tsx": 1040
+    }
+  },
+  "requiredChecks": {
+    "_note": "Tamper manifest: the ratchet asserts these detector files exist and that check.sh still invokes the ratchet. Deleting a detector or unwiring the gate is still a reviewed diff, but this makes it a loud failure rather than silent.",
+    "detectors": [
+      "tools/detectors/cleanup-audit-css-detector.mjs",
+      "tools/detectors/cleanup-audit-metrics.mjs",
+      "tools/detectors/catalog-fidelity-detector.mjs",
+      "tools/detectors/story-coverage-detector.mjs",
+      "tools/detectors/identifier-meaning-detector.mjs",
+      "tools/detectors/effect-guard-detector.mjs",
+      "tools/detectors/gate-allow.mjs",
+      "tools/detectors/file-size-scan.mjs"
+    ],
+    "checkShReferences": "tools/ratchet.mjs"
+  },
+  "exclusions": {
+    "inlineButton": [
+      "src/renderer/src/(common|design-system)/Button.tsx",
+      "**/*.test.*"
+    ],
+    "detectorWalk": "css + metrics + file-size scans skip node_modules/out/dist/coverage and *.test.* + *.stories.* files (Ladle component-catalog stories are dev-only fixtures, like tests); metrics also skips the test/ dir",
+    "catalogFidelity": "catalog-fidelity-detector.mjs is the INVERSE: it scans *.stories.tsx ON PURPOSE (stories_fake_component) so a hand-rolled stand-in cannot hide in a fidelity tool, plus non-test/non-stories src for Dummy*/Fake* defs (prod_standin_component). Both held at 0; a genuine exception is a `gate-allow <metric>: <reason>` on the def. Encodes feedback_no_fakes_in_dev_tools + doc/codebase-fix/reuse-and-fakes-gate.md",
+    "storyCoverage": "components_without_story (story-coverage-detector.mjs) is a RATCHET-DOWN number, NOT 0: it counts exported renderer components with no catalog story (neither name-referenced in a *.stories.tsx nor sharing a directory with one). Only the printer surfaces have stories today, so the catalog-driven UI review (doc/catalog-ui-review-program.md) lowers it surface by surface (lower the number here when you bank stories). A NEW uncovered component raises it and FAILs, so it ships with a story or a justified `gate-allow components_without_story: <reason>` (an internal piece always shown via its parent, or a component with no catalog value).",
+    "weakIdentifiers": "weak_identifiers (identifier-meaning-detector.mjs) is the SECOND RATCHET-DOWN number, like components_without_story (NOT 0): it counts declared function parameters + local const/let/var names that carry no domain meaning (positional suffixes lineA/keyB, role-free abbrevs ev/el/an, type-only names str/obj/val, positional trailing digits arg1). It closes CLAUDE.md non-negotiable #1 beyond the single-char names id-length already bans. HEURISTIC by design (regex, no AST), so two false-positive CLASSES are baked in as detector EXCLUSIONS, never gate-allows: axis suffixes X/Y/Z (thumbX/deltaY) and trailing-digit tech tokens (IPv4/mp4/sha256). A NEW weak identifier raises the count and FAILs; rename it (or, for a genuine assessed exception, add `gate-allow weak_identifiers: <reason>` in place) and bank any drop by lowering the number here.",
+    "unguardedFetchEffects": "unguarded_fetch_effects (effect-guard-detector.mjs) is the THIRD RATCHET-DOWN number, like components_without_story + weak_identifiers (NOT 0): it counts raw useEffect callbacks that fetch (window.b3d./fetch(/.then(/await) AND set state (set[A-Z]...) AND carry NO unmount guard (a returned cleanup, an AbortController, or an active/stale/mounted flag). It closes the CLAUDE.md Resilience rule 'unmount-guard every fetching effect' and steers new code onto useAsyncResource (the unmount-safe useAsyncEffect helper), which is not a useEffect( call and so is naturally excluded. HEURISTIC by design (regex + a balanced-brace body scan, no AST), so two false-positive CLASSES are baked in as detector EXCLUSIONS, never gate-allows: referenced callbacks (`useEffect(fn, deps)` - the body scan is bounded to the call's own parens, so a downstream arrow is never mistaken for the absent inline body) and returned-variable cleanups (`const unsub = ...; return unsub` - an effect returns a cleanup, never data). A NEW unguarded fetch effect raises the count and FAILs; route it through useAsyncResource or add a guard (or, for a genuine assessed exception, add `gate-allow unguarded_fetch_effects: <reason>` in place) and bank any drop by lowering the number here."
+  }
+}

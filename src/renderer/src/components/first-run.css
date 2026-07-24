@@ -1,0 +1,24 @@
+/* Bespok3d: empty-state (first run) discovery list. */
+
+.first-run-discovery-list {
+  width: 100%;
+  max-width: 400px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.first-run-show-more {
+  align-self: center;
+  margin-top: var(--space-1);
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+.first-run-actions {
+  display: flex;
+  gap: var(--space-2);
+}

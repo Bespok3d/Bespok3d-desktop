@@ -1,0 +1,147 @@
+// The federated-catalog contract (ADR-0012): the shapes every registry module speaks. The published
+// index is a list-of-lists graph of these types; the resolver walks it, merge.ts combines the entries,
+// sources.ts derives the Repositories-pane rows, and index.ts does the IO. Declared once here.
+
+// 'unknown' is never declared by a curator - it is what any curated tier derives to when no signature
+// proved who served the list (NO-DOWNGRADE: the list still loads, only the badge changes). 'any' is
+// the exception, because it claims no curation for a signature to stand behind.
+export type RegistryTrust = 'any' | 'community' | 'project' | 'manufacturer' | 'unknown'
+
+// What a PACKAGE's own detached manifest signature proves, which is a different claim from the
+// RegistryTrust above and must never be collapsed into it: RegistryTrust vouches for the SOURCE that
+// listed a plugin, PackageTrust vouches for the BYTES that were installed. A list can be fully trusted
+// and still hand over an unsigned package, and a package signed by an anchored key stays trustworthy
+// no matter which list pointed at it. 'unknown' is the NO-DOWNGRADE outcome for a package that carries
+// no signature at all; an invalid one is a refusal, never a tier.
+export type PackageTrust = 'project' | 'community' | 'unknown'
+
+export interface IndexEntry {
+  name: string
+  version: string
+  [field: string]: unknown
+}
+
+export interface RegistryListRef {
+  name: string
+  url: string
+  // Trust is DECLARED by the curating parent (the official main list), not inherited from the
+  // referrer: a list the org publishes itself is 'project', a third-party list the org accepts is
+  // 'community'. Absent = community (an accepted-but-undeclared external list).
+  trust?: RegistryTrust
+}
+
+export interface RegistryIndex {
+  schema_version: number
+  name: string
+  publisher: string
+  updated: string
+  plugins: IndexEntry[]
+  // Collections (kind:collection) are install-orchestration meta-packages: a members[] list, no .b3.
+  // A published list may omit this entirely (older lists), so it is optional and defaults to empty.
+  collections?: IndexEntry[]
+  lists: RegistryListRef[]
+}
+
+export interface RegistryRef {
+  url: string
+  trust: RegistryTrust
+  locked: boolean
+}
+
+// An index exactly as a transport handed it over, plus its detached signature when one was served
+// beside it. The bytes are kept verbatim because that is what the signature covers: re-serializing the
+// parsed index produces different bytes and would fail verification even for an untampered list.
+export interface ServedIndex {
+  bytes: string
+  signature: string | null
+}
+
+export interface FetchedRegistry {
+  ref: RegistryRef
+  index: RegistryIndex
+  fromCache: boolean
+  // Fingerprint of the key whose detached signature covers the served bytes, null when the list came
+  // with no valid signature. Null is not an error, it is the absence of proof the trust layer renders
+  // as tier 'unknown'.
+  signedBy: string | null
+}
+
+export interface MergedEntry extends IndexEntry {
+  trust: RegistryTrust
+  // Who a signature PROVED published these bytes, in a readable name, null when nobody did. Distinct
+  // from the entry's own `publisher` field, which is text the list asserts about itself and which any
+  // host of those bytes could write. The store shows this one.
+  signer: string | null
+  registry_url: string
+  // Every source that offers this plugin name, winner-first. Set only on the winner entry (the
+  // one shown in the grid); the entries inside carry no further nesting. Drives the detail-view
+  // source picker so a developer can see and switch between, e.g., a local build and the
+  // published copy of the same plugin.
+  variants?: MergedEntry[]
+}
+
+// A collection (kind:collection) merged into the catalog: the index entry plus the trust + source the
+// resolver stamps from its list ref, exactly like a plugin. Distinct from MergedEntry: a collection
+// carries no source `variants` (it is deduped by id in its OWN namespace, never collapsed into a
+// source picker) and never reaches `.b3` resolution (it has no download_url; install expands members).
+export interface MergedCollection extends IndexEntry {
+  trust: RegistryTrust
+  signer: string | null
+  registry_url: string
+}
+
+export interface RegistrySummary {
+  url: string
+  name: string
+  trust: RegistryTrust
+  pluginCount: number
+  enabled: boolean
+  locked: boolean
+}
+
+// Why a source could not be loaded, classified so the UI can give an actionable message instead of
+// a raw stack: 'auth' = sign in, 'notfound' = gone or no access, 'network' = transport, 'signature'
+// = failed verification, 'unknown' = anything else. A fetcher signals one by throwing RegistryFetchError.
+export type SourceFailureReason = 'network' | 'auth' | 'notfound' | 'signature' | 'unknown'
+
+export class RegistryFetchError extends Error {
+  constructor(
+    readonly reason: SourceFailureReason,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'RegistryFetchError'
+  }
+}
+
+export interface SourceFailure {
+  url: string
+  reason: SourceFailureReason
+  message: string
+}
+
+export interface CatalogResult {
+  name: string
+  publisher: string
+  updated: string
+  trust: RegistryTrust
+  plugins: MergedEntry[]
+  collections: MergedCollection[]
+  registries: RegistrySummary[]
+  drops: string[]
+  failures: SourceFailure[]
+}
+
+export interface ResolveLimits {
+  maxDepth: number
+  maxRegistries: number
+  maxEntries: number
+}
+
+export type RegistryFetcher = (ref: RegistryRef) => Promise<FetchedRegistry | null>
+
+export const DEFAULT_LIMITS: ResolveLimits = { maxDepth: 8, maxRegistries: 100, maxEntries: 5000 }
+
+// A list reference that declares no trust falls here: it was accepted into a parent list but the
+// curator left it unmarked, so it gets the lowest curated tier rather than the parent's.
+export const UNDECLARED_TRUST: RegistryTrust = 'community'

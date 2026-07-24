@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/renderer/src/data/ports/allocator.ts",
+    "src/renderer/src/data/deps/index.ts",
+    "src/renderer/src/data/ports/index.ts",
+    "src/renderer/src/utils/version.ts",
+    "src/renderer/src/components/plugin-store/panel/tabs/config-value.ts",
+    "src/main/registry/resolve/index.ts",
+    "src/main/registry/resolve/verify.ts",
+    "src/main/dev-tools/patch-engine.ts",
+    "src/main/mdns/arp-parse.ts"
+  ],
+  "reporters": ["clear-text", "html"],
+  "htmlReporter": { "fileName": "./dist/mutation/ts/index.html" },
+  "vitest": { "configFile": "vitest.config.ts" }
+}

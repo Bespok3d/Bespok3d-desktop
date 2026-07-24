@@ -1,0 +1,31 @@
+.flyout {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 40;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-3);
+  min-width: 130px;
+  overflow: hidden;
+}
+.flyout-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background var(--dur-1);
+}
+.flyout-item:first-child {
+  border-top: none;
+}
+.flyout-item:hover {
+  background: var(--bg-sunken);
+}

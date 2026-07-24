@@ -1,0 +1,178 @@
+import { updatePrinter, loadPrinters, checkDaemon, checkSshOpen, checkMoonraker, gradeReach, resolveLiveAddress, knownAddresses } from '../printers'
+import type { ConnectionReach, PrinterRecord, DriftReport } from '../printers'
+import { macForIp } from '../mdns/arp'
+import { fetchCapabilities, fetchDaemonStatus, fetchSelfCheck, EXPECTED_DAEMON_VERSION } from './client'
+import { isReleaseNewer } from '../app-update/version'
+import type { CapabilitiesResult, DaemonMetadata } from '@bespok3d/contract'
+import type { SelfCheckResult } from './client'
+
+export interface CheckDaemonResult extends DaemonMetadata {
+  isManaged: boolean
+  reach: ConnectionReach
+  sshOpen: boolean
+  // The address the printer actually answered on this probe, so the renderer can adopt it when a DHCP
+  // lease moved (its in-memory ip is otherwise only refreshed on app restart, leaving ops on a stale IP).
+  ip: string
+  // Every address the printer is known to answer on now (recorded IP + fresh sightings). Drives the
+  // dropdown's "Also reachable at" line so a flip-flopping lease is shown, not a confusing mystery.
+  networkInterfaces: Array<{ ip: string }>
+}
+
+const VERIFY_REQUEST_TIMEOUT_MS = 5000
+const VERIFY_RETRY_DELAY_MS = 2000
+const VERIFY_ATTEMPTS = 5
+// Per-request bound for the status ping loop, so a wedged daemon never hangs the loop for a printer.
+export const DAEMON_QUERY_TIMEOUT_MS = 8000
+
+export function dedupeEndpoints(endpoints: Array<{ label: string; url: string }>) {
+  const byUrl = new Map(endpoints.map((endpoint) => [endpoint.url, endpoint]))
+
+  return [...byUrl.values()]
+}
+
+export function parseCaps(caps: CapabilitiesResult, ip: string) {
+  const rawInstalled = caps.installed as unknown
+  const installedVersions: Record<string, string> = Array.isArray(rawInstalled)
+    ? Object.fromEntries((rawInstalled as string[]).map((id) => [id, '']))
+    : (rawInstalled as Record<string, string>)
+  const reachableEndpoints = (caps.endpoints ?? []).map((endpoint) => ({ ...endpoint, url: endpoint.url.replace('{host}', ip) }))
+
+  return {
+    installedIds: Object.keys(installedVersions),
+    installedVersions,
+    endpoints: dedupeEndpoints(reachableEndpoints),
+    firmwareVersion: caps.firmware_version ?? 'unknown',
+    jinniVersion: caps.jinni_version ?? 'unknown',
+    jinniCapabilities: caps.capability_flags ?? [],
+    jinniExtras: caps.interface_extras ?? [],
+  }
+}
+
+export function summarizeDrift(selfCheck: SelfCheckResult): DriftReport[] {
+  if (selfCheck.ok) return []
+
+  return selfCheck.drift.map((pluginReport) => ({
+    pluginId: pluginReport.plugin_id,
+    symlinkIssueCount: pluginReport.symlink_issues.length,
+  }))
+}
+
+export function getManagedRecord(printerId: string): PrinterRecord {
+  const record = loadPrinters().find((rec) => rec.id === printerId)
+  if (!record?.daemonToken || !record.daemonCert) throw new Error('printer not managed')
+
+  return record
+}
+
+export function recordOrThrow(printerId: string): PrinterRecord {
+  const record = loadPrinters().find((rec) => rec.id === printerId)
+  if (!record) throw new Error('printer not found')
+
+  return record
+}
+
+// The printer's daemon is behind when the version this app bundles is STRICTLY NEWER than the one it
+// reports. A device on the same or a newer daemon (a dev build ahead of the app) is never nagged: the
+// app can only deploy the daemon it carries, so offering an "update" to an older version would be a
+// downgrade. Drives the "update available" signal; recomputed on every checkDaemon ping. An unknown
+// device version (a daemon too old to report one) still offers the update, to land it on a known daemon.
+export function daemonNeedsUpdate(deviceVersion: string | undefined): boolean {
+  if (!deviceVersion) return true
+
+  return isReleaseNewer(deviceVersion, EXPECTED_DAEMON_VERSION)
+}
+
+// After (re)deploying the bundled daemon, the printer MUST come back reporting that exact version.
+// Without this a stale or failed deploy reports success and the update signal clears even though the
+// printer never got the new daemon. Throwing here keeps the op honest (no false "up to date").
+export function assertDaemonVersion(actualVersion: string | undefined): void {
+  if (actualVersion === EXPECTED_DAEMON_VERSION) return
+  throw new Error(
+    `Daemon reports ${actualVersion || 'unknown'} after the update, expected ${EXPECTED_DAEMON_VERSION}. ` +
+    `The new daemon did not take: it may not have restarted, or the app bundled an out-of-date ` +
+    `daemon. The printer was left on its previous daemon.`,
+  )
+}
+
+// Confirm the printer came back on the bundled version, BOUNDED so it can never hang: each /status
+// fetch times out, and after a fixed number of attempts (the daemon may be briefly unresponsive just
+// after its restart) it fails cleanly with a clear message rather than waiting forever.
+export async function verifyDaemonVersion(record: PrinterRecord, attemptsLeft: number = VERIFY_ATTEMPTS): Promise<void> {
+  const version = await fetchDaemonStatus(record, VERIFY_REQUEST_TIMEOUT_MS)
+    .then((status) => status.version)
+    .catch(() => undefined)
+  if (version === EXPECTED_DAEMON_VERSION) return
+  if (attemptsLeft <= 1) return assertDaemonVersion(version)
+  await new Promise<void>((resolve) => setTimeout(resolve, VERIFY_RETRY_DELAY_MS))
+
+  return verifyDaemonVersion(record, attemptsLeft - 1)
+}
+
+// "managed" requires the daemon to actually ANSWER, not just hold port 4269 open: a wedged daemon
+// that accepts the TCP connect but never serves HTTP is not healthy. Returns null (not managed) when
+// the daemon is absent or unresponsive, so the caller falls through to the web/SSH ladder rungs.
+async function daemonMetadata(record: PrinterRecord): Promise<DaemonMetadata | null> {
+  if (!record.daemonToken || !record.daemonCert) return null
+  if (!(await checkDaemon(record.ip))) return null
+  try {
+    // Bound every call: this runs on the status ping loop, so an unbounded request against a daemon
+    // that holds the port open but never answers HTTP would hang the loop for that printer forever.
+    const [status, caps, selfCheck] = await Promise.all([
+      fetchDaemonStatus(record, DAEMON_QUERY_TIMEOUT_MS),
+      fetchCapabilities(record, DAEMON_QUERY_TIMEOUT_MS),
+      fetchSelfCheck(record, DAEMON_QUERY_TIMEOUT_MS).catch(() => ({ ok: true, drift: [] } as SelfCheckResult)),
+    ])
+    const daemonUpdateAvailable = daemonNeedsUpdate(status.version)
+    const parsed = parseCaps(caps, record.ip)
+    const daemonDrift = summarizeDrift(selfCheck)
+    // Learn the printer's MAC once from the ARP table: it is the identity that follows the printer
+    // across a DHCP lease move when its hostname (`lava`) is shared with other U1s. Captured here on a
+    // confirmed managed probe so a later flap can re-resolve by MAC, not just an ambiguous hostname.
+    const learnedMac = record.mac ? undefined : macForIp(record.ip)
+    // The daemon-minted stable identity. Old daemons omit the key, a rootless daemon reports null;
+    // both mean "no uuid to learn", and neither may clear a uuid already on the record.
+    const printerUuid = status.printer_uuid ?? undefined
+    updatePrinter(record.id, { daemonVersion: status.version, daemonUpdateAvailable, daemonDrift, ...parsed, ...(learnedMac ? { mac: learnedMac } : {}), ...(printerUuid ? { printerUuid } : {}) })
+
+    return {
+      daemonVersion: status.version,
+      daemonUpdateAvailable,
+      installedIds: parsed.installedIds,
+      installedVersions: parsed.installedVersions,
+      daemonDrift,
+      jinniVersion: parsed.jinniVersion,
+      jinniCapabilities: parsed.jinniCapabilities,
+      jinniExtras: parsed.jinniExtras,
+      ...(printerUuid ? { printerUuid } : {}),
+    }
+  } catch {
+    return null
+  }
+}
+
+// The connection ladder for one address: confirm the daemon (managed), else grade the remaining
+// surfaces (Moonraker for "alive", SSH for "we can still fix or enroll it") so the app always knows
+// what is going on and which action to offer, instead of a bare reachable/unreachable.
+async function probeAddress(record: PrinterRecord): Promise<Omit<CheckDaemonResult, 'ip' | 'networkInterfaces'>> {
+  const metadata = await daemonMetadata(record)
+  if (metadata) return { ...metadata, isManaged: true, reach: 'managed', sshOpen: true }
+  const [moonrakerOpen, sshOpen] = await Promise.all([checkMoonraker(record.ip), checkSshOpen(record.ip)])
+
+  return { isManaged: false, reach: gradeReach(moonrakerOpen, sshOpen), sshOpen }
+}
+
+// Probe the printer, following it if its lease moved: try the recorded address first (the common,
+// stable case), and only if it is not managed there resolve the address the printer answers on right
+// now (probing the recorded IP plus every fresh discovery sighting of the same device) and re-grade
+// there. The live address is persisted AND returned so the renderer adopts it, so a DHCP flap never
+// grades a healthy printer dead/rootless and never leaves a later op pointed at a stale IP.
+export async function checkDaemonRecord(printerId: string): Promise<CheckDaemonResult> {
+  const record = loadPrinters().find((rec) => rec.id === printerId)
+  if (!record) return { isManaged: false, reach: 'offline', sshOpen: false, ip: '', networkInterfaces: [] }
+  const atRecorded = await probeAddress(record)
+  if (atRecorded.isManaged) return { ...atRecorded, ip: record.ip, networkInterfaces: knownAddresses(printerId) }
+  const liveIp = await resolveLiveAddress(printerId)
+  const reprobed = liveIp === record.ip ? atRecorded : await probeAddress({ ...record, ip: liveIp })
+
+  return { ...reprobed, ip: liveIp, networkInterfaces: knownAddresses(printerId) }
+}
