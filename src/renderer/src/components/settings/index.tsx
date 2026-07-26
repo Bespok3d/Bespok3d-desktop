@@ -16,7 +16,6 @@ import { RepositoriesPane } from './panes/RepositoriesPane'
 import { AdaptersPane } from './panes/AdaptersPane'
 import { AppearancePane } from './panes/AppearancePane'
 import { ScopedPluginDefaultsPane } from './panes/ScopedPluginDefaultsPane'
-import { PgpTestingPane } from './panes/PgpTestingPane'
 import { LanguagePane, makeDefaultLocaleSettings } from './panes/language'
 import { AboutPane } from './panes/AboutPane'
 import { UpdatePane } from './panes/update'
@@ -35,7 +34,6 @@ const NAV = [
   { id: 'git-host', label: 'Git Host',      tKey: 'set.git_host', icon: IconGitBranch, tint: 'tint-green' },
   { id: 'repos',    label: 'Repositories',  tKey: 'set.repos',    icon: IconLayers,    tint: 'tint-amber' },
   { id: 'adapters', label: 'Adapters',      tKey: 'set.adapters', icon: IconChip,      tint: 'tint-teal' },
-  { id: 'pgp-testing', label: 'PGP testing', tKey: 'set.pgp_testing', icon: IconKey,   tint: 'tint-slate' },
   { id: 'labs',     label: 'Labs',          tKey: 'set.labs',     icon: IconChip,      tint: 'tint-amber' },
   { id: 'update',   label: 'Update',        tKey: 'set.update',   icon: IconDownload,  tint: 'tint-cyan' },
   { id: 'about',    label: 'About',         tKey: 'set.about',    icon: IconInfo,      tint: 'tint-slate' },
@@ -105,7 +103,6 @@ function SettingsContent({ section, activeSection, printers, adapters, keys, key
       <div className="settings-content-body">
         {section === 'general' && <AppearancePane theme={theme} onSetTheme={onSetTheme} density={density} onSetDensity={onSetDensity} storeGrouped={storeGrouped} onSetStoreGrouped={onSetStoreGrouped} localeSettings={localeSettings} onLocaleChange={onLocaleChange} />}
         {section === 'plugin-defaults' && <ScopedPluginDefaultsPane printers={printers} selectedPrinter={selectedPrinter} scopedVars={scopedPluginVars} onScopedVarsChange={onScopedPluginVarsChange} />}
-        {section === 'pgp-testing' && <PgpTestingPane />}
         {section === 'language' && <LanguagePane settings={localeSettings} onChange={onLocaleChange} />}
         {section === 'printers' && <PrintersPane printers={printers} adapters={adapters} />}
         {section === 'keys' && (

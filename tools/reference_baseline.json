@@ -25,7 +25,7 @@
     "prod_standin_component": 0,
     "components_without_story": 145,
     "weak_identifiers": 19,
-    "unguarded_fetch_effects": 3
+    "unguarded_fetch_effects": 2
   },
   "godFiles": {
     "tsCeiling": 300,

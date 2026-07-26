@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-252 exported components + hooks across 19 areas.
+251 exported components + hooks across 19 areas.
 
 ## Common primitives
 
@@ -250,7 +250,6 @@ as you touch the file.
 - `KeysPane` (component) - [components/settings/panes/keys/index.tsx](../src/renderer/src/components/settings/panes/keys/index.tsx)
 - `LabsPane` (component) - [components/settings/panes/LabsPane.tsx](../src/renderer/src/components/settings/panes/LabsPane.tsx)
 - `LanguagePane` (component) - [components/settings/panes/language/index.tsx](../src/renderer/src/components/settings/panes/language/index.tsx)
-- `PgpTestingPane` (component) - [components/settings/panes/PgpTestingPane.tsx](../src/renderer/src/components/settings/panes/PgpTestingPane.tsx)
 - `PopoverMenu` (component) - [components/settings/panes/printers/PopoverMenu.tsx](../src/renderer/src/components/settings/panes/printers/PopoverMenu.tsx) - A small click-to-open menu: a button trigger plus a popup list of `menu-action` items. Shared by the
 - `PrinterDefaultRow` (component) - [components/settings/panes/defaults-printer-row.tsx](../src/renderer/src/components/settings/panes/defaults-printer-row.tsx) - Pick-edit-clear for one field on the chosen printer: without an override the row shows the shared
 - `PrinterDeployMenu` (component) - [components/settings/panes/printers/PrinterDeployMenu.tsx](../src/renderer/src/components/settings/panes/printers/PrinterDeployMenu.tsx) - The row's redeploy menu: one "Update" button that opens a choice of deploying the daemon or the

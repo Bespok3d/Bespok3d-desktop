@@ -1,0 +1,37 @@
+name: pr-gate
+
+# Every pull request and every push to dev or main runs the app's own gate, so nothing reaches a
+# release branch without the check you run locally. The app's check.sh reuses the shared detectors that
+# live in lib_bespok3d, so that sibling is checked out beside the app at the path check.sh expects
+# (../lib_bespok3d). check.sh installs the app's own node_modules itself.
+#
+# lib_bespok3d is private, so a token that can read it is needed. This repo needs MAIN_INDEX_TOKEN as a
+# secret (the other repos already carry it), or make lib_bespok3d public.
+#
+# Go-public note: fork PRs get no secret, so the lib_bespok3d checkout fails for external contributors.
+# Before flipping public, make lib_bespok3d public or fetch it with a read-only token.
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: Bespok3d-desktop
+      - uses: actions/checkout@v4
+        with:
+          repository: Bespok3d/lib_bespok3d
+          ref: main
+          token: ${{ secrets.MAIN_INDEX_TOKEN }}
+          path: lib_bespok3d
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run the gate
+        working-directory: Bespok3d-desktop
+        run: bash scripts/check.sh

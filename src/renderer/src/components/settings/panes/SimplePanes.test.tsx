@@ -4,7 +4,6 @@ import { screen } from '@testing-library/react'
 import { setup } from '../../../test/harness'
 import { makeT } from '../../../i18n'
 import { AppearancePane } from './AppearancePane'
-import { PgpTestingPane } from './PgpTestingPane'
 import { LabsPane } from './LabsPane'
 import { AboutPane } from './AboutPane'
 import type { LocaleSettings } from './language'
@@ -24,14 +23,6 @@ describe('AppearancePane', () => {
     )
     await user.click(screen.getByRole('button', { name: en('app.theme_light') }))
     expect(onSetTheme).toHaveBeenCalledWith('light')
-  })
-})
-
-describe('PgpTestingPane', () => {
-  it('persists the GPG switch through settings.set', async () => {
-    var { user, b3d } = setup(<PgpTestingPane />)
-    await user.click(await screen.findByRole('switch'))
-    expect(b3d.settings.set).toHaveBeenCalledWith({ pgpEnabled: true })
   })
 })
 
