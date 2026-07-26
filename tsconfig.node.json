@@ -33,6 +33,10 @@
   "exclude": [
     "node_modules",
     "../adapters/**/*.test.ts",
+    // The adapters repo vendors lib_bespok3d as a submodule so it can gate standalone. The app
+    // already compiles the SDK from its own sibling above, so sweeping the vendored copy in would
+    // compile the same contract twice and pull in that submodule's uninstalled devDependencies.
+    "../adapters/lib_bespok3d/**",
     "../lib_bespok3d/ts/contract/**/*.test.ts"
   ]
 }
