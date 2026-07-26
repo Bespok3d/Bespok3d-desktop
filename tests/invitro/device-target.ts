@@ -168,7 +168,7 @@ class DockerDevice implements DeviceTarget {
 // so a destructive run never strands the shared bot. See doc/testing.md "Hardware-in-the-loop".
 function botConnectOptions(): DeviceSshCredentials {
   return {
-    host: process.env.B3D_HIL_HOST ?? '10.6.9.109',
+    host: process.env.B3D_HIL_HOST ?? '192.0.2.109',
     port: Number(process.env.B3D_HIL_PORT ?? '22'),
     user: process.env.B3D_HIL_USER ?? 'root',
     password: process.env.B3D_HIL_PASSWORD ?? 'snapmaker',

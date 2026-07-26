@@ -104,9 +104,9 @@ describe('mergeDiscovered', () => {
 describe('dedupeDevices', () => {
   it('keeps one row per host even when scanners emit different ids', () => {
     const records = [
-      record({ host: 'u1.local', id: 'mdns-raw', ip: '10.6.9.108' }),
-      record({ host: 'u1.local', id: 'mdns-dnssd', ip: '10.6.9.108' }),
-      record({ host: 'sonos.local', ip: '10.6.9.211' }),
+      record({ host: 'u1.local', id: 'mdns-raw', ip: '192.0.2.108' }),
+      record({ host: 'u1.local', id: 'mdns-dnssd', ip: '192.0.2.108' }),
+      record({ host: 'sonos.local', ip: '192.0.2.211' }),
     ]
     expect(dedupeDevices(records).map((entry) => entry.host)).toEqual(['u1.local', 'sonos.local'])
   })
@@ -114,11 +114,11 @@ describe('dedupeDevices', () => {
   it('prefers the IPv4 address over an IPv6 link-local for the same host', () => {
     const records = [
       record({ host: 'u1.local', ip: 'fe80::88b:4340:334c:d7b5' }),
-      record({ host: 'u1.local', ip: '10.6.9.108' }),
+      record({ host: 'u1.local', ip: '192.0.2.108' }),
     ]
     const unique = dedupeDevices(records)
     expect(unique).toHaveLength(1)
-    expect(unique[0].ip).toBe('10.6.9.108')
+    expect(unique[0].ip).toBe('192.0.2.108')
   })
 })
 

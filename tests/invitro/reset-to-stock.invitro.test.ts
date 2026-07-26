@@ -17,7 +17,7 @@ import type { PrinterRecord } from '../../src/main/printers'
 // verifies zero bespok3d residue. Inert unless B3D_RESET_TARGET is set, so CI never wipes a device by
 // accident. Flashing / A-B-slot reset is a later, harder capability; this is the software mint.
 //
-//   B3D_DEV_SOURCES=<workspace-root> B3D_RESET_TARGET=10.6.9.66 \
+//   B3D_DEV_SOURCES=<workspace-root> B3D_RESET_TARGET=192.0.2.66 \
 //     npx vitest run --config vitest.invitro.config.ts reset-to-stock
 
 const target = process.env.B3D_RESET_TARGET
@@ -26,7 +26,7 @@ const sshPassword = process.env.B3D_RESET_PASSWORD ?? 'snapmaker'
 const sshPort = Number(process.env.B3D_RESET_PORT ?? '22')
 // The bot's IP can flap (DHCP reservation vs other leases is a fact of the bench), so after the reboot we
 // look for it across the target plus any alternates before giving up.
-const reconnectCandidates = [target, ...(process.env.B3D_RESET_ALT_IPS ?? '10.6.9.66,10.6.9.109').split(',')]
+const reconnectCandidates = [target, ...(process.env.B3D_RESET_ALT_IPS ?? '192.0.2.66,192.0.2.109').split(',')]
   .filter((ip): ip is string => Boolean(ip))
 
 const WORKSPACE = '/userdata/bespok3d'

@@ -14,28 +14,28 @@ describe('normalizeMac', () => {
 describe('parseArpTable', () => {
   it('reads the macOS "arp -an" layout', () => {
     const text = [
-      '? (10.6.9.108) at a4:83:e7:1:2:3 on en0 ifscope [ethernet]',
-      '? (10.6.9.110) at (incomplete) on en0 [ethernet]',
+      '? (192.0.2.108) at a4:83:e7:1:2:3 on en0 ifscope [ethernet]',
+      '? (192.0.2.110) at (incomplete) on en0 [ethernet]',
     ].join('\n')
     const table = parseArpTable(text)
-    expect(table.get('10.6.9.108')).toBe('a4:83:e7:01:02:03')
-    expect(table.has('10.6.9.110')).toBe(false)
+    expect(table.get('192.0.2.108')).toBe('a4:83:e7:01:02:03')
+    expect(table.has('192.0.2.110')).toBe(false)
   })
 
   it('reads the Linux /proc/net/arp layout', () => {
     const text = [
       'IP address       HW type     Flags       HW address            Mask     Device',
-      '10.6.9.96        0x1         0x2         34:7e:5c:aa:bb:cc     *        eth0',
+      '192.0.2.96        0x1         0x2         34:7e:5c:aa:bb:cc     *        eth0',
     ].join('\n')
-    expect(parseArpTable(text).get('10.6.9.96')).toBe('34:7e:5c:aa:bb:cc')
+    expect(parseArpTable(text).get('192.0.2.96')).toBe('34:7e:5c:aa:bb:cc')
   })
 
   it('reads the Windows "arp -a" layout', () => {
     const text = [
-      'Interface: 10.6.9.5 --- 0x4',
+      'Interface: 192.0.2.5 --- 0x4',
       '  Internet Address      Physical Address      Type',
-      '  10.6.9.197            2c-3a-e8-11-22-33     dynamic',
+      '  192.0.2.197            2c-3a-e8-11-22-33     dynamic',
     ].join('\n')
-    expect(parseArpTable(text).get('10.6.9.197')).toBe('2c:3a:e8:11:22:33')
+    expect(parseArpTable(text).get('192.0.2.197')).toBe('2c:3a:e8:11:22:33')
   })
 })

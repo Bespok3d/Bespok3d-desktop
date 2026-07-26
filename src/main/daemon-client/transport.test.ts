@@ -37,28 +37,28 @@ function fakeRequest(outcomes: Record<string, { error?: Error; body?: string; st
   })
 }
 
-const record = { id: 'p1', ip: '10.6.9.109', daemonCert: 'C', daemonToken: 'T' } as unknown as PrinterRecord
+const record = { id: 'p1', ip: '192.0.2.109', daemonCert: 'C', daemonToken: 'T' } as unknown as PrinterRecord
 
 describe('doRequest re-resolves and retries a moved printer', () => {
   beforeEach(() => { vi.mocked(httpsRequest).mockReset(); setAddressResolver(async () => '') })
 
   it('follows the printer to its live IP and retries when the recorded IP is unreachable', async () => {
-    fakeRequest({ '10.6.9.109': { error: new Error('connect ECONNREFUSED') }, '10.6.9.66': { body: 'ok' } })
-    setAddressResolver(async () => '10.6.9.66')
+    fakeRequest({ '192.0.2.109': { error: new Error('connect ECONNREFUSED') }, '192.0.2.66': { body: 'ok' } })
+    setAddressResolver(async () => '192.0.2.66')
     await expect(doRequest(record, 'GET', '/status')).resolves.toBe('ok')
   })
 
   it('does not retry a real HTTP error (the daemon answered)', async () => {
-    fakeRequest({ '10.6.9.109': { status: 409, body: '{"detail":"blocked"}' } })
-    const resolver = vi.fn(async () => '10.6.9.66')
+    fakeRequest({ '192.0.2.109': { status: 409, body: '{"detail":"blocked"}' } })
+    const resolver = vi.fn(async () => '192.0.2.66')
     setAddressResolver(resolver)
     await expect(doRequest(record, 'POST', '/x')).rejects.toBeInstanceOf(DaemonHttpError)
     expect(resolver).not.toHaveBeenCalled()
   })
 
   it('gives up (no retry loop) when no better address is found', async () => {
-    fakeRequest({ '10.6.9.109': { error: new Error('host is down') } })
-    setAddressResolver(async () => '10.6.9.109') // same address: nothing better to try
+    fakeRequest({ '192.0.2.109': { error: new Error('host is down') } })
+    setAddressResolver(async () => '192.0.2.109') // same address: nothing better to try
     await expect(doRequest(record, 'GET', '/status')).rejects.toThrow(/host is down/)
   })
 })

@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Keep Python (the em-dash guard) from writing __pycache__ into the tree.
-export PYTHONDONTWRITEBYTECODE=1
-
 # This gate covers THIS repo only. The daemon, the plugins, the adapters and the workspace-wide
 # checks each gate themselves in their own repo, so a desktop checkout needs no sibling clone.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="$REPO_ROOT"
+
+# The detectors that enforce a workspace-wide rule live in one place and are invoked by every repo's
+# gate. See lib_bespok3d/tooling/README.md. This is the only line that knows where they are.
+B3D_TOOLING="${B3D_TOOLING:-$REPO_ROOT/../lib_bespok3d/tooling}"
 
 PASS=0
 FAIL=0
@@ -133,7 +134,11 @@ fi
 echo ""
 echo "Project conventions"
 
-run_check "em-dash / en-dash ban" python3 "$REPO_ROOT/scripts/em_dash_guard.py"
+run_check "em-dash / en-dash ban" node "$B3D_TOOLING/em-dash-guard.mjs" \
+    "$REPO_ROOT/src" "$REPO_ROOT/scripts" "$REPO_ROOT/tools" "$REPO_ROOT/tests" "$REPO_ROOT/e2e" \
+    "$REPO_ROOT/doc" "$REPO_ROOT/.ladle" \
+    "$REPO_ROOT/CLAUDE.md" "$REPO_ROOT/AGENTS.md" "$REPO_ROOT/README.md"
+run_check "workflow pinning"      node "$B3D_TOOLING/workflow-pinning-detector.mjs" "$REPO_ROOT"
 run_check "cleanup ratchet"       node "$REPO_ROOT/tools/ratchet.mjs"
 run_check "component inventory fresh" node "$REPO_ROOT/scripts/component-inventory.mjs" --check
 

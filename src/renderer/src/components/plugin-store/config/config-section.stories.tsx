@@ -42,7 +42,7 @@ export function NotInstalledFilled() {
   return (
     <Section
       fields={SPOOLMAN_FIELDS}
-      current={{ SPOOLMAN_SERVER: 'http://10.6.9.108:7912', SPOOLMAN_MODE: 'auto', SPOOLMAN_LOGGING: 'false' }}
+      current={{ SPOOLMAN_SERVER: 'http://192.0.2.108:7912', SPOOLMAN_MODE: 'auto', SPOOLMAN_LOGGING: 'false' }}
       installed={false}
     />
   )
@@ -54,7 +54,7 @@ export function InstalledReadOnly() {
   return (
     <Section
       fields={SPOOLMAN_FIELDS}
-      current={{ SPOOLMAN_SERVER: 'http://10.6.9.108:7912', SPOOLMAN_MODE: 'auto', SPOOLMAN_LOGGING: 'false' }}
+      current={{ SPOOLMAN_SERVER: 'http://192.0.2.108:7912', SPOOLMAN_MODE: 'auto', SPOOLMAN_LOGGING: 'false' }}
       installed printerId="printer-1"
     />
   )
@@ -66,7 +66,7 @@ export function InstalledLiveValues() {
   return (
     <PluginConfigSection
       fields={SPOOLMAN_FIELDS} tier="live"
-      current={{ SPOOLMAN_SERVER: 'http://10.6.9.108:7912', SPOOLMAN_MODE: 'auto', SPOOLMAN_LOGGING: 'false' }}
+      current={{ SPOOLMAN_SERVER: 'http://192.0.2.108:7912', SPOOLMAN_MODE: 'auto', SPOOLMAN_LOGGING: 'false' }}
       installed printerId="printer-1" pluginId="spoolman"
     />
   )
@@ -78,7 +78,7 @@ export function InstalledLastKnownFromThisComputer() {
   return (
     <PluginConfigSection
       fields={SPOOLMAN_FIELDS} tier="applied" appliedAt="2026-07-01T09:30:00.000Z"
-      current={{ SPOOLMAN_SERVER: 'http://10.6.9.108:7912', SPOOLMAN_MODE: 'auto', SPOOLMAN_LOGGING: 'false' }}
+      current={{ SPOOLMAN_SERVER: 'http://192.0.2.108:7912', SPOOLMAN_MODE: 'auto', SPOOLMAN_LOGGING: 'false' }}
       installed printerId="printer-1" pluginId="spoolman"
     />
   )

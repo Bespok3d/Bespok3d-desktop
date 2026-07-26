@@ -34,15 +34,15 @@ describe('raw mDNS scanner re-emits a printer that changed IP', () => {
 
   it('reports the moved printer at its new address, not just where it was first seen', () => {
     const ctx = makeContext()
-    handleResponse(ctx, aRecord('10.6.9.109')) // first announcement
-    handleResponse(ctx, aRecord('10.6.9.66')) // DHCP renewal: same host, new IP
-    expect(emittedIps()).toEqual(['10.6.9.109', '10.6.9.66'])
+    handleResponse(ctx, aRecord('192.0.2.109')) // first announcement
+    handleResponse(ctx, aRecord('192.0.2.66')) // DHCP renewal: same host, new IP
+    expect(emittedIps()).toEqual(['192.0.2.109', '192.0.2.66'])
   })
 
   it('does not re-emit when the same address is re-announced (no spurious churn)', () => {
     const ctx = makeContext()
-    handleResponse(ctx, aRecord('10.6.9.66'))
-    handleResponse(ctx, aRecord('10.6.9.66'))
-    expect(emittedIps()).toEqual(['10.6.9.66'])
+    handleResponse(ctx, aRecord('192.0.2.66'))
+    handleResponse(ctx, aRecord('192.0.2.66'))
+    expect(emittedIps()).toEqual(['192.0.2.66'])
   })
 })

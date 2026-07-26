@@ -17,7 +17,7 @@ import type { SshSession } from '../../src/main/ssh'
 // writes the managed printer record the app would have written. Inert unless B3D_ENROLL_TARGET is set,
 // so the Docker invitro suite and CI never touch a real device. This is the seed of the CI/CD test bed.
 //
-//   B3D_DEV_SOURCES=<workspace-root> B3D_ENROLL_TARGET=10.6.9.109 B3D_ENROLL_NICK=junior \
+//   B3D_DEV_SOURCES=<workspace-root> B3D_ENROLL_TARGET=192.0.2.109 B3D_ENROLL_NICK=junior \
 //     npx vitest run --config vitest.invitro.config.ts enroll-device
 
 const targetIp = process.env.B3D_ENROLL_TARGET

@@ -10,9 +10,9 @@ const ADAPTER_JINNI = '0.1.6'
 const ADAPTER_JINNI_VERSIONS = { 'snapmaker-u1': ADAPTER_JINNI }
 
 const ENDPOINTS = [
-  { label: 'Fluidd', url: 'http://10.6.9.108' },
-  { label: 'Mainsail', url: 'http://10.6.9.108:81' },
-  { label: 'Spoolman', url: 'http://10.6.9.108:7912' },
+  { label: 'Fluidd', url: 'http://192.0.2.108' },
+  { label: 'Mainsail', url: 'http://192.0.2.108:81' },
+  { label: 'Spoolman', url: 'http://192.0.2.108:7912' },
 ]
 
 function noop() {}
@@ -103,8 +103,8 @@ export function RowBothUpdate() {
 
 export function RowMultiInterface() {
   var printer = makePrinter({
-    nick: 'unU1', status: 'managed', ip: '10.6.9.108', jinniVersion: ADAPTER_JINNI,
-    networkInterfaces: [{ label: 'Wi-Fi', ip: '10.6.9.108' }, { label: 'Ethernet', ip: '10.0.0.5' }, { label: 'VPN', ip: '100.74.2.9' }],
+    nick: 'unU1', status: 'managed', ip: '192.0.2.108', jinniVersion: ADAPTER_JINNI,
+    networkInterfaces: [{ label: 'Wi-Fi', ip: '192.0.2.108' }, { label: 'Ethernet', ip: '10.0.0.5' }, { label: 'VPN', ip: '203.0.113.9' }],
   })
 
   return <Row printer={printer} />

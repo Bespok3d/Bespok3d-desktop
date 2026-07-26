@@ -140,11 +140,11 @@ describe('PrinterDropdown row (redesigned layout)', () => {
   })
 
   it('lists only the non-primary interfaces (never repeating the primary ip), each labelled', async () => {
-    var row = openRow(makePrinter({ ip: '10.6.9.108', networkInterfaces: [{ label: 'Wi-Fi', ip: '10.6.9.108' }, { label: 'Ethernet', ip: '10.0.0.5' }] }))
+    var row = openRow(makePrinter({ ip: '192.0.2.108', networkInterfaces: [{ label: 'Wi-Fi', ip: '192.0.2.108' }, { label: 'Ethernet', ip: '10.0.0.5' }] }))
     await row.open()
     expect(row.container.querySelector('.printer-ifaces')).not.toBeNull()
     expect(screen.getByText('Ethernet 10.0.0.5')).toBeInTheDocument()
-    expect(screen.queryByText('Wi-Fi 10.6.9.108')).not.toBeInTheDocument()
+    expect(screen.queryByText('Wi-Fi 192.0.2.108')).not.toBeInTheDocument()
   })
 
   it('prompts a daemon update (current jinni) and runs it on click', async () => {

@@ -12,7 +12,7 @@ import type { DeviceTarget } from './device-target'
 // install path (exercising Bespok3d's install flow, not a curl shortcut), then report what the reader
 // decoded onto each filament channel so a human can confirm it matches the physical Elegoo spools.
 // The decode itself is unit-tested off-device (rfid-elegoo/tests); this verifies the on-printer pipeline.
-// Run: B3D_DEVICE_TARGET=real-u1 B3D_HIL_HOST=10.6.9.109 npx vitest run --config vitest.invitro.config.ts read-rfid-elegoo
+// Run: B3D_DEVICE_TARGET=real-u1 B3D_HIL_HOST=192.0.2.109 npx vitest run --config vitest.invitro.config.ts read-rfid-elegoo
 const PORT = 2231
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ELEGOO_B3 = join(HERE, '../../dist/plugins/rfid-elegoo-0.1.0.b3')

@@ -2,7 +2,7 @@
 
 ---
 
-## 0.1.0-alpha.31 - 2026-07-21
+## 0.1.0-alpha.31 - not released yet
 
 Everything you install now has to prove where it came from, and the app checks that proof before your printer is touched.
 
@@ -36,6 +36,10 @@ A plugin that packages an existing project (Fluidd, Mainsail, OctoEverywhere, Ta
 ### A card tells you who made a plugin, separately from the key that signed it
 
 The store now shows an author name (who wrote the plugin) alongside the signing identity (the key that proves who shipped the release). The two were always the same field before, which conflated "who made this" with "who can prove they shipped it": they can be different parties, and only the signature is proof. The author is a plain display name; the publisher stays the key fingerprint the signature is checked against.
+
+### The Intel Mac build is now offered but not supported
+
+macOS on Apple Silicon (the `-arm64` build) is the supported one. The Intel (`-x64`) build is still there and still runs, but it is no longer tested or fixed: Apple is winding Rosetta down, so a problem that shows up only on the Intel build is not one the project chases. On an Apple Silicon Mac, take the `-arm64` build even if the Intel one would run.
 
 #### Under the hood
 
@@ -95,12 +99,6 @@ The camera and remote-screen plugins had a stream-resilience pass this cycle.
 - **Fluidd updated to v1.37.2 and Mainsail to v2.18.0** (fluidd 0.1.3, mainsail 0.1.4), each with the AFC toolchanger Eject fix re-applied to the refreshed bundle.
 - **Spoolman is steadier** (spoolman 0.1.29): a hand-picked spool now persists across restarts and reboots and is replayed once Klipper is ready, and Spoolman can record which printer a spool is loaded on. A stray "cannot resolve extruder" error that flashed in the console on a manual tool change outside a print is also gone: the tool-to-extruder map is now read live from the firmware, with no stale cache to fall behind (device-verified on both printers). The helper was also refactored from one large module into small single-concern modules.
 - **Reliability fixes:** a display race that could leave a printer looking bricked until a power cycle is fixed on the device side (jinni 0.1.7), and the app now tracks a printer more reliably when its network address changes (improved mDNS discovery and address resolution).
-
----
-
-## 0.1.0-alpha.30 - 2026-06-25
-
-A quality-focused release. Most of this cycle went into a deep clean-up of the app's own codebase, with a round of polish on how dialogs and panels behave on top.
 
 ### Tidier dialogs and panels
 

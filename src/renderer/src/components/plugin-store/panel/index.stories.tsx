@@ -112,7 +112,7 @@ export function ConfigInstalledEditable() {
   return (
     <Panel
       plugin={SPOOLMAN_PLUGIN} installed initialTab="config"
-      initialSavedVars={{ SPOOLMAN_SERVER: 'http://10.6.9.108:7912', SPOOLMAN_MODE: 'auto' }}
+      initialSavedVars={{ SPOOLMAN_SERVER: 'http://192.0.2.108:7912', SPOOLMAN_MODE: 'auto' }}
     />
   )
 }

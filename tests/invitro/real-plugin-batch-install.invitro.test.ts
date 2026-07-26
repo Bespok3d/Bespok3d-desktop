@@ -37,7 +37,7 @@ import { makeDeviceTarget, type DeviceTarget } from './device-target'
 // its full resolved variable set (defaults plus the operator's values), exactly what the store form
 // posts, so no template placeholder is left unrendered - the suite fails if any does.
 //
-// Run: B3D_DEVICE_TARGET=real-u1 B3D_HIL_HOST=10.6.9.109 \
+// Run: B3D_DEVICE_TARGET=real-u1 B3D_HIL_HOST=192.0.2.109 \
 //        npx vitest run --config vitest.invitro.config.ts real-plugin-batch-install
 const PORT = 2242
 const WORKSPACE = '/Users/lucio/Code/Bespok3d_org'
@@ -49,7 +49,7 @@ const TMC_AUTOTUNE_DRIVER_TBL = 1
 const REMOTE_SCREEN_NAME = 'Printer Screen'
 
 const SPOOLMAN_VARS = {
-  SPOOLMAN_SERVER: '10.6.9.35:8000',
+  SPOOLMAN_SERVER: '192.0.2.35:8000',
   SPOOLMAN_MODE: 'auto',
   SPOOLMAN_LOGGING: 'info',
   CARD_UIDS_STRATEGY: 'spool_id,uid,sku',

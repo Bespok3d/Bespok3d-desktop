@@ -107,15 +107,15 @@ describe('reconcileDiscoveredAddress', () => {
   })
 
   it('uses the MAC, not the shared hostname, so two `lava` printers are never crossed', () => {
-    const junior: Printer = { ...BASE, host: 'lava', ip: '192.168.9.45', mac: '40:d9:5a:e4:cd:fc' }
+    const junior: Printer = { ...BASE, host: 'lava', ip: '192.168.9.45', mac: '00:00:5e:00:53:fc' }
     const otherU1Emit = found({ host: 'lava', ip: '192.168.9.30', mac: 'aa:bb:cc:dd:ee:ff' })
     // Same hostname, different MAC: the other U1's emit must not adopt junior's address.
     expect(reconcileDiscoveredAddress(junior, otherU1Emit)).toBe(junior)
   })
 
   it('follows the printer by MAC when its hostname-sharing twin is also on the LAN', () => {
-    const junior: Printer = { ...BASE, host: 'lava', ip: '192.168.9.45', mac: '40:d9:5a:e4:cd:fc' }
-    const juniorMovedEmit = found({ host: 'lava', ip: '192.168.9.30', mac: '40:d9:5a:e4:cd:fc' })
+    const junior: Printer = { ...BASE, host: 'lava', ip: '192.168.9.45', mac: '00:00:5e:00:53:fc' }
+    const juniorMovedEmit = found({ host: 'lava', ip: '192.168.9.30', mac: '00:00:5e:00:53:fc' })
     expect(reconcileDiscoveredAddress(junior, juniorMovedEmit).ip).toBe('192.168.9.30')
   })
 })
