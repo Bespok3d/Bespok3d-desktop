@@ -2,7 +2,7 @@
 
 ---
 
-## 0.1.0-alpha.31 - not released yet
+## 0.1.0-alpha.31 - 2026-07-26
 
 Everything you install now has to prove where it came from, and the app checks that proof before your printer is touched.
 
