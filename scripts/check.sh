@@ -46,6 +46,7 @@ run_check() {
 }
 
 # eslint reads its flat config from the working directory, so run the changed-file pass from APP_DIR.
+# shellcheck disable=SC2329  # run_check invokes this by name, which shellcheck cannot follow.
 eslint_files() {
     ( cd "$APP_DIR" && ./node_modules/.bin/eslint "$@" )
 }
