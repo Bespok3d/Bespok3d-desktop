@@ -6,6 +6,7 @@
   "header.my_printers": "My printers",
   "header.printer_settings": "Printer settings",
   "header.installing": "installing…",
+  "header.printing": "printing…",
   "header.installed_count": "{count} installed",
   "header.plugin_count": "{count} plugins",
   "filter.search": "Search plugins…",

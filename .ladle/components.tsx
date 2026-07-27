@@ -66,6 +66,27 @@ function emitOpSuccess(notify: (event: ReturnType<typeof makeEnrollEvent>) => vo
   return () => clearTimeout(handle)
 }
 
+// The header trigger watches the selected printer's print state, so the catalog needs the feed too.
+// The stub answers the way the real feed does (it delivers the current blocked-action set the moment
+// the watch opens), and a printer whose story says it is printing gets a non-empty set so the header
+// shows the real live phrase instead of a permanently idle one.
+const PRINTING_BLOCKED_ACTIONS = ['plugin_install', 'plugin_uninstall']
+const printWatch = { printerId: '' }
+function watchPrintState(printerId: string): Promise<void> {
+  printWatch.printerId = printerId
+
+  return Promise.resolve()
+}
+function emitPrintState(notify: (event: { printerId: string; blockedActions: string[]; at: number }) => void): () => void {
+  const handle = setTimeout(() => notify({
+    printerId: printWatch.printerId,
+    blockedActions: printWatch.printerId.includes('printing') ? PRINTING_BLOCKED_ACTIONS : [],
+    at: Date.now(),
+  }), 200)
+
+  return () => clearTimeout(handle)
+}
+
 // The catalog runs in a plain Vite browser context: there is no preload bridge and no vitest, so the
 // test b3d-mock (which imports vitest) cannot be reused. We install only the few window.b3d surfaces
 // the catalogued components actually touch; story data reuses the vitest-free fixtures factories.
@@ -87,6 +108,9 @@ const catalogB3d = {
     updateDaemon: recordOp,
     updateJinni: recordOp,
     onEnrollProgress: emitOpSuccess,
+    watchPrintState,
+    unwatchPrintState: () => Promise.resolve(),
+    onPrintState: emitPrintState,
   },
   registry: { catalog: () => Promise.resolve(makeCatalog(CATALOG_PLUGINS)) },
   // The plugin detail panel's install/uninstall/reconfigure + captured-log surfaces. Every call

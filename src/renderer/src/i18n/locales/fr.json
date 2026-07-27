@@ -5,6 +5,7 @@
   "header.scan_network": "Scanner le réseau (mDNS)",
   "header.my_printers": "Mes imprimantes",
   "header.installing": "installation en cours…",
+  "header.printing": "impression en cours…",
   "header.installed_count": "{count} installés",
   "filter.search": "Rechercher des plugins…",
   "filter.all": "Tous",

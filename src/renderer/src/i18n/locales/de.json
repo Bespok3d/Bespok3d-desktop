@@ -5,6 +5,7 @@
   "header.scan_network": "Netzwerk durchsuchen (mDNS)",
   "header.my_printers": "Meine Drucker",
   "header.installing": "wird installiert…",
+  "header.printing": "druckt…",
   "header.installed_count": "{count} installiert",
   "filter.search": "Plugins suchen…",
   "filter.all": "Alle",

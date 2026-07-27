@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { screen, fireEvent } from '@testing-library/react'
+import { screen, fireEvent, act } from '@testing-library/react'
 import { setup } from '../../../test/harness'
 import { makeT } from '../../../i18n'
 import { makePrinter, makeIndexEntry } from '../../../test/fixtures'
@@ -205,6 +205,45 @@ function renderInstalled(catalog: ReturnType<typeof makeIndexEntry>[], onUpdateA
     { withCatalog: true, catalog },
   )
 }
+
+// The header says "printing…" for the selected printer so the user sees a running print BEFORE aiming
+// a batch at it. It is a statement, never a lock: the menu stays fully usable and the daemon remains
+// the thing that refuses the op mid-print.
+function renderPrinting(catalog: ReturnType<typeof makeIndexEntry>[] = [], onUpdateAll = vi.fn()) {
+  var printer = makePrinter({ id: 'printer-1', nick: 'Alpha', status: 'managed', installedIds: ['demo'], installedVersions: { demo: '1.0.0' } })
+
+  return setup(
+    <PrinterDropdown printers={[printer]} selectedId="printer-1" adapterIcons={{}} adapterJinniVersions={{}} savedPluginVars={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={onUpdateAll} installingCount={0} />,
+    { withCatalog: true, catalog },
+  )
+}
+
+function reportPrinting(emit: ReturnType<typeof renderPrinting>['emit'], blockedActions: string[]) {
+  return act(async () => { emit.printState({ printerId: 'printer-1', blockedActions, at: Date.now() }) })
+}
+
+describe('PrinterDropdown printing state', () => {
+  it('says the printer is printing while the feed reports blocked actions', async () => {
+    var { emit } = renderPrinting()
+    await reportPrinting(emit, ['plugin_install', 'plugin_uninstall'])
+    expect(screen.getByText(en('header.printing'))).toBeInTheDocument()
+  })
+
+  it('says nothing while the printer is idle', async () => {
+    var { emit } = renderPrinting()
+    await reportPrinting(emit, [])
+    expect(screen.queryByText(en('header.printing'))).not.toBeInTheDocument()
+  })
+
+  it('states the print without blocking any menu action', async () => {
+    var onUpdateAll = vi.fn()
+    var { emit, user, container } = renderPrinting([makeIndexEntry({ name: 'demo', version: '2.0.0' })], onUpdateAll)
+    await reportPrinting(emit, ['plugin_install'])
+    await user.click(container.querySelector('.printer-trigger') as HTMLElement)
+    await user.click(screen.getByRole('button', { name: en('printers.update_all', { count: 1 }) }))
+    expect(onUpdateAll).toHaveBeenCalledWith('printer-1', [expect.objectContaining({ pluginId: 'demo' })])
+  })
+})
 
 describe('PrinterDropdown update count respects the channel ceiling', () => {
   var experimentAbove = makeIndexEntry({

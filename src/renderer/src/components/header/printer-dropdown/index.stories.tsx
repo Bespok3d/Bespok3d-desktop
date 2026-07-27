@@ -75,6 +75,12 @@ export function FullDropdownPluginUpdates() {
   return <Dropdown printer={makePrinter({ nick: 'unU1', status: 'managed', jinniVersion: ADAPTER_JINNI, installedIds: ['spoolman', 'camera-hw-accel', 'fluidd'], installedVersions: { spoolman: '1.0.0', 'camera-hw-accel': '1.0.0', fluidd: '1.3.0' } })} />
 }
 
+// A printer mid-print: the trigger says so on the meta line, and every menu item stays clickable. The
+// phrase is the warning before a batch, never a lock; the daemon is what refuses the op mid-print.
+export function FullDropdownPrinting() {
+  return <Dropdown printer={makePrinter({ id: 'printer-printing', nick: 'unU1', status: 'managed', jinniVersion: ADAPTER_JINNI, endpoints: ENDPOINTS, installedIds: ['spoolman', 'fluidd'] })} />
+}
+
 // Daemon AND adapter both behind: the closed trigger shows an amber daemon badge and a sage adapter
 // badge; the open row shows both versions and a single callout that updates them together.
 export function FullDropdownDaemonJinniUpdate() {

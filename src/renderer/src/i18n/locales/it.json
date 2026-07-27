@@ -5,6 +5,7 @@
   "header.scan_network": "Cerca la rete locale",
   "header.my_printers": "Le mie stampanti",
   "header.installing": "installando…",
+  "header.printing": "in stampa…",
   "header.installed_count": "{count} installati",
   "header.plugin_count": "{count} moduli",
   "filter.search": "Cerca modulo..",
