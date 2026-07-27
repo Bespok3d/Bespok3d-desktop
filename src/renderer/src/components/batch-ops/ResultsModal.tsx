@@ -1,10 +1,10 @@
 import type { PluginRecoveryResult, RecoverResult } from '@bespok3d/contract'
 import { useI18n } from '../../i18n/context'
 import { Explainer } from '../common/content/Explainer'
-import { Button } from '../common/Button'
-import { Modal } from '../common/overlay/Modal'
+import { BatchReportModal } from './ReportModal'
 import { diagnosisText } from './diagnosis'
 import './batch-ops.css'
+import type { BatchVariant } from './variant'
 
 type RowStatus = 'ok' | 'skipped' | 'failed'
 
@@ -44,33 +44,26 @@ function RecoveryResultItem({ result }: { result: PluginRecoveryResult }) {
   )
 }
 
-const RESULT_PREFIX: Record<'recovery' | 'update' | 'install' | 'uninstall', string> = {
+const RESULT_PREFIX: Record<BatchVariant, string> = {
   recovery: 'recovery_results',
   update: 'update_results',
   install: 'install_results',
   uninstall: 'uninstall_results',
 }
 
-export function OtaRecoveryResultsModal({ results, onClose, variant = 'recovery' }: { results: RecoverResult; onClose: () => void; variant?: 'recovery' | 'update' | 'install' | 'uninstall' }) {
+export function OtaRecoveryResultsModal({ results, onClose, variant = 'recovery' }: { results: RecoverResult; onClose: () => void; variant?: BatchVariant }) {
   const { t } = useI18n()
   const prefix = RESULT_PREFIX[variant]
   const title = results.ok ? t(`${prefix}.title_ok`) : t(`${prefix}.title_errors`)
   const summary = results.ok ? t(`${prefix}.summary_ok`) : t(`${prefix}.summary_errors`)
 
   return (
-    <Modal onClose={onClose} className="size-md">
-      <div className="modal-head">
-        <h2>{title}</h2>
-        <p style={{ color: results.ok ? 'var(--green)' : 'var(--red)' }}>{summary}</p>
-      </div>
+    <BatchReportModal title={title} summary={summary} summaryTone={results.ok ? 'ok' : 'bad'} size="size-md" onClose={onClose}>
       <div className="recovery-list">
         {results.results.map((pluginResult) => (
           <RecoveryResultItem key={pluginResult.pluginId} result={pluginResult} />
         ))}
       </div>
-      <div className="recovery-foot">
-        <Button size="sm" onClick={onClose}>{t('btn.close')}</Button>
-      </div>
-    </Modal>
+    </BatchReportModal>
   )
 }

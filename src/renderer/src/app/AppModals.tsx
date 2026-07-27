@@ -15,6 +15,9 @@ export function AppModals({ actions, discovered, existingPrinters }: { actions: 
   const { t } = useI18n()
   const appUpdate = useAppUpdate()
   const enrollModal = actions.enrollModal
+  // One batch runs at a time, so all four modals are handed the same refusal and each shows it only
+  // when it is the one that was refused.
+  const refusal = { failure: actions.batchFailure, onDismissFailure: actions.dismissBatchFailure }
 
   return (
     <>
@@ -70,10 +73,10 @@ export function AppModals({ actions, discovered, existingPrinters }: { actions: 
           onCancel={() => actions.setEnrollProposal(null)}
         />
       )}
-      <BatchOpModal variant="recovery" busy={actions.recovering} result={actions.recoveryResults} onClose={() => actions.setRecoveryResults(null)} />
-      <BatchOpModal variant="update" busy={actions.updatingAll} result={actions.updateAllResult} progress={actions.batchProgress} onClose={() => actions.setUpdateAllResult(null)} />
-      <BatchOpModal variant="install" busy={actions.installingBatch} result={actions.installBatchResult} progress={actions.batchProgress} onClose={() => actions.setInstallBatchResult(null)} />
-      <BatchOpModal variant="uninstall" busy={actions.uninstallingBatch} result={actions.uninstallBatchResult} onClose={() => actions.setUninstallBatchResult(null)} />
+      <BatchOpModal variant="recovery" busy={actions.recovering} result={actions.recoveryResults} {...refusal} onClose={() => actions.setRecoveryResults(null)} />
+      <BatchOpModal variant="update" busy={actions.updatingAll} result={actions.updateAllResult} progress={actions.batchProgress} {...refusal} onClose={() => actions.setUpdateAllResult(null)} />
+      <BatchOpModal variant="install" busy={actions.installingBatch} result={actions.installBatchResult} progress={actions.batchProgress} {...refusal} onClose={() => actions.setInstallBatchResult(null)} />
+      <BatchOpModal variant="uninstall" busy={actions.uninstallingBatch} result={actions.uninstallBatchResult} {...refusal} onClose={() => actions.setUninstallBatchResult(null)} />
       {actions.addPrinterModal && (
         <AddPrinter
           initialTab={actions.addPrinterModal.tab}

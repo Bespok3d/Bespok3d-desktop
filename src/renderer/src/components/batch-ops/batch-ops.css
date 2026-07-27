@@ -27,6 +27,12 @@
   color: var(--warn-fg);
   font-weight: 600;
 }
+.batch-report-ok {
+  color: var(--green);
+}
+.batch-report-bad {
+  color: var(--red);
+}
 .batch-progress-body {
   padding: var(--space-2) var(--space-6) var(--space-6);
   display: flex;

@@ -12,9 +12,14 @@ vi.mock('./catalog-archive', () => ({ findCatalogEntry: vi.fn(), resolveArchiveB
 vi.mock('./batch-progress', () => ({ streamBatchProgress: vi.fn() }))
 vi.mock('./progress', () => ({ sendUpload: vi.fn() }))
 vi.mock('./record-sync', () => ({ capsOrFallback: vi.fn() }))
-vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn(), updateBatchPackages: vi.fn(), installBatchPackages: vi.fn() }))
+// The real DaemonHttpError comes through the mock, so a refusal built here is the same class the
+// guard tests with instanceof: a hand-mirrored fake would drift the day the daemon adds a field.
+vi.mock('../daemon-client/client', async () => {
+  const { DaemonHttpError } = await vi.importActual<typeof import('../daemon-client/transport')>('../daemon-client/transport')
+
+  return { DaemonHttpError, fetchCapabilities: vi.fn(), updateBatchPackages: vi.fn(), installBatchPackages: vi.fn() }
+})
 vi.mock('../daemon-client/status', () => ({ getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }) }))
-vi.mock('../daemon-client/guard', () => ({ daemonGuardMessage: () => null }))
 
 import { orderedBatchPluginIds, runStoreUpdateBatch, runStoreInstallBatch } from './update-batch'
 import { loadCatalog } from '../registry'
@@ -23,7 +28,7 @@ import type { PrinterRecord } from '../printers'
 import { findCatalogEntry, resolveArchiveBytes, discardCachedArchive } from './catalog-archive'
 import { streamBatchProgress } from './batch-progress'
 import { capsOrFallback } from './record-sync'
-import { fetchCapabilities, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
+import { DaemonHttpError, fetchCapabilities, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
 import { getManagedRecord } from '../daemon-client/status'
 
 const LISTED_ENTRY = { name: 'idle-timeout', version: '0.2.0', trust: 'project', signer: null, registry_url: '/registry/index.json', channel: 'stable' } as MergedEntry
@@ -326,5 +331,37 @@ describe('what a batch leaves behind when the printer refuses the call itself', 
     const kept = recordAfterTheBatch().failedInstallLogs ?? {}
     expect(Object.keys(kept)).toEqual(['camera', 'idle-timeout'])
     expect(kept['idle-timeout'].phases[0].items[0].output).toMatch(/busy printing/)
+  })
+})
+
+// A print in progress is the one refusal the user hits by accident, and both batches must say the
+// same thing about it: "Update all" while printing reads like "Install selected" while printing, not
+// like a raw daemon 4xx. The sentence is the only thing the user gets, so it has to be a sentence.
+describe('a printer that refuses the batch because it is printing', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function printingRefusal(): DaemonHttpError {
+    return new DaemonHttpError(409, { error: 'blocked', blocked_actions: ['restart-klipper', 'restart-moonraker'] }, 'daemon 409: {"error":"blocked"}')
+  }
+
+  const IN_PLAIN_WORDS = 'The printer is busy: this would restart Klipper, Moonraker, interrupting the print. Try again when it is idle.'
+
+  it('says so in plain words when updating', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(updateBatchPackages).mockRejectedValue(printingRefusal())
+    await expect(updateBatch()).rejects.toThrow(IN_PLAIN_WORDS)
+  })
+
+  it('says so in plain words when installing', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(installBatchPackages).mockRejectedValue(printingRefusal())
+    await expect(runStoreInstallBatch({} as BrowserWindow, 'printer-1', ONE_SPEC)).rejects.toThrow(IN_PLAIN_WORDS)
+  })
+
+  it('keeps that sentence as the reason each plugin did not install', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(updateBatchPackages).mockRejectedValue(printingRefusal())
+    await expect(updateBatch()).rejects.toThrow(IN_PLAIN_WORDS)
+    expect(recordAfterTheBatch().failedInstallLogs?.['idle-timeout'].phases[0].items[0].output).toContain('Try again when it is idle.')
   })
 })

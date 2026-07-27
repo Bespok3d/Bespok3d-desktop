@@ -130,6 +130,19 @@ function keptIfTheCallFails(printerId: string, sentPluginIds: string[], posting:
   })
 }
 
+// A printer that refuses the whole call answers with a daemon 4xx whose body is JSON. Both batches post
+// through here so the user reads the same sentence either way: "Update all" refused while a print is
+// running says what "Install selected" refused while a print is running says.
+function guardedPoster(post: BatchPoster): BatchPoster {
+  return function postAndNameTheRefusal(record, packages, onUploadProgress) {
+    return post(record, packages, onUploadProgress).catch((error: unknown) => {
+      const message = daemonGuardMessage(error)
+
+      throw message ? new Error(message) : error
+    })
+  }
+}
+
 async function runStoreBatch(win: BrowserWindow, printerId: string, specs: PluginUpdateSpec[], post: BatchPoster): Promise<RecoverResult> {
   const record = getManagedRecord(printerId)
   const catalog = (await loadCatalog()).plugins
@@ -167,7 +180,7 @@ async function runStoreBatch(win: BrowserWindow, printerId: string, specs: Plugi
 }
 
 export function runStoreUpdateBatch(win: BrowserWindow, printerId: string, updates: PluginUpdateSpec[]): Promise<RecoverResult> {
-  return runStoreBatch(win, printerId, updates, updateBatchPackages)
+  return runStoreBatch(win, printerId, updates, guardedPoster(updateBatchPackages))
 }
 
 // Install several plugins in one daemon call (one deferred restart of the affected services). Routing
@@ -175,12 +188,5 @@ export function runStoreUpdateBatch(win: BrowserWindow, printerId: string, updat
 // the display compositor once for the whole set, not once per display plugin. A daemon conflict 409 is
 // surfaced readably (the renderer pre-checks, the daemon backstops two mutually-exclusive picks).
 export function runStoreInstallBatch(win: BrowserWindow, printerId: string, specs: PluginUpdateSpec[]): Promise<RecoverResult> {
-  function postInstall(record: PrinterRecord, packages: BatchUpdatePackage[], onUploadProgress?: UploadProgressFn): Promise<RecoverResult> {
-    return installBatchPackages(record, packages, onUploadProgress).catch((error) => {
-      const message = daemonGuardMessage(error)
-      throw message ? new Error(message) : error
-    })
-  }
-
-  return runStoreBatch(win, printerId, specs, postInstall)
+  return runStoreBatch(win, printerId, specs, guardedPoster(installBatchPackages))
 }

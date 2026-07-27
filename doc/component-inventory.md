@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-251 exported components + hooks across 19 areas.
+253 exported components + hooks across 19 areas.
 
 ## Common primitives
 
@@ -122,8 +122,10 @@ as you touch the file.
 
 ## Feature: batch-ops
 
+- `BatchFailedModal` (component) - [components/batch-ops/FailedModal.tsx](../src/renderer/src/components/batch-ops/FailedModal.tsx) - The printer's own words are the verdict. A refusal while a print is running already reads as a
 - `BatchInstallProgress` (component) - [components/batch-ops/InstallProgress.tsx](../src/renderer/src/components/batch-ops/InstallProgress.tsx) - The live batch-install modal: the ordered plugin list with each row ticking pending -> installing
 - `BatchOpModal` (component) - [components/batch-ops/index.tsx](../src/renderer/src/components/batch-ops/index.tsx) - A batch op (recover / update-all / install-selected) shows the same two-step UI: live progress while
+- `BatchReportModal` (component) - [components/batch-ops/ReportModal.tsx](../src/renderer/src/components/batch-ops/ReportModal.tsx) - However a batch op ends, the user meets the same thing: what it was, one line saying how it went,
 - `OtaRecoveryResultsModal` (component) - [components/batch-ops/ResultsModal.tsx](../src/renderer/src/components/batch-ops/ResultsModal.tsx)
 - `useBatchOps` (hook) - [components/batch-ops/index.tsx](../src/renderer/src/components/batch-ops/index.tsx) - The daemon batch operations (OTA recover, update-all, install-selected, uninstall-selected). Recover
 

@@ -4,3 +4,12 @@
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
+
+const IPC_WRAPPER = /^Error invoking remote method '[^']*':\s*(?:[A-Za-z]*Error:\s*)?/
+
+// Electron wraps anything the main process throws as "Error invoking remote method 'x': Error: <what
+// went wrong>" before the renderer ever sees it. The user reads the sentence the main process wrote,
+// never the plumbing in front of it.
+export function mainProcessMessage(err: unknown): string {
+  return errorMessage(err).replace(IPC_WRAPPER, '')
+}
