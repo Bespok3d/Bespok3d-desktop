@@ -142,7 +142,7 @@ export function CollectionDetailPanel({ collection, plugins, installedIds, print
         <CollectionFoot
           installableCount={gated.eligible.length} fullyInstalled={fullyInstalled} hasPrinter={!!printerId} installing={installing}
           block={batchBlockReason(t, { printerId, printActive, blockedActions })}
-          onInstallAll={() => install.installMembers(split.missing)} onClose={onClose} t={t}
+          onInstallAll={() => install.installMembers(gated.eligible)} onClose={onClose} t={t}
         />
       </Modal>
       {install.configPlugins && (

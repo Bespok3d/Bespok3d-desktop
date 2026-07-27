@@ -135,6 +135,22 @@ describe('CollectionDetailPanel install gate', () => {
     expect(specs.map((spec: { pluginId: string }) => spec.pluginId)).toEqual(['rfid-opentag'])
   })
 
+  it('does not ask for the config of a member the gate leaves out', async () => {
+    const keyedRival = makePlugin({
+      id: 'rfid-rival', name: 'rfid-rival', title: 'Rival Reader', conflicts: ['rfid-ntag'],
+      config: [{ key: 'RIVAL_KEY', label: 'Master key', type: 'text', scope: 'global', required: true }],
+    })
+    const { user, onInstallSelected } = renderPanel({
+      plugins: [...CATALOG, keyedRival],
+      collection: makeCollection({ ...COLLECTION, members: [{ id: 'rfid-ntag' }, { id: 'rfid-opentag' }, { id: 'rfid-rival' }] }),
+    })
+    await user.click(screen.getByRole('button', { name: /Install all \(1\)/ }))
+
+    expect(screen.queryByText('Configure plugins')).toBeNull()
+    const [, specs] = onInstallSelected.mock.calls[0]
+    expect(specs.map((spec: { pluginId: string }) => spec.pluginId)).toEqual(['rfid-opentag'])
+  })
+
   it('does not offer install when no managed printer is selected', () => {
     renderPanel({ printerId: undefined })
     expect(screen.getByText('Select a managed printer to install')).toBeInTheDocument()
