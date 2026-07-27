@@ -94,8 +94,8 @@ function makeRestAccountOps(profile: RestHostProfile) {
 }
 
 function makeRestContentOps(profile: RestHostProfile, transport: RestTransport) {
-  async function getFile(repo: RepoRef, path: string): Promise<FileContent | null> {
-    const data = await transport.apiGet(`/repos/${repo.owner}/${repo.repo}/contents/${path}`)
+  async function getFile(repo: RepoRef, path: string, ref?: string): Promise<FileContent | null> {
+    const data = await transport.apiGet(`/repos/${repo.owner}/${repo.repo}/contents/${path}${ref ? `?ref=${ref}` : ''}`)
     if (!data) return null
 
     return { content: Buffer.from(String(data.content).replace(/\n/g, ''), 'base64').toString('utf-8'), sha: String(data.sha) }

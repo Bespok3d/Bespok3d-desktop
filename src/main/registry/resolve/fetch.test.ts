@@ -42,8 +42,14 @@ function stubNotModified(): void {
   vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ status: 304, ok: false })))
 }
 
+// The GitHub transport asks for its signature at `index.json.sig?ref=main`, so a trailing-string match
+// on `.sig` would miss it and answer with the index instead.
+function isSignatureUrl(url: string): boolean {
+  return /\.sig(\?|$)/.test(url)
+}
+
 function servedResponse(url: string, signatureStatus: number): unknown {
-  if (url.endsWith('.sig')) return { ok: signatureStatus === 200, status: signatureStatus, text: () => Promise.resolve(FIXTURE_SIGNATURE) }
+  if (isSignatureUrl(url)) return { ok: signatureStatus === 200, status: signatureStatus, text: () => Promise.resolve(FIXTURE_SIGNATURE) }
 
   return { ok: true, status: 200, text: () => Promise.resolve(FIXTURE_BYTES), headers: new Headers({ etag: 'W/"fresh"' }) }
 }
@@ -54,7 +60,7 @@ function stubServedIndex(signatureStatus: number): void {
 
 function stubBrokenSignatureBody(): void {
   vi.stubGlobal('fetch', vi.fn((url: string) => {
-    if (url.endsWith('.sig')) return Promise.resolve({ ok: true, status: 200, text: () => Promise.reject(new Error('body stream aborted')) })
+    if (isSignatureUrl(url)) return Promise.resolve({ ok: true, status: 200, text: () => Promise.reject(new Error('body stream aborted')) })
 
     return Promise.resolve(servedResponse(url, 404))
   }))
@@ -62,7 +68,7 @@ function stubBrokenSignatureBody(): void {
 
 function stubUnparseableIndex(): void {
   vi.stubGlobal('fetch', vi.fn((url: string) => {
-    if (url.endsWith('.sig')) return Promise.resolve({ ok: false, status: 404 })
+    if (isSignatureUrl(url)) return Promise.resolve({ ok: false, status: 404 })
 
     return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('<html>captive portal</html>'), headers: new Headers({ etag: 'W/"portal"' }) })
   }))
@@ -86,7 +92,7 @@ async function signWithThrowawayKey(bytesToSign: string): Promise<ThrowawaySigne
 
 function stubNotModifiedWithSignature(): void {
   vi.stubGlobal('fetch', vi.fn((url: string) => {
-    if (url.endsWith('.sig')) return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(FIXTURE_SIGNATURE) })
+    if (isSignatureUrl(url)) return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(FIXTURE_SIGNATURE) })
 
     return Promise.resolve({ status: 304, ok: false })
   }))
@@ -95,14 +101,14 @@ function stubNotModifiedWithSignature(): void {
 function stubStaleNotModifiedThenServed(): void {
   const indexResponses = [{ status: 304, ok: false }, servedResponse(REGISTRY_URL, 200)]
   vi.stubGlobal('fetch', vi.fn((url: string) => {
-    if (url.endsWith('.sig')) return Promise.resolve(servedResponse(url, 200))
+    if (isSignatureUrl(url)) return Promise.resolve(servedResponse(url, 200))
 
     return Promise.resolve(indexResponses.shift())
   }))
 }
 
 function signedResponse(url: string, armoredSignature: string, bytes: string): unknown {
-  if (url.endsWith('.sig')) return { ok: true, status: 200, text: () => Promise.resolve(armoredSignature) }
+  if (isSignatureUrl(url)) return { ok: true, status: 200, text: () => Promise.resolve(armoredSignature) }
 
   return { ok: true, status: 200, text: () => Promise.resolve(bytes), headers: new Headers({ etag: 'W/"fresh"' }) }
 }

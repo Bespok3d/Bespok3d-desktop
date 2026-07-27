@@ -90,7 +90,8 @@ export interface GitHostConnector {
   // Orgs the connected account can create repos in (the account login itself is offered separately).
   listOrgs(): Promise<string[]>
 
-  getFile(repo: RepoRef, path: string): Promise<FileContent | null>
+  // `ref` names a branch, tag or commit; omitted, the host answers with the repo's default branch.
+  getFile(repo: RepoRef, path: string, ref?: string): Promise<FileContent | null>
   putFile(repo: RepoRef, path: string, content: string, message: string, sha?: string): Promise<void>
   deleteFile(repo: RepoRef, path: string, message: string, sha: string): Promise<void>
 

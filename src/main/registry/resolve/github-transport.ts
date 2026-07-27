@@ -4,13 +4,17 @@
 import { RegistryFetchError } from '../model'
 import type { RegistryRef, ServedIndex, FetchedRegistry } from '../model'
 import { loadCache, conditionalHeaders } from './cache'
-import { httpGet, httpFailure, fetchSignatureBeside } from './request'
+import { httpGet, httpFailure, fetchSignatureAt } from './request'
 import { toFetchedRegistry, cacheServedIndex, withRetriedSignature } from './served-index'
 import { activeConnector } from '../../git-host'
 
 const GITHUB_REGISTRY_URL = /^github:([^/]+)\/([^/]+)\/(.+)$/
 const GITHUB_API_BASE = 'https://api.github.com'
 const GITHUB_RAW_HEADERS = { Accept: 'application/vnd.github.raw', 'X-GitHub-Api-Version': '2022-11-28' }
+// A contents request that names no branch is answered with the repo's DEFAULT branch, and every
+// Bespok3d repo defaults to the working branch `dev`. A published list lives on main, so every read
+// of one names main - otherwise the store shows whatever is mid-flight in the repo.
+const PUBLISHED_BRANCH = 'main'
 
 export interface GitHubListRef {
   owner: string
@@ -47,8 +51,18 @@ async function resolveGitHubIndex(list: GitHubListRef): Promise<ResolvedIndex> {
   return { served: await fetchGitHubAuthorized(list), fromCache: false }
 }
 
-function contentsUrl(list: GitHubListRef): string {
-  return `${GITHUB_API_BASE}/repos/${list.owner}/${list.repo}/contents/${list.path}`
+// The signature url goes through here too: `${contentsUrl}.sig` would land the `.sig` on the ref query
+// instead of the path, 404 silently, and leave every plugin in the list showing as unverifiable.
+function contentsUrl(list: GitHubListRef, path: string): string {
+  return `${GITHUB_API_BASE}/repos/${list.owner}/${list.repo}/contents/${path}?ref=${PUBLISHED_BRANCH}`
+}
+
+function indexUrl(list: GitHubListRef): string {
+  return contentsUrl(list, list.path)
+}
+
+function signatureUrl(list: GitHubListRef): string {
+  return contentsUrl(list, `${list.path}.sig`)
 }
 
 // A 401/403/404 (private, rate-limited, or missing) returns null so the caller falls back to the
@@ -57,10 +71,10 @@ function contentsUrl(list: GitHubListRef): string {
 async function fetchGitHubPublic(list: GitHubListRef): Promise<ResolvedIndex | null> {
   const cacheKey = `github:${list.owner}/${list.repo}/${list.path}`
   const cached = loadCache().get(cacheKey)
-  const url = contentsUrl(list)
+  const url = indexUrl(list)
   const response = await httpGet(url, { ...conditionalHeaders(cached), ...GITHUB_RAW_HEADERS })
   if (response.status === 304 && cached) {
-    return { served: await withRetriedSignature(cacheKey, cached, () => fetchSignatureBeside(url, GITHUB_RAW_HEADERS)), fromCache: true }
+    return { served: await withRetriedSignature(cacheKey, cached, () => fetchSignatureAt(signatureUrl(list), GITHUB_RAW_HEADERS)), fromCache: true }
   }
 
   return servedGitHubIndex(cacheKey, list, response.status === 304 ? await httpGet(url, GITHUB_RAW_HEADERS) : response)
@@ -69,7 +83,7 @@ async function fetchGitHubPublic(list: GitHubListRef): Promise<ResolvedIndex | n
 async function servedGitHubIndex(cacheKey: string, list: GitHubListRef, response: Response): Promise<ResolvedIndex | null> {
   if (response.status === 401 || response.status === 403 || response.status === 404) return null
   if (!response.ok) throw httpFailure(response.status, 'GitHub')
-  const served = { bytes: await response.text(), signature: await fetchSignatureBeside(contentsUrl(list), GITHUB_RAW_HEADERS) }
+  const served = { bytes: await response.text(), signature: await fetchSignatureAt(signatureUrl(list), GITHUB_RAW_HEADERS) }
   cacheServedIndex(cacheKey, served, response)
 
   return { served, fromCache: false }
@@ -87,9 +101,9 @@ function authFallbackError(error: Error): never {
 async function fetchGitHubAuthorized(list: GitHubListRef): Promise<ServedIndex> {
   const repoRef = { owner: list.owner, repo: list.repo }
   const connector = activeConnector()
-  const file = await connector.getFile(repoRef, list.path).catch(authFallbackError)
+  const file = await connector.getFile(repoRef, list.path, PUBLISHED_BRANCH).catch(authFallbackError)
   if (!file) throw new RegistryFetchError('notfound', 'Not found, or you do not have access to this private list')
-  const signatureFile = await connector.getFile(repoRef, `${list.path}.sig`).catch(() => null)
+  const signatureFile = await connector.getFile(repoRef, `${list.path}.sig`, PUBLISHED_BRANCH).catch(() => null)
 
   return { bytes: file.content, signature: signatureFile?.content ?? null }
 }

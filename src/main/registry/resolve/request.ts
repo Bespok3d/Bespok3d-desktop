@@ -33,9 +33,15 @@ export function httpFailure(status: number, transport: string): RegistryFetchErr
 
 // A signature's absence is ordinary (most lists are unsigned) and never fails the fetch, so every
 // failure path here collapses to null.
-export async function fetchSignatureBeside(url: string, headers: Record<string, string> = {}): Promise<string | null> {
-  const response = await fetch(`${url}.sig`, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }).catch(() => null)
+export async function fetchSignatureAt(signatureUrl: string, headers: Record<string, string> = {}): Promise<string | null> {
+  const response = await fetch(signatureUrl, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }).catch(() => null)
   if (!response?.ok) return null
 
   return response.text().catch(() => null)
+}
+
+// The `<url>.sig` convention, for a transport whose index url is a plain path. A transport whose url
+// carries a query string (an API ref, say) cannot append to it and builds its own signature url.
+export function fetchSignatureBeside(indexUrl: string, headers: Record<string, string> = {}): Promise<string | null> {
+  return fetchSignatureAt(`${indexUrl}.sig`, headers)
 }
