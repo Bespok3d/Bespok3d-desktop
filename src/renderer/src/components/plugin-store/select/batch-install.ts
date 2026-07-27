@@ -1,18 +1,17 @@
 import type { Plugin, PluginConfigField } from '../../../data/types'
 import type { PluginVarsSave } from '../../../data/plugin-vars'
+import type { TFunction } from '../../../i18n'
 import { resolveMissingDeps } from '../../../data/deps'
 import { initialConfigValues, configComplete } from '../config/config-form'
 import { pluginInstallVars } from '../update-all'
+import { splitByBatchGate } from '../batch-gate'
+import type { BatchMemberContext } from '../batch-gate'
 
-// The inputs a batch (or collection) install needs: the catalog, the printer's installed ids, the
-// target printer's resolved config values, and the callbacks to persist vars (scope-aware, bound to
-// that printer by App) + run the one-restart batch. Shared by the multi-select batch flow and the
-// collection install-all flow.
-export interface BatchInstallContext {
-  catalogPlugins: Plugin[]
-  installedIds: string[]
-  savedVars: Record<string, string>
-  printerId?: string
+// The inputs a batch (or collection) install needs: what a single install is judged against
+// (BatchMemberContext: the catalog, the printer, whether it is printing, the resolved config values),
+// plus the callbacks to persist vars (scope-aware, bound to that printer by App) + run the one-restart
+// batch. Shared by the multi-select batch flow and the collection install-all flow.
+export interface BatchInstallContext extends BatchMemberContext {
   onSaveVars?: (save: PluginVarsSave) => void
   onInstallSelected?: (printerId: string, specs: PluginUpdateSpec[]) => void
 }
@@ -51,6 +50,17 @@ export function initialBatchValues(plugins: Plugin[], savedVars: Record<string, 
     (values, plugin) => ({ ...values, ...initialConfigValues(plugin.config ?? [], savedVars) }),
     {} as Record<string, string>,
   )
+}
+
+// The specs for the members that pass the same checks a single install passes, built with the values
+// the batch will actually install with (saved plus anything just captured). Every batch path builds
+// its specs here, so a plugin the panel would have refused cannot reach the printer by riding a
+// collection or a multi-select instead. A refused member is left out and the rest install.
+export function gatedInstallSpecs(t: TFunction, memberIds: string[], context: BatchMemberContext): PluginUpdateSpec[] {
+  const members = context.catalogPlugins.filter((plugin) => memberIds.includes(plugin.id))
+  const eligible = splitByBatchGate(t, members, context).eligible
+
+  return buildInstallSpecs(context.catalogPlugins, eligible.map((plugin) => plugin.id), context.installedIds, context.savedVars)
 }
 
 // One batch spec per selected plugin: its config values (saved or captured) plus the deps a fresh

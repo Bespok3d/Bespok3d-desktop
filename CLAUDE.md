@@ -108,6 +108,9 @@ stop-and-ask-the-maintainer event. The app specifics:
 - **Catalog boundary:** `data/catalog.ts` is the single snake→camel boundary (`indexToPlugins` /
   `payloadToRegistry`) and owns the doc/README/CHANGELOG `?raw` + asset globs. Don't parse index shapes
   elsewhere.
+- **Store doc prose is baked at APP build time.** Those globs read `plugins/**/doc/*.md` from the
+  sibling tree, so an edited README or CHANGELOG reaches users on the next APP release, never on a
+  plugin release. Publishing a plugin does NOT refresh what its store page says.
 - **No fakes in dev tools:** the catalog renders REAL components; dummy DATA only at the `window.b3d`
   stub; never hand-roll a stand-in. Fixtures use OBVIOUSLY-fake values (`.example` domains, patterned
   ids) - never Lucio's real LAN addresses/uuids/tokens (`feedback_no_real_values_in_fixtures`).

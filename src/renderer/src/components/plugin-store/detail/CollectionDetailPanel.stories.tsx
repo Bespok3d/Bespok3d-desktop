@@ -19,10 +19,11 @@ const COLLECTION = makeCollection({
 
 function noop() {}
 
-function Panel({ installedIds, printerId }: { installedIds: string[]; printerId?: string }) {
+function Panel({ installedIds, printerId, printActive = false }: { installedIds: string[]; printerId?: string; printActive?: boolean }) {
   return (
     <CollectionDetailPanel
       collection={COLLECTION} plugins={MEMBERS} installedIds={installedIds} printerId={printerId} installing={false}
+      printActive={printActive} blockedActions={printActive ? ['install'] : []}
       onInstallSelected={noop} onOpenPlugin={noop} onClose={noop}
     />
   )
@@ -42,4 +43,8 @@ export function AllInstalled() {
 
 export function NoPrinter() {
   return <Panel installedIds={['rfid-ntag']} />
+}
+
+export function PrintRunning() {
+  return <Panel installedIds={['rfid-ntag']} printerId="printer-1" printActive />
 }

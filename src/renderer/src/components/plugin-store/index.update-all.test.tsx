@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, act } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makeT } from '../../i18n'
 import { makeIndexEntry, makePrinter, makeCapabilities } from '../../test/fixtures'
@@ -28,6 +28,26 @@ describe('PluginStore update-all wiring', () => {
     await user.click(button)
 
     expect(onUpdateAll).toHaveBeenCalledWith('printer-1', expect.arrayContaining([expect.objectContaining({ pluginId: 'demo-a' })]))
+  })
+
+  // Updating everything at once is an automation of updating them one at a time, so it answers to the
+  // same gate: while the printer is printing there is no update-all, exactly as there is no install.
+  it('locks Update all while a print is running', async () => {
+    var onUpdateAll = vi.fn()
+    var { user, emit } = setup(
+      <PluginStore printer={makePrinter({ status: 'managed' })} grouped={false} onUpdateAll={onUpdateAll} />,
+      {
+        withCatalog: true,
+        catalog: [makeIndexEntry({ name: 'demo-a', title: 'Alpha', version: '1.0.0' })],
+        b3d: { store: { capabilities: vi.fn().mockResolvedValue(makeCapabilities({ 'demo-a': '0.9.0' })) } },
+      },
+    )
+    var button = await screen.findByRole('button', { name: en('store.update_all', { count: 1 }) })
+    act(() => emit.printState({ printerId: 'printer-1', blockedActions: ['install'], at: Date.now() }))
+
+    expect(button).toBeDisabled()
+    await user.click(button)
+    expect(onUpdateAll).not.toHaveBeenCalled()
   })
 
   it('shows no Update all button when everything is current', async () => {

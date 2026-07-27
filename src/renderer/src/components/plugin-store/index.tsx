@@ -114,11 +114,11 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
     live: { installedIds: liveInstalledIds, installedVersions: liveInstalledVersions, deactivatedIds: liveDeactivatedIds },
     filters: { query, channels: facets.channels, categories: facets.categories, trusts: facets.trusts, statuses: facets.statuses, printerOnly: facets.printerOnly, grouped, sortKey, sortDir, ceilingFor, disabledChannels },
   })
-  const batch = useBatchInstall({ catalogPlugins, installedIds, deactivatedIds, savedVars: savedPluginVars ?? {}, printerId: managedId, onSaveVars, onInstallSelected })
+  const batch = useBatchInstall({ catalogPlugins, installedIds, deactivatedIds, savedVars: savedPluginVars ?? {}, printerId: managedId, printActive, blockedActions, onSaveVars, onInstallSelected })
   const uninstall = useBatchUninstall({ plugins: catalogPlugins, installedIds, printerId: managedId, onUninstallSelected })
   const selection = activeSelection(batch, uninstall)
   const cardCtx: StoreCardContext = { installedIds, installedVersions, installedChannels: printer?.installedChannels ?? {}, deactivatedIds, ceilingFor, disabledChannels, selection }
-  const { updatableCount, updateAll } = useUpdateAll({ printerId: managedId, plugins: catalogPlugins, installedIds, installedVersions, savedVars: savedPluginVars ?? {}, ceilingFor, disabledChannels, onUpdateAll })
+  const { updatableCount, updateBlock, updateAll } = useUpdateAll({ printerId: managedId, plugins: catalogPlugins, installedIds, installedVersions, savedVars: savedPluginVars ?? {}, ceilingFor, disabledChannels, printActive, blockedActions, onUpdateAll })
 
   useFocusPanel(focusPluginId, catalogPlugins, setPanelPlugin, onFocusHandled)
 
@@ -143,7 +143,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
     <div className="store">
       <Toolbar
         query={query} count={matchingPlugins.length} layout={layout} filtersOpen={filtersOpen} filtersActive={facets.active} sortKey={sortKey} sortDir={sortDir}
-        updatableCount={updatableCount} updatingAll={updatingAll} onUpdateAll={updateAll} selectAvailable={!!managedId} selectActive={selecting} canUninstall={installedIds.length > 0}
+        updatableCount={updatableCount} updatingAll={updatingAll} updateBlock={updateBlock} onUpdateAll={updateAll} selectAvailable={!!managedId} selectActive={selecting} canUninstall={installedIds.length > 0}
         onSelectInstall={() => { uninstall.exit(); batch.enter() }} onSelectUninstall={() => { batch.exit(); uninstall.enter() }} onExitSelect={() => { batch.exit(); uninstall.exit() }}
         refreshing={refreshing} onRefresh={handleRefresh} onQuery={setQuery} onLayout={setLayout} onToggleFilters={() => setFiltersOpen(!filtersOpen)} onSort={onSort}
       />
@@ -168,6 +168,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
       {panelCollection && (
         <CollectionDetailPanel
           collection={panelCollection} plugins={catalogPlugins} installedIds={installedIds} printerId={managedId} installing={installingSelected}
+          printActive={printActive} blockedActions={blockedActions}
           savedPluginVars={savedPluginVars} onSaveVars={onSaveVars} onInstallSelected={onInstallSelected}
           onOpenPlugin={setPanelPlugin} onClose={() => setPanelCollection(null)}
         />

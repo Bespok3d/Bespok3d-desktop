@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import type { Plugin, Printer, ReleaseChannel } from '../../data/types'
 import type { CeilingResolver } from '../../data/channels'
 import { applyToId } from '../../data/printers'
+import { useI18n } from '../../i18n/context'
+import { batchBlockReason } from './batch-gate'
+import type { InstallBlock } from './panel/install-gate'
 import { updatablePlugins, buildUpdateSpecs } from './update-all'
 import { autoRecoveryNotice } from './safety/notice'
 import type { SafetyNotice } from './safety/notice'
@@ -75,20 +78,26 @@ interface UpdateAllDeps {
   savedVars: Record<string, string>
   ceilingFor: CeilingResolver
   disabledChannels: ReleaseChannel[]
+  printActive: boolean
+  blockedActions: string[]
   onUpdateAll?: (printerId: string, updates: PluginUpdateSpec[]) => void
 }
 
 // Builds the batch update specs and hands them to the App-level handler, which runs a single
-// daemon update-batch (one restart for the whole set) and shows the results modal.
-export function useUpdateAll(deps: UpdateAllDeps): { updatableCount: number; updateAll: () => void } {
+// daemon update-batch (one restart for the whole set) and shows the results modal. Updating every
+// plugin at once is an automation of updating them one at a time, so it answers to the same gate:
+// while the printer is printing there is no update-all, exactly as there is no single install.
+export function useUpdateAll(deps: UpdateAllDeps): { updatableCount: number; updateBlock: InstallBlock | null; updateAll: () => void } {
+  const { t } = useI18n()
   const updatableCount = updatablePlugins(deps.plugins, deps.installedVersions, deps.ceilingFor, deps.disabledChannels).length
+  const updateBlock = batchBlockReason(t, { printerId: deps.printerId, printActive: deps.printActive, blockedActions: deps.blockedActions })
 
   function updateAll(): void {
-    if (!deps.printerId || !deps.onUpdateAll || updatableCount === 0) return
+    if (!deps.printerId || !deps.onUpdateAll || updatableCount === 0 || updateBlock) return
     deps.onUpdateAll(deps.printerId, buildUpdateSpecs(deps.plugins, deps.installedIds, deps.installedVersions, deps.savedVars, deps.ceilingFor, deps.disabledChannels))
   }
 
-  return { updatableCount, updateAll }
+  return { updatableCount, updateBlock, updateAll }
 }
 
 // Open a plugin's detail panel when an external focus is requested (e.g. drag-drop "install now"),

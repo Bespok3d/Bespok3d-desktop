@@ -21,6 +21,7 @@ function renderPanel(overrides: Partial<Parameters<typeof CollectionDetailPanel>
   const { user } = setup(
     <CollectionDetailPanel
       collection={COLLECTION} plugins={CATALOG} installedIds={['rfid-ntag']} printerId="printer-1" installing={false}
+      printActive={false} blockedActions={[]}
       onInstallSelected={onInstallSelected} onOpenPlugin={onOpenPlugin} onClose={vi.fn()} {...overrides}
     />,
   )
@@ -95,6 +96,43 @@ describe('CollectionDetailPanel', () => {
       fields: [expect.objectContaining({ key: 'BAMBU_KEY' })],
       scopeChoices: { BAMBU_KEY: 'printer' },
     })
+  })
+
+})
+
+// A collection install is an automation of installing its members one at a time, so every check that
+// gates a single install gates the batch too, and a member the panel would refuse says so on its row.
+describe('CollectionDetailPanel install gate', () => {
+  it('refuses install-all while a print is running', async () => {
+    const { user, onInstallSelected } = renderPanel({ printActive: true, blockedActions: ['install'] })
+    expect(screen.getAllByText('Locked while a print is running.')).toHaveLength(3)
+    await user.click(screen.getByRole('button', { name: /Install all/ }))
+    expect(onInstallSelected).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /Install all/ })).toBeDisabled()
+  })
+
+  it('leaves a member that conflicts with an installed plugin out of the batch', async () => {
+    const rival = makePlugin({ id: 'rfid-rival', name: 'rfid-rival', title: 'Rival Reader', conflicts: ['rfid-ntag'] })
+    const { user, onInstallSelected } = renderPanel({
+      plugins: [...CATALOG, rival],
+      collection: makeCollection({ ...COLLECTION, members: [{ id: 'rfid-ntag' }, { id: 'rfid-opentag' }, { id: 'rfid-rival' }] }),
+    })
+    await user.click(screen.getByRole('button', { name: /Install all \(1\)/ }))
+    const [, specs] = onInstallSelected.mock.calls[0]
+    expect(specs.map((spec: { pluginId: string }) => spec.pluginId)).toEqual(['rfid-opentag'])
+  })
+
+  // A collection names only plugins that exist. A member that has been depublished since is shown as
+  // unavailable and skipped; the rest of the collection still installs.
+  it('installs the remaining members when one has been depublished', async () => {
+    const { user, onInstallSelected } = renderPanel({
+      collection: makeCollection({ ...COLLECTION, members: [{ id: 'rfid-ntag' }, { id: 'rfid-opentag' }, { id: 'gone-from-the-index' }] }),
+    })
+    expect(screen.getByText('gone-from-the-index')).toBeInTheDocument()
+    expect(screen.getByText('Not on your sources')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Install all \(1\)/ }))
+    const [, specs] = onInstallSelected.mock.calls[0]
+    expect(specs.map((spec: { pluginId: string }) => spec.pluginId)).toEqual(['rfid-opentag'])
   })
 
   it('does not offer install when no managed printer is selected', () => {

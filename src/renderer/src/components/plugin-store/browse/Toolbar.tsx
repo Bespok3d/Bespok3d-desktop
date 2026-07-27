@@ -5,6 +5,7 @@ import type { TrustTier, ReleaseChannel } from '../../../data/types'
 import { IconSearch, IconGrid, IconListView, IconFilter, IconArrowUp, IconRefresh, IconCheckCircle } from '../../../design-system/icons'
 import { Button } from '../../common/Button'
 import { Flyout } from '../../common/overlay/Flyout'
+import type { InstallBlock } from '../panel/install-gate'
 import type { SortKey, SortDir, StatusFacet } from './filters'
 import type { FacetState } from './FilterShoulder'
 
@@ -72,10 +73,11 @@ function SelectControl({ active, canUninstall, onSelectInstall, onSelectUninstal
   )
 }
 
-export function Toolbar({ query, count, layout, filtersOpen, filtersActive, sortKey, sortDir, updatableCount, updatingAll, onUpdateAll, selectAvailable, selectActive, canUninstall, onSelectInstall, onSelectUninstall, onExitSelect, refreshing, onRefresh, onQuery, onLayout, onToggleFilters, onSort }: {
+export function Toolbar({ query, count, layout, filtersOpen, filtersActive, sortKey, sortDir, updatableCount, updatingAll, updateBlock, onUpdateAll, selectAvailable, selectActive, canUninstall, onSelectInstall, onSelectUninstall, onExitSelect, refreshing, onRefresh, onQuery, onLayout, onToggleFilters, onSort }: {
   query: string; count: number
   layout: 'grid' | 'list'; filtersOpen: boolean; filtersActive: boolean; sortKey: SortKey; sortDir: SortDir
-  updatableCount: number; updatingAll: boolean; onUpdateAll: () => void
+  // updateBlock: why updating everything cannot run right now (a print is under way), or null.
+  updatableCount: number; updatingAll: boolean; updateBlock: InstallBlock | null; onUpdateAll: () => void
   selectAvailable: boolean; selectActive: boolean; canUninstall: boolean
   onSelectInstall: () => void; onSelectUninstall: () => void; onExitSelect: () => void
   refreshing: boolean; onRefresh: () => void
@@ -99,7 +101,7 @@ export function Toolbar({ query, count, layout, filtersOpen, filtersActive, sort
         <SelectControl active={selectActive} canUninstall={canUninstall} onSelectInstall={onSelectInstall} onSelectUninstall={onSelectUninstall} onExit={onExitSelect} />
       )}
       {updatableCount > 0 && (
-        <Button variant="primary" size="sm" disabled={updatingAll} onClick={onUpdateAll}>
+        <Button variant="primary" size="sm" disabled={updatingAll || !!updateBlock} title={updateBlock?.brief} onClick={onUpdateAll}>
           {updatingAll ? t('store.updating_all') : t('store.update_all', { count: updatableCount })}
         </Button>
       )}

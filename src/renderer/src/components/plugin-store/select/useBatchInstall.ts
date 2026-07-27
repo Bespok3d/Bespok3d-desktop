@@ -2,8 +2,10 @@ import { useState } from 'react'
 import type { Plugin } from '../../../data/types'
 import type { ScopeChoice } from '../../../data/plugin-vars'
 import { seedFieldScopes } from '../../../data/plugin-vars'
+import { useI18n } from '../../../i18n/context'
+import { splitByBatchGate } from '../batch-gate'
 import { useSelectMode } from './useSelectMode'
-import { installablePlugins, pluginsNeedingConfig, buildInstallSpecs, capturedConfigFields } from './batch-install'
+import { installablePlugins, pluginsNeedingConfig, gatedInstallSpecs, capturedConfigFields } from './batch-install'
 import type { BatchInstallContext } from './batch-install'
 
 interface BatchInstallDeps extends BatchInstallContext {
@@ -37,11 +39,16 @@ export function useBatchInstall(deps: BatchInstallDeps): BatchInstall {
   const [configPlugins, setConfigPlugins] = useState<Plugin[] | null>(null)
   const [configScopes, setConfigScopes] = useState<Record<string, ScopeChoice>>({})
   const select = useSelectMode(() => setConfigPlugins(null))
-  const installableIds = installablePlugins(deps.catalogPlugins, deps.installedIds, deps.deactivatedIds).map((plugin) => plugin.id)
+  const { t } = useI18n()
+  // Only what a single install would accept right now can be picked, so the batch cannot offer the
+  // user a plugin the plugin panel would have refused.
+  const installableIds = splitByBatchGate(t, installablePlugins(deps.catalogPlugins, deps.installedIds, deps.deactivatedIds), deps)
+    .eligible.map((plugin) => plugin.id)
 
   function run(varsMap: Record<string, string>) {
-    if (deps.printerId && deps.onInstallSelected) {
-      deps.onInstallSelected(deps.printerId, buildInstallSpecs(deps.catalogPlugins, select.selectedIds, deps.installedIds, varsMap))
+    const specs = gatedInstallSpecs(t, select.selectedIds, { ...deps, savedVars: varsMap })
+    if (deps.printerId && deps.onInstallSelected && specs.length > 0) {
+      deps.onInstallSelected(deps.printerId, specs)
     }
     select.exit()
   }

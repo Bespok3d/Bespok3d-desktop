@@ -15,6 +15,8 @@ import { ChannelPill } from '../../common/badges/ChannelPill'
 import { IconChevron, IconClose, IconDownload, IconLayers } from '../../../design-system/icons'
 import { BatchConfigModal } from '../select/BatchConfigModal'
 import { useCollectionInstall } from '../select/useCollectionInstall'
+import { splitByBatchGate, batchBlockReason } from '../batch-gate'
+import type { InstallBlock } from '../panel/install-gate'
 
 function CollectionHead({ collection, fullyInstalled, t }: { collection: Collection; fullyInstalled: boolean; t: TFunction }) {
   return (
@@ -39,29 +41,40 @@ function CollectionHead({ collection, fullyInstalled, t }: { collection: Collect
 // detail (stacked over the collection) and check it out before committing to the full install. An
 // already-installed member is marked with the same StatusPill the store cards use; the trailing chevron
 // signals the row drills into the plugin's page.
-function MemberRow({ member, installed, onOpen, t }: { member: Plugin; installed: boolean; onOpen: () => void; t: TFunction }) {
+function MemberStatus({ installed, block, t }: { installed: boolean; block: InstallBlock | null; t: TFunction }) {
+  if (installed) return <StatusPill status="installed" />
+  if (block) return <span className="collection-member-add" title={block.detail}>{block.brief}</span>
+
+  return <span className="collection-member-add">{t('collection.member_will_install')}</span>
+}
+
+function MemberRow({ member, installed, block, onOpen, t }: { member: Plugin; installed: boolean; block: InstallBlock | null; onOpen: () => void; t: TFunction }) {
   return (
     <button type="button" className="dep-row collection-member" onClick={onOpen} title={t('collection.member_view')}>
       <span className="name">{member.title}</span>
-      {installed ? <StatusPill status="installed" /> : <span className="collection-member-add">{t('collection.member_will_install')}</span>}
+      <MemberStatus installed={installed} block={block} t={t} />
       <IconChevron className="collection-member-go" size={14} />
     </button>
   )
 }
 
-function CollectionFoot({ missingCount, fullyInstalled, hasPrinter, installing, onInstallAll, onClose, t }: {
-  missingCount: number; fullyInstalled: boolean; hasPrinter: boolean; installing: boolean
+// `installableCount` is what "Install all" will really install: the missing members that pass the same
+// gate a single install passes. A member the plugin panel would refuse right now is not counted here
+// and says why on its own row, so the button never promises an install the daemon would reject.
+function CollectionFoot({ installableCount, fullyInstalled, hasPrinter, installing, block, onInstallAll, onClose, t }: {
+  installableCount: number; fullyInstalled: boolean; hasPrinter: boolean; installing: boolean; block: InstallBlock | null
   onInstallAll: () => void; onClose: () => void; t: TFunction
 }) {
   return (
     <div className="panel-foot">
       {fullyInstalled && <span className="panel-foot-note">{t('collection.all_installed')}</span>}
       {!fullyInstalled && !hasPrinter && <span className="panel-foot-note">{t('collection.needs_printer')}</span>}
+      {!fullyInstalled && hasPrinter && block && <span className="panel-foot-note">{block.brief}</span>}
       <Button variant="outline" onClick={onClose}>{t('btn.close')}</Button>
       {!fullyInstalled && (
-        <Button variant="primary" disabled={!hasPrinter || missingCount === 0 || installing} onClick={onInstallAll}>
+        <Button variant="primary" disabled={!hasPrinter || installableCount === 0 || installing} title={block?.detail} onClick={onInstallAll}>
           <IconDownload size={14} />
-          {t('collection.install_all', { count: missingCount })}
+          {t('collection.install_all', { count: installableCount })}
         </Button>
       )}
     </div>
@@ -74,6 +87,9 @@ interface CollectionDetailProps {
   installedIds: string[]
   printerId?: string
   installing: boolean
+  // Live print state, so installing a whole collection answers to the same gate a single install does.
+  printActive: boolean
+  blockedActions: string[]
   savedPluginVars?: Record<string, string>
   onSaveVars?: (save: PluginVarsSave) => void
   onInstallSelected?: (printerId: string, specs: PluginUpdateSpec[]) => void
@@ -85,13 +101,16 @@ interface CollectionDetailProps {
 // The collection detail modal: a brief readme, the member list with installed members marked, and one
 // "Install all" that batches the missing members (single restart). The collection itself is never an
 // installed entity - there is no uninstall, no persisted state; the view reflects live member state.
-export function CollectionDetailPanel({ collection, plugins, installedIds, printerId, installing, savedPluginVars, onSaveVars, onInstallSelected, onOpenPlugin, onClose }: CollectionDetailProps) {
+export function CollectionDetailPanel({ collection, plugins, installedIds, printerId, installing, printActive, blockedActions, savedPluginVars, onSaveVars, onInstallSelected, onOpenPlugin, onClose }: CollectionDetailProps) {
   const { t } = useI18n()
   const members = collectionMembers(collection, plugins)
   const split = splitMembers(collection, plugins, installedIds)
   const total = split.installed.length + split.missing.length
   const fullyInstalled = total > 0 && split.missing.length === 0
-  const install = useCollectionInstall({ catalogPlugins: plugins, installedIds, savedVars: savedPluginVars ?? {}, printerId, onSaveVars, onInstallSelected })
+  const gateContext = { catalogPlugins: plugins, installedIds, savedVars: savedPluginVars ?? {}, printerId, printActive, blockedActions }
+  const install = useCollectionInstall({ ...gateContext, onSaveVars, onInstallSelected })
+  const gated = splitByBatchGate(t, split.missing, gateContext)
+  const blockedMembers = new Map(gated.blocked.map((row) => [row.plugin.id, row.block]))
 
   function openRef(ref: B3dEntityRef) {
     const target = plugins.find((plugin) => plugin.id === ref.name)
@@ -109,7 +128,7 @@ export function CollectionDetailPanel({ collection, plugins, installedIds, print
             <h3>{t('collection.included', { count: total })}</h3>
             <div className="dep-list">
               {members.map((member) => (
-                <MemberRow key={member.id} member={member} installed={installedIds.includes(member.id)} onOpen={() => onOpenPlugin(member)} t={t} />
+                <MemberRow key={member.id} member={member} installed={installedIds.includes(member.id)} block={blockedMembers.get(member.id) ?? null} onOpen={() => onOpenPlugin(member)} t={t} />
               ))}
               {split.unavailable.map((member: CollectionMember) => (
                 <div className="dep-row collection-member unavailable" key={member.id}>
@@ -121,7 +140,8 @@ export function CollectionDetailPanel({ collection, plugins, installedIds, print
           </div>
         </div>
         <CollectionFoot
-          missingCount={split.missing.length} fullyInstalled={fullyInstalled} hasPrinter={!!printerId} installing={installing}
+          installableCount={gated.eligible.length} fullyInstalled={fullyInstalled} hasPrinter={!!printerId} installing={installing}
+          block={batchBlockReason(t, { printerId, printActive, blockedActions })}
           onInstallAll={() => install.installMembers(split.missing)} onClose={onClose} t={t}
         />
       </Modal>

@@ -2,7 +2,8 @@ import { useState } from 'react'
 import type { Plugin } from '../../../data/types'
 import type { ScopeChoice } from '../../../data/plugin-vars'
 import { seedFieldScopes } from '../../../data/plugin-vars'
-import { buildInstallSpecs, pluginsNeedingConfig, capturedConfigFields } from './batch-install'
+import { useI18n } from '../../../i18n/context'
+import { gatedInstallSpecs, pluginsNeedingConfig, capturedConfigFields } from './batch-install'
 import type { BatchInstallContext } from './batch-install'
 
 export interface CollectionInstall {
@@ -26,11 +27,15 @@ export interface CollectionInstall {
 export function useCollectionInstall(deps: BatchInstallContext): CollectionInstall {
   const [pendingMembers, setPendingMembers] = useState<Plugin[] | null>(null)
   const [configScopes, setConfigScopes] = useState<Record<string, ScopeChoice>>({})
+  const { t } = useI18n()
 
   function runInstall(members: Plugin[], vars: Record<string, string>) {
     if (!deps.printerId || !deps.onInstallSelected) return
     const memberIds = members.map((member) => member.id)
-    deps.onInstallSelected(deps.printerId, buildInstallSpecs(deps.catalogPlugins, memberIds, deps.installedIds, vars))
+    const specs = gatedInstallSpecs(t, memberIds, { ...deps, savedVars: vars })
+    if (specs.length === 0) return
+
+    deps.onInstallSelected(deps.printerId, specs)
   }
 
   function installMembers(missing: Plugin[]) {
