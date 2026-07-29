@@ -62,6 +62,10 @@ Playwright suite.
 | `scripts/` | the gate, the release cut, the bundle builder |
 | `tools/` | the engineering-health ratchet and its detectors |
 | `CLAUDE.md`, `AGENTS.md` | the rules any AI assistant working here must follow |
+| [`doc/architecture-facts.md`](doc/architecture-facts.md) | how the system is put together, and why it is put together that way |
+| [`doc/roadmap.md`](doc/roadmap.md) | where the project is, what its thinking has settled, and what it is built to grow into |
+| [`doc/for-manufacturers.md`](doc/for-manufacturers.md) | what a printer manufacturer can do with Bespok3d, and the architecture that carries each one |
+| [`doc/stories/`](doc/stories/README.md) | every user story the project has, the only copy of each, with the repo that owns it |
 
 ### Checking out on its own
 
