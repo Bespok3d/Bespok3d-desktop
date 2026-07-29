@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { TFunction } from '../../../i18n'
 
 // The user-facing name of a blocked-action token (ADR-0037: the daemon and jinni emit machine

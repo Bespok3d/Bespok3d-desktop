@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // What the app keeps about a plugin that did NOT install. Installing several plugins at once is the
 // same thing as installing them one by one, so an attempt that failed leaves the same trace either
 // way: the phases the printer got through, or the refusal that stopped the package from ever leaving

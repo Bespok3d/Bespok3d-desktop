@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Generate the app-side daemon version module (src/main/daemon-client/version.ts) from the single
 // source of truth: the sibling daemon repo's version.py. The app must expect the exact daemon version
 // it bundles, so generating the constant instead of hand-mirroring it means the two can never drift

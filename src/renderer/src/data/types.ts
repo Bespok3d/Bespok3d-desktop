@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The Collection concept (its domain type, wire entry, member type, and resolution helpers) lives in
 // one cohesive module, data/collections.ts; CatalogPayload below carries the wire entries.
 import type { CollectionEntry } from './collections'

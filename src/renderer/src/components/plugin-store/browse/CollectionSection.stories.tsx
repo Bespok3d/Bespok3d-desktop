@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { CollectionSection } from './CollectionSection'
 import { makeCollection, makePlugin } from '../../../test/fixtures'
 import '../plugin-store.css'

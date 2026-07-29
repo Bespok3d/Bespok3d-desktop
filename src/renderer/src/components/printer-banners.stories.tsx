@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { PrinterBanners } from './printer-banners'
 import { makePrinter } from '../test/fixtures'
 import type { Printer } from '../data/types'

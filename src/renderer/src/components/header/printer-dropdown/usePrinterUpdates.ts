@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useCatalog } from '../../../data/catalog'
 import { pluginUpdateCount } from '../../../data/channels/updates'
 import { pendingUpdates } from '../../../data/printers'

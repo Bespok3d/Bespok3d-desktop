@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Given a registry ref, produce a FetchedRegistry. This file is the ROUTER and nothing else: it picks
 // the transport the ref names and hands over. Each transport is a sibling file (`github-transport`,
 // `http-transport`, `disk-transport`) over the shared HTTP mechanics in `request`, and all three

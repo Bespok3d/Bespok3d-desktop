@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Marks a thrown message as a security refusal rather than a generic failure. Electron's IPC wrapping
 // keeps only the Error's message string intact across the main/renderer boundary (the class name
 // survives by accident of its wrapping format, not as a contract), so the renderer tells a refusal

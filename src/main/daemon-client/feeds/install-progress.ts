@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // One-shot live install-progress feed. While an install POST is in flight, main holds a wss to the
 // daemon's /ws/install-progress bridge and forwards each phase to the renderer, so the install stops
 // being an opaque wait. The socket is opened (and awaited) before the POST so no phase is missed; the

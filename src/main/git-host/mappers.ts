@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { AssetInfo, ReleaseInfo, RepoInfo } from './connector'
 
 // GitHub and Gitea return the same release/repo JSON shapes, so these mappers are shared by both

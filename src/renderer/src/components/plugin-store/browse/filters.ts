@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin, ReleaseChannel, TrustTier } from '../../../data/types'
 import type { CeilingResolver } from '../../../data/channels'
 import { ALLOW_ALL_CHANNELS, availableVersion, publishedChannels } from '../../../data/channels'

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useEffect, useState } from 'react'
 import { useAsyncEffect } from '../components/common/hooks/useAsyncEffect'
 

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The sibling b3-builder checkout, as the two bundle rails need it. Both build a REAL bundle through
 // app-bundle.mjs, which imports the builder's compiled core, so both have to make sure that core is
 // compiled and both write a scratch output dir worth ~60MB of packages. One home for that, so a change

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -40,5 +42,20 @@ describe('AboutPane', () => {
     var { user, b3d } = setup(<AboutPane />)
     await user.click(screen.getByRole('button', { name: /coffee/i }))
     expect(b3d.openUrl).toHaveBeenCalledWith('https://buymeacoffee.com/unlucio')
+  })
+
+  it('shows the copyright, the licence and the absence of warranty', () => {
+    setup(<AboutPane />)
+    expect(screen.getByText(en('about.copyright'))).toBeTruthy()
+    expect(screen.getByText(en('about.license'))).toBeTruthy()
+    expect(screen.getByText(en('about.warranty'))).toBeTruthy()
+    expect(en('about.license')).toContain('or any later version')
+  })
+
+  it('offers the source for this version at the project repository', async () => {
+    var { user, b3d } = setup(<AboutPane />)
+    expect(screen.getByText(en('about.source'))).toBeTruthy()
+    await user.click(screen.getByRole('link', { name: en('about.github') }))
+    expect(b3d.openUrl).toHaveBeenCalledWith('https://github.com/Bespok3d/Bespok3d-desktop')
   })
 })

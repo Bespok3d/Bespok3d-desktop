@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Functional E2E against the PACKAGED app, driven by Playwright-electron (real main/preload/IPC/renderer).
 # Needs the app packaged (electron-builder --dir) because only the packaged app resolves adapter paths via
 # resources/. Off the default check.sh gate; opt-in via `./scripts/check.sh e2e`. Visual/pixel baselines

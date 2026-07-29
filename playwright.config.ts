@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { defineConfig } from '@playwright/test'
 
 // Functional E2E against the REAL built app (real main/preload/IPC/renderer), driven by

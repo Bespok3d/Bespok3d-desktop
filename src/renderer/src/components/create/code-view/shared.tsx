@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ReactNode } from 'react'
 
 // A light, read-only Klipper/Jinja highlighter for the macro preview (the prototype's full editable

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { join, dirname } from 'path'
 import { readFileSync, existsSync, mkdirSync, writeFileSync, statSync, rmSync } from 'fs'
 import { userDataPath } from '../app-paths'

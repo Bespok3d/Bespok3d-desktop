@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PluginConfigField } from '../../../data/types'
 import type { ScopeChoice } from '../../../data/plugin-vars'
 import { useI18n } from '../../../i18n/context'

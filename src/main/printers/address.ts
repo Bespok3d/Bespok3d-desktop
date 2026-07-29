@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { DeviceSighting } from '../mdns/sightings'
 
 // How long a discovery sighting is trusted as a candidate address. A DHCP move settles in seconds to a

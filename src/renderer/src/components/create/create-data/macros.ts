@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Macro library + saved-macro example data for the Create surface. Curated starter macros are real.
 import type { MacroStarter, SavedMacro } from './types'
 

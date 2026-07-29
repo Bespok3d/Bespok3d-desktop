@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState, useEffect } from 'react'
 import type { Plugin, Printer, ReleaseChannel, PluginConfigField } from '../../../data/types'
 import type { PluginVarsSave, ScopeChoice } from '../../../data/plugin-vars'

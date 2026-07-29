@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useLayoutEffect, useRef } from 'react'
 
 // FLIP (First-Last-Invert-Play) for the plugin grid: when filtering/sorting reorders the cards, each

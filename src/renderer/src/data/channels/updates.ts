@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin, Printer, ReleaseChannel } from '../types'
 import { isNewerVersion } from '../../utils/version'
 import { availableVersion, ALLOW_ALL_CHANNELS } from './index'

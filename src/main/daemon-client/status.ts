@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { updatePrinter, loadPrinters, checkDaemon, checkSshOpen, checkMoonraker, gradeReach, resolveLiveAddress, knownAddresses } from '../printers'
 import type { ConnectionReach, PrinterRecord, DriftReport } from '../printers'
 import { macForIp } from '../mdns/arp'

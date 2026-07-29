@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // File-size + inline-control scan for the cleanup ratchet (no deps).
 //   node scripts/file-size-scan.mjs          human summary
 //   node scripts/file-size-scan.mjs --json    flat facts for scripts/ratchet.mjs

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // How this module talks HTTP: one timeout, one failure mapping, and the detached signature that rides
 // beside an index at `<url>.sig`. Shared by the plain-http and GitHub transports, so a failure reads
 // the same whichever one produced it and a signature is fetched the same way from either.

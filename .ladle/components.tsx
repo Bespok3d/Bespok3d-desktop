@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { GlobalProvider } from '@ladle/react'
 // The app loads only the 3 design-system globals eagerly; every other stylesheet is pulled in lazily by
 // whichever component imports it. A catalog renders leaf components in isolation, so it must load the

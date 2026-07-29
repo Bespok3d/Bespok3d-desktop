@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // gate-allow multi_exported_component_tsx: cohesive set of text-free icon-primitive SVG wrappers grouped by domain (actions + editing), not a kitchen-sink component file.
 import { Icon, type IconProps } from './base'
 

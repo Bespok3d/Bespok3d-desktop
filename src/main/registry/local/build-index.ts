@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Build the sideloaded source's index.json from the manifests of the dropped .b3 files. Produces the
 // SAME entry shape as scripts/app-bundle.mjs buildIndexEntry (a drift test pins this), so a local
 // package renders in the store exactly like a published one; trust + registry_url are injected by the

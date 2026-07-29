@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Shared test fixture: a complete cpu-temp plugin manifest, used by the build-index drift test and
 // the store ingest test. One copy so the two suites cannot drift apart.
 export const CPU_TEMP_MANIFEST = {

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
 import { resolveMissingDeps, installedDependents, installedConflicts, cascadeDependents } from './index'
 import { indexToPlugins } from '../catalog/shape'

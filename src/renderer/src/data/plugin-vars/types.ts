@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PluginConfigField } from '../plugin-config'
 
 // The user's saved plugin config values: field key, then scope key, then value. A scope key is

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The `github:owner/repo/path` scheme. Public-first through the contents API with NO token, then the
 // user's connected token for a private list: a user who has not connected a git host can still browse
 // public lists, and public repos stay CDN-cheap.

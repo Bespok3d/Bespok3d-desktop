@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The truth ladder for an installed plugin's Config tab (design point 7 of the plugin-config-scope
 // relay): show only values someone can vouch for, most authoritative first.
 //   tier 'live'    = the daemon's persisted user_vars.json, read moments ago; shown unbadged.

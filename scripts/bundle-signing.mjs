@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The trust half of the app's bundled build (app-bundle.mjs owns discovery, packing and the catalog;
 // this owns identity and signatures). The bundled index and the .b3 files beside it are the artifacts
 // the app itself verifies at install time (src/main/store/verify-package.ts), so a

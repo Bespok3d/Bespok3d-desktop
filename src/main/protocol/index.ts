@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // OS-side glue for the `b3d://` scheme. Registration + extracting the URL from the three ways the OS
 // delivers it (macOS `open-url`, Windows/Linux launch argv, and a second-instance argv when already
 // running), then dispatching the parsed route. Auth callbacks are consumed by the PKCE waiter; every

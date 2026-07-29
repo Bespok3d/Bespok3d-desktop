@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Read/dismissed/seen state for the notification center, kept separate from the derived notices so the
 // builder stays pure. Notices are derived every render with stable ids; this layer records which ids
 // the user has read or dismissed, and when each was first seen (for the relative-time label). Dismissed

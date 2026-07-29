@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The federated-catalog contract (ADR-0012): the shapes every registry module speaks. The published
 // index is a list-of-lists graph of these types; the resolver walks it, merge.ts combines the entries,
 // sources.ts derives the Repositories-pane rows, and index.ts does the IO. Declared once here.

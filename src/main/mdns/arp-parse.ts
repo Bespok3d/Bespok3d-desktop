@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The OS arp table is printed differently per platform (macOS "arp -an", Linux
 // /proc/net/arp, Windows "arp -a"). Rather than three parsers, scan each line for
 // an IPv4 address and a MAC token, which covers all three layouts.

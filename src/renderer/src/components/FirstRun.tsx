@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { IconPrinter, IconPlus, IconRefresh, IconWifi } from '../design-system/icons'
 import type { DiscoveredPrinterRecord } from '../env'
 import { looksLikePrinter, discoveredVendorLabel } from '../data/printerDiscovery'

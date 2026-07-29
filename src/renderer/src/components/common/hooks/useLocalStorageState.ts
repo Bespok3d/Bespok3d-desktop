@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState } from 'react'
 
 // Backs React state with a localStorage key: the initial value is read once (falling back to

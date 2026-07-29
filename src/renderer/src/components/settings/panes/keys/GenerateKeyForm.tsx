@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState } from 'react'
 import { IconKey } from '../../../../design-system/icons'
 import { Button } from '../../../common/Button'

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { GLOBAL_SCOPE, type ScopedPluginVars } from './types'
 
 export const SCHEMA_VERSION_KEY = 'b3d.schemaVersion'

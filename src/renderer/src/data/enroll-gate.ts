@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // What to do when the user adds or re-opens a printer whose daemon state we have just probed. Split to
 // mirror the two async probes (checkDaemon then, only if needed, checkSshOpen), each a pure decision so
 // every branch is unit-testable. This is the "missing daemon, new vs known printer" routing.

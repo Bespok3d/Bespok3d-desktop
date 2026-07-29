@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { SshSession } from '../ssh'
 
 // The adapter-client SDK: the finite, stable surface the app gives an adapter's client half.

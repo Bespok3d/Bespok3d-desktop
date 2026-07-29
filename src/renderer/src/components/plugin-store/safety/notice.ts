@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 export interface SafetyNotice {
   pluginId: string
   // The plain-words fact of what the safety net did + why (no "fix it yourself" advice; that is the

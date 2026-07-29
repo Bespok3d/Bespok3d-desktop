@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { ipcMain, shell, type BrowserWindow } from 'electron'
 import { checkSsh, enrollPrinter } from './enrollment'
 import { getAdapter, listAdapters } from './adapter-loader'

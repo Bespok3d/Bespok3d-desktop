@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useI18n } from '../../../i18n/context'
 import { Button } from '../../common/Button'
 import type { Plugin, Printer } from '../../../data/types'

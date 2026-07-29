@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { BrowserWindow } from 'electron'
 import '@adapters/snapmaker-u1/client/snapmaker-u1'

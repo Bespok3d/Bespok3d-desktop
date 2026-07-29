@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The four batch operations, named once. Every piece of the batch UI (the busy view, the results
 // report, the refusal) keys its copy off this, so a variant added here cannot be missed by one of them.
 export type BatchVariant = 'recovery' | 'update' | 'install' | 'uninstall'

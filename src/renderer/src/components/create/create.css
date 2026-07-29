@@ -1,3 +1,5 @@
+/* SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors */
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* Bespok3d - Create surface styles. Loaded after app.css + settings.css.
    Inherits every token from tokens.css. One palette (sage), light + dark. */
 

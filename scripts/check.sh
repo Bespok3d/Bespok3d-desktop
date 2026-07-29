@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
 set -euo pipefail
 
 # This gate covers THIS repo only. The daemon, the plugins, the adapters and the workspace-wide
@@ -142,6 +144,46 @@ run_check "em-dash / en-dash ban" node "$B3D_TOOLING/em-dash-guard.mjs" \
 run_check "workflow pinning"      node "$B3D_TOOLING/workflow-pinning-detector.mjs" "$REPO_ROOT"
 run_check "cleanup ratchet"       node "$REPO_ROOT/tools/ratchet.mjs"
 run_check "component inventory fresh" node "$REPO_ROOT/scripts/component-inventory.mjs" --check
+
+# Per-file REUSE compliance: every file is covered by a copyright and licence statement, its own
+# header or the REUSE.toml block, and every licence a file names has its text in LICENSES/.
+# Whole-project `reuse lint` is not used here, because it also reports a licence text as unused when
+# nothing in the tree carries that tag. The file list is tracked plus not-yet-committed files, so a
+# newly vendored file is checked before it is committed rather than after, and a not-yet-committed
+# rename does not point the linter at a path that no longer exists. `reuse` is not a workspace
+# dependency: an installed one is used when present, otherwise uv runs it from cache, and a machine
+# with neither reports the check as skipped rather than as passed.
+# shellcheck disable=SC2329  # run_check invokes this by name, which shellcheck cannot follow.
+run_reuse_lint() {
+    if command -v reuse > /dev/null 2>&1; then
+        reuse "$@"
+    else
+        uvx --quiet --from 'reuse[charset-normalizer]' reuse "$@"
+    fi
+}
+
+# shellcheck disable=SC2329  # run_check invokes this by name, which shellcheck cannot follow.
+reuse_per_file_check() {
+    local licensed_paths=()
+    local candidate_path
+    local licensed_count=0
+    while IFS= read -r -d '' candidate_path; do
+        if [ -f "$candidate_path" ]; then
+            licensed_paths+=("$candidate_path")
+            licensed_count=$((licensed_count + 1))
+        fi
+    done < <(git ls-files -z --cached --others --exclude-standard)
+    if [ "$licensed_count" -eq 0 ]; then
+        return 0
+    fi
+    run_reuse_lint lint-file "${licensed_paths[@]}"
+}
+
+if command -v reuse > /dev/null 2>&1 || command -v uvx > /dev/null 2>&1; then
+    run_check "reuse (per-file licensing)" reuse_per_file_check
+else
+    skip_check "reuse (per-file licensing)" "install reuse, or install uv so it can be run from cache"
+fi
 
 # ── Shell scripts ───────────────────────────────────────────────────────────
 

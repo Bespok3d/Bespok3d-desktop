@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { PACKAGE_REFUSED_PREFIX } from '../../../../../../main/store/package-refused'
 
 // True when errorMsg came from a security refusal (a tampered/unsigned/downgraded package), never from

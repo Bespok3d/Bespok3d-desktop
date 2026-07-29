@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { Flyout } from '../../../common/overlay/Flyout'
 import { Button } from '../../../common/Button'
 import { IconDownload } from '../../../../design-system/icons'

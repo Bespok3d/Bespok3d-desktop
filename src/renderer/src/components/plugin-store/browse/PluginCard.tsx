@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ComponentType } from 'react'
 import type { Plugin, ReleaseChannel } from '../../../data/types'
 import type { IconProps } from '../../../design-system/icons'

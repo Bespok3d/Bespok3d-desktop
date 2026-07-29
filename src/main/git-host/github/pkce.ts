@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Pure helpers for the OAuth Authorization-Code + PKCE flow that the b3d://auth/callback deep link
 // completes (ADR-0023 + ADR-0015). DORMANT in this release: the device flow stays the default connect
 // path; this is built so the next release can switch the default with the redirect URI registered.

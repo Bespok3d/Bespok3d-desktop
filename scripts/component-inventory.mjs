@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Generate the component + hook inventory (doc/component-inventory.md) from the renderer source.
 //   node scripts/component-inventory.mjs           write the inventory
 //   node scripts/component-inventory.mjs --check     fail if the committed inventory is stale

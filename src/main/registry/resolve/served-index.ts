@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // What turns served bytes into a FetchedRegistry, and what is allowed into the cache. Parsing and
 // verification happen HERE and only here, on the fresh path and the cache path alike, so what gets
 // verified and what gets used can never be two different things (ADR-0009 publisher tier).

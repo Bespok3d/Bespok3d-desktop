@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useEffect } from 'react'
 import type { Printer } from '../data/types'
 import type { B3dRoute } from '../data/b3d-ref'

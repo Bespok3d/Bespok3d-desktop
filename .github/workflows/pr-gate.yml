@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name: pr-gate
 
 # Every pull request and every push to dev or main runs the app's own gate, so nothing reaches a
@@ -35,6 +37,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      # check.sh runs the per-file licence check through `reuse`, which is not on the runner image.
+      # Without it the check reports itself as skipped, so a file naming a licence whose text is
+      # missing from LICENSES/ would reach main unnoticed. pipx rather than pip because this job has
+      # no setup-python step and the image's system python refuses a direct install. The
+      # charset-normalizer extra is not optional: reuse aborts on start without an encoding backend.
+      - name: Install the REUSE licence linter
+        run: pipx install 'reuse[charset-normalizer]'
+
       - name: Run the gate
         working-directory: Bespok3d-desktop
         run: bash scripts/check.sh

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The chain rail: what the BUILDER signs is checked here by the APP's own install-time code, over the
 // same bytes, at both levels the app checks in production (the manifest.json inside a packed .b3, and a
 // registry index). At the index level the app's entry point is `verifyIndexSignature`, which pins the

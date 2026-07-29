@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Drive the route choice without a socket: the batch posters differ only in the path they POST to, and

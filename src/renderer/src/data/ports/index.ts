@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Catalog-aware glue over the pure port allocator: which installed plugins are web UIs
 // (they declare an `http-port` config field), what port each currently holds (read from the
 // flat saved-vars map by that field's key), and what to reconfigure when one is made primary.

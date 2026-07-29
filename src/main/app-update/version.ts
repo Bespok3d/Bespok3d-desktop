@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Prerelease-aware semantic-version comparison for the auto-updater. The app ships an
 // "0.1.0-alpha.N" scheme, so the comparison must order two alphas of the same release triple
 // (the renderer's utils/version.ts drops the suffix and cannot). A stable release sorts above

@@ -142,7 +142,7 @@ as you touch the file.
 - `ManagedSection` (component) - [components/create/sections/managed.tsx](../src/renderer/src/components/create/sections/managed.tsx)
 - `MetadataSection` (component) - [components/create/sections/metadata.tsx](../src/renderer/src/components/create/sections/metadata.tsx)
 - `ModeBar` (component) - [components/create/mode-bar.tsx](../src/renderer/src/components/create/mode-bar.tsx)
-- `OpChip` (component) - [components/create/sections/op-chip.tsx](../src/renderer/src/components/create/sections/op-chip.tsx)
+- `OpChip` (component) - [components/create/sections/op-chip.tsx](../src/renderer/src/components/create/sections/op-chip.tsx) - SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 - `PermissionsSection` (component) - [components/create/sections/permissions.tsx](../src/renderer/src/components/create/sections/permissions.tsx)
 - `PublishSurface` (component) - [components/create/publish.tsx](../src/renderer/src/components/create/publish.tsx)
 - `SecHead` (component) - [components/create/sections/sec-head.tsx](../src/renderer/src/components/create/sections/sec-head.tsx)

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin, Printer, PluginConfigField } from '../../../data/types'
 import type { PluginVarsSave, ScopeChoice } from '../../../data/plugin-vars'
 import type { B3dEntityRef } from '../../../data/b3d-ref'

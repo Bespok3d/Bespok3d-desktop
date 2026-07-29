@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import cx from '../../utils/cx'
 import { useI18n } from '../../i18n/context'
 import { IconBox, IconCode } from '../../design-system/icons'

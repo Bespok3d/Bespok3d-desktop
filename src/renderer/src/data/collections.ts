@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin, ReleaseChannel, TrustTier } from './types'
 
 // One member of a collection: a plugin id and the version range the collection was authored against.

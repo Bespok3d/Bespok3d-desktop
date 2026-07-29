@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 export { GLOBAL_SCOPE, localScopeKey, printerKeyFor } from './types'
 export type { ScopedPluginVars, ScopeChoice, PluginVarsSave, ScopeFlipHandler } from './types'
 export { resolveFieldValue, resolveFormValues, printerVarsView, typeDefault } from './resolve'

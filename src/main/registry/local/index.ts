@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // User-managed local plugin registry: testers drop .b3 files and they become an installable "local"
 // source that coexists with the bundled + online ones. It is just another DISK source
 // (userData/local-plugins/index.json + sibling .b3 files), resolved by the same machinery as the

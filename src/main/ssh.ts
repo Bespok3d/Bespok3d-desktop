@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { Client, type SFTPWrapper } from 'ssh2'
 
 // Single-quote a value for safe use inside a POSIX shell command (`exec` runs through a shell on the

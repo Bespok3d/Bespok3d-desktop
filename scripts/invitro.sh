@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # In-vitro integration suite: real app code driven against a Docker fake device. Requires Docker.
 # Not part of check.sh (the fast gate); run this on demand or in a dedicated CI job.
 set -euo pipefail

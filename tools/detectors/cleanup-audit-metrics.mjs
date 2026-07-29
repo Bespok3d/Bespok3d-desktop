@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Headless audit metrics for the Bespok3d renderer (no deps; node doc/cleanup-audit-metrics.mjs).
 // Seeds the gate-able lints proposed in doc/cleanup-audit.md sec 13. Heuristic where noted.
 import { readFileSync, readdirSync, statSync } from 'node:fs'

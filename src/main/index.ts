@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { app, BrowserWindow, shell, nativeImage, screen } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'

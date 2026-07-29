@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Pure federated-catalog resolver. The published index is a list-of-lists graph (ADR-0012), so
 // loading it is a guarded traversal: fetch each registry at most once, bound depth and fan-out,
 // isolate per-registry failures, and hand the gathered entries to merge.ts to dedupe + collapse.

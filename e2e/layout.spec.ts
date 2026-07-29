@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { test, expect, _electron as electron } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'fs'
@@ -12,7 +14,7 @@ import { EXPECTED_DAEMON_VERSION } from '../src/main/daemon-client/version'
 // doc/codebase-fix/cleanup-audit.md section 7 ("jsdom has no layout engine ... Top gap").
 //
 // These assert WHERE things render (computed getBoundingClientRect geometry), not pixels, so there is no
-// cross-platform baseline to flake. They are the regression net the layout-blocked packets (shared
+// cross-platform baseline to flake. They are the regression net the layout-blocked stages (shared
 // Modal J, primitives K, CSS de-dup L, dead-CSS M) refactor against: the companion jsdom test
 // PluginPanel.layout.test.tsx locks the modal STRUCTURE (single scroll region, sibling footer,
 // direct-child X); this locks the resulting GEOMETRY so a CSS/specificity regression cannot slip past.
@@ -20,9 +22,9 @@ import { EXPECTED_DAEMON_VERSION } from '../src/main/daemon-client/version'
 // The canaries assert the 2026-06-13 modal fixes, which are all MODAL-RELATIVE / height invariants
 // (X anchored top-right of the modal; the modal never taller than the viewport or its dvh clamp; a long
 // tab cannot grow it; the footer pinned flush to the modal bottom; one scroll region owns the overflow).
-// The window is deliberately small so a long tab actually hits the max-height clamp and the scroll engages.
+// The window is kept small so a long tab actually hits the max-height clamp and the scroll engages.
 // A further invariant - the modal sitting fully WITHIN the viewport - is enforced at the bottom now that
-// the shared <Modal> scrim is viewport-fixed (packet J).
+// the shared <Modal> scrim is viewport-fixed (stage J).
 //
 // Off the default check.sh gate (heavy: needs the packaged app). Runs via scripts/e2e.sh
 // (./scripts/check.sh e2e), which builds + packages the app first so the geometry reflects current source.
@@ -165,7 +167,7 @@ test.describe('plugin detail modal: real-layout geometry canaries', () => {
       'long content overflows the scroll region (not the modal)').toBeGreaterThan((metrics as { clientHeight: number }).clientHeight)
   })
 
-  // FIXED in packet J: `.modal-scrim` was `position: absolute` inside `.store` (offset ~119px below the
+  // FIXED in stage J: `.modal-scrim` was `position: absolute` inside `.store` (offset ~119px below the
   // header) while the modal clamps to `100dvh - 2*space-6`, so a content-clamped modal centered in the
   // header-offset region and its bottom fell below the viewport at small window heights (repro: 1000x640,
   // open Spoolman -> a long tab -> modal bottom ~676 > window 640). The scrim is now viewport-fixed.

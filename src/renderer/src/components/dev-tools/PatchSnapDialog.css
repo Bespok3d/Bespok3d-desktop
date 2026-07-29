@@ -1,3 +1,5 @@
+/* SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors */
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* The snap-to-place tool as a contained, centered modal (it was a fullscreen takeover). The
    dev-tool app (.ps-app) is height: 100vh by design, so cap it to the modal box instead. */
 

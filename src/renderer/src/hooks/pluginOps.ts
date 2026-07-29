@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState, useRef, type Dispatch, type SetStateAction } from 'react'
 import type { ReleaseChannel } from '../data/types'
 

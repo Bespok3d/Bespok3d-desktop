@@ -2,12 +2,12 @@
   "schema_version": 1,
   "name": "Bespok3d Official",
   "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
-  "updated": "2026-07-17",
+  "updated": "2026-07-27",
   "plugins": [
     {
       "name": "afc-lite",
       "title": "AFC Lite (Automated Filament Changer)",
-      "version": "0.1.7+dev.0ffc1c6c",
+      "version": "0.1.7+dev.36698088",
       "description": "Lightweight Automated Filament Changer support for the Snapmaker U1's four toolheads. Ships the AFC, AFC_unit and AFC_lane Klipper extras plus an afc.cfg that maps the four lanes (E0-E3) to the U1 extruders and filament motion sensors, and adds gcode macros for color, material, vendor, map, spool id, weight, tool change and lane/tool unload. Per-lane state feeds the U1's SET_PRINT_FILAMENT_CONFIG so the slicer and screen track what is loaded.",
       "tagline": "Four-lane filament tracking and tool-change macros for the U1.",
       "category": "filament",
@@ -34,7 +34,7 @@
     {
       "name": "camera-hw-accel",
       "title": "Camera HW Accel",
-      "version": "0.1.8+dev.ee580a8a",
+      "version": "0.1.8+dev.dcd5eadd",
       "description": "Tap into the SoC's video pipeline instead of CPU-encoding every frame. MJPEG over HTTP at /webcam, WebRTC at /webrtc; works on any browser, smooth 30fps even with two cameras attached.\n\nTo have these auto-registered as cameras in Fluidd and Mainsail (so you don't have to add them by hand under Settings → Cameras), also install b3d://bespok3d-org/webcam-builtin for the built-in MIPI camera and b3d://bespok3d-org/webcam-usb for the external USB camera.",
       "tagline": "HW-accelerated MJPEG and WebRTC streaming for MIPI & USB cameras.",
       "category": "camera",
@@ -379,15 +379,15 @@
     {
       "name": "remote-screen",
       "title": "Remote Screen",
-      "version": "0.1.20+dev.92a2eef9",
-      "description": "Mirror the printer's on-device touchscreen to a browser. Low-overhead framebuffer capture, no UI changes on the device side.\n\nTo have the screen appear as a tile in Fluidd and Mainsail (alongside your cameras, no manual setup under Settings → Cameras), also install b3d://bespok3d-org/webcam-screen; registers the mirror as a Moonraker [webcam] iframe entry sized for the U1's 480:320 display.",
+      "version": "0.1.21+dev.e56d2bbd",
+      "description": "Mirror the printer's on-device touchscreen to a browser. Low-overhead framebuffer capture, no UI changes on the device side.\n\nThe screen also appears as a tile inside Fluidd and Mainsail, alongside your cameras, with no manual setup: the plugin registers the mirror as a Moonraker [webcam] iframe entry sized for the U1's 480:320 display. You pick the name it shows under when you install it.",
       "tagline": "Stream your printer's framebuffer as MJPEG.",
       "category": "screen",
       "channel": "stable",
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2025-07-30",
-      "updated_at": "2026-06-28",
+      "updated_at": "2026-07-27",
       "requires": {
         "capabilities": [
           "klipper-generic"
@@ -397,9 +397,24 @@
         "screen-service"
       ],
       "deps": [],
-      "conflicts": [],
+      "conflicts": [
+        "webcam-screen"
+      ],
       "doc_url": "remote-screen/doc/README.md",
-      "download_url": "remote-screen-0.1.20.b3",
+      "download_url": "remote-screen-0.1.21.b3",
+      "min_daemon_version": "0.10.1-dev",
+      "config": [
+        {
+          "key": "REMOTE_SCREEN_NAME",
+          "label": "Screen name in Fluidd/Mainsail",
+          "type": "text",
+          "placeholder": "Printer Screen",
+          "default": "Printer Screen",
+          "hint": "Letters, numbers, spaces, and . - : / _ @ only.",
+          "required": true,
+          "userEditable": true
+        }
+      ],
       "author": "bespoked",
       "log": {},
       "changelog_url": "remote-screen/doc/CHANGELOG.md",
@@ -441,15 +456,15 @@
     {
       "name": "rfid-bambu",
       "title": "Bambu Filament Tag",
-      "version": "0.1.0+dev.0dfaecfd",
+      "version": "0.2.0+dev.7b35013e",
       "description": "Reads Bambu Lab filament spool tags (encrypted Mifare Classic) and decodes the full filament: material, color, diameter, weight, and nozzle/bed temperatures into the shared rfid_data.json. REQUIRES A KEY YOU SUPPLY: Bambu tags are encrypted, so you must paste the public Bambu master key into this plugin's config (see the documentation for where to get it) before the tag can be decoded. Without a key the spool is still tracked by its tag UID. Installs the RFID Spool Reader automatically. Read-only: it never writes a tag. Experiment channel until verified on a real tag.",
       "tagline": "Decode Bambu spools on stock firmware (you supply the key).",
       "category": "filament",
-      "channel": "experiment",
+      "channel": "stable",
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-06-29",
-      "updated_at": "2026-06-29",
+      "updated_at": "2026-07-26",
       "requires": {
         "capabilities": [
           "rfid-spi"
@@ -461,7 +476,7 @@
       ],
       "conflicts": [],
       "doc_url": "rfid-bambu/doc/README.md",
-      "download_url": "rfid-bambu-0.1.0.b3",
+      "download_url": "rfid-bambu-0.2.0.b3",
       "homepage": "https://github.com/Bambu-Research-Group/RFID-Tag-Guide",
       "config": [
         {
@@ -584,7 +599,7 @@
     {
       "name": "rfid-ntag",
       "title": "RFID Spool Reader",
-      "version": "0.1.7+dev.097f8de6",
+      "version": "0.1.7+dev.e46e1f9f",
       "description": "USB RFID reader picks up OpenSpool-encoded NTAG215 cards. Writes the current spool's metadata to rfid_data.json on every card event so the rest of the stack just knows.",
       "tagline": "NTAG215/OpenSpool RFID: your filament knows what it is.",
       "category": "filament",
@@ -1054,7 +1069,7 @@
     {
       "name": "all-the-tags",
       "title": "All the Tags",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Installs the whole RFID filament-tag reading stack in one click: the NFC reader and hub, every shipped tag-standard decoder, and Spoolman tracking, so almost any spool you tap is identified and tracked. Includes the open standards (OpenTag3D, OpenPrintTag, generic NDEF JSON, TigerTag) plus full payload decoders for the proprietary tags (Bambu and Creality, with your own keys pasted into their config; without a key they fall back to UID-only tracking). Anycubic decodes the dispute-free fields today (a tester dump finishes it). The members install together with a single service restart. Experiment channel until the stack is verified end to end on a real printer.",
       "tagline": "Every spool, identified: the whole RFID tag-reading stack in one install.",
       "category": "filament",
@@ -1062,7 +1077,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-06-30",
-      "updated_at": "2026-06-30",
+      "updated_at": "2026-07-26",
       "members": [
         {
           "id": "rfid-ntag",
@@ -1090,7 +1105,7 @@
         },
         {
           "id": "rfid-bambu",
-          "version": ">=0.1.0"
+          "version": ">=0.2.0"
         },
         {
           "id": "rfid-creality",

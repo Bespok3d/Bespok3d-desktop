@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Pure parser for the `b3d://` custom scheme (ADR-0023). A b3d:// URL is either an ENTITY path
 // `b3d://<publisher>/<item>` (open a plugin/list in the store) or one of a small reserved set of
 // system ACTIONS whose host is not a valid publisher (`registry`/`printer`/`auth`). The canonical

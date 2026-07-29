@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Truly-live, event-driven blocked-action state. While the plugin store is open for a managed
 // printer the renderer asks main to watch it; main opens ONE pinned wss to the daemon's
 // /ws/print-state feed (which relays the jinni's blocked-action TOKEN set on change, no polling) and

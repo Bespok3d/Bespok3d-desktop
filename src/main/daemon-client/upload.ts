@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ClientRequest } from 'http'
 
 // Streams a request body to the daemon chunk by chunk so the upload reports real progress, instead of

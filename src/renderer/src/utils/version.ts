@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { TFunction } from '../i18n'
 
 // Strip semver build metadata (`+...`) and the prerelease tail (`-...`) before reading the numeric

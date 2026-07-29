@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The check every install path runs before bytes reach the printer, together with the cleanup that
 // belongs with a package the app will not install. It lives beside verify-package.ts rather than inside
 // it because the verification is shared with the builder's cross-repo signing test, which runs outside

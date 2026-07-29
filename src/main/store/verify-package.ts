@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Install-time verification of a `.b3` against the trusted anchor set. This is the last point at which
 // the app can still say no: past it the bytes are on the printer. Everything upstream (the index, the
 // download url, the on-disk cache) is a claim about which bytes to install, and a claim is exactly what

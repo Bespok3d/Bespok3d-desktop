@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Live capture of a plugin's service log. While the Captured tab is open for a managed printer the
 // renderer asks main to watch one plugin; main opens ONE pinned wss to the daemon's
 // /ws/plugin-log/<id> feed (which tails the service log and emits each new URL/regex match) and

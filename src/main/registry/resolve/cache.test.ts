@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The cache key binds bytes to the url they were served from. These tests pin that binding: an entry
 // filed under a key it does not claim was moved by something other than this module, and a moved entry
 // is how the org-signed official index ends up rendering its badge over a list that never served it.

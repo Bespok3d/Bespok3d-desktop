@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Public surface of the printers data module. Concerns live in sibling files: record (Printer<->record
 // mapping), status (status derivation + downgrade hysteresis), address (discovered-address reconcile),
 // list (in-list patch + persist), probe (the connection-ladder ping), build (add-form -> Printer),

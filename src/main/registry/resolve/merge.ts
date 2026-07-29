@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Combine the entries gathered from every fetched registry into the one catalog the store shows:
 // rank by trust then version, collapse a plugin that appears in several lists to one winner (carrying
 // its source variants), and remap a dep that leaked through as a raw service name to its provider id.

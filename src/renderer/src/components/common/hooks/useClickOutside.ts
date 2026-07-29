@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useEffect, useRef, type RefObject } from 'react'
 
 // Closes a popover/menu when a pointer press lands outside `ref`. `enabled` gates the listener so a

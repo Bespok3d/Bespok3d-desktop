@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The .b3 manifest contract: parse and leniently validate the manifest.json a dropped package carries.
 // Lenient on purpose (non-pedantic): accept anything the daemon could actually install, rejecting only
 // what would make the package uninstallable (no id, no version, no install block).

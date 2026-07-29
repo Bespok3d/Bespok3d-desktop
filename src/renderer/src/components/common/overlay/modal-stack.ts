@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Modals paint in the order they open: each open claims the next stacking level above every modal
 // already on screen, so a dialog opened later always sits over one opened earlier - whichever part of
 // the tree mounted it. Levels reset once the last modal closes, keeping the whole band beneath the app

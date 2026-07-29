@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
 import { withId, withIds, withoutId, stampSeen, sameSeen, relativeTime, visibleNotices, unreadCount, EMPTY_NOTICE_STATE } from './notice-state'
 import type { Notice } from './notices'

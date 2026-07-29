@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useI18n } from '../../../i18n/context'
 import { IconShield } from '../../../design-system/icons'
 import { DEST_CLASSES } from '../create-data'

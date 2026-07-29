@@ -1,3 +1,5 @@
+/* SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors */
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* The top-of-window printer banner (repair / recover / drift / jinni-update / deactivated).
    A soft warn bar; colors come from the semantic warn tokens (tokens.css) so it tracks the theme. */
 

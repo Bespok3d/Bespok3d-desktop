@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Workbench authoring data. The authoring backend is not wired yet, so the workbench shows example
 // drafts (flagged) to give the layout realistic content for the A/B test. Curated starter values are real.
 import type {

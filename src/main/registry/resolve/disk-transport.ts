@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The bundled index, read straight off disk. No cache and no conditional GET: there is no network
 // between us and the bytes, so there is nothing to get stale and nothing to map into a failure reason.
 import { existsSync, readFileSync } from 'fs'

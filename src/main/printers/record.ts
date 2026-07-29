@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ReleaseChannel } from '../settings'
 import type { PackageTrust } from '../registry/model'
 import type { InstallLog, Endpoint, DriftReport, ConfigTruthRecords } from '@bespok3d/contract'

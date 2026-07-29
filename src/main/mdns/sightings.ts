@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { DiscoveredPrinterRecord } from './types'
 
 // Where each device was recently seen on the LAN, kept in main as a side effect of discovery so the

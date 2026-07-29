@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Demo identity, signing key, and a canned patch conflict for the Publish + snap-to-place previews
 // (no real account is read; the patch engine runs locally, no printer needed).
 

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import en from './locales/en.json'
 import fr from './locales/fr.json'
 import de from './locales/de.json'

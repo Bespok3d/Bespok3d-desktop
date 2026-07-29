@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Identifier-meaning detector for the cleanup ratchet (no deps).
 //   node doc/codebase-fix/identifier-meaning-detector.mjs           human summary
 //   node doc/codebase-fix/identifier-meaning-detector.mjs --json     flat fact for scripts/ratchet.mjs

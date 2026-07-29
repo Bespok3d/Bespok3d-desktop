@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The catalog entry point: declare which sources the app browses (the bundled offline copy, the
 // official remote list, and the user's sideloaded files), then resolve them into the catalog the
 // renderer shows plus the truthful source list for the Repositories pane. The resolution subsystem

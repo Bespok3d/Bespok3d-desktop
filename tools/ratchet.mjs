@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Cleanup ratchet - the gate that makes structural debt a failing, tamper-evident check.
 // Wired into scripts/check.sh. Reads tools/reference_baseline.json (the tool's memory) and enforces:
 //   1. Equal-or-tighten: each metric current==baseline. current>baseline FAILs (regression);

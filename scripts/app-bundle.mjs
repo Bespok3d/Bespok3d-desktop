@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The app's offline-bundle build glue (relay packet 4, the relocation). Owns everything app-flavored
 // that b3-builder must never contain: which plugins this app bundles (bundle.json / bundle.dev.json),
 // dev/release curation, dev-only channel variants, the `+dev` build-tag, the combined "Bespok3d

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Catalog-fidelity + no-fakes detector for the cleanup ratchet (no deps).
 //   node doc/codebase-fix/catalog-fidelity-detector.mjs           human summary
 //   node doc/codebase-fix/catalog-fidelity-detector.mjs --json     flat facts for scripts/ratchet.mjs

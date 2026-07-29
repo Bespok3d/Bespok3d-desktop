@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Generate plain-artifact screenshots of the real packaged app into repo-root/screenshots (and, by hand,
 # into the wiki). Builds + packages arm64-only (fast, no Intel), then runs only the screenshots spec.
 # Not part of check.sh.

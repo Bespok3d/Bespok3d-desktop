@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Plain http(s), the transport most lists arrive on. Conditional GET against the cache: an etag hit
 // costs one round trip and no body, which is what keeps a store of many lists cheap to refresh.
 import type { RegistryRef, FetchedRegistry } from '../model'

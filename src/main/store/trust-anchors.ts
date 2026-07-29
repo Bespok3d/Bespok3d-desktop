@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The anchor SET a package signature is checked against at install time. Plural by construction, not
 // as speculative generality: a key rotation has to trust the outgoing and the incoming key at the same
 // time or every package signed by the other one becomes uninstallable overnight, and a community

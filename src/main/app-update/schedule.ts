@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { AssetInfo } from '../git-host/connector'
 
 // Pure helpers for the update preferences: how often to poll for updates, and which release asset

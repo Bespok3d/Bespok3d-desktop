@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Renderer-side b3d:// support. Two jobs: (1) the route type for links the OS hands us via
 // window.b3d.onB3dOpen, kept in sync with main/b3d-url.ts; (2) parsing an ENTITY ref found inside a
 // plugin/list description so the Markdown renderer can make it a clickable in-app link, resolved

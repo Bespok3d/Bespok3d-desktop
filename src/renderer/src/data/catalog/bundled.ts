@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Category, Channel, PrinterAdapter } from '../types'
 
 // Static UI config that is NOT registry-published plugin data: release channels, the catalog

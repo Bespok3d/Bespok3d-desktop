@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { ipcRenderer } from 'electron'
 import { subscribe } from './subscribe'
 import type { PublicPrinterRecord } from '../main/printers'

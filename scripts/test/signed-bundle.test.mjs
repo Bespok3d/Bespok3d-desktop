@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The signing rail: proves a REAL bundled build produces artifacts that verify, not that the signing
 // helper works in isolation. A unit test over a signing helper cannot catch the failure this rail
 // exists for: the app's own installer checks a detached signature over the EXACT manifest.json bytes

@@ -1,0 +1,20 @@
+version = 1
+
+# The app is the project's own work, AGPL-3.0-or-later throughout. Almost every source file carries
+# its own two-line SPDX header; `precedence = "aggregate"` means those headers win and this block
+# only fills in the files that cannot carry one.
+#
+# Two files cannot:
+#
+# - `src/main/daemon-client/version.ts` is generated from the daemon's `version.py` by
+#   `scripts/generate-daemon-version.mjs`. A header written into it by hand is erased the next time
+#   the generator runs.
+# - `src/renderer/src/components/dev-tools/patch-snap/PatchSnapApp.tsx` sits exactly at the
+#   engineering gate's god-file line limit, and that check fails on any growth. Two more lines in
+#   that file turn the gate red.
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright (C) 2026 unlucio and the Bespok3d contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"

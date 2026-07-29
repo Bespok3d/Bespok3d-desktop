@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { randomBytes, randomUUID } from 'crypto'
 import { writeFileSync, existsSync } from 'fs'
 import { homedir, hostname } from 'os'

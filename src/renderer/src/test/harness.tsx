@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import '@testing-library/jest-dom/vitest'
 import { afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'

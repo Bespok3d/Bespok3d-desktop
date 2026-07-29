@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // What a batch does with a package it will not send. A batch (update all, install selected, a
 // collection) is a convenience button for installing those plugins one by one, so the outcome has to
 // be the same as installing them one by one: a package the app refuses costs that plugin, and the

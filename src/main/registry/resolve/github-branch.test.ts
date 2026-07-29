@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // A published list lives on `main`, but every Bespok3d repo's DEFAULT branch is the working branch
 // `dev` - so a contents request that names no branch serves whatever is mid-flight in the repo. These
 // tests pin the branch on all four reads: the index and its detached signature, public and

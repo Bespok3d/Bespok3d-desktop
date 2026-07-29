@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Port allocation for plugins that compete for the same HTTP port resource: the web UIs.
 // The primary UI holds PRIMARY_PORT (80); every other UI gets the next free port from
 // SECONDARY_BASE (81) upward, skipping ports reserved for system services. Ports are

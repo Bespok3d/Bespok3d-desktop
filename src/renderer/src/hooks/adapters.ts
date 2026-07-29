@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState, useEffect } from 'react'
 
 // The adapter-declared printer icons, keyed by adapter id, for the header dropdown. Loaded once: the

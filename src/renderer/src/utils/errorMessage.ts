@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // A thrown value is `unknown`: an Error carries the human message on `.message`, while bare
 // `String(err)` prints "Error: ..." for an Error and "[object Object]" for a plain object. Collapse
 // every catch site onto one reader so the surfaced text is the message, not the wrapper.

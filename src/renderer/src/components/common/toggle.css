@@ -1,3 +1,5 @@
+/* SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors */
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* The Toggle primitive owns its styles so any component using <Toggle> is styled wherever it renders
    (the app, the catalog, in isolation) without depending on a pane stylesheet being loaded first. */
 .toggle {

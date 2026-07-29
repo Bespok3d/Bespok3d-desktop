@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useI18n } from '../../../i18n/context'
 import cx from '../../../utils/cx'
 import type { TrustTier, ReleaseChannel } from '../../../data/types'

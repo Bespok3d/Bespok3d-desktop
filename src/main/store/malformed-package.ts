@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Marks a thrown message as a daemon integrity refusal: the .b3 archive carried members its signed
 // manifest does not vouch for (undeclared or escaping files), or a listed file whose bytes did not
 // match. That is a defect in how those BYTES were built, not a printer fault. It reaches the user only

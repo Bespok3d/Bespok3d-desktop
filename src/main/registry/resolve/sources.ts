@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The truthful source list for the Repositories pane: take every configured source (built-in or
 // user-added) and pair it with its real post-resolve state, so the pane shows a loaded count, a
 // classified failure, or a switched-off row rather than a fabricated single entry.

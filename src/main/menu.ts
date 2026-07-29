@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { app, Menu, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
 
 // A proper application menu so the app reads "Bespok3d" (packaged; macOS keeps the bundle name in

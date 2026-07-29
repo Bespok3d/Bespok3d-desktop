@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Barrel for the daemon HTTP client, partitioned by endpoint concern: shared transport (the pinned
 // agent + bounded request), the read-only status endpoints, the package lifecycle, and the access
 // (multi-client pairing) endpoints. Importers keep using `./daemon-client/client` unchanged.

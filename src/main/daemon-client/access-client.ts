@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { request as httpsRequest, Agent } from 'https'
 import type { PrinterRecord } from '../printers'
 import { doRequest, collectResponse, DaemonHttpError, DEFAULT_DAEMON_TIMEOUT_MS } from './transport'

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { load } from '../keychain'
 import { makeRestHost, type RestHostProfile, type JsonObject } from '../rest-host'
 import { makeGitHubDeviceFlow, GITHUB_KEYCHAIN_KEY } from './device-flow'

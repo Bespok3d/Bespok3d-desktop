@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin, ReleaseChannel } from '../../../../data/types'
 import type { TFunction } from '../../../../i18n'
 import cx from '../../../../utils/cx'

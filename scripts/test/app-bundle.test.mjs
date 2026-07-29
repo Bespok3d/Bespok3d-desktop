@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The relocation rail (relay packet 4): proves app-bundle.mjs's buildBundle() still reproduces the
 // pre-consolidation monorepo bundle (the bundled index content, the packed .b3 filename set, and the
 // staged doc content), against the golden relocated here from b3-builder/test/golden/monorepo (the

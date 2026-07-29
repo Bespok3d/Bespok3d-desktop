@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 // The adapter is Electron main-process code; the invitro config aliases `electron` to a stub so it
 // resolves its paths.json in the dev layout. These steps only need the ssh transport + a runtime user.

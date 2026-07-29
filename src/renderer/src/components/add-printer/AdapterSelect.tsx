@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { BUNDLED_ADAPTERS } from '../../data/catalog/bundled'
 import './add-printer.css'
 

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { BatchProgressEvent } from '../../../../main/daemon-client/feeds/install-progress'
 
 // The id the daemon announces the shared deferred-restart step under (not a plugin); it arrives as a

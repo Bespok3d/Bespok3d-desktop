@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Detached-signature verification for a fetched registry index (ADR-0009 publisher tier). The
 // contract is over RAW SERVED BYTES: a signature vouches for the exact bytes the transport received,
 // so verifying a re-serialized copy of the same logical content MUST fail. An inline `signature`

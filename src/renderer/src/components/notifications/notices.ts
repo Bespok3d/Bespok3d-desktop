@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Pure builder for the notification center. Each subsystem's "stick it in the user's face" state is
 // DERIVED from app data here, so the center is one truthful aggregator instead of banners scattered
 // around the UI. Adding a consumer = adding a derivation, not a new banner. All inputs are plain data

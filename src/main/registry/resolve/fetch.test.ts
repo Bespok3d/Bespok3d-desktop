@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The cache holds bytes, never a verdict. These tests pin that: a 304 hit re-runs verification on the
 // stored bytes instead of reusing whatever the last run concluded, because anything able to edit the
 // cache file could otherwise hand itself a trusted badge. Verification is spied rather than real: the

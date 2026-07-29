@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // The plugin config-field types: what a manifest's `config[]` declares, passed through the
 // index untouched and consumed by the store's config forms. Split from types.ts by concern.
 

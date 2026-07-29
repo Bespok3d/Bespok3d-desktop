@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { ipcRenderer } from 'electron'
 import type { AppSettings, ReleaseChannel } from '../main/settings'
 import type { Catalog } from '../main/registry'

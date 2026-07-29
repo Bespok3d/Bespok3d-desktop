@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Printer, AddLocalResult, LocalPackageInfo } from '../data/types'
 import { useCatalog } from '../data/catalog'

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import '@adapters/snapmaker-u1/client/snapmaker-u1'
 import { getAdapter } from '@adapter-sdk'
 import type { EnrollContext } from '@adapter-sdk'
