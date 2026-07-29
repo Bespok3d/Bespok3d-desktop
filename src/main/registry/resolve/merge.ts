@@ -5,7 +5,9 @@
 // its source variants), and remap a dep that leaked through as a raw service name to its provider id.
 import type { MergedCollection, MergedEntry, RegistryTrust } from '../model'
 
-const TRUST_RANK: Record<RegistryTrust, number> = { manufacturer: 3, project: 2, community: 1, any: 0, unknown: -1 }
+// 'failed' sits below 'unknown': a signature that did not match those bytes is worse evidence than no
+// signature at all, so when the same plugin comes from several lists the failing one never wins.
+const TRUST_RANK: Record<RegistryTrust, number> = { manufacturer: 3, project: 2, community: 1, any: 0, unknown: -1, failed: -2 }
 
 interface Rankable {
   name: string

@@ -9,13 +9,13 @@ import { writeCache } from './cache'
 import type { CacheEntry } from './cache'
 import { verifyIndexSignature } from './verify'
 
-// An unsigned or failing list still loads: the absent proof travels as `signedBy: null` for the trust
-// layer to render as tier 'unknown', so a signing mistake costs a wrong badge rather than a dead store.
+// An unsigned or failing list still loads: what the check found travels whole for the trust layer to
+// render as a badge, so a signing mistake costs a wrong badge rather than a dead store.
 export async function toFetchedRegistry(ref: RegistryRef, served: ServedIndex, fromCache: boolean): Promise<FetchedRegistry> {
   const index = parseIndex(served.bytes)
-  const signedBy = await verifyIndexSignature(served.bytes, served.signature)
+  const signature = await verifyIndexSignature(served.bytes, served.signature)
 
-  return { ref, index, fromCache, signedBy }
+  return { ref, index, fromCache, signature }
 }
 
 // A 200 is not proof of an index: a captive portal answers every request with HTML. The failure is a

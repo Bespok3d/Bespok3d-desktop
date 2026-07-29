@@ -6,7 +6,7 @@
 // production verifier pins the org key, so no fixture can produce a positive result through it.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as openpgp from 'openpgp'
-import type { RegistryRef } from '../model'
+import type { RegistryRef, SignatureCheck } from '../model'
 import type { CacheEntry } from './cache'
 import { fetchGitHostRegistry } from './fetch'
 
@@ -119,13 +119,19 @@ function signedResponse(url: string, armoredSignature: string, bytes: string): u
 // to a rendered signer runs end to end without a second copy of the transport under test.
 async function useRealVerifier(armoredTrustAnchor: string): Promise<void> {
   const { fingerprintOfValidSigner } = await vi.importActual<typeof import('./verify')>('./verify')
-  mocks.verifyIndexSignature.mockImplementation((bytes: string, signature: string | null) => (signature ? fingerprintOfValidSigner(bytes, signature, armoredTrustAnchor) : Promise.resolve(null)))
+  mocks.verifyIndexSignature.mockImplementation((bytes: string, signature: string | null) => (signature ? fingerprintOfValidSigner(bytes, signature, armoredTrustAnchor).then(asSignatureCheck) : Promise.resolve({ proof: 'unsigned' })))
+}
+
+// The real verifier's own last step: a fingerprint means signed, no fingerprint from a signature that
+// WAS served means failed. Mirrored here so the wired-through predicate returns what callers read.
+function asSignatureCheck(fingerprint: string | null): SignatureCheck {
+  return fingerprint === null ? { proof: 'failed' } : { proof: 'signed', fingerprint }
 }
 
 beforeEach(() => {
   mocks.entries.clear()
   mocks.writeCache.mockClear()
-  mocks.verifyIndexSignature.mockReset().mockResolvedValue(SIGNER_FINGERPRINT)
+  mocks.verifyIndexSignature.mockReset().mockResolvedValue({ proof: 'signed', fingerprint: SIGNER_FINGERPRINT })
 })
 
 afterEach(() => {
@@ -138,7 +144,7 @@ describe('fetchGitHostRegistry on a 304', () => {
     stubNotModified()
     const fetched = await fetchGitHostRegistry(listRef())
     expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE)
-    expect(fetched).toMatchObject({ fromCache: true, signedBy: SIGNER_FINGERPRINT })
+    expect(fetched).toMatchObject({ fromCache: true, signature: { proof: 'signed', fingerprint: SIGNER_FINGERPRINT } })
   })
 
   it('verifies again on every hit, so no verdict is ever memoized', async () => {
@@ -150,13 +156,13 @@ describe('fetchGitHostRegistry on a 304', () => {
   })
 
   // NO-DOWNGRADE in WARN mode: a cached list whose signature no longer checks out loses its badge,
-  // not its place in the store. The trust layer renders the absent proof as tier 'unknown'.
+  // not its place in the store. The trust layer renders that as tier 'failed'.
   it('still loads a cached list whose signature no longer checks out', async () => {
     seedCache(FIXTURE_BYTES.replace('Fixture List', 'Tampered List'), FIXTURE_SIGNATURE)
     stubNotModified()
-    mocks.verifyIndexSignature.mockResolvedValue(null)
+    mocks.verifyIndexSignature.mockResolvedValue({ proof: 'failed' })
     const fetched = await fetchGitHostRegistry(listRef())
-    expect(fetched.signedBy).toBeNull()
+    expect(fetched.signature).toEqual({ proof: 'failed' })
     expect(fetched.index.name).toBe('Tampered List')
   })
 })
@@ -168,22 +174,24 @@ describe('fetchGitHostRegistry on a fresh 200', () => {
     const [cacheKey, entry] = mocks.writeCache.mock.calls[0]
     expect(cacheKey).toBe(REGISTRY_URL)
     expect(entry).toMatchObject({ bytes: FIXTURE_BYTES, signature: FIXTURE_SIGNATURE })
-    expect(entry).not.toHaveProperty('signedBy')
+    // The stored signature is the armored .sig text and never what verifying it concluded, so a cached
+    // list is checked again on every hit instead of inheriting a verdict somebody could write by hand.
+    expect(entry).not.toHaveProperty('signature.proof')
   })
 
   it('loads a list whose sibling .sig is absent, with no proof of a signer', async () => {
     stubServedIndex(404)
-    mocks.verifyIndexSignature.mockResolvedValue(null)
+    mocks.verifyIndexSignature.mockResolvedValue({ proof: 'unsigned' })
     const fetched = await fetchGitHostRegistry(listRef())
     expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, null)
-    expect(fetched.signedBy).toBeNull()
+    expect(fetched.signature).toEqual({ proof: 'unsigned' })
   })
 
   // A .sig that answers 200 and then dies mid-body is a broken signature, not a broken list. The
   // rejected read collapses to null so the list keeps loading with no proof of a signer.
   it('loads the list when the sibling .sig body fails mid-stream', async () => {
     stubBrokenSignatureBody()
-    mocks.verifyIndexSignature.mockResolvedValue(null)
+    mocks.verifyIndexSignature.mockResolvedValue({ proof: 'unsigned' })
     const fetched = await fetchGitHostRegistry(listRef())
     expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, null)
     expect(fetched.index.name).toBe('Fixture List')
@@ -206,7 +214,7 @@ describe('a cached entry whose signature never arrived', () => {
     stubNotModifiedWithSignature()
     const fetched = await fetchGitHostRegistry(listRef())
     expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE)
-    expect(fetched.signedBy).toBe(SIGNER_FINGERPRINT)
+    expect(fetched.signature).toEqual({ proof: 'signed', fingerprint: SIGNER_FINGERPRINT })
   })
 
   it('writes the recovered signature back so the next run does not re-fetch it', async () => {
@@ -279,7 +287,7 @@ describe('end to end with real signature verification', () => {
     await useRealVerifier(signer.publicKey)
     vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(signedResponse(url, signer.armoredSignature, FIXTURE_BYTES))))
     const fetched = await fetchGitHostRegistry(listRef())
-    expect(fetched.signedBy).toBe(signer.fingerprint)
+    expect(fetched.signature).toEqual({ proof: 'signed', fingerprint: signer.fingerprint })
   })
 
   // NO-DOWNGRADE: one changed byte costs the badge, never the list.
@@ -289,7 +297,7 @@ describe('end to end with real signature verification', () => {
     const tampered = FIXTURE_BYTES.replace('Fixture List', 'Tampered List')
     vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(signedResponse(url, signer.armoredSignature, tampered))))
     const fetched = await fetchGitHostRegistry(listRef())
-    expect(fetched.signedBy).toBeNull()
+    expect(fetched.signature).toEqual({ proof: 'failed' })
     expect(fetched.index.name).toBe('Tampered List')
   })
 })

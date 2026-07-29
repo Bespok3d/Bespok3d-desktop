@@ -7,7 +7,6 @@ import { useI18n } from '../../../i18n/context'
 import type { TFunction } from '../../../i18n'
 import { IconGitBranch, IconGitHub, IconPlus } from '../../../design-system/icons'
 import { TrustPill } from '../../common/badges/TrustPill'
-import { SettingRow } from '../../common/SettingRow'
 import { Toggle } from '../../common/Toggle'
 import { CHANNELS } from '../../../data/catalog/bundled'
 import { useCatalog } from '../../../data/catalog'
@@ -16,27 +15,15 @@ import type { Channel, ReleaseChannel, SourceRow } from '../../../data/types'
 import cx from '../../../utils/cx'
 
 function useRepoSettings() {
-  // The toggle shows/hides the signature-derived trust badge; it is only meaningful once PGP
-  // testing is enabled, so it is disabled (and forced off) while pgpEnabled is false. Persisted
-  // in AppSettings the same way primaryChannel is.
-  const [verifySignatures, setVerifySignaturesState] = useState(false)
-  const [pgpEnabled, setPgpEnabled] = useState(false)
   // primaryChannel is the stability CEILING; disabledChannels are explicit opt-outs within it.
   const [primaryChannel, setPrimaryChannel] = useState<ReleaseChannel>('stable')
   const [disabledChannels, setDisabledChannels] = useState<ReleaseChannel[]>([])
   useEffect(() => {
     window.b3d.settings.get().then((settings) => {
-      setPgpEnabled(settings.pgpEnabled)
-      setVerifySignaturesState(settings.verifySignatures ?? false)
       setPrimaryChannel(settings.primaryReleaseChannel ?? 'stable')
       setDisabledChannels(settings.disabledChannels ?? [])
     })
   }, [])
-
-  function setVerifySignatures(next: boolean) {
-    setVerifySignaturesState(next)
-    window.b3d.settings.set({ verifySignatures: next })
-  }
 
   function selectPrimary(id: ReleaseChannel) {
     setPrimaryChannel(id)
@@ -47,7 +34,7 @@ function useRepoSettings() {
     window.b3d.registry.setChannelEnabled(id, enabled).then((settings) => setDisabledChannels(settings.disabledChannels ?? []))
   }
 
-  return { verifySignatures, setVerifySignatures, pgpEnabled, primaryChannel, disabledChannels, selectPrimary, toggleChannel }
+  return { primaryChannel, disabledChannels, selectPrimary, toggleChannel }
 }
 
 interface ChannelRowProps {
@@ -130,16 +117,10 @@ function SourceItem({ source, t, onToggle, onConnectGitHub }: SourceItemProps) {
 export function RepositoriesPane({ onConnectGitHub }: { onConnectGitHub?: () => void }) {
   const { t } = useI18n()
   const { sources, setSourceEnabled } = useCatalog()
-  const { verifySignatures, setVerifySignatures, pgpEnabled, primaryChannel, disabledChannels, selectPrimary, toggleChannel } = useRepoSettings()
+  const { primaryChannel, disabledChannels, selectPrimary, toggleChannel } = useRepoSettings()
 
   return (
     <>
-      <Group title={t('repos.verification')}>
-        <SettingRow label={t('repos.verify_sigs')} hint={t('repos.verify_sigs_hint')} controls={
-          <Toggle on={pgpEnabled && verifySignatures} disabled={!pgpEnabled} onChange={setVerifySignatures} />
-        } />
-      </Group>
-
       <Group title={t('repos.channels')}>
         {CHANNELS.map((channel) => (
           <ChannelRow

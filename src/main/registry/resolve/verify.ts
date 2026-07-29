@@ -5,6 +5,7 @@
 // so verifying a re-serialized copy of the same logical content MUST fail. An inline `signature`
 // field inside the index is not a thing and never will be, it would sign itself.
 import * as openpgp from 'openpgp'
+import type { SignatureCheck } from '../model'
 
 // The trust anchor. A detached signature names its issuer, but that claim is forgeable and only
 // worth the key it is checked against, so the org's registry signing key travels WITH the app rather
@@ -73,22 +74,26 @@ async function signerOfCheckedSignature(signedBytes: string | Uint8Array, armore
   return issued.verified.then(() => verificationKeys.getFingerprint().toUpperCase(), () => null)
 }
 
-// The fingerprint of the key whose signature over these exact bytes checks out, or null when there
-// is no proof: no signature, a malformed one, or one issued by a key we do not pin. Absence of proof
-// is never an error here (NO-DOWNGRADE): the caller renders it as trust tier 'unknown' and the list
-// still loads, so a signing mistake costs a wrong badge rather than a dead store.
-export async function verifyIndexSignature(servedBytes: string, armoredSignature: string | null): Promise<string | null> {
-  if (!armoredSignature) return null
+// What the signature beside these bytes proved. A list served with no signature and a list served
+// with a signature that does not check out are DIFFERENT facts and come back as different values:
+// the first is a publisher who never signed, the second is bytes that do not match the signature
+// somebody issued over them. Neither is an error here (NO-DOWNGRADE): the caller renders the outcome
+// as a badge and the list still loads, so a signing mistake costs a wrong badge rather than a dead
+// store. A malformed signature counts as failed: something was served in the signature's place and it
+// did not stand up.
+export async function verifyIndexSignature(servedBytes: string, armoredSignature: string | null): Promise<SignatureCheck> {
+  if (!armoredSignature) return { proof: 'unsigned' }
+  const fingerprint = await fingerprintOfValidSigner(servedBytes, armoredSignature, OFFICIAL_LIST_PUBLIC_KEY)
 
-  return fingerprintOfValidSigner(servedBytes, armoredSignature, OFFICIAL_LIST_PUBLIC_KEY)
+  return fingerprint === null ? { proof: 'failed' } : { proof: 'signed', fingerprint }
 }
 
-// Who a proved fingerprint belongs to, in a word a person can read. A fingerprint is evidence, not
-// something to show anyone, and the check above accepts exactly one pinned key, so a fingerprint that
-// came back non-null can only be that key's. Null carries through as "nobody proved this", which is
-// what the store shows instead of repeating a publisher line no signature stands behind.
-export function provedSigner(fingerprint: string | null): string | null {
-  return fingerprint === null ? null : OFFICIAL_SIGNER_NAME
+// Who a proved signature belongs to, in a word a person can read. A fingerprint is evidence, not
+// something to show anyone, and the check above accepts exactly one pinned key, so a proof that came
+// back 'signed' can only be that key's. Anything else carries through as "nobody proved this", which
+// is what the store shows instead of repeating a publisher line no signature stands behind.
+export function provedSigner(signature: SignatureCheck): string | null {
+  return signature.proof === 'signed' ? OFFICIAL_SIGNER_NAME : null
 }
 
 const OFFICIAL_SIGNER_NAME = 'Bespok3d'

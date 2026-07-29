@@ -3,7 +3,12 @@
 import { GLOBAL_SCOPE, type ScopedPluginVars } from './types'
 
 export const SCHEMA_VERSION_KEY = 'b3d.schemaVersion'
-export const CURRENT_SCHEMA_VERSION = 2
+// v1: a flat field-to-value map. v2: values scoped per printer, keyed by the daemon-held printer
+// UUID. v3: the same shape with per-printer scope keys built from the app's own printer record id,
+// so a reflash or daemon reinstall that mints a fresh UUID no longer loses the printer's settings.
+// The v2-to-v3 carry-over is remapPrinterScope (remap.ts), driven from the App effect rather than
+// from here, because only the printer records hold the UUID-to-record-id pairing it needs.
+export const CURRENT_SCHEMA_VERSION = 3
 export const PLUGIN_VARS_KEY = 'b3d.pluginVars'
 export const LEGACY_VARS_KEY = 'b3d.savedPluginVars'
 
@@ -63,9 +68,11 @@ export function persistScopedVars(storage: SchemaStorage, scopedVars: ScopedPlug
   storage.write(LEGACY_VARS_KEY, JSON.stringify(globalSlice(scopedVars)))
 }
 
-// Runs at renderer boot before any consumer reads the store. The first boot on v2 migrates the
-// legacy flat map; every later boot reconciles downgrade edits (see mergeDowngradeEdits). A corrupt
-// v2 store degrades to the legacy mirror rather than throwing. Idempotent: a second run is a no-op.
+// Runs at renderer boot before any consumer reads the store. The first boot on the scoped shape
+// migrates the legacy flat map; every later boot reconciles downgrade edits (see
+// mergeDowngradeEdits). A corrupt scoped store degrades to the legacy mirror rather than throwing.
+// Idempotent: a second run is a no-op. Per-printer entries are carried across scope-key schemes by
+// remapPrinterScope, so this reconciliation never rewrites one.
 export function runVarsMigrations(storage: SchemaStorage): ScopedPluginVars {
   const legacyFlatVars = parseJsonRecord<Record<string, string>>(storage.read(LEGACY_VARS_KEY), {})
   const scopedRaw = storage.read(PLUGIN_VARS_KEY)

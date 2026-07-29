@@ -48,6 +48,13 @@ describe('runVarsMigrations', () => {
     expect(storage.data[SCHEMA_VERSION_KEY]).toBe(String(CURRENT_SCHEMA_VERSION))
   })
 
+  it('stamps schema 3, the record-id scope-key scheme', () => {
+    const storage = memoryStorage()
+    runVarsMigrations(storage)
+    expect(CURRENT_SCHEMA_VERSION).toBe(3)
+    expect(storage.data[SCHEMA_VERSION_KEY]).toBe('3')
+  })
+
   it('a fresh install with no data at all yields an empty store without throwing', () => {
     expect(runVarsMigrations(memoryStorage())).toEqual({})
   })

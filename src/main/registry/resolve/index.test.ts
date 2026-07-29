@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest'
 import { resolveCatalog } from './index'
 import { RegistryFetchError, DEFAULT_LIMITS } from '../model'
-import type { RegistryRef, RegistryIndex, FetchedRegistry, MergedEntry } from '../model'
+import type { RegistryRef, RegistryIndex, FetchedRegistry, MergedEntry, SignatureCheck } from '../model'
 
 function entry(name: string, version = '1.0.0'): { name: string; version: string } {
   return { name, version }
@@ -29,16 +29,27 @@ function fetcherFrom(catalogs: Record<string, RegistryIndex>) {
     const found = catalogs[ref.url]
     if (!found) throw new Error('not found')
 
-    return { ref, index: found, fromCache: false, signedBy: null }
+    return { ref, index: found, fromCache: false, signature: { proof: 'unsigned' } }
   }
 }
 
-function fetcherFromSigned(catalogs: Record<string, RegistryIndex>, signedBy: string) {
+function fetcherFromSigned(catalogs: Record<string, RegistryIndex>, fingerprint: string) {
   return async (ref: RegistryRef): Promise<FetchedRegistry | null> => {
     const found = catalogs[ref.url]
     if (!found) throw new Error('not found')
 
-    return { ref, index: found, fromCache: false, signedBy }
+    return { ref, index: found, fromCache: false, signature: { proof: 'signed', fingerprint } }
+  }
+}
+
+// A list served WITH a signature that did not check out against the pinned key, which is a different
+// situation from a list nobody signed and is the one an owner should look into.
+function fetcherWithABadSignature(catalogs: Record<string, RegistryIndex>) {
+  return async (ref: RegistryRef): Promise<FetchedRegistry | null> => {
+    const found = catalogs[ref.url]
+    if (!found) throw new Error('not found')
+
+    return { ref, index: found, fromCache: false, signature: { proof: 'failed' } }
   }
 }
 
@@ -50,7 +61,9 @@ function fetcherProving(catalogs: Record<string, RegistryIndex>, provedUrls: str
     const found = catalogs[ref.url]
     if (!found) throw new Error('not found')
 
-    return { ref, index: found, fromCache: false, signedBy: provedUrls.includes(ref.url) ? 'org-gpg-key' : null }
+    const signature: SignatureCheck = provedUrls.includes(ref.url) ? { proof: 'signed', fingerprint: 'org-gpg-key' } : { proof: 'unsigned' }
+
+    return { ref, index: found, fromCache: false, signature }
   }
 }
 
@@ -125,6 +138,21 @@ describe('resolveCatalog trust downgrade', () => {
     const manufacturerRoot: RegistryRef = { url: 'root', trust: 'manufacturer', locked: true }
     const result = await resolveCatalog([manufacturerRoot], fetcherFromSigned(catalogs, 'org-gpg-key'), DEFAULT_LIMITS, noop)
     expect(result.plugins.find((plugin) => plugin.name === 'one')?.trust).toBe('manufacturer')
+  })
+
+  // The whole point of splitting failed from unknown: a signature that did not check out is the one
+  // situation an owner should look into, and it used to read the same as a list nobody ever signed. It
+  // still loads (NO-DOWNGRADE), and the Repositories row says failed as well as the plugin does, since
+  // that row is where an owner goes when a source looks wrong.
+  it('reads failed, not unknown, when a signature was served and did not check out, and the list still loads', async () => {
+    const catalogs = { root: index('Root', [entry('one')]) }
+    const manufacturerRoot: RegistryRef = { url: 'root', trust: 'manufacturer', locked: true }
+    const result = await resolveCatalog([manufacturerRoot], fetcherWithABadSignature(catalogs), DEFAULT_LIMITS, noop)
+    const plugin = result.plugins.find((candidate) => candidate.name === 'one')
+    expect(plugin?.trust).toBe('failed')
+    expect(plugin?.signer).toBeNull()
+    expect(result.registries.find((source) => source.url === 'root')?.trust).toBe('failed')
+    expect(result.failures).toEqual([])
   })
 
   it('ranks an unknown-trust entry below every other tier when the same plugin appears from two sources', async () => {

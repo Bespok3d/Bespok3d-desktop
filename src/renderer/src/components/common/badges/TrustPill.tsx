@@ -3,7 +3,7 @@
 import type { TrustTier } from '../../../data/types'
 import { useI18n } from '../../../i18n/context'
 import cx from '../../../utils/cx'
-import { IconShield, IconShieldQ } from '../../../design-system/icons'
+import { IconAlert, IconShield, IconShieldQ } from '../../../design-system/icons'
 
 interface TrustPillProps {
   trust: TrustTier
@@ -14,9 +14,18 @@ interface TrustPillProps {
   title?: string
 }
 
+// Nobody vouched for this gets a question mark; a signature that was served and did not match gets the
+// alert glyph, because that one is not a gap in the paperwork, it is a mismatch worth looking into.
+function glyphFor(trust: TrustTier) {
+  if (trust === 'failed') return IconAlert
+  if (trust === 'any' || trust === 'unknown') return IconShieldQ
+
+  return IconShield
+}
+
 export function TrustPill({ trust, icon, full, title }: TrustPillProps) {
   const { t } = useI18n()
-  const ShieldIcon = trust === 'any' || trust === 'unknown' ? IconShieldQ : IconShield
+  const ShieldIcon = glyphFor(trust)
   const label = t(full ? `trust.${trust}.full` : `trust.${trust}`)
 
   return (

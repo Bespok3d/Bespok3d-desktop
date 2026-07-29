@@ -929,6 +929,12 @@ textarea {
   background: var(--trust-manufacturer-bg);
   color: var(--trust-manufacturer-fg);
 }
+/* A signature that did not match is an attention state, not a tier, and it is NOT a ban: red stays
+   reserved for banned keys (ADR-0013), so this wears the shared warning tone. */
+.trust.failed {
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+}
 
 /* ── Status pill ─────────────────────────────────────────────────────── */
 

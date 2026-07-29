@@ -4,9 +4,10 @@ import type { PluginConfigField } from '../plugin-config'
 
 // The user's saved plugin config values: field key, then scope key, then value. A scope key is
 // 'global' (shared by every printer), 'local:<printerKey>' (one printer's own value), or a future
-// 'group:<groupId>' (fleet scope, storage-ready but unused). The printerKey is the daemon-held
-// printer UUID when known, else the app-local record id until the UUID is first reported (see
-// remap.ts). Scoping is app-side only: the daemon always receives flat vars.
+// 'group:<groupId>' (fleet scope, storage-ready but unused). The printerKey is the app's own printer
+// record id, because it survives a /userdata wipe, a reflash and a daemon reinstall, all of which
+// mint a fresh daemon-held UUID (see remap.ts). Scoping is app-side only: the daemon always
+// receives flat vars.
 export type ScopedPluginVars = Record<string, Record<string, string>>
 
 // The choice a user (or a manifest hint) makes for one field: shared everywhere, or this printer's.
@@ -18,10 +19,11 @@ export function localScopeKey(printerKey: string): string {
   return `local:${printerKey}`
 }
 
-// The printer identity scope keys are built from: the daemon-held UUID once a managed ping has
-// reported it, else the app-local record id (remap.ts moves entries over when the UUID appears).
-export function printerKeyFor(printer: { id: string; printerUuid?: string }): string {
-  return printer.printerUuid ?? printer.id
+// The printer identity scope keys are built from: the app's own record id, so a printer that mints a
+// new daemon UUID still reads back what the user saved for it (remap.ts carries entries an older
+// build filed under the UUID onto the record id).
+export function printerKeyFor(printer: { id: string }): string {
+  return printer.id
 }
 
 // One save from a UI surface: the just-changed values with their field defs (the scope hint comes

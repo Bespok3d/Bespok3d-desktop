@@ -8,11 +8,14 @@ import { makeIndexEntry } from '../../../test/fixtures'
 import { ScopedPluginDefaultsPane } from './ScopedPluginDefaultsPane'
 import type { ScopedPluginVars } from '../../../data/plugin-vars'
 
+// A per-printer value is filed under the app's own printer record id, not the daemon-held UUID the
+// printer also reports (see data/plugin-vars/types.ts): the record id is what survives a reflash.
 const PRINTER_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-const LOCAL_KEY = `local:${PRINTER_UUID}`
 const WORKSHOP_PRINTER = { id: 'printer-1', nick: 'Workshop U1', printerUuid: PRINTER_UUID, installedVersions: { spoolman: '9.9.9' } }
 const OFFICE_UUID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 const OFFICE_PRINTER = { id: 'printer-2', nick: 'Office U1', printerUuid: OFFICE_UUID, installedVersions: { spoolman: '9.9.9' } }
+const LOCAL_KEY = `local:${WORKSHOP_PRINTER.id}`
+const OFFICE_LOCAL_KEY = `local:${OFFICE_PRINTER.id}`
 
 type PaneProps = Parameters<typeof ScopedPluginDefaultsPane>[0]
 type PrinterFixture = PaneProps['printers'][number]
@@ -102,7 +105,7 @@ describe('ScopedPluginDefaultsPane value editing', () => {
     expect(await screen.findByText('Office U1')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Set for this printer' }))
     expect(onScopedVarsChange).toHaveBeenCalledWith({
-      SPOOLMAN_LOCATION: { global: 'Shelf A', [`local:${OFFICE_UUID}`]: 'Shelf A' },
+      SPOOLMAN_LOCATION: { global: 'Shelf A', [OFFICE_LOCAL_KEY]: 'Shelf A' },
     })
   })
 
@@ -140,7 +143,7 @@ describe('ScopedPluginDefaultsPane view division and installed filter', () => {
 
   it("divides by the whole fleet: one printer's own value moves a shared field to Per printer for everyone", async () => {
     var { user, container } = setupPane(
-      { FLUIDD_PORT: { global: '80', [`local:${OFFICE_UUID}`]: '81' } },
+      { FLUIDD_PORT: { global: '80', [OFFICE_LOCAL_KEY]: '81' } },
       { initialView: 'printer', initialFilter: 'all' },
     )
     expect(await screen.findByText('Web UI port')).toBeInTheDocument()
@@ -222,7 +225,7 @@ describe('ScopedPluginDefaultsPane per-variable scope switch', () => {
 
   it('flips a taken variable back to shared for EVERY printer at once', async () => {
     var { user, onScopedVarsChange } = setupPane(
-      { FLUIDD_PORT: { global: '80', [LOCAL_KEY]: '81', [`local:${OFFICE_UUID}`]: '82' } },
+      { FLUIDD_PORT: { global: '80', [LOCAL_KEY]: '81', [OFFICE_LOCAL_KEY]: '82' } },
       { initialView: 'printer', initialFilter: 'all' },
     )
     const portRow = (await screen.findByText('Web UI port')).closest('.set-row') as HTMLElement

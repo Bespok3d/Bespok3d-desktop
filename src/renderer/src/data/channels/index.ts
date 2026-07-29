@@ -14,12 +14,18 @@ const STABILITY_RANK: Record<ReleaseChannel, number> = {
   experiment: 4,
 }
 
-const SOURCE_TRUST_RANK: Record<PluginSource['trust'], number> = {
+// Exported for the drift guard beside it (trust-rank-parity.test.ts): this table and the registry's
+// own TRUST_RANK must order the tiers identically, or the store and the source picker would disagree
+// about which list wins the same plugin.
+export const SOURCE_TRUST_RANK: Record<PluginSource['trust'], number> = {
   manufacturer: 3,
   project: 2,
   community: 1,
   any: 0,
   unknown: -1,
+  // Below unsigned: a signature that did not match is worse evidence than no signature at all, so when
+  // two sources offer the same plugin the one whose signature failed never wins the pick.
+  failed: -2,
 }
 
 export function allowsChannel(ceiling: ReleaseChannel, channel: ReleaseChannel): boolean {

@@ -173,7 +173,8 @@ test('the app accepts what the builder signs, and refuses what it must', { timeo
     assert.equal(await app.fingerprintOfValidSigner(indexBytes, signature, signer.publicKey), publisher.toUpperCase())
   })
 
-  // An index is never refused, it loses its badge: the store still loads at trust tier 'unknown'.
+  // An index is never refused, it loses its badge: the store still loads, at tier 'unknown' when nobody
+  // signed it and at tier 'failed' when a signature was served and did not check out.
   await rail.test('an altered index, a foreign key, and a missing signature all leave the index unproven', async () => {
     const publisher = await core.signingKeyFingerprint(signer.privateKey)
     const indexBytes = servedIndexBytes(publisher)
@@ -181,7 +182,7 @@ test('the app accepts what the builder signs, and refuses what it must', { timeo
     const altered = Buffer.concat([indexBytes, Buffer.from(' ')])
     assert.equal(await app.fingerprintOfValidSigner(altered, signature, signer.publicKey), null)
     assert.equal(await app.fingerprintOfValidSigner(indexBytes, signature, impostor.publicKey), null)
-    assert.equal(await app.verifyIndexSignature(indexBytes.toString('utf8'), null), null)
+    assert.deepEqual(await app.verifyIndexSignature(indexBytes.toString('utf8'), null), { proof: 'unsigned' })
   })
 })
 

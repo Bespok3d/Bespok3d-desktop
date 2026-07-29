@@ -31,7 +31,7 @@ function requestedUrls(fetched: ReturnType<typeof vi.fn>): string[] {
 }
 
 beforeEach(() => {
-  mocks.verifyIndexSignature.mockResolvedValue(null)
+  mocks.verifyIndexSignature.mockResolvedValue({ proof: 'unsigned' })
   mocks.getFile.mockResolvedValue({ content: FIXTURE_BYTES, sha: 'fixture-sha' })
 })
 

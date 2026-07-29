@@ -33,8 +33,8 @@ export interface PluginVarsStore {
 
 // The renderer's one owner of the scoped plugin-vars store: boot migration (v1 flat map to v2
 // scoped), dual-write persistence on every change (the legacy key mirrors the global slice so a
-// downgraded build keeps working), and the one-shot remap of a printer's entries onto its
-// daemon-held UUID when a managed ping first reports it.
+// downgraded build keeps working), and the v2-to-v3 carry-over of a printer's entries off the
+// daemon-held UUID an older build filed them under and onto the app's own record id.
 export function usePluginVars(printers: Printer[]): PluginVarsStore {
   const [scopedVars, setScopedVars] = useState<ScopedPluginVars>(() => runVarsMigrations(browserVarsStorage))
   function persistOnChange() {
@@ -42,8 +42,9 @@ export function usePluginVars(printers: Printer[]): PluginVarsStore {
   }
   useEffect(persistOnChange, [scopedVars])
   // remapPrinterScope returns its input reference when nothing moves, so this converges (React
-  // bails out on an identical state reference) instead of looping on every printers ping.
-  function remapLearnedUuids() {
+  // bails out on an identical state reference) instead of looping on every printers ping. A printer
+  // whose UUID is not known yet has no UUID-keyed entries to carry over.
+  function rebaseUuidScopesOntoRecordIds() {
     setScopedVars((current) =>
       printers.reduce(
         (vars, printer) => (printer.printerUuid ? remapPrinterScope(vars, printer.id, printer.printerUuid) : vars),
@@ -51,7 +52,7 @@ export function usePluginVars(printers: Printer[]): PluginVarsStore {
       ),
     )
   }
-  useEffect(remapLearnedUuids, [printers])
+  useEffect(rebaseUuidScopesOntoRecordIds, [printers])
 
   return {
     viewFor: (printerKey) => printerVarsView(scopedVars, printerKey),

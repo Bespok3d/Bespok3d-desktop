@@ -26,6 +26,15 @@ describe('buildSources', () => {
     expect(rows[0]).toMatchObject({ status: 'ok', enabled: true, pluginCount: 3, error: null })
   })
 
+  // The pane row is the one place an owner looks when a source seems wrong, so it must show what the
+  // resolver concluded and not what the source was configured as. A source configured as the project
+  // whose signature did not check out loaded fine (status stays ok) and reads 'failed' as its tier.
+  it('shows the resolved tier on the row, not the configured one', () => {
+    const resolved: RegistrySummary = { ...summary(url, 3), trust: 'failed' }
+    const rows = buildSources([configured(url)], catalogResult([resolved]), new Set())
+    expect(rows[0]).toMatchObject({ status: 'ok', trust: 'failed' })
+  })
+
   it('marks an enabled source that failed to fetch as failed with the drop detail', () => {
     const rows = buildSources([configured(url)], catalogResult([], [`fetch failed: ${url} (HTTP 404)`]), new Set())
     expect(rows[0].status).toBe('failed')

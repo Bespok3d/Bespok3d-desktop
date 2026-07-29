@@ -4,10 +4,13 @@
 // one cohesive module, data/collections.ts; CatalogPayload below carries the wire entries.
 import type { CollectionEntry } from './collections'
 import type { PluginConfigField, IndexConfigField } from './plugin-config'
+import type { RegistryTrust } from '../../../main/registry/model'
 
-// 'unknown' is what a 'manufacturer' entry renders as when its signature does not check out
-// (NO-DOWNGRADE: mirrors RegistryTrust in main/registry/model.ts).
-export type TrustTier = 'any' | 'community' | 'project' | 'manufacturer' | 'unknown'
+// The renderer's name for the trust a SOURCE was granted. It is an alias, not a copy: the list of
+// tiers is declared once, where the registry decides them (main/registry/model.ts), so a tier added
+// there cannot go missing here. The renderer receives the tier as a plain string over IPC, which is
+// exactly why nothing would fail on a divergence if the two lists were written out twice.
+export type TrustTier = RegistryTrust
 export type ReleaseChannel = 'lts' | 'stable' | 'rc' | 'testing' | 'experiment'
 
 // The printer identity, its connection-ladder reading, and the enrollment log live in one cohesive

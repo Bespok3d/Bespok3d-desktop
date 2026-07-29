@@ -66,20 +66,21 @@ describe('verifyIndexSignature', () => {
     expect(pinned.getFingerprint().toUpperCase()).toBe(PINNED_FINGERPRINT)
   })
 
-  it('returns null for a sound signature issued by a key that is not the pinned one', async () => {
+  it('reports failed for a sound signature issued by a key that is not the pinned one', async () => {
     const served = servedBytes(FIXTURE_INDEX)
     const signer = await signWithThrowawayKey(served)
-    expect(await verifyIndexSignature(served, signer.armoredSignature)).toBeNull()
+    expect(await verifyIndexSignature(served, signer.armoredSignature)).toEqual({ proof: 'failed' })
   })
 
-  // NO-DOWNGRADE: an unsigned list is not an error, it is an absent proof. The caller renders null as
-  // trust tier 'unknown' and the list still loads, so a signing mistake costs a badge, not the store.
-  it('returns null when no signature was served', async () => {
-    expect(await verifyIndexSignature(servedBytes(FIXTURE_INDEX), null)).toBeNull()
+  // A list nobody signed and a list whose signature did not match are two different situations and
+  // must not collapse into one value: the first is a publisher who never signed, the second is the one
+  // an owner should look into. NO-DOWNGRADE holds for both, neither is an error, and the list loads.
+  it('reports unsigned when no signature was served, which is not the same as failed', async () => {
+    expect(await verifyIndexSignature(servedBytes(FIXTURE_INDEX), null)).toEqual({ proof: 'unsigned' })
   })
 
-  it('returns null for a malformed signature rather than throwing', async () => {
+  it('reports failed for a malformed signature rather than throwing', async () => {
     const malformed = '-----BEGIN PGP SIGNATURE-----\n\nnot actually a signature\n-----END PGP SIGNATURE-----\n'
-    expect(await verifyIndexSignature(servedBytes(FIXTURE_INDEX), malformed)).toBeNull()
+    expect(await verifyIndexSignature(servedBytes(FIXTURE_INDEX), malformed)).toEqual({ proof: 'failed' })
   })
 })

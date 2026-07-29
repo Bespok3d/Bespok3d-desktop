@@ -112,7 +112,6 @@ const SETTINGS_DEFAULT = {
   pgpEnabled: false, clientId: 'test-client', workbenchLayout: 'A' as const,
   appUpdateFrequency: 'launch' as const, appUpdateAutoDownload: false, appUpdateInstallOnQuit: false,
   primaryReleaseChannel: 'stable' as const, disabledChannels: [] as ReleaseChannel[],
-  verifySignatures: false,
 }
 
 function mockSettings(override: Partial<B3d['settings']> = {}): B3d['settings'] {

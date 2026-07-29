@@ -17,9 +17,6 @@ export type ReleaseChannel = 'lts' | 'stable' | 'rc' | 'testing' | 'experiment'
 
 export interface AppSettings {
   pgpEnabled: boolean
-  // Show the signature-derived trust badge (tier 'unknown' on a failed/missing check) in the
-  // Repositories pane. Display only, never gates trust-tier computation itself.
-  verifySignatures: boolean
   clientId: string
   // electron-updater source; unset = in-app auto-update disabled (the default until the app repo
   // exists). Set to enable updates from that repo's releases via the keychain GitHub token. (The
@@ -58,7 +55,6 @@ export interface AppSettings {
 
 const DEFAULTS: AppSettings = {
   pgpEnabled: false,
-  verifySignatures: false,
   clientId: '',
   appUpdateFrequency: 'daily',
   appUpdateAutoDownload: false,

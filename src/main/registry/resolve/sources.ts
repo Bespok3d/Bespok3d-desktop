@@ -48,7 +48,10 @@ function sourceRow(source: ConfiguredSource, result: CatalogResult, disabled: Se
     return { ...source, enabled: false, status: 'disabled', pluginCount: 0, error: null, reason: null }
   }
   const summary = result.registries.find((entry) => normalizeRegistryUrl(entry.url) === normalizeRegistryUrl(source.url))
-  if (summary) return { ...source, enabled: true, status: 'ok', pluginCount: summary.pluginCount, error: null, reason: null }
+  // The row wears the tier the resolver DERIVED, not the one the source was configured with: a source
+  // configured as the project whose signature did not check out reads 'failed' on the row an owner goes
+  // to when something looks wrong, instead of still calling itself the project.
+  if (summary) return { ...source, trust: summary.trust, enabled: true, status: 'ok', pluginCount: summary.pluginCount, error: null, reason: null }
 
   return failedRow(source, result)
 }

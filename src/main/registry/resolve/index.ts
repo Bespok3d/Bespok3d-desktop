@@ -17,6 +17,7 @@ import type {
   RegistrySummary,
   RegistryTrust,
   ResolveLimits,
+  SignatureCheck,
   SourceFailure,
   SourceFailureReason,
 } from '../model'
@@ -42,13 +43,16 @@ function classifyFetchError(error: Error): SourceFailureReason {
 
 // A tier is what a curator CLAIMS a source is, and a claim is worth the signature behind it: without
 // one, anybody who can serve those bytes can call themselves the project. So a curated tier survives
-// only when a signature over the served bytes checked out, and otherwise reads 'unknown'. The list
-// still loads either way (NO-DOWNGRADE): an unproved source costs a badge, never an install. Trust
-// 'any' claims no curation to prove, so it passes through unchanged; that is the user's own
-// sideloaded files, which nobody ever vouched for and which the badge already says so about.
-function derivedTrust(ref: RegistryRef, signedBy: string | null): RegistryTrust {
+// only when a signature over the served bytes checked out. A source nobody signed reads 'unknown'; a
+// source whose signature did NOT check out reads 'failed', because those are different situations and
+// only the second one is worth an owner's attention. The list still loads either way (NO-DOWNGRADE):
+// an unproved source costs a badge, never an install. Trust 'any' claims no curation to prove, so it
+// passes through unchanged; that is the user's own sideloaded files, which nobody ever vouched for and
+// which the badge already says so about.
+function derivedTrust(ref: RegistryRef, signature: SignatureCheck): RegistryTrust {
   if (ref.trust === 'any') return 'any'
-  if (signedBy === null) return 'unknown'
+  if (signature.proof === 'failed') return 'failed'
+  if (signature.proof === 'unsigned') return 'unknown'
 
   return ref.trust
 }
@@ -59,17 +63,19 @@ function derivedTrust(ref: RegistryRef, signedBy: string | null): RegistryTrust 
 function toMerged(entry: IndexEntry, registry: FetchedRegistry): MergedEntry {
   return {
     ...entry,
-    trust: derivedTrust(registry.ref, registry.signedBy),
-    signer: provedSigner(registry.signedBy),
+    trust: derivedTrust(registry.ref, registry.signature),
+    signer: provedSigner(registry.signature),
     registry_url: registry.ref.url,
   }
 }
 
+// The Repositories pane shows the DERIVED tier, not the declared one, so a source whose signature did
+// not check out says so on the row an owner goes to when something looks wrong.
 function toSummary(registry: FetchedRegistry): RegistrySummary {
   return {
     url: registry.ref.url,
     name: registry.index.name,
-    trust: registry.ref.trust,
+    trust: derivedTrust(registry.ref, registry.signature),
     pluginCount: registry.index.plugins.length,
     enabled: true,
     locked: registry.ref.locked,

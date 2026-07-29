@@ -4,10 +4,22 @@
 // index is a list-of-lists graph of these types; the resolver walks it, merge.ts combines the entries,
 // sources.ts derives the Repositories-pane rows, and index.ts does the IO. Declared once here.
 
-// 'unknown' is never declared by a curator - it is what any curated tier derives to when no signature
-// proved who served the list (NO-DOWNGRADE: the list still loads, only the badge changes). 'any' is
-// the exception, because it claims no curation for a signature to stand behind.
-export type RegistryTrust = 'any' | 'community' | 'project' | 'manufacturer' | 'unknown'
+// 'unknown' and 'failed' are never declared by a curator - they are what any curated tier derives to
+// when nothing proved who served the list (NO-DOWNGRADE: the list still loads, only the badge
+// changes). They are two different facts and are kept apart: 'unknown' is a list nobody signed,
+// 'failed' is a list that came WITH a signature which did not check out, which is the one an owner
+// should look at. 'any' is the exception, because it claims no curation for a signature to stand
+// behind.
+export type RegistryTrust = 'any' | 'community' | 'project' | 'manufacturer' | 'unknown' | 'failed'
+
+// What the detached signature beside a served index proved about those exact bytes. 'unsigned' is no
+// signature at all; 'failed' is a signature that was there and did not check out against the pinned
+// key. A caller that only asked for a fingerprint could not tell those two apart, which is why this
+// is a value and not a nullable string. Neither outcome blocks the list from loading.
+export type SignatureCheck =
+  | { proof: 'signed', fingerprint: string }
+  | { proof: 'unsigned' }
+  | { proof: 'failed' }
 
 // What a PACKAGE's own detached manifest signature proves, which is a different claim from the
 // RegistryTrust above and must never be collapsed into it: RegistryTrust vouches for the SOURCE that
@@ -62,10 +74,9 @@ export interface FetchedRegistry {
   ref: RegistryRef
   index: RegistryIndex
   fromCache: boolean
-  // Fingerprint of the key whose detached signature covers the served bytes, null when the list came
-  // with no valid signature. Null is not an error, it is the absence of proof the trust layer renders
-  // as tier 'unknown'.
-  signedBy: string | null
+  // What the signature beside these bytes proved, carried whole rather than flattened to a nullable
+  // fingerprint, so the trust layer can tell an unsigned list from one whose signature failed.
+  signature: SignatureCheck
 }
 
 export interface MergedEntry extends IndexEntry {
