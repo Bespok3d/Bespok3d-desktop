@@ -86,5 +86,16 @@
   "gen.defaults_none_per_printer": "还没有按打印机的字段。当插件将某字段按打印机设置时，或当你在此处或插件的配置选项卡中将某项切换为“此打印机”时，该字段会移到这里。",
   "gen.defaults_hint_locked": "此插件将此字段按打印机设置。",
   "trust.unknown": "未签名",
-  "trust.unknown.full": "签名未验证"
+  "trust.unknown.full": "签名未验证",
+  "about.tagline": "Klipper 打印机的插件管理器。",
+  "about.copyright": "Copyright (C) 2026 unlucio 与 Bespok3d 贡献者",
+  "about.license": "Bespok3d 是遵循 GNU Affero 通用公共许可证第 3 版或任何更新版本的自由软件。您可以按照该许可证的条款重新分发它。",
+  "about.warranty": "在法律允许的范围内，本程序不提供任何担保。",
+  "about.source": "完整的许可证文本和此版本的全部源代码位于下方链接的 GitHub 项目仓库中。每个发布版本都在那里以上方显示的版本号打了标签。",
+  "about.made_with": "由地球 🌍🌏🌎 上的人类和机器用 ♥️ 和 🧠 制作",
+  "about.release_notes": "发行说明",
+  "about.docs": "文档",
+  "about.github": "GitHub",
+  "about.report_issue": "报告问题",
+  "about.buy_coffee": "☕ 请我喝杯咖啡"
 }

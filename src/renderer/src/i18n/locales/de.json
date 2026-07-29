@@ -111,5 +111,16 @@
   "gen.defaults_no_matches": "Keine Felder passen zu deiner Suche.",
   "gen.defaults_none_installed": "Kein installiertes Plugin hat bearbeitbare Einstellungen. Wechsle zu Alle Plugins, um alle Voreinstellungen zu durchsuchen.",
   "gen.defaults_none_per_printer": "Noch keine druckerspezifischen Felder. Ein Feld erscheint hier, wenn sein Plugin es pro Drucker setzt oder wenn du eines hier oder im Konfigurations-Tab des Plugins auf Dieser Drucker umstellst.",
-  "gen.defaults_hint_locked": "Dieses Plugin setzt dieses Feld pro Drucker."
+  "gen.defaults_hint_locked": "Dieses Plugin setzt dieses Feld pro Drucker.",
+  "about.tagline": "Plugin-Verwaltung für Klipper-Drucker.",
+  "about.copyright": "Copyright (C) 2026 unlucio und die Bespok3d-Mitwirkenden",
+  "about.license": "Bespok3d ist freie Software unter der GNU Affero General Public License, Version 3 oder einer späteren Version. Sie dürfen es unter den Bedingungen dieser Lizenz weitergeben.",
+  "about.warranty": "Für dieses Programm besteht keine Garantie, soweit das Gesetz dies zulässt.",
+  "about.source": "Der vollständige Lizenztext und der komplette Quellcode dieser Version liegen im Projekt-Repository auf GitHub, unten verlinkt. Jede Veröffentlichung ist dort mit der oben angezeigten Versionsnummer getaggt.",
+  "about.made_with": "Gemacht mit ♥️ und 🧠 von Menschen und Maschinen des Planeten Erde 🌍🌏🌎",
+  "about.release_notes": "Versionshinweise",
+  "about.docs": "Doku",
+  "about.github": "GitHub",
+  "about.report_issue": "Problem melden",
+  "about.buy_coffee": "☕ Spendier mir einen Kaffee"
 }

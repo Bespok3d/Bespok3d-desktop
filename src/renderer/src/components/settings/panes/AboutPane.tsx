@@ -4,14 +4,15 @@ import type { MouseEvent } from 'react'
 import { Group } from '../../common/Group'
 import { useI18n } from '../../../i18n/context'
 import { BrandMark } from '../../../design-system/BrandMark'
+import { ABOUT_LINK_URLS, ABOUT_LINK_ROW_ORDER, type AboutLinkName } from './about-links'
 
 const PLATFORM_LABEL: Record<string, string> = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' }
 
-const SOURCE_REPOSITORY_URL = 'https://github.com/Bespok3d/Bespok3d-desktop'
-
-function openSourceRepository(event: MouseEvent<HTMLAnchorElement>) {
-  event.preventDefault()
-  window.b3d.openUrl(SOURCE_REPOSITORY_URL)
+function openAboutLink(linkName: AboutLinkName) {
+  return function openInTheSystemBrowser(event: MouseEvent<HTMLElement>) {
+    event.preventDefault()
+    window.b3d.openUrl(ABOUT_LINK_URLS[linkName])
+  }
 }
 
 export function AboutPane() {
@@ -36,12 +37,13 @@ export function AboutPane() {
         <p>{t('about.source')}</p>
         <p>{t('about.made_with')}</p>
         <div className="about-links">
-          <a href="#" onClick={(event) => event.preventDefault()}>{t('about.release_notes')}</a>
-          <a href="#" onClick={(event) => event.preventDefault()}>{t('about.docs')}</a>
-          <a href={SOURCE_REPOSITORY_URL} onClick={openSourceRepository}>{t('about.github')}</a>
-          <a href="#" onClick={(event) => event.preventDefault()}>{t('about.report_issue')}</a>
+          {ABOUT_LINK_ROW_ORDER.map((linkName) => (
+            <a key={linkName} href={ABOUT_LINK_URLS[linkName]} onClick={openAboutLink(linkName)}>
+              {t(`about.${linkName}`)}
+            </a>
+          ))}
         </div>
-        <button className="about-coffee" onClick={() => window.b3d.openUrl('https://buymeacoffee.com/unlucio')}>
+        <button className="about-coffee" onClick={openAboutLink('buy_coffee')}>
           {t('about.buy_coffee')}
         </button>
       </div>

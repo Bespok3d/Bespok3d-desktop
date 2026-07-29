@@ -86,5 +86,16 @@
   "gen.defaults_none_per_printer": "Henüz yazıcıya özel alan yok. Bir alan, eklentisi onu yazıcı başına ayarladığında ya da burada veya eklentinin Yapılandırma sekmesinde birini Bu yazıcı olarak değiştirdiğinizde buraya taşınır.",
   "gen.defaults_hint_locked": "Bu eklenti bu alanı yazıcı başına ayarlar.",
   "trust.unknown": "İmzasız",
-  "trust.unknown.full": "İmza doğrulanmadı"
+  "trust.unknown.full": "İmza doğrulanmadı",
+  "about.tagline": "Klipper yazıcıları için eklenti yöneticisi.",
+  "about.copyright": "Copyright (C) 2026 unlucio ve Bespok3d katkıda bulunanları",
+  "about.license": "Bespok3d, GNU Affero Genel Kamu Lisansı sürüm 3 veya sonraki bir sürüm altında özgür yazılımdır. Bu lisansın koşulları altında yeniden dağıtabilirsiniz.",
+  "about.warranty": "Yasaların izin verdiği ölçüde bu program için hiçbir garanti verilmez.",
+  "about.source": "Lisansın tam metni ve bu sürümün eksiksiz kaynak kodu, aşağıda bağlantısı verilen GitHub üzerindeki proje deposundadır. Her sürüm orada yukarıda görünen sürüm numarasıyla etiketlenir.",
+  "about.made_with": "Dünya gezegeninin 🌍🌏🌎 insanları ve makineleri tarafından ♥️ ve 🧠 ile yapıldı",
+  "about.release_notes": "Sürüm notları",
+  "about.docs": "Belgeler",
+  "about.github": "GitHub",
+  "about.report_issue": "Sorun bildir",
+  "about.buy_coffee": "☕ Bana bir kahve ısmarla"
 }

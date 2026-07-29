@@ -143,5 +143,16 @@
   "gen.defaults_no_matches": "Aucun champ ne correspond à votre recherche.",
   "gen.defaults_none_installed": "Aucun plugin installé n'a de réglages modifiables. Passez à Tous les plugins pour parcourir toutes les valeurs par défaut.",
   "gen.defaults_none_per_printer": "Aucun champ par imprimante pour l'instant. Un champ apparaît ici lorsque son plugin le définit par imprimante, ou lorsque vous en basculez un sur Cette imprimante ici ou dans l'onglet Configuration du plugin.",
-  "gen.defaults_hint_locked": "Ce plugin définit ce champ par imprimante."
+  "gen.defaults_hint_locked": "Ce plugin définit ce champ par imprimante.",
+  "about.tagline": "Gestionnaire de plugins pour imprimantes Klipper.",
+  "about.copyright": "Copyright (C) 2026 unlucio et les contributeurs de Bespok3d",
+  "about.license": "Bespok3d est un logiciel libre sous licence GNU Affero General Public License, version 3 ou toute version ultérieure. Vous pouvez le redistribuer selon les termes de cette licence.",
+  "about.warranty": "Ce programme est fourni sans aucune garantie, dans les limites permises par la loi.",
+  "about.source": "Le texte complet de la licence et l'intégralité du code source de cette version se trouvent dans le dépôt du projet sur GitHub, en lien ci-dessous. Chaque version y est étiquetée avec le numéro affiché ci-dessus.",
+  "about.made_with": "Fait avec ♥️ et 🧠 par des humains et des machines de la planète Terre 🌍🌏🌎",
+  "about.release_notes": "Notes de version",
+  "about.docs": "Documentation",
+  "about.github": "GitHub",
+  "about.report_issue": "Signaler un problème",
+  "about.buy_coffee": "☕ Offrez-moi un café"
 }

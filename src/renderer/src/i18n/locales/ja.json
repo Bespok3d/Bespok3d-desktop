@@ -103,5 +103,16 @@
   "gen.defaults_no_matches": "検索に一致する項目がありません。",
   "gen.defaults_none_installed": "インストール済みのプラグインに編集可能な設定はありません。すべての既定値を見るには「すべてのプラグイン」に切り替えてください。",
   "gen.defaults_none_per_printer": "まだプリンターごとの項目はありません。プラグインが項目をプリンターごとに設定したとき、またはここやプラグインの設定タブで項目を「このプリンター」に切り替えたときに、ここへ移動します。",
-  "gen.defaults_hint_locked": "このプラグインはこの項目をプリンターごとに設定します。"
+  "gen.defaults_hint_locked": "このプラグインはこの項目をプリンターごとに設定します。",
+  "about.tagline": "Klipper プリンター用のプラグインマネージャー。",
+  "about.copyright": "Copyright (C) 2026 unlucio および Bespok3d のコントリビューター",
+  "about.license": "Bespok3d は GNU Affero General Public License バージョン 3 またはそれ以降のバージョンのもとで公開されている自由ソフトウェアです。そのライセンスの条件に従って再配布できます。",
+  "about.warranty": "法律が認める範囲において、このプログラムに保証はありません。",
+  "about.source": "ライセンスの全文とこのバージョンの完全なソースコードは、下にリンクされた GitHub のプロジェクトリポジトリにあります。各リリースには、上に表示されているバージョン番号のタグが付いています。",
+  "about.made_with": "地球 🌍🌏🌎 の人間と機械が ♥️ と 🧠 で作りました",
+  "about.release_notes": "リリースノート",
+  "about.docs": "ドキュメント",
+  "about.github": "GitHub",
+  "about.report_issue": "問題を報告",
+  "about.buy_coffee": "☕ コーヒーをおごる"
 }
