@@ -1,7 +1,7 @@
 # User stories
 
-Every user story Bespok3d has, in one place. This is the only copy: a story lives here
-even when the work it asks for happens in the daemon or in an adapter.
+Every user story Bespok3d has, in one place. This is the copy that gets edited: a story
+lives here even when the work it asks for happens in the daemon or in an adapter.
 
 Each story follows the same shape:
 
