@@ -4,35 +4,18 @@ import { describe, it, expect } from 'vitest'
 import { resolveMissingDeps, installedDependents, installedConflicts, cascadeDependents } from './index'
 import { indexToPlugins } from '../catalog/shape'
 import type { IndexEntry } from '../types'
+import { PLUGIN_MANIFESTS, NO_PLUGIN_SOURCES } from '../../test/plugin-sources'
 // @ts-expect-error - build-time generator, plain JS with no type declarations
 import { buildIndex } from '../../../../../scripts/app-bundle.mjs'
 
-// Mirror app-bundle.mjs discovery: plugins live in the sibling
-// plugins/ tree (the repo split), excluding any payload manifest under files/ (e.g. remote-screen's
-// PWA manifest) so cross-repo service deps (webcam-builtin -> camera-hw-accel) resolve as in the
-// real build.
-const RAW_MANIFESTS = import.meta.glob(
-  [
-    '../../../../../../plugins/**/manifest.json',
-    '!**/files/**',
-    '!**/doc/**',
-    '!**/dist/**',
-    '!**/node_modules/**',
-    '!**/*-bleeding-edge/**',
-  ],
-  { eager: true, import: 'default' },
-) as Record<string, Record<string, unknown>>
-
-const ALL_MANIFESTS = Object.values(RAW_MANIFESTS)
-
-const ENTRIES = (buildIndex(ALL_MANIFESTS).plugins as IndexEntry[]).map((entry) => ({
+const ENTRIES = (buildIndex(PLUGIN_MANIFESTS).plugins as IndexEntry[]).map((entry) => ({
   ...entry,
   trust: 'project' as const,
   registry_url: 'bundled',
 }))
 const PLUGINS = indexToPlugins(ENTRIES, [])
 
-describe('resolveMissingDeps', () => {
+describe.skipIf(NO_PLUGIN_SOURCES)('resolveMissingDeps', () => {
   it('returns the core dependency when a force plugin needs it and it is absent', () => {
     expect(resolveMissingDeps(PLUGINS, 'force-bed-mesh', [])).toEqual(['print-prefs-core'])
   })
@@ -54,7 +37,7 @@ describe('resolveMissingDeps', () => {
   })
 })
 
-describe('installedConflicts', () => {
+describe.skipIf(NO_PLUGIN_SOURCES)('installedConflicts', () => {
   it('reports a mutually-exclusive plugin that is already installed', () => {
     expect(installedConflicts(PLUGINS, 'force-bed-mesh', ['force-bed-mesh-adaptive']))
       .toEqual(['force-bed-mesh-adaptive'])
@@ -70,7 +53,7 @@ describe('installedConflicts', () => {
   })
 })
 
-describe('installedDependents', () => {
+describe.skipIf(NO_PLUGIN_SOURCES)('installedDependents', () => {
   it('lists installed plugins that depend on the given plugin', () => {
     expect(installedDependents(PLUGINS, 'print-prefs-core', ['force-bed-mesh', 'force-timelapse', 'cpu-temp']))
       .toEqual(['force-bed-mesh', 'force-timelapse'])
@@ -81,7 +64,7 @@ describe('installedDependents', () => {
   })
 })
 
-describe('cascadeDependents', () => {
+describe.skipIf(NO_PLUGIN_SOURCES)('cascadeDependents', () => {
   it('lists installed dependents of the selection that are not themselves selected', () => {
     expect(cascadeDependents(PLUGINS, ['print-prefs-core'], ['print-prefs-core', 'force-bed-mesh', 'force-timelapse', 'cpu-temp']))
       .toEqual(['force-bed-mesh', 'force-timelapse'])

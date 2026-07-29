@@ -32,7 +32,8 @@
     "knip": "knip --include files,exports,types",
     "catalog": "ladle serve",
     "catalog:build": "ladle build",
-    "inventory": "node ./scripts/component-inventory.mjs"
+    "inventory": "node ./scripts/component-inventory.mjs",
+    "golden:refresh": "node ./scripts/refresh-monorepo-golden.mjs"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",

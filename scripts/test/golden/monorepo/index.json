@@ -2,12 +2,12 @@
   "schema_version": 1,
   "name": "Bespok3d Official",
   "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
-  "updated": "2026-07-27",
+  "updated": "2026-07-28",
   "plugins": [
     {
       "name": "afc-lite",
       "title": "AFC Lite (Automated Filament Changer)",
-      "version": "0.1.7+dev.36698088",
+      "version": "0.1.8+dev.36698088",
       "description": "Lightweight Automated Filament Changer support for the Snapmaker U1's four toolheads. Ships the AFC, AFC_unit and AFC_lane Klipper extras plus an afc.cfg that maps the four lanes (E0-E3) to the U1 extruders and filament motion sensors, and adds gcode macros for color, material, vendor, map, spool id, weight, tool change and lane/tool unload. Per-lane state feeds the U1's SET_PRINT_FILAMENT_CONFIG so the slicer and screen track what is loaded.",
       "tagline": "Four-lane filament tracking and tool-change macros for the U1.",
       "category": "filament",
@@ -15,7 +15,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-06-08",
-      "updated_at": "2026-07-03",
+      "updated_at": "2026-07-28",
       "requires": {
         "capabilities": [
           "klipper-generic"
@@ -27,14 +27,14 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "afc-lite/doc/README.md",
-      "download_url": "afc-lite-0.1.7.b3",
+      "download_url": "afc-lite-0.1.8.b3",
       "author": "bespoked",
       "changelog_url": "afc-lite/doc/CHANGELOG.md"
     },
     {
       "name": "camera-hw-accel",
       "title": "Camera HW Accel",
-      "version": "0.1.8+dev.dcd5eadd",
+      "version": "0.1.9+dev.dcd5eadd",
       "description": "Tap into the SoC's video pipeline instead of CPU-encoding every frame. MJPEG over HTTP at /webcam, WebRTC at /webrtc; works on any browser, smooth 30fps even with two cameras attached.\n\nTo have these auto-registered as cameras in Fluidd and Mainsail (so you don't have to add them by hand under Settings → Cameras), also install b3d://bespok3d-org/webcam-builtin for the built-in MIPI camera and b3d://bespok3d-org/webcam-usb for the external USB camera.",
       "tagline": "HW-accelerated MJPEG and WebRTC streaming for MIPI & USB cameras.",
       "category": "camera",
@@ -42,7 +42,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2025-08-14",
-      "updated_at": "2026-07-17",
+      "updated_at": "2026-07-28",
       "requires": {
         "capabilities": [
           "rockchip-mpp"
@@ -54,7 +54,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "camera-hw-accel/doc/README.md",
-      "download_url": "camera-hw-accel-0.1.8.b3",
+      "download_url": "camera-hw-accel-0.1.9.b3",
       "config": [
         {
           "key": "WEBRTC_ENABLED",
@@ -379,7 +379,7 @@
     {
       "name": "remote-screen",
       "title": "Remote Screen",
-      "version": "0.1.21+dev.e56d2bbd",
+      "version": "0.1.22+dev.e56d2bbd",
       "description": "Mirror the printer's on-device touchscreen to a browser. Low-overhead framebuffer capture, no UI changes on the device side.\n\nThe screen also appears as a tile inside Fluidd and Mainsail, alongside your cameras, with no manual setup: the plugin registers the mirror as a Moonraker [webcam] iframe entry sized for the U1's 480:320 display. You pick the name it shows under when you install it.",
       "tagline": "Stream your printer's framebuffer as MJPEG.",
       "category": "screen",
@@ -387,7 +387,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2025-07-30",
-      "updated_at": "2026-07-27",
+      "updated_at": "2026-07-28",
       "requires": {
         "capabilities": [
           "klipper-generic"
@@ -401,7 +401,7 @@
         "webcam-screen"
       ],
       "doc_url": "remote-screen/doc/README.md",
-      "download_url": "remote-screen-0.1.21.b3",
+      "download_url": "remote-screen-0.1.22.b3",
       "min_daemon_version": "0.10.1-dev",
       "config": [
         {
@@ -599,7 +599,7 @@
     {
       "name": "rfid-ntag",
       "title": "RFID Spool Reader",
-      "version": "0.1.7+dev.e46e1f9f",
+      "version": "0.1.8+dev.e46e1f9f",
       "description": "USB RFID reader picks up OpenSpool-encoded NTAG215 cards. Writes the current spool's metadata to rfid_data.json on every card event so the rest of the stack just knows.",
       "tagline": "NTAG215/OpenSpool RFID: your filament knows what it is.",
       "category": "filament",
@@ -607,7 +607,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2025-09-02",
-      "updated_at": "2026-07-01",
+      "updated_at": "2026-07-28",
       "requires": {
         "capabilities": [
           "rfid-spi"
@@ -619,7 +619,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "rfid-ntag/doc/README.md",
-      "download_url": "rfid-ntag-0.1.7.b3",
+      "download_url": "rfid-ntag-0.1.8.b3",
       "homepage": "https://github.com/bespok3d-org/plugin-rfid-ntag",
       "author": "bespoked",
       "changelog_url": "rfid-ntag/doc/CHANGELOG.md"

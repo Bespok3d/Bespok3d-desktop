@@ -26,7 +26,13 @@ import assert from 'node:assert/strict'
 
 import { buildBundle } from '../app-bundle.mjs'
 import { SIGNING_KEY_VAR } from '../bundle-signing.mjs'
+import { PLUGIN_SOURCES_DIR, hasPluginSources } from '../monorepo-golden.mjs'
 import { APP_REPO_DIR, builderCore, builderDependency, ensureBuilderBuilt, makeScratchOutputDir } from './builder-checkout.mjs'
+
+// A checkout of this repo alone has no plugin repos beside it to build a bundle from, so these rails
+// say so and stand down rather than failing that contributor's first gate run. Inside the workspace the
+// tree is there and they run.
+const NEEDS_PLUGIN_SOURCES = hasPluginSources() ? {} : { skip: `no plugin repos at ${PLUGIN_SOURCES_DIR}` }
 
 // One build serves every assertion below: a bundled build packs two dozen plugins and takes seconds,
 // and every claim here is about the same set of artifacts.
@@ -48,7 +54,7 @@ async function buildSignedBundle(openpgp, reusedOutputDir = null) {
   }
 }
 
-test('a signed bundled build produces packages and an index that verify', { timeout: 300_000 }, async (rail) => {
+test('a signed bundled build produces packages and an index that verify', { timeout: 300_000, ...NEEDS_PLUGIN_SOURCES }, async (rail) => {
   ensureBuilderBuilt()
   const openpgp = builderDependency('openpgp')
   const AdmZip = builderDependency('adm-zip')
@@ -129,7 +135,7 @@ test('a signed bundled build produces packages and an index that verify', { time
 // tampering, which is a hard refusal rather than a missing badge. The same holds one level down: a .b3
 // the rebuild did not repack still carries the previous run's manifest signature, and that signature has
 // to be peeled rather than served.
-test('an unsigned build removes the stale signatures instead of leaving them', { timeout: 300_000 }, async () => {
+test('an unsigned build removes the stale signatures instead of leaving them', { timeout: 300_000, ...NEEDS_PLUGIN_SOURCES }, async () => {
   ensureBuilderBuilt()
   const AdmZip = builderDependency('adm-zip')
   const signed = await buildSignedBundle(builderDependency('openpgp'))

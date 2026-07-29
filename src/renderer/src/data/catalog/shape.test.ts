@@ -3,12 +3,13 @@
 import { describe, it, expect } from 'vitest'
 import { isLocalRegistry, docFor, indexToPlugins, indexToCollections } from './shape'
 import { makeIndexEntry, makeCollectionEntry } from '../../test/fixtures'
+import { NO_PLUGIN_SOURCES } from '../../test/plugin-sources'
 
 describe('docFor', () => {
   // camera-hw-accel lives in plugins/u1-hw-camera/plugin/, so its directory name ("plugin") differs
   // from its manifest .name. Docs must key by manifest .name (the plugin identity), or its Doc tab
   // never appears. This guards that the dir-name-vs-manifest-name mismatch resolves correctly.
-  it('resolves a doc by manifest name even when the plugin directory is named differently', () => {
+  it.skipIf(NO_PLUGIN_SOURCES)('resolves a doc by manifest name even when the plugin directory is named differently', () => {
     const doc = docFor('camera-hw-accel')
     expect(doc).toBeTruthy()
     expect(doc).toContain('Camera HW Accel')

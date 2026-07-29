@@ -107,8 +107,16 @@ function isPluginDir(dir: string): boolean {
   return readManifest(dir).kind !== 'collection'
 }
 
+const PLUGIN_DIRS = pluginDirs(PLUGINS_DIR, 4).filter(isPluginDir)
+
 describe('plugin system-isolation invariant', () => {
-  pluginDirs(PLUGINS_DIR, 4).filter(isPluginDir).forEach(function checkPlugin(dir) {
+  // Someone who cloned only this repo has no sibling plugins/ tree, so there is nothing to hold to
+  // the invariant. Say that out loud: a suite that generates no test at all is a vitest failure.
+  it.runIf(PLUGIN_DIRS.length === 0)('stands down: no sibling plugins/ tree in this checkout', () => {
+    expect(PLUGIN_DIRS).toEqual([])
+  })
+
+  PLUGIN_DIRS.forEach(function checkPlugin(dir) {
     const manifest = readManifest(dir)
     const name = manifest.name
     const commands = [...(manifest.install?.start ?? []), ...(manifest.stop ?? [])]

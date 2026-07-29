@@ -125,6 +125,35 @@ stop-and-ask-the-maintainer event. The app specifics:
   get an open-order z-index in `[100,119]` - do NOT hardcode `z-index`. Header (z 120) stays above.
   Guarded by `design-system/z-order.test.ts` + `overlay/modal-stack.test.ts`.
 
+## The bundled-plugin golden (refresh it, never hand-edit it)
+
+`scripts/test/golden/monorepo/index.json` is a snapshot of the offline bundle built from the manifests
+the **sibling plugin repos** carry. A plugin repo releasing a new version therefore turns this repo's
+`app-bundle relocation rail` red, and the sanctioned answer is one command:
+
+```sh
+npm run golden:refresh     # rebuilds the fixture from the current manifests, prints what changed
+```
+
+Commit the refreshed fixture with (or right after) the manifest change that caused it. Never hand-edit
+it, and never blank the rail to get past it. `scripts/monorepo-golden.mjs` is the single producer: the
+refresh command and the rails both go through it, so the fixture a rail compares against is by
+construction the fixture the command writes.
+
+This is the opposite of b3-builder's own equivalence golden, which is legacy output that can never be
+re-captured. Ours snapshots repos that still exist, so it is regenerated, not frozen.
+
+A checkout with **no sibling `plugins/` tree** (someone who cloned only this repo) has no manifests to
+build from, and the gate still reaches exit 0: everything that needs real plugin data stands down
+instead of failing. Inside the workspace the tree is there and every one of them runs.
+
+Writing a test that asserts on real plugin data? Import `NO_PLUGIN_SOURCES` from
+`src/renderer/src/test/plugin-sources.ts` and hang it off `describe.skipIf` / `it.skipIf`, and take
+your manifests from `PLUGIN_MANIFESTS` in the same file rather than re-declaring the glob. That file
+is the one place the sibling tree is discovered on the renderer side; `scripts/monorepo-golden.mjs`
+is its counterpart for the bundle rails. Standing down is only ever allowed on "the tree is absent" -
+never to get past a test that fails with the tree present.
+
 ## How to work an app change
 
 1. **Understand first** - read the module + `project_app_impl.md`. Don't invent architecture; if intent

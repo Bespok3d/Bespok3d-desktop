@@ -4,25 +4,12 @@ import { describe, it, expect } from 'vitest'
 import { pluginUpdateCount } from './updates'
 import { indexToPlugins } from '../catalog/shape'
 import type { IndexEntry, Printer } from '../types'
+import { PLUGIN_MANIFESTS, NO_PLUGIN_SOURCES } from '../../test/plugin-sources'
 // @ts-expect-error - build-time generator, plain JS with no type declarations
 import { buildIndex } from '../../../../../scripts/app-bundle.mjs'
 
-// Plugins live in the sibling plugins/ tree (the repo split), excluding
-// payload manifests under files/ (e.g. remote-screen's PWA manifest), mirroring app-bundle.mjs.
-const RAW_MANIFESTS = import.meta.glob(
-  [
-    '../../../../../../plugins/**/manifest.json',
-    '!**/files/**',
-    '!**/doc/**',
-    '!**/dist/**',
-    '!**/node_modules/**',
-    '!**/*-bleeding-edge/**',
-  ],
-  { eager: true, import: 'default' },
-) as Record<string, Record<string, unknown>>
-
 const PLUGINS = indexToPlugins(
-  (buildIndex(Object.values(RAW_MANIFESTS)).plugins as IndexEntry[]).map((entry) => ({
+  (buildIndex(PLUGIN_MANIFESTS).plugins as IndexEntry[]).map((entry) => ({
     ...entry,
     trust: 'project' as const,
     registry_url: 'bundled',
@@ -45,7 +32,7 @@ function makePrinter(installedVersions: Record<string, string>): Printer {
   }
 }
 
-describe('pluginUpdateCount', () => {
+describe.skipIf(NO_PLUGIN_SOURCES)('pluginUpdateCount', () => {
   it('counts a plugin whose installed version differs from the catalog', () => {
     expect(pluginUpdateCount(makePrinter({ [known.id]: `old-${known.version}` }), PLUGINS)).toBe(1)
   })

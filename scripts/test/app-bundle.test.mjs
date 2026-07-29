@@ -15,6 +15,12 @@
 // tree rather than a frozen digest map, which is strictly stronger (it proves a faithful copy of what
 // actually ships) and cannot rot.
 //
+// A SECOND rail further down does pin those values, deliberately: a fixture that no longer describes
+// the plugins as they are now is a real defect (the app would advertise versions the store cannot hand
+// out), and it is only reasonable to assert BECAUSE `npm run golden:refresh` now clears it in one
+// command. Keep the two apart: this rail is about buildBundle's orchestration and must stay quiet on a
+// plugin release; that one is about the fixture being current.
+//
 // This does not re-verify .b3 archive content byte-for-byte: that invariant is b3-builder's own
 // equivalence rail's job (it exercises packIfChanged/packPlugin directly against real plugin dirs).
 // This rail's job is the app-side orchestration: did buildBundle() discover the right plugins, produce
@@ -24,31 +30,45 @@
 
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { dirname, join, relative } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join, relative } from 'node:path'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildBundle, buildIndex, firstSourcePerName } from '../app-bundle.mjs'
-import { SIGNING_KEY_VAR } from '../bundle-signing.mjs'
+import { buildIndex, firstSourcePerName } from '../app-bundle.mjs'
+import {
+  GOLDEN_DIR,
+  PLUGIN_SOURCES_DIR,
+  REFRESH_COMMAND,
+  buildGoldenBundle,
+  goldenIndexText,
+  hasPluginSources,
+  readGoldenIndexText,
+} from '../monorepo-golden.mjs'
 import { APP_REPO_DIR, WORKSPACE_DIR, builderCore, ensureBuilderBuilt, makeScratchOutputDir } from './builder-checkout.mjs'
 
-// The golden pins an UNSIGNED build, so the signing key is cleared for the duration of it: a signed
-// build derives its publisher from that key instead of the org's published list key, and pack-plugins.sh
-// documents exporting REGISTRY_SIGNING_KEY to produce one. Without this, running the gate from a shell
-// that carries the key fails this rail for the environment rather than for the code.
-async function buildUnsignedBundle(outputDir) {
-  const previousKey = process.env[SIGNING_KEY_VAR]
-  delete process.env[SIGNING_KEY_VAR]
-  try {
-    return await buildBundle({ sourceRoot: APP_REPO_DIR, outputDir, channel: 'dev' })
-  } finally {
-    if (previousKey !== undefined) process.env[SIGNING_KEY_VAR] = previousKey
-  }
+// A checkout of this repo ALONE has no plugin repos beside it, so the rails that build a real bundle
+// have nothing to build one from. That is a supported checkout (the contributor who cloned only the
+// app), not a red gate on their first run: they stand down and say why. Inside the workspace the tree
+// is there and they run, so this can never quietly stand in for the real thing.
+const NEEDS_PLUGIN_SOURCES = hasPluginSources() ? {} : { skip: `no plugin repos at ${PLUGIN_SOURCES_DIR}` }
+
+// One real bundle for the whole file: a run compiles the sibling builder and writes ~60MB of packages,
+// and every rail below asks a different question of the same build.
+const goldenBundleRun = { built: null }
+
+function bundledOnce() {
+  goldenBundleRun.built ??= buildBundleForRails()
+
+  return goldenBundleRun.built
 }
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const GOLDEN_DIR = join(HERE, 'golden', 'monorepo')
+async function buildBundleForRails() {
+  ensureBuilderBuilt()
+  const outputDir = makeScratchOutputDir('app-bundle-')
+  const built = await buildGoldenBundle(outputDir)
+
+  return { ...built, outputDir }
+}
 
 function loadGolden(name) {
   return JSON.parse(readFileSync(join(GOLDEN_DIR, name), 'utf8'))
@@ -149,11 +169,8 @@ function appPinnedPublicKey() {
   return keyBlock[0]
 }
 
-test('buildBundle (dev channel) reproduces the pre-consolidation monorepo golden', { timeout: 120_000 }, async () => {
-  ensureBuilderBuilt()
-  const outputDir = makeScratchOutputDir('app-bundle-')
-
-  const { packages, index, sources } = await buildUnsignedBundle(outputDir)
+test('buildBundle (dev channel) reproduces the pre-consolidation monorepo golden', { timeout: 300_000, ...NEEDS_PLUGIN_SOURCES }, async () => {
+  const { packages, index, sources, outputDir } = await bundledOnce()
 
   assert.deepEqual(withoutVolatileValues(index), withoutVolatileValues(loadGolden('index.json')))
 
@@ -180,6 +197,22 @@ test('buildBundle (dev channel) reproduces the pre-consolidation monorepo golden
   assert.deepEqual(packages.map((packed) => packed.filename).sort(), advertised)
 
   assert.deepEqual(describeStagedDocs(outputDir), describeSourceDocs(sources))
+})
+
+// The rail above blanks the manifest-passthrough values on purpose, so it stays quiet when a plugin
+// ships a release. Something still has to notice that the committed fixture no longer describes the
+// plugins as they are now: an app built against a stale fixture advertises versions the store cannot
+// hand out. This is that check, and it is only sane BECAUSE the refresh command exists: the fix is one
+// command, never a hand-edit of the fixture.
+const STALE_GOLDEN_MESSAGE = `the committed golden no longer matches the plugin manifests. Run \`${REFRESH_COMMAND}\` and commit the result with the manifest change that caused it.`
+
+test('the committed golden is what the refresh command produces', { timeout: 300_000, ...NEEDS_PLUGIN_SOURCES }, async () => {
+  const { index } = await bundledOnce()
+
+  // Content first, so a drift reports as a readable field diff rather than as two walls of JSON, then
+  // the bytes, which also catch a fixture that was re-ordered or re-indented by hand.
+  assert.deepEqual(index, JSON.parse(readGoldenIndexText()), STALE_GOLDEN_MESSAGE)
+  assert.equal(goldenIndexText(index), readGoldenIndexText(), STALE_GOLDEN_MESSAGE)
 })
 
 // The other half of the buy-back, and the drift guard the mirror rule demands: the list public key is
