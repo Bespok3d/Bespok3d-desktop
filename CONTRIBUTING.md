@@ -5,10 +5,21 @@ printer on the network, enrols it, and installs plugins through the on-printer d
 
 ## Before you write code
 
-Read `CLAUDE.md` in this repository. It is the contract for anyone changing this code, human or
-agent, and it carries the renderer patterns, the function and file size limits, and the engineering
-gate's rules. `doc/component-inventory.md` lists every component and hook that already exists. Search
-it before you write a new one; reusing what is there is a rule, not a preference.
+Read [CLAUDE.md](CLAUDE.md) in this repository. It is the contract for anyone changing this code,
+human or agent, and it carries the renderer patterns, the function and file size limits, and the
+engineering gate's rules. [doc/architecture-facts.md](doc/architecture-facts.md) lists the
+constraints the design has already settled and the reason each one exists, so your change does not
+spend its first review round being told it cannot work that way.
+[doc/roadmap.md](doc/roadmap.md) says where the project is heading, so you can tell a change that
+fits that direction from one that fights it. [doc/component-inventory.md](doc/component-inventory.md)
+lists every component and hook that already exists. Search it before you write a new one; reusing
+what is there is a rule, not a preference.
+
+[doc/stories/README.md](doc/stories/README.md) is where the work is. Every story carries acceptance
+criteria and the index counts how many each one has ticked off, so the points still open are what to
+pick from. Read it before you propose something new: the idea you have may already be a story with a
+shape, and finishing an open point helps more than adding another. A ticked criterion is a claim the
+story makes about the code, not a test result, so check the row against the code.
 
 Open an issue describing what you want to change before you start on anything large. A pull request
 that arrives without one may be asking for something the project has already decided against.
