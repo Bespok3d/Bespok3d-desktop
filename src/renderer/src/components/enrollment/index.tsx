@@ -39,7 +39,7 @@ export function isDaemonRestartMode(mode: EnrollMode): boolean {
   return DAEMON_RESTART_MODES.has(mode)
 }
 
-// A daemon update must be a deliberate choice, so update-daemon never auto-starts: it waits for the
+// A daemon update must be the user's own choice, so update-daemon never auto-starts: it waits for the
 // confirm step (which shows the target version) before running. history has nothing to start.
 export function autoStartEligible(mode: EnrollMode, customSshCredentials: boolean): boolean {
   if (mode === 'history' || mode === 'update-daemon') return false

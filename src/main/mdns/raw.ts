@@ -12,7 +12,7 @@ interface MdnsInstance {
   // multicast-dns is untyped; any[] lets our typed callbacks be assigned without contravariance errors
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on: (event: string, cb: (...args: any[]) => void) => MdnsInstance
-  query: (packet: { questions: unknown[] }) => void
+  query: (dnsQuery: { questions: unknown[] }) => void
   destroy: () => void
 }
 

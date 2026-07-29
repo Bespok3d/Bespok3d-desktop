@@ -13,7 +13,7 @@ import { startContainer, stopContainer, waitForSsh, applySkeleton, seedDeviceFil
 // printer is seeded as online), then the app runs the real adapter enroll steps over real SSH and
 // reaches a real MANAGED state, with the real daemon answering over cert-pinned HTTPS. The container's
 // sshd is on host port 22 (Mac Remote Login off) so the enroll gate's TCP probe passes. The daemon port
-// 4269 is deliberately NOT mapped: enroll verifies the daemon over SSH (PID check), and a mapped 4269
+// 4269 is NOT mapped: enroll verifies the daemon over SSH (PID check), and a mapped 4269
 // would make docker-proxy answer the app's pre-enroll TCP probe, falsely flagging a daemon already
 // present and routing to the access-request flow instead of enrollment.
 //

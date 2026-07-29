@@ -8,7 +8,7 @@
 #   ./scripts/pack-plugins.sh rfid-ntag           # build one plugin (compat only, see note below)
 #   ./scripts/pack-plugins.sh camera-hw-accel remote-screen  # build several (compat only)
 #
-# Thin delegator (relay packet 2, re-pointed packet 4, bake gate retired packet 6): this script resolves
+# Thin delegator (relay stage 2, re-pointed stage 4, bake gate retired stage 6): this script resolves
 # the bundle list, prechecks bundled doc-video weight, then hands the actual packing (the .b3 archive +
 # the bundled index) to scripts/app-bundle.mjs, the app's own offline-bundle build glue, which calls the
 # b3-builder core as a library (skip-if-unchanged on) for each plugin dir. The class-aware refuse-to-pack
@@ -52,7 +52,7 @@ discover_plugin_dirs() {
     | while read -r manifest; do dirname "$manifest"; done
 }
 
-# Variant dirs are read regardless of release mode here: a variant's manifest deliberately shares
+# Variant dirs are read regardless of release mode here: a variant's manifest shares
 # its id with the online atom, so its dir must NEVER be discovered as the id's source dir (the
 # name-keyed map would otherwise resolve the id to whichever dir find(1) happened to list first).
 # Variants pack only by explicit path, via pack_variants.
