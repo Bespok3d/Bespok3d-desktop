@@ -666,6 +666,33 @@ textarea {
   font-family: var(--font-mono);
 }
 
+/* Fold arrow beside a shelf title: points down when the shelf is open, right when it is folded away. */
+.section-fold {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition:
+    background var(--dur-1),
+    color var(--dur-1);
+}
+.section-fold:hover {
+  background: var(--bg-sunken);
+  color: var(--ink);
+}
+.section-fold svg {
+  transition: transform var(--dur-1);
+}
+.section-fold.is-collapsed svg {
+  transform: rotate(-90deg);
+}
+
 .plugin-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

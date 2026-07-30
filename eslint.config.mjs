@@ -81,7 +81,7 @@ export default tseslint.config(
       'no-var': 'off',
 
       // no single-character identifiers
-      'id-length': ['error', { min: 2, exceptions: ['_', 't', 'x', 'y'] }],
+      'id-length': ['error', { min: 2, exceptions: ['_', 't', 'x', 'y', 'z'] }],
 
       // allow _-prefixed names to suppress unused-variable warnings (conventional TypeScript)
       '@typescript-eslint/no-unused-vars': ['error', {

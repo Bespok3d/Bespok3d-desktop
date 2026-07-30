@@ -7,7 +7,7 @@
     {
       "name": "afc-lite",
       "title": "AFC Lite (Automated Filament Changer)",
-      "version": "0.1.8+dev.36698088",
+      "version": "0.1.9+dev.36698088",
       "description": "Lightweight Automated Filament Changer support for the Snapmaker U1's four toolheads. Ships the AFC, AFC_unit and AFC_lane Klipper extras plus an afc.cfg that maps the four lanes (E0-E3) to the U1 extruders and filament motion sensors, and adds gcode macros for color, material, vendor, map, spool id, weight, tool change and lane/tool unload. Per-lane state feeds the U1's SET_PRINT_FILAMENT_CONFIG so the slicer and screen track what is loaded.",
       "tagline": "Four-lane filament tracking and tool-change macros for the U1.",
       "category": "filament",
@@ -27,7 +27,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "afc-lite/doc/README.md",
-      "download_url": "afc-lite-0.1.8.b3",
+      "download_url": "afc-lite-0.1.9.b3",
       "author": "bespoked",
       "changelog_url": "afc-lite/doc/CHANGELOG.md"
     },
@@ -599,7 +599,7 @@
     {
       "name": "rfid-ntag",
       "title": "RFID Spool Reader",
-      "version": "0.1.8+dev.e46e1f9f",
+      "version": "0.1.9+dev.e46e1f9f",
       "description": "USB RFID reader picks up OpenSpool-encoded NTAG215 cards. Writes the current spool's metadata to rfid_data.json on every card event so the rest of the stack just knows.",
       "tagline": "NTAG215/OpenSpool RFID: your filament knows what it is.",
       "category": "filament",
@@ -619,7 +619,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "rfid-ntag/doc/README.md",
-      "download_url": "rfid-ntag-0.1.8.b3",
+      "download_url": "rfid-ntag-0.1.9.b3",
       "homepage": "https://github.com/bespok3d-org/plugin-rfid-ntag",
       "author": "bespoked",
       "changelog_url": "rfid-ntag/doc/CHANGELOG.md"
@@ -711,7 +711,7 @@
     {
       "name": "spoolman",
       "title": "Spoolman Bridge",
-      "version": "0.1.29+dev.67cf9e63",
+      "version": "0.1.30+dev.9b8bb127",
       "description": "Spoolman for the U1 multi-tool: the active spool follows the tag the printer reads or the spool you pick, color and material reach the screen and AFC panel, tags are matched by their hardware UID, and you can record which printer each spool is on. Filament length per print is logged automatically.",
       "tagline": "Zero-config Spoolman: active spool always tracked.",
       "category": "filament",
@@ -733,7 +733,7 @@
       ],
       "conflicts": [],
       "doc_url": "spoolman/doc/README.md",
-      "download_url": "spoolman-0.1.29.b3",
+      "download_url": "spoolman-0.1.30.b3",
       "min_daemon_version": "0.10.1-dev",
       "homepage": "https://github.com/bespok3d-org/plugin-spoolman",
       "macros": [
@@ -1069,7 +1069,7 @@
     {
       "name": "all-the-tags",
       "title": "All the Tags",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "description": "Installs the whole RFID filament-tag reading stack in one click: the NFC reader and hub, every shipped tag-standard decoder, and Spoolman tracking, so almost any spool you tap is identified and tracked. Includes the open standards (OpenTag3D, OpenPrintTag, generic NDEF JSON, TigerTag) plus full payload decoders for the proprietary tags (Bambu and Creality, with your own keys pasted into their config; without a key they fall back to UID-only tracking). Anycubic decodes the dispute-free fields today (a tester dump finishes it). The members install together with a single service restart. Experiment channel until the stack is verified end to end on a real printer.",
       "tagline": "Every spool, identified: the whole RFID tag-reading stack in one install.",
       "category": "filament",

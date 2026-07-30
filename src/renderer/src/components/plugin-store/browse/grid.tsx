@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ComponentType, ReactNode } from 'react'
 import { useI18n } from '../../../i18n/context'
-import cx from '../../../utils/cx'
 import { isNewerVersion } from '../../../utils/version'
 import type { Plugin, ReleaseChannel } from '../../../data/types'
 import { effectiveVariant, type CeilingResolver } from '../../../data/channels'
 import { BUNDLED_CATEGORIES } from '../../../data/catalog/bundled'
-import { IconChip } from '../../../design-system/icons'
+import { IconBox, IconChip } from '../../../design-system/icons'
 import type { IconProps } from '../../../design-system/icons'
+import { SectionHead } from './SectionHead'
 import { PluginCard, CAT_ICONS, CAT_CLASS } from './PluginCard'
 import { useGridFlip } from './useGridFlip'
 import { matchesPlugin, sortPlugins } from './filters'
@@ -66,11 +66,17 @@ function cardProps(plugin: Plugin, ctx: StoreCardContext) {
   }
 }
 
-function PluginGrid({ plugins, ctx, layout, showCategory, density, onOpen }: {
-  plugins: Plugin[]; ctx: StoreCardContext
-  layout: 'grid' | 'list'; showCategory: boolean
-  density?: Density; onOpen: (plugin: Plugin) => void
-}) {
+// What any list of plugin cards needs: the plugins, the shared card context, and how they are laid out.
+interface PluginListProps {
+  plugins: Plugin[]
+  ctx: StoreCardContext
+  layout: 'grid' | 'list'
+  showCategory: boolean
+  density?: Density
+  onOpen: (plugin: Plugin) => void
+}
+
+function PluginGrid({ plugins, ctx, layout, showCategory, density, onOpen }: PluginListProps) {
   const gridRef = useGridFlip(plugins.map((plugin) => plugin.id).join(','))
 
   return (
@@ -93,15 +99,21 @@ function CategorySection({ catId, plugins, ctx, layout, density, onOpen }: {
 
   return (
     <section className="category">
-      <div className="category-head">
-        <div className="category-title">
-          <span className={cx('cat-icon', iconClass)}><CatIcon size={16} /></span>
-          {t(`cat.${catId}`)}
-          <span className="cat-count">{plugins.length}</span>
-        </div>
-        <span className="cat-sub">{t(`cat.${catId}.sub`)}</span>
-      </div>
+      <SectionHead icon={<CatIcon size={16} />} iconClass={iconClass} title={t(`cat.${catId}`)} count={plugins.length} sub={t(`cat.${catId}.sub`)} />
       <PluginGrid plugins={plugins} ctx={ctx} layout={layout} showCategory={false} density={density} onOpen={onOpen} />
+    </section>
+  )
+}
+
+// The flat (ungrouped) list of every plugin matching the search and filters. It carries the same head
+// as the collections shelf above it, so the two lists read as peers instead of one running into the other.
+function PluginShelf({ plugins, ctx, layout, showCategory, density, onOpen }: PluginListProps) {
+  const { t } = useI18n()
+
+  return (
+    <section className="category">
+      <SectionHead icon={<IconBox size={16} />} title={t('store.plugins.section_title')} count={plugins.length} sub={t('store.plugins.section_sub')} />
+      <PluginGrid plugins={plugins} ctx={ctx} layout={layout} showCategory={showCategory} density={density} onOpen={onOpen} />
     </section>
   )
 }
@@ -117,14 +129,7 @@ function OrphanSection({ orphans, ctx, layout, density, onOpen }: {
 
   return (
     <section className="category">
-      <div className="category-head">
-        <div className="category-title">
-          <span className={cx('cat-icon', 'mac')}><IconChip size={16} /></span>
-          {t('store.orphan.title')}
-          <span className="cat-count">{orphans.length}</span>
-        </div>
-        <span className="cat-sub">{t('store.orphan.section_sub')}</span>
-      </div>
+      <SectionHead icon={<IconChip size={16} />} iconClass="mac" title={t('store.orphan.title')} count={orphans.length} sub={t('store.orphan.section_sub')} />
       <PluginGrid plugins={orphans} ctx={ctx} layout={layout} showCategory={false} density={density} onOpen={onOpen} />
     </section>
   )
@@ -141,7 +146,7 @@ export function StoreMain({ showFlat, flatPlugins, displayPlugins, orphans, matc
   if (showFlat) return (
     <div className="main">
       {collectionShelf}
-      <PluginGrid plugins={flatPlugins} ctx={ctx} layout={layout} showCategory={showCategory} density={density} onOpen={onOpen} />
+      <PluginShelf plugins={flatPlugins} ctx={ctx} layout={layout} showCategory={showCategory} density={density} onOpen={onOpen} />
     </div>
   )
 

@@ -52,8 +52,9 @@ never a silent skip.
   - **no discarded `map` / `filter` result** - a side-effect loop in disguise; use `forEach` for pure
     side effects, or a recursive helper for orchestration.
 - **`vars-on-top`** (+ `no-var: off`) - `var` is allowed but must sit at the top of its function.
-- **`id-length` min 2**, exceptions `_`, `t` (i18n), `x`, `y` (axes). Single-char names are banned; the
-  `weak_identifiers` ratchet (below) closes non-negotiable #1 beyond single-char.
+- **`id-length` min 2**, exceptions `_`, `t` (i18n), `x`, `y`, `z` (axes). Single-char names are banned;
+  the `weak_identifiers` ratchet (below) closes non-negotiable #1 beyond single-char. `i` is NOT an
+  exception: an index that carries any meaning beyond "how many times round" gets a real name.
 - **`no-nested-ternary`** + **`max-depth: 2`** - non-negotiable #2 (nesting beyond one level). Default
   move at depth ≥ 2: extract a named function, early-return, flatten, or a named lookup for a ternary.
 - **`max-lines-per-function`** - **40** for `.ts`, **81** for `.tsx` (the +1 over 80 pays for the
@@ -70,6 +71,15 @@ never a silent skip.
   `design-system/` primitive (or create it).
 - **File-size ceiling.** `.ts` > ~300 / `.tsx` > ~350 lines = more than one responsibility; split into
   sibling files by concern. Many small functions in ONE big file does NOT satisfy "short files".
+- **One function, one thing: the "and" test.** If describing a function's job needs the word "and", it is
+  that many functions. This is the same test already applied to components ("can't name it without 'and'
+  = two components"), applied to every function. The caller then reads as a list of named steps.
+- **The tree runs abstract at the top, concrete in the leaves.** Depth is an abstraction axis, not a
+  filing cabinet. What a reader meets first says *what happens*; each level down says more about *how*.
+  Changing how something looks should not require walking through how it is computed. A `common/` or
+  `design-system/` primitive is a leaf: everything may import it, it imports no feature code.
+- **Helpers live at the bottom of the dependency chain**, in their own file, never inline in a
+  feature file. A "helper" that imports feature logic is feature logic filed under the wrong name.
 - **Single source of truth across boundaries.** IPC / app-daemon / TS↔Python shapes are declared once
   and imported or generated, never hand-mirrored; a mirror needs a drift test that fails on divergence.
   See the contract map named under "Read these first".

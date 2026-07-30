@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-259 exported components + hooks across 20 areas.
+260 exported components + hooks across 20 areas.
 
 ## Common primitives
 
@@ -219,6 +219,7 @@ as you touch the file.
 - `SafetyNoticeOverlay` (component) - [components/plugin-store/safety/SafetyNoticeOverlay.tsx](../src/renderer/src/components/plugin-store/safety/SafetyNoticeOverlay.tsx) - Renders the popup only when a fixer kicked in; resolves the plugin from the catalog so the caller
 - `SafetyRecoveryModal` (component) - [components/plugin-store/safety/RecoveryModal.tsx](../src/renderer/src/components/plugin-store/safety/RecoveryModal.tsx) - Shown after a single-plugin op when a safety fixer disabled the plugin to keep the printer working.
 - `ScopeControl` (component) - [components/plugin-store/config/scope-control.tsx](../src/renderer/src/components/plugin-store/config/scope-control.tsx) - The per-field scope choice: shared across the fleet, or this printer's own value. Always visible
+- `SectionHead` (component) - [components/plugin-store/browse/SectionHead.tsx](../src/renderer/src/components/plugin-store/browse/SectionHead.tsx) - The heading every store shelf wears: icon + title + item count on the left, one subtitle line on the
 - `SelectActionBar` (component) - [components/plugin-store/select/ActionBar.tsx](../src/renderer/src/components/plugin-store/select/ActionBar.tsx) - The floating bar shown while the store is in a select mode (install or uninstall): how many plugins
 - `SelectModeBars` (component) - [components/plugin-store/select/ModeBars.tsx](../src/renderer/src/components/plugin-store/select/ModeBars.tsx) - The select-mode overlay layer: the install/uninstall action bar for the active mode, the cascade
 - `SourcesSection` (component) - [components/plugin-store/panel/tabs/sources.tsx](../src/renderer/src/components/plugin-store/panel/tabs/sources.tsx) - Each source row shows the version that source OFFERS (never the installed version): a source that has

@@ -86,6 +86,18 @@ describe('PluginStore filtering', () => {
   })
 })
 
+describe('PluginStore plugin shelf', () => {
+  it('titles the flat list and counts what is showing', async () => {
+    var { user } = renderStore()
+    await screen.findByText('Alpha')
+    expect(screen.getByText(en('store.plugins.section_title'))).toBeInTheDocument()
+    expect(screen.getByText('3')).toBeInTheDocument()
+
+    await user.type(screen.getByPlaceholderText(en('filter.search')), 'Beta')
+    expect(screen.getByText('1')).toBeInTheDocument()
+  })
+})
+
 describe('PluginStore sorting', () => {
   it('orders by name ascending by default and re-orders on the Updated sort', async () => {
     var { user, container } = renderStore()
