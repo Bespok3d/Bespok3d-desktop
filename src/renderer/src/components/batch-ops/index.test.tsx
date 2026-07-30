@@ -16,7 +16,7 @@ const PRINTING_REFUSAL = "Error invoking remote method 'store:update-batch': Err
 // The update-all button and its modal, wired exactly as the app wires them, so the test exercises the
 // path from a rejected batch call to what the user is left looking at.
 function UpdateAllHarness() {
-  const batchOps = useBatchOps([], () => {})
+  const batchOps = useBatchOps([], () => {}, (startInstall) => startInstall())
 
   return (
     <>

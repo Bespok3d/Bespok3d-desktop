@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState, useRef, type Dispatch, type SetStateAction } from 'react'
+import { useGatedInstall } from './installGate'
 import type { ReleaseChannel } from '../data/types'
 
 type Phase = 'idle' | 'working' | 'error'
@@ -104,12 +105,17 @@ export function usePluginOps(
   const [errorMsg, setErrorMsg] = useState('')
   const [log, setLog] = useState<InstallLog | null>(null)
   const lastCall = useRef<LastCall | null>(null)
+  const gatedInstall = useGatedInstall()
   const handlers: OpHandlers = { setPhase, setErrorKind, setStepLabel, setSteps, setErrorMsg, setLog, onDone }
   function runOp(call: LastCall) { lastCall.current = call; executeOp(call, handlers) }
 
   return {
     phase, errorKind, stepLabel, steps, errorMsg, log,
-    install: (printerId, pluginId, vars, depIds, sourceUrl, channel) => runOp({ op: 'install', printerId, pluginId, vars, depIds, sourceUrl, channel }),
+    // Every single-plugin install goes through the install gate here, at the one seam it has, so no
+    // caller can start one without the listing being offered first. A retry does not: it repeats a
+    // call that already passed the gate.
+    install: (printerId, pluginId, vars, depIds, sourceUrl, channel) =>
+      gatedInstall(() => runOp({ op: 'install', printerId, pluginId, vars, depIds, sourceUrl, channel })),
     uninstall: (printerId, pluginId, cascade) => runOp({ op: 'uninstall', printerId, pluginId, cascade }),
     retry: () => { if (lastCall.current) runOp(lastCall.current) },
   }

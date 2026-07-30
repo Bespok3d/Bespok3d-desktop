@@ -33,6 +33,7 @@ const TEXT_FREE_COMPONENTS = new Set([
   'src/renderer/src/components/plugin-store/config/config-form.tsx', // PanelConfigArea composes PluginConfigSection, no prose
   'src/renderer/src/components/plugin-store/config/field-input.tsx', // renders an input from field props (label/placeholder are props)
   'src/renderer/src/components/plugin-store/safety/SafetyNoticeOverlay.tsx', // resolves a plugin then renders SafetyRecoveryModal, no prose
+  'src/renderer/src/components/install-gate/index.tsx', // picks which install-gate dialog the step wants; the prose lives in the dialogs
   'src/renderer/src/components/plugin-store/detail/StoreDetailPanel.tsx', // wraps PluginPanel with resolved channel/install props, no prose of its own
   'src/renderer/src/components/common/editable-icon/HueRing.tsx', // SVG hue picker, no prose
   'src/renderer/src/components/common/editable-icon/IconBody.tsx', // renders icon glyph data

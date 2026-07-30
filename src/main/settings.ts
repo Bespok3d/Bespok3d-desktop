@@ -51,6 +51,12 @@ export interface AppSettings {
   // Whether the plugin store groups cards by category. uiLocale unset = follow the OS locale.
   storeGrouped?: boolean
   uiLocale?: string
+  // When the plugin list was last refreshed against the plugins' own repos, and when a refresh was
+  // last offered before an install. Unset means never. Both are epoch ms, and both are needed: the
+  // first is the age the offer states, the second holds the offer to once an hour even when the
+  // answer was to proceed with the list as it stands.
+  listingRefreshedAt?: number
+  listingRefreshProposedAt?: number
 }
 
 const DEFAULTS: AppSettings = {

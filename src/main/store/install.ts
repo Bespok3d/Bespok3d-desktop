@@ -9,6 +9,7 @@ import type { InstallLog } from '@bespok3d/contract'
 import { fetchCapabilities, installPlugin } from '../daemon-client/client'
 import { loadCatalog } from '../registry'
 import { getManagedRecord, parseCaps } from '../daemon-client/status'
+import { withFreshestRelease } from '../registry/resolve/refresh-entry'
 import { discardCachedArchive, findCatalogVariant, resolveArchiveBytes } from './catalog-archive'
 import { MALFORMED_PACKAGE_PREFIX } from './malformed-package'
 import { verifiedPackageTrustOrDiscard } from './package-check'
@@ -129,7 +130,10 @@ async function runStoreInstall(
   const record = getManagedRecord(printerId)
   const catalog = (await loadCatalog()).plugins
   const installedDepIds = await installMissingDeps(win, record, catalog, pluginId, depIds, channel)
-  const entry = findCatalogVariant(catalog, pluginId, sourceUrl, channel)
+  // Asked afresh, not taken from the list: the store page showed whatever this plugin's repo last
+  // released, so the install has to fetch that same release or the owner gets an older build than the
+  // number he clicked. A repo that cannot answer leaves the listed entry as it was.
+  const entry = await withFreshestRelease(findCatalogVariant(catalog, pluginId, sourceUrl, channel))
   sendProgress(win, printerId, pluginId, 'Sending to printer…')
   const { log, packageTrust } = await sendPackage(win, record, entry, pluginId, vars)
   sendProgress(win, printerId, pluginId, 'Updating plugin list…')

@@ -9,20 +9,21 @@ import { TrustPill } from '../../common/badges/TrustPill'
 import { StatusPill } from '../../common/badges/StatusPill'
 import { CAT_ICONS, CAT_CLASS } from '../browse/PluginCard'
 import { useAssetInfo } from './tabs/sources'
+import { useFreshestVersion } from './freshest-version'
 
 export function PanelHead({ plugin, installed, deactivated, hasUpdate, installedVersion }: { plugin: Plugin; installed: boolean; deactivated?: boolean; hasUpdate: boolean; installedVersion?: string }) {
   const { t } = useI18n()
   const CatIcon = CAT_ICONS[plugin.category] ?? IconChip
   const iconClass = CAT_CLASS[plugin.category] ?? 'mac'
   const trustLabel = t(`trust.${plugin.trust}.full`)
-  // Installed version is read live from the printer; fall back to the catalog version when browsing.
-  const shownVersion = installed && installedVersion ? installedVersion : plugin.version
+  // Installed version is read live from the printer. Browsing shows what the plugin's own repo last
+  // released, which is the listed version until that repo answers with something newer.
+  const freshestVersion = useFreshestVersion(plugin.name)
+  const shownVersion = installed && installedVersion ? installedVersion : freshestVersion ?? plugin.version
   // The packaged upstream version pairs with the shown version only when that version is the one the
-  // catalog describes: while browsing, or an installed build that still matches the catalog entry. A
-  // drifted install (a plugin version the catalog no longer lists) shows plain, since its packaged
-  // upstream is not the catalog's.
-  const showsCatalogVersion = !installed || !installedVersion || sameVersion(installedVersion, plugin.version)
-  const shownSwVersion = showsCatalogVersion ? plugin.swVersion : undefined
+  // catalog describes. A drifted install (a plugin version the catalog no longer lists) and a version
+  // fresher than the list both show plain, since neither one's packaged upstream is the catalog's.
+  const shownSwVersion = sameVersion(shownVersion, plugin.version) ? plugin.swVersion : undefined
   const remoteSource = plugin.sources.find((source) => source.downloadUrl && /^https?:/.test(source.downloadUrl))
   const stat = useAssetInfo(remoteSource?.downloadUrl)
 

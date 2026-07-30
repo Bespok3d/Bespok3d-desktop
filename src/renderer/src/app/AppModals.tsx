@@ -7,6 +7,7 @@ import { ConfirmActionDialog } from '../components/common/overlay/ConfirmActionD
 import { BatchOpModal } from '../components/batch-ops'
 import { AddPrinter } from '../components/add-printer'
 import { UpdateModal } from '../components/app-update/UpdateModal'
+import { InstallGateModals } from '../components/install-gate'
 import { useAppUpdate } from '../components/app-update/useAppUpdate'
 import { EXPECTED_RESTART_GRACE_MS } from '../components/printer-banners'
 import type { Printer } from '../data/types'
@@ -75,6 +76,7 @@ export function AppModals({ actions, discovered, existingPrinters }: { actions: 
           onCancel={() => actions.setEnrollProposal(null)}
         />
       )}
+      <InstallGateModals gate={actions.installGate} />
       <BatchOpModal variant="recovery" busy={actions.recovering} result={actions.recoveryResults} {...refusal} onClose={() => actions.setRecoveryResults(null)} />
       <BatchOpModal variant="update" busy={actions.updatingAll} result={actions.updateAllResult} progress={actions.batchProgress} {...refusal} onClose={() => actions.setUpdateAllResult(null)} />
       <BatchOpModal variant="install" busy={actions.installingBatch} result={actions.installBatchResult} progress={actions.batchProgress} {...refusal} onClose={() => actions.setInstallBatchResult(null)} />

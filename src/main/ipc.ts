@@ -32,10 +32,12 @@ import { registerAccessHandlers } from './ops/access-ops'
 import { checkWriteLayer } from './ops/daemon-ops'
 import { registerStoreHandlers } from './store/handlers'
 import { runStoreUninstall } from './store/uninstall'
+import { freshestListedVersion } from './store/listed-version'
 import { buildSession } from './dev-tools/patch-engine'
 import { applyPatch } from './dev-tools/patch-apply'
 import type { ApplyRequest } from './dev-tools/types'
 import { loadCatalog } from './registry'
+import { offerListingRefresh, refreshListing } from './registry/listing-refresh'
 import { addLocalPackages, readLocalDoc, removeLocalPackage, userLocalSourceUrl } from './registry/local'
 import {
   installAppUpdate,
@@ -150,6 +152,11 @@ function registerRegistryHandlers(): void {
     setChannelEnabled(channel, enabled),
   )
   ipcMain.handle('registry:assetInfo', (_event, url: string) => activeConnector().assetInfo(url))
+  ipcMain.handle('registry:freshestVersion', (_event, pluginId: string, sourceUrl?: string) =>
+    freshestListedVersion(pluginId, sourceUrl),
+  )
+  ipcMain.handle('registry:refreshOffer', () => offerListingRefresh())
+  ipcMain.handle('registry:refreshListing', () => refreshListing())
 }
 
 // Ingest side of the user-local registry. local-store owns the files; this is thin glue that returns

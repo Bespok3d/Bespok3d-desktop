@@ -12,6 +12,7 @@ import { mainProcessMessage } from '../../utils/errorMessage'
 import { reduceBatchProgress } from './progress'
 import './batch-ops.css'
 import type { BatchProgressState } from './progress'
+import type { GatedInstall } from '../../hooks/installGate'
 import type { BatchFailure, BatchVariant } from './variant'
 import type { Printer } from '../../data/types'
 import type { RecoverResult } from '@bespok3d/contract'
@@ -84,6 +85,7 @@ type BatchPoster = (printerId: string, specs: PluginUpdateSpec[]) => Promise<Rec
 export function useBatchOps(
   printers: Printer[],
   setPrinters: (update: Printer[] | ((prev: Printer[]) => Printer[])) => void,
+  gatedInstall: GatedInstall,
 ) {
   const [recoveryResults, setRecoveryResults] = useState<RecoverResult | null>(null)
   const [recovering, setRecovering] = useState(false)
@@ -137,10 +139,10 @@ export function useBatchOps(
       .catch(batchDidNotRun(variant, setBusy))
   }
   function runUpdateAll(printerId: string, updates: PluginUpdateSpec[]) {
-    runBatch('update', printerId, updates, setUpdatingAll, setUpdateAllResult, window.b3d.store.updateBatch)
+    gatedInstall(() => runBatch('update', printerId, updates, setUpdatingAll, setUpdateAllResult, window.b3d.store.updateBatch))
   }
   function runInstallBatch(printerId: string, specs: PluginUpdateSpec[]) {
-    runBatch('install', printerId, specs, setInstallingBatch, setInstallBatchResult, window.b3d.store.installBatch)
+    gatedInstall(() => runBatch('install', printerId, specs, setInstallingBatch, setInstallBatchResult, window.b3d.store.installBatch))
   }
   function runUninstallBatch(printerId: string, pluginIds: string[], cascade: boolean) {
     setUninstallingBatch(true)

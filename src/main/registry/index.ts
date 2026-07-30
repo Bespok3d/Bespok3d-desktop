@@ -8,7 +8,8 @@ import { is } from '@electron-toolkit/utils'
 import { join } from 'path'
 import { resolveCatalog } from './resolve'
 import { DEFAULT_LIMITS } from './model'
-import type { RegistryRef, CatalogResult } from './model'
+import type { RegistryRef, CatalogResult, MergedEntry } from './model'
+import { withCachedRelease } from './resolve/refresh-entry'
 import { normalizeRegistryUrl } from './resolve/url'
 import { buildSources } from './resolve/sources'
 import type { ConfiguredSource, SourceRow } from './resolve/sources'
@@ -69,6 +70,19 @@ export interface Catalog extends CatalogResult {
   sources: SourceRow[]
 }
 
+// THE ONE PLACE A REFRESHED RELEASE IS APPLIED. Everything the renderer reads about a plugin comes
+// through here, so the listing, the update badge, the notification zone, a single install and the
+// batch update all see the same entry, and none of them can offer a version whose asset did not move
+// with it. Applied to the variants too, because the badge picks among them under the user's channel
+// ceiling and would otherwise read a stale one. No request is made: this is what the last refresh
+// pass already learned.
+function withRefreshedReleases(entry: MergedEntry): MergedEntry {
+  const refreshed = withCachedRelease(entry)
+  if (!entry.variants) return refreshed
+
+  return { ...refreshed, variants: entry.variants.map(withCachedRelease) }
+}
+
 // The catalog the renderer browses, plus the truthful source list for the Repositories pane. A
 // disabled source is left out of the fetch but still reported (as off), and the resolver isolates a
 // per-source fetch failure so one unreachable list never wipes the store.
@@ -78,5 +92,5 @@ export async function loadCatalog(): Promise<Catalog> {
   const enabled = sources.filter((source) => !disabled.has(normalizeRegistryUrl(source.url))).map(toRef)
   const result = await resolveCatalog(enabled, fetchGitHostRegistry, DEFAULT_LIMITS, (message) => console.warn(`[registry] ${message}`))
 
-  return { ...result, sources: buildSources(sources, result, disabled) }
+  return { ...result, plugins: result.plugins.map(withRefreshedReleases), sources: buildSources(sources, result, disabled) }
 }

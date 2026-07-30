@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { isDaemonRestartMode } from '../components/enrollment'
 import type { EnrollMode } from '../components/enrollment'
 import { useBatchOps } from '../components/batch-ops'
+import { useInstallGate } from '../hooks/installGate'
 import { POST_OPERATION_GRACE_MS } from '../components/printer-banners'
 import { toRecord, pingAndUpdate, applyToId } from '../data/printers'
 import { daemonAccessDecision, enrollPathDecision } from '../data/enroll-gate'
@@ -171,7 +172,10 @@ export function useAppCallbacks(
   const [accessModal, setAccessModal] = useState<Printer | null>(null)
   const [addPrinterModal, setAddPrinterModal] = useState<AddPrinterModal | null>(null)
   const enrollGate = useEnrollGate(setEnrollModal, setAccessModal)
-  const batchOps = useBatchOps(printers, setPrinters)
+  // The one install gate, made here so every install path shares it: the batch ops take it as an
+  // argument and the store panel reads it from the context App puts it in.
+  const installGate = useInstallGate()
+  const batchOps = useBatchOps(printers, setPrinters, installGate.beforeInstall)
   function openEnrollModal(printerId: string, mode: EnrollMode) {
     const printer = printers.find((candidate) => candidate.id === printerId)
     if (printer) setEnrollModal({ printer, mode })
@@ -186,7 +190,7 @@ export function useAppCallbacks(
 
   return {
     enrollModal, setEnrollModal, accessModal, setAccessModal,
-    addPrinterModal, setAddPrinterModal, markExpectedRestart,
+    addPrinterModal, setAddPrinterModal, markExpectedRestart, installGate,
     openAdd: (pickedId?: string) => setAddPrinterModal({ tab: 'scan', pickedId }),
     openManual: () => setAddPrinterModal({ tab: 'manual' }),
     ...actions,

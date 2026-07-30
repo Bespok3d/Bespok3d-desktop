@@ -19,6 +19,7 @@ import { useB3dDeepLinks } from './app/deep-links'
 import { usePluginVars } from './app/plugin-vars'
 import { printerKeyFor } from './data/plugin-vars'
 import { AppModals } from './app/AppModals'
+import { InstallGateContext } from './hooks/installGate'
 
 function App() {
   const { i18n, localePref, setLocalePref } = useAppI18n()
@@ -59,7 +60,7 @@ function App() {
 
   return (
     <I18nProvider value={i18n}>
-      <CatalogProvider>
+      <CatalogProvider><InstallGateContext.Provider value={actions.installGate.beforeInstall}>
       <LocalDropZone selectedPrinter={selectedPrinter} onInstall={(id) => { setMode('store'); setFocusPluginId(id) }} />
       <div className="app" data-theme={resolved} data-platform={window.b3d.platform}>
         <Header
@@ -98,7 +99,7 @@ function App() {
         )}
         <AppModals actions={actions} discovered={discovered} existingPrinters={printers} />
       </div>
-      </CatalogProvider>
+      </InstallGateContext.Provider></CatalogProvider>
     </I18nProvider>
   )
 }

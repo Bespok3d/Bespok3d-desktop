@@ -190,6 +190,10 @@ function mockRegistry(override: Partial<B3d['registry']> = {}): B3d['registry'] 
     setSourceEnabled: resolved(makeCatalog([])),
     setChannelEnabled: resolved(SETTINGS_DEFAULT),
     assetInfo: resolved({ downloadCount: null, publishedAt: null }),
+    freshestVersion: resolved(null),
+    // A listing that was refreshed a moment ago: no test gets an install offer it did not ask for.
+    refreshOffer: resolved({ offered: false, refreshedAt: null }),
+    refreshListing: resolved({ askedRepos: 0, moved: [] }),
     ...override,
   }
 }

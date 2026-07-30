@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-253 exported components + hooks across 19 areas.
+259 exported components + hooks across 20 areas.
 
 ## Common primitives
 
@@ -175,6 +175,12 @@ as you touch the file.
 - `usePrinterUpdates` (hook) - [components/header/printer-dropdown/usePrinterUpdates.ts](../src/renderer/src/components/header/printer-dropdown/usePrinterUpdates.ts) - The pending-update counts for a printer (daemon firmware + plugin versions), read off the loaded
 - `useUpdateFlags` (hook) - [components/header/printer-dropdown/usePrinterUpdates.ts](../src/renderer/src/components/header/printer-dropdown/usePrinterUpdates.ts) - The three attention counts a trigger badge or hint shows: daemon + jinni (managed-gated, from
 
+## Feature: install-gate
+
+- `InstallGateModals` (component) - [components/install-gate/index.tsx](../src/renderer/src/components/install-gate/index.tsx) - The two dialogs the install gate puts up, mounted once for the whole app. It sits here rather than at
+- `MovedVersionsDialog` (component) - [components/install-gate/MovedVersionsDialog.tsx](../src/renderer/src/components/install-gate/MovedVersionsDialog.tsx) - What the refresh found, shown before the install goes ahead: which plugins have released something
+- `RefreshOfferDialog` (component) - [components/install-gate/RefreshOfferDialog.tsx](../src/renderer/src/components/install-gate/RefreshOfferDialog.tsx) - The question an install asks first: the plugin list is an hour old or older, so refresh it now or go
+
 ## Feature: notifications
 
 - `NotificationCenter` (component) - [components/notifications/NotificationCenter.tsx](../src/renderer/src/components/notifications/NotificationCenter.tsx)
@@ -226,6 +232,7 @@ as you touch the file.
 - `useCollectionInstall` (hook) - [components/plugin-store/select/useCollectionInstall.ts](../src/renderer/src/components/plugin-store/select/useCollectionInstall.ts) - "Install all" for a collection: install the not-yet-installed members in ONE batch (the daemon's
 - `useFacetState` (hook) - [components/plugin-store/browse/Toolbar.tsx](../src/renderer/src/components/plugin-store/browse/Toolbar.tsx) - The store-front facet selections (the shoulder's state). `active` drives the funnel's dot. Kept as a
 - `useFocusPanel` (hook) - [components/plugin-store/state.ts](../src/renderer/src/components/plugin-store/state.ts) - Open a plugin's detail panel when an external focus is requested (e.g. drag-drop "install now"),
+- `useFreshestVersion` (hook) - [components/plugin-store/panel/freshest-version.ts](../src/renderer/src/components/plugin-store/panel/freshest-version.ts)
 - `useGridFlip` (hook) - [components/plugin-store/browse/useGridFlip.ts](../src/renderer/src/components/plugin-store/browse/useGridFlip.ts) - `signature` changes whenever the grid's membership or order does; that drives the FLIP pass.
 - `useInstallState` (hook) - [components/plugin-store/state.ts](../src/renderer/src/components/plugin-store/state.ts)
 - `useLocalRemove` (hook) - [components/plugin-store/panel/gates/index.tsx](../src/renderer/src/components/plugin-store/panel/gates/index.tsx) - Drives the explained removal of a sideloaded package. onDone refreshes the catalog and closes the
@@ -291,6 +298,8 @@ as you touch the file.
 - `useAdapterJinniVersions` (hook) - [hooks/adapters.ts](../src/renderer/src/hooks/adapters.ts) - The adapter-declared jinni (device-side) versions, keyed by adapter id, so a banner can compare the
 - `useDisplayPrefs` (hook) - [hooks/displayPrefs.ts](../src/renderer/src/hooks/displayPrefs.ts) - The shell's display preferences, backed by the main settings store so they survive a reload (theme,
 - `useEnrollment` (hook) - [hooks/enrollment.ts](../src/renderer/src/hooks/enrollment.ts)
+- `useGatedInstall` (hook) - [hooks/installGate.ts](../src/renderer/src/hooks/installGate.ts)
+- `useInstallGate` (hook) - [hooks/installGate.ts](../src/renderer/src/hooks/installGate.ts)
 - `useMdnsDiscovery` (hook) - [hooks/printers.ts](../src/renderer/src/hooks/printers.ts)
 - `usePluginOps` (hook) - [hooks/pluginOps.ts](../src/renderer/src/hooks/pluginOps.ts)
 - `usePrinterSync` (hook) - [hooks/printers.ts](../src/renderer/src/hooks/printers.ts)

@@ -16,8 +16,10 @@ vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn(), installP
 vi.mock('../daemon-client/status', () => ({ getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }) }))
 vi.mock('../daemon-client/feeds/install-progress', () => ({ watchInstallProgress: vi.fn(), installPhaseMessage: (phase: string) => phase }))
 vi.mock('../daemon-client/guard', () => ({ daemonGuardMessage: vi.fn() }))
+vi.mock('../registry/resolve/latest-release', () => ({ fetchLatestRelease: vi.fn() }))
 
 import { installGuarded } from './install'
+import { fetchLatestRelease } from '../registry/resolve/latest-release'
 import { updatePrinter } from '../printers'
 import { loadCatalog } from '../registry'
 import { findCatalogVariant, resolveArchiveBytes, discardCachedArchive } from './catalog-archive'
@@ -138,6 +140,53 @@ describe('runStoreInstall package verification', () => {
     expect(installPlugin).toHaveBeenCalled()
     const [, recordPatch] = vi.mocked(updatePrinter).mock.calls[0]
     expect(patchAppliedToRecord(recordPatch).installedPackageTrust).toEqual({ 'idle-timeout': 'unknown' })
+  })
+})
+
+// The store page shows what the plugin's own repo last released, so the install has to fetch THAT
+// release: fetching the one the list named would put an older build on the printer than the number the
+// owner clicked. These pin both halves, including that the refusal still judges against the refreshed
+// version, which is what stops a raised number from ever shipping stale bytes.
+describe('runStoreInstall when the plugin repo has released since its list was published', () => {
+  const LISTED_ASSET_URL = 'https://api.github.com/repos/fixture-owner/idle-timeout/releases/assets/1111'
+  const FRESH_ASSET_URL = 'https://api.github.com/repos/fixture-owner/idle-timeout/releases/assets/2222'
+  const REPO_ENTRY: MergedEntry = { ...LISTED_ENTRY, download_url: LISTED_ASSET_URL }
+
+  function stubTheRepoAnswering(fresh: { version: string; downloadUrl: string } | null): void {
+    vi.mocked(findCatalogVariant).mockReturnValue(REPO_ENTRY)
+    vi.mocked(fetchLatestRelease).mockResolvedValue(fresh)
+  }
+
+  function entrySentToTheDevice(): MergedEntry {
+    return vi.mocked(resolveArchiveBytes).mock.calls[0][0]
+  }
+
+  beforeEach(() => vi.clearAllMocks())
+
+  it('fetches the release the store showed rather than the one the list named', async () => {
+    stubTheHappyPathAround(packageWith({ ...HONEST_MANIFEST, version: '0.3.0' }))
+    stubTheRepoAnswering({ version: '0.3.0', downloadUrl: FRESH_ASSET_URL })
+    await install()
+
+    expect(entrySentToTheDevice().version).toBe('0.3.0')
+    expect(entrySentToTheDevice().download_url).toBe(FRESH_ASSET_URL)
+  })
+
+  it('still refuses a package older than the refreshed version', async () => {
+    stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+    stubTheRepoAnswering({ version: '0.3.0', downloadUrl: FRESH_ASSET_URL })
+
+    await expect(install()).rejects.toThrow(/older than the listed/)
+    expect(installPlugin).not.toHaveBeenCalled()
+  })
+
+  it('installs what the list named when the repo will not answer', async () => {
+    stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+    stubTheRepoAnswering(null)
+    await install()
+
+    expect(entrySentToTheDevice().download_url).toBe(LISTED_ASSET_URL)
+    expect(installPlugin).toHaveBeenCalled()
   })
 })
 
