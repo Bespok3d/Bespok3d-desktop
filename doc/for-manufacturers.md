@@ -105,11 +105,11 @@ Adapters are printer specific. Testing and vetting one without the real hardware
 covering a printer means a unit has to be available to develop and test against, whoever authors the
 adapter, and to those who test and vet the adapter itself.
 
-This is not a purchase and it is not a fast track. Sending a printer does not buy an adapter and it
-does not buy support. It is the baseline the work needs in order to happen at all. Buying every
-printer on the market ourselves is a cost the project cannot absorb for now, and one it may well be
-able to absorb later. Contributing a test target is not a payment to us. It is what keeps that
-printer's support solid, and it shows the manufacturer's good will and its intent to collaborate.
+Sending a printer doesn't buy priority or a spot on the roadmap. It's the baseline the work needs
+in order to happen at all. Buying every printer on the market ourselves is a cost the project cannot
+absorb for now, and one it may well be able to absorb later. Contributing a test target is not a payment
+to us. It is what keeps that printer's support solid, and it shows the manufacturer's good will and its
+intent to collaborate.
 
 Support beyond hardware is also welcome: sponsorship, documentation, engineering time, test access.
 None of it is transactional. Supporting the project helps it thrive as a whole, and a manufacturer
