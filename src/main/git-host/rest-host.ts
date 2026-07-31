@@ -89,11 +89,19 @@ function makeRestAccountOps(profile: RestHostProfile) {
     return { login: String(data.login), name: profile.accountName(data) }
   }
 
+  // What a public read signs with: whatever token is there, and nothing when there is none. Reading a
+  // published release is not an account's business, so a visitor gets the same answer the owner does.
+  function tokenOrNone(): string {
+    return load(profile.keychainKey) ?? ''
+  }
+
   async function disconnect(): Promise<void> { clear(profile.keychainKey); cachedUsername = null }
   async function isConnected(): Promise<boolean> { return load(profile.keychainKey) !== null }
 
-  return { requireToken, transport, whoami, getAccount, disconnect, isConnected }
+  return { requireToken, tokenOrNone, transport, whoami, getAccount, disconnect, isConnected }
 }
+
+type RestAccountOps = ReturnType<typeof makeRestAccountOps>
 
 function makeRestContentOps(profile: RestHostProfile, transport: RestTransport) {
   async function getFile(repo: RepoRef, path: string, ref?: string): Promise<FileContent | null> {
@@ -162,7 +170,14 @@ function makeRestRepoOps(profile: RestHostProfile, transport: RestTransport, who
   return { createRepo, listRepos, listOrgs }
 }
 
-function makeRestReleaseOps(profile: RestHostProfile, transport: RestTransport, getToken: () => string) {
+// Publishing a release is an account's work and says so when there is no account. Reading one is not:
+// the release list and the asset bytes go out signed only if a token happens to be there, so someone
+// who never signed in still sees what versions exist and still downloads them.
+function makeRestReleaseOps(profile: RestHostProfile, account: RestAccountOps) {
+  const transport = account.transport
+  const getToken = account.requireToken
+  const publicReads = makeRestTransport(profile, account.tokenOrNone)
+
   async function createRelease(repo: RepoRef, opts: ReleaseOptions): Promise<ReleaseInfo> {
     const data = await transport.apiSend('POST', `/repos/${repo.owner}/${repo.repo}/releases`, { tag_name: opts.tag, name: opts.title, body: opts.body ?? '', draft: opts.draft ?? true })
 
@@ -181,13 +196,13 @@ function makeRestReleaseOps(profile: RestHostProfile, transport: RestTransport, 
   }
 
   async function listReleases(repo: RepoRef): Promise<ReleaseInfo[]> {
-    const releases = await transport.apiGetArray(`/repos/${repo.owner}/${repo.repo}/releases${profile.listReleasesQuery}`)
+    const releases = await publicReads.apiGetArray(`/repos/${repo.owner}/${repo.repo}/releases${profile.listReleasesQuery}`)
 
     return releases.map((raw) => mapRelease(raw, profile.mapAsset))
   }
 
   async function downloadReleaseAsset(url: string): Promise<Buffer> {
-    const response = await fetch(url, { headers: profile.downloadAssetHeaders(getToken()) })
+    const response = await fetch(url, { headers: profile.downloadAssetHeaders(account.tokenOrNone()) })
     if (!response.ok) throw new Error(`${profile.label} download asset: ${response.status}`)
 
     return Buffer.from(await response.arrayBuffer())
@@ -208,6 +223,6 @@ export function makeRestHost(profile: RestHostProfile) {
     isConnected: account.isConnected,
     ...makeRestContentOps(profile, account.transport),
     ...makeRestRepoOps(profile, account.transport, account.whoami),
-    ...makeRestReleaseOps(profile, account.transport, account.requireToken),
+    ...makeRestReleaseOps(profile, account),
   }
 }

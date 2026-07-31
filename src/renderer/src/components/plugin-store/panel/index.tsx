@@ -27,8 +27,9 @@ import { PanelBody } from './tabs/overview'
 import { PanelTabs, detailTabs, nudgeInstall, type DetailTab } from './tabs'
 import { PanelDoc } from './tabs/doc'
 import { PanelFoot } from './foot'
+import { useReleasedDoc } from './released-doc'
 import { PanelGates, useLocalRemove } from './gates'
-import { isOrphan, isSideloaded, isSwitchingVariant, defaultSelectedVariant, installGate } from './derive'
+import { isOrphan, isSideloaded, isSwitchingVariant, defaultSelectedVariant, installGate, hasReleaseNotes } from './derive'
 
 interface PluginPanelProps {
   plugin: Plugin
@@ -71,9 +72,11 @@ interface PluginPanelProps {
 }
 
 function PanelChangelog({ plugin }: { plugin: Plugin }) {
+  const changelog = useReleasedDoc(plugin.changelogUrl, plugin.changelog)
+
   return (
     <div className="panel-body panel-doc">
-      <Markdown source={plugin.changelog ?? ''} assets={docAssetsFor(plugin.id)} />
+      <Markdown source={changelog ?? ''} assets={docAssetsFor(plugin.id)} />
     </div>
   )
 }
@@ -208,7 +211,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   const { multiVars, multiScopes, otherUiPorts, makePrimary } = configState
   // A deep link can request a starting tab; else on an update open straight to the changelog so the
   // user sees what changed before updating. An unavailable tab is corrected by the activeTab guard.
-  const [tab, setTab] = useState<DetailTab>((initialTab as DetailTab) ?? (hasUpdate && plugin.changelog ? 'changelog' : 'overview'))
+  const [tab, setTab] = useState<DetailTab>((initialTab as DetailTab) ?? (hasUpdate && hasReleaseNotes(plugin) ? 'changelog' : 'overview'))
   const installVars = multiFields ? multiVars : undefined
   const portError = httpPortError(multiFields ?? [], installVars ?? {}, otherUiPorts)
   const missingDeps = resolveMissingDeps(plugins, plugin.id, allInstalledIds ?? [])

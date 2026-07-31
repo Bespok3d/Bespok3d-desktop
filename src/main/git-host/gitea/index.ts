@@ -15,12 +15,18 @@ function mapAsset(raw: JsonObject): AssetInfo {
   }
 }
 
+// Reading something public needs no account, so no token means no Authorization header at all rather
+// than an empty one, which the host rejects as a bad credential.
+function giteaAuth(token: string): Record<string, string> {
+  return token ? { Authorization: `token ${token}` } : {}
+}
+
 function giteaProfile(apiBase: string): RestHostProfile {
   return {
     label: 'Gitea',
     keychainKey: KEYCHAIN_KEY,
     apiBase,
-    requestHeaders: (token, withBody) => ({ Authorization: `token ${token}`, ...(withBody ? { 'Content-Type': 'application/json' } : {}) }),
+    requestHeaders: (token, withBody) => ({ ...giteaAuth(token), ...(withBody ? { 'Content-Type': 'application/json' } : {}) }),
     mapAsset,
     accountName: (raw) => String(raw.full_name || raw.login),
     listReposQuery: '?limit=50',
@@ -32,7 +38,7 @@ function giteaProfile(apiBase: string): RestHostProfile {
     listReleasesQuery: '?limit=50',
     uploadAssetUrl: (repo, releaseId, encodedName) => `${apiBase}/repos/${repo.owner}/${repo.repo}/releases/${releaseId}/assets?name=${encodedName}`,
     uploadAssetHeaders: (token) => ({ Authorization: `token ${token}`, 'Content-Type': 'application/octet-stream' }),
-    downloadAssetHeaders: (token) => ({ Authorization: `token ${token}` }),
+    downloadAssetHeaders: (token) => giteaAuth(token),
   }
 }
 

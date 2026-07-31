@@ -118,9 +118,13 @@ stop-and-ask-the-maintainer event. The app specifics:
 - **Catalog boundary:** `data/catalog.ts` is the single snake→camel boundary (`indexToPlugins` /
   `payloadToRegistry`) and owns the doc/README/CHANGELOG `?raw` + asset globs. Don't parse index shapes
   elsewhere.
-- **Store doc prose is baked at APP build time.** Those globs read `plugins/**/doc/*.md` from the
-  sibling tree, so an edited README or CHANGELOG reaches users on the next APP release, never on a
-  plugin release. Publishing a plugin does NOT refresh what its store page says.
+- **A store page reads the docs published with the version it offers.** A plugin release uploads its
+  README and CHANGELOG beside the `.b3`, and the entry's `doc_url` / `changelog_url` point at those
+  assets; the page fetches them through `registry:releaseDoc` (main holds the token) via the
+  `useReleasedDoc` hook. The `plugins/**/doc/*.md` globs stay as the copy shown while that read is in
+  flight, when the publisher released no docs, and offline - that copy only ever changes on an APP
+  release. A `doc_url` that is a source path or a browse link is NOT fetchable and is dropped at the
+  catalog boundary (`fetchableDocUrl`), so the page falls back rather than showing a broken read.
 - **No fakes in dev tools:** the catalog renders REAL components; dummy DATA only at the `window.b3d`
   stub; never hand-roll a stand-in. Fixtures use OBVIOUSLY-fake values (`.example` domains, patterned
   ids) - never Lucio's real LAN addresses/uuids/tokens (`feedback_no_real_values_in_fixtures`).
@@ -137,18 +141,31 @@ stop-and-ask-the-maintainer event. The app specifics:
 
 ## The bundled-plugin golden (refresh it, never hand-edit it)
 
-`scripts/test/golden/monorepo/index.json` is a snapshot of the offline bundle built from the manifests
-the **sibling plugin repos** carry. A plugin repo releasing a new version therefore turns this repo's
-`app-bundle relocation rail` red, and the sanctioned answer is one command:
+`scripts/test/golden/monorepo/` holds a snapshot of the offline bundle built from the manifests the
+**sibling plugin repos** carry: `index.json` (the bundled catalog) and `packed-archives.json` (the .b3
+set it packs). A plugin repo releasing a new version therefore turns this repo's `app-bundle
+relocation rail` red, and the sanctioned answer is one command:
 
 ```sh
-npm run golden:refresh     # rebuilds the fixture from the current manifests, prints what changed
+npm run golden:refresh     # rebuilds both fixtures from the current manifests, prints what changed
 ```
 
-Commit the refreshed fixture with (or right after) the manifest change that caused it. Never hand-edit
-it, and never blank the rail to get past it. `scripts/monorepo-golden.mjs` is the single producer: the
-refresh command and the rails both go through it, so the fixture a rail compares against is by
-construction the fixture the command writes.
+Commit the refreshed fixtures with (or right after) the manifest change that caused them. Never
+hand-edit them, and never blank the rail to get past it. `scripts/monorepo-golden.mjs` is the single
+producer: the refresh command and the rails both go through it, so the fixture a rail compares against
+is by construction the fixture the command writes.
+
+**Which plugins it builds is the golden's own business.** The set lives in the same directory, in
+`bundled-plugins.json`, and is NOT read from `scripts/bundle.dev.json`. That file is a developer's
+scratch curation of what their own dev build packs; trimming it must never turn someone else's check
+red, so nothing that has to stay green reads it. Editing `bundle.dev.json` is free and needs no
+refresh. Editing `bundled-plugins.json` is a deliberate change to what the golden claims and ships
+with a refresh in the same change.
+
+**Nor does an unsaved experiment in a plugin repo turn it red.** A dev atom's displayed version
+carries `+dev.<hash8>`, a hash of that plugin's files as they sit on disk, so it moves on any working
+copy edit anywhere in `plugins/`. The fixture holds `+dev.local` in its place. Nothing ships that tag
+(a release build never builds dev atoms), so the rail loses no claim by not pinning it.
 
 This is the opposite of b3-builder's own equivalence golden, which is legacy output that can never be
 re-captured. Ours snapshots repos that still exist, so it is regenerated, not frozen.

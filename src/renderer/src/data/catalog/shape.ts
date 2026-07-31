@@ -81,6 +81,14 @@ export function changelogFor(pluginName: string): string | undefined {
   return CHANGELOGS[pluginName]
 }
 
+// A doc field carries whatever the publisher's build wrote there: a release asset URL when the docs
+// travelled with the release, otherwise a source path or a link for a human to click. Only the asset
+// form can be fetched (the app reads it through the release-asset API, with the token a private repo
+// needs), so the rest is left to the bundled copy rather than shown as a broken page.
+export function fetchableDocUrl(declared: string | undefined): string | undefined {
+  return declared?.includes('/releases/assets/') ? declared : undefined
+}
+
 export function docAssetsFor(pluginId: string): Record<string, string> {
   const prefix = `${pluginId}/`
 
@@ -135,7 +143,9 @@ function entryToCatalogBase(entry: IndexEntry | CollectionEntry) {
     updatedAt: entry.updated_at,
     homepage: entry.homepage,
     doc: docFor(entry.name),
+    docUrl: fetchableDocUrl(entry.doc_url),
     changelog: entry.changelog_url ? changelogFor(entry.name) : undefined,
+    changelogUrl: fetchableDocUrl(entry.changelog_url),
     local: isLocalRegistry(entry.registry_url),
   }
 }

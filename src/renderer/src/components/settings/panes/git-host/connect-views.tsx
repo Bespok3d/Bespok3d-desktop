@@ -1,11 +1,14 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useI18n } from '../../../../i18n/context'
 import { Button } from '../../../common/Button'
-import { IconGitBranch, IconCheckCircle, IconGitHub } from '../../../../design-system/icons'
+import { useClipboard } from '../../../common/hooks/useClipboard'
+import { IconGitBranch, IconCheckCircle, IconGitHub, IconCopy } from '../../../../design-system/icons'
 import type { ConnRequest, PaneState } from './types'
 import './git-host.css'
+
+const COPIED_BALLOON_MS = 3000
 
 function ConnectBullets() {
   const { t } = useI18n()
@@ -53,6 +56,51 @@ function PatForm({ onConnect, error }: PatFormProps) {
   )
 }
 
+interface DeviceCodeProps {
+  userCode: string
+}
+
+// The code lands on the clipboard the moment it exists, so the browser tab is one paste away. The
+// chip and the icon are the same action, because the code itself is what a user aims at first.
+function DeviceCode({ userCode }: DeviceCodeProps) {
+  const { t } = useI18n()
+  const { copied, copyCount, copy } = useClipboard(COPIED_BALLOON_MS)
+
+  function copyCode() {
+    copy(userCode)
+  }
+  useEffect(copyCode, [userCode])
+
+  return (
+    <div className="gh-code-copy-stack">
+      <div className="gh-code-row centered gh-code-copy-row">
+        <button type="button" className="gh-code lg gh-code-copy" onClick={copyCode} title={t('githost.connect.copy_code')}>
+          {userCode}
+        </button>
+        <Button variant="ghost" size="sm" icon onClick={copyCode} aria-label={t('githost.connect.copy_code')}>
+          <IconCopy size={15} />
+        </Button>
+        {copied && (
+          <span key={copyCount} className="gh-copied-balloon" role="status">{t('githost.connect.copied')}</span>
+        )}
+      </div>
+      <p className="gh-copy-hint">{t('githost.connect.copy_hint')}</p>
+    </div>
+  )
+}
+
+function DeviceSteps() {
+  const { t } = useI18n()
+
+  return (
+    <ol className="gh-device-steps">
+      <li>{t('githost.connect.step_open')}</li>
+      <li>{t('githost.connect.step_paste')}</li>
+      <li>{t('githost.connect.step_approve')}</li>
+    </ol>
+  )
+}
+
 interface DeviceFlowFormProps {
   onConnect: () => void
   connectionRequest: ConnRequest | null
@@ -71,11 +119,8 @@ function DeviceFlowForm({ onConnect, connectionRequest, error }: DeviceFlowFormP
         <p className="gh-waiting-note">
           {t('githost.connect.waiting')}
         </p>
-        {connectionRequest.userCode && (
-          <div className="gh-code-row centered">
-            <span className="gh-code lg">{connectionRequest.userCode}</span>
-          </div>
-        )}
+        <DeviceSteps />
+        {connectionRequest.userCode && <DeviceCode userCode={connectionRequest.userCode} />}
         {connectionRequest.verificationUrl && (
           <Button variant="outline" size="sm" onClick={() => window.b3d.openUrl(connectionRequest.verificationUrl ?? '')}>
             <IconGitHub size={13} /> {t('githost.connect.open_device')}

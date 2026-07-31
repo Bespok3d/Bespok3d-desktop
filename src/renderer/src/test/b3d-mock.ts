@@ -190,6 +190,8 @@ function mockRegistry(override: Partial<B3d['registry']> = {}): B3d['registry'] 
     setSourceEnabled: resolved(makeCatalog([])),
     setChannelEnabled: resolved(SETTINGS_DEFAULT),
     assetInfo: resolved({ downloadCount: null, publishedAt: null }),
+    // No test reads a released doc unless it asks for one: the default leaves the page on its bundled copy.
+    releaseDoc: resolved({ text: null, problem: null }),
     freshestVersion: resolved(null),
     // A listing that was refreshed a moment ago: no test gets an install offer it did not ask for.
     refreshOffer: resolved({ offered: false, refreshedAt: null }),

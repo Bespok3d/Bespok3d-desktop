@@ -1,0 +1,32 @@
+{
+  "_comment": "The plugin set the monorepo golden describes. Owned HERE, never read from scripts/bundle.dev.json: that file is a developer scratch list for their own dev build, and editing it must never turn this rail red. Change this list only to add or drop a plugin from what the golden claims, and run `npm run golden:refresh` in the same change.",
+  "bundle": [
+    "afc-lite",
+    "spoolman",
+    "u1-gcode-colors",
+    "idle-timeout",
+    "moonraker-notify",
+    "status-feed",
+    "remote-screen",
+    "camera-hw-accel",
+    "rfid-generic-ndef",
+    "rfid-opentag",
+    "rfid-elegoo",
+    "rfid-bambu",
+    "rfid-creality",
+    "rfid-tigertag",
+    "rfid-openprinttag",
+    "rfid-anycubic",
+    "rfid-ntag",
+    "all-the-tags",
+    "fluidd",
+    "mainsail",
+    "tun-module",
+    "tailscale",
+    "zerotier"
+  ],
+  "variantDirs": [
+    "fluidd-plugin/fluidd-bleeding-edge",
+    "mainsail-plugin/mainsail-bleeding-edge"
+  ]
+}

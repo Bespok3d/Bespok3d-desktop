@@ -5,7 +5,7 @@
   "main": "./out/main/index.js",
   "author": "unlucio",
   "scripts": {
-    "predev": "node ./scripts/generate-daemon-version.mjs && sh ./scripts/pack-plugins.sh || true",
+    "predev": "sh ./scripts/name-dev-electron-bundle.sh; node ./scripts/generate-daemon-version.mjs && sh ./scripts/pack-plugins.sh || true",
     "dev": "electron-vite dev",
     "prebuild": "node ./scripts/generate-daemon-version.mjs && sh ./scripts/pack-plugins.sh",
     "pretest": "node ./scripts/generate-daemon-version.mjs",

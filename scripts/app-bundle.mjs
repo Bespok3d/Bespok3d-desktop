@@ -276,9 +276,8 @@ async function pluginSources(readFile, readdir, join, repoDir, variantDirPaths) 
 }
 
 // scripts/bundle.json `bundle` is the RELEASE opt-in list of plugin ids to pack into the bundled
-// index; everything else is served online (the default). bundle.dev.json adds dev-only ids, merged
-// in only when B3D_INCLUDE_DEV_BUNDLE is set (dev builds; buildBundle sets it for a 'dev' channel).
-// Empty = online.
+// index; everything else is served online (the default). Empty = online. The dev channel adds the
+// dev curation on top (readDevCuration below); a release build never sees it.
 async function readBundleList(readFile, join, scriptDir, file) {
   const text = await readFile(join(scriptDir, file), 'utf8').catch(() => '{}')
   return JSON.parse(text).bundle ?? []
@@ -296,17 +295,30 @@ async function variantSource(readFile, stat, join, pluginsRoot, relativeDir) {
   return { name: manifest.name, dir, manifest }
 }
 
-async function readVariantDirs(readFile, join, scriptDir) {
+// scripts/bundle.dev.json whole, so a caller can hand buildBundle the same shape in its place. That
+// file is a developer's own scratch curation of what their local dev build packs; nothing that has to
+// stay green may read it, or editing it turns someone else's check red.
+async function readDevCuration(readFile, join, scriptDir) {
   const text = await readFile(join(scriptDir, 'bundle.dev.json'), 'utf8').catch(() => '{}')
-  return JSON.parse(text).variantDirs ?? []
+  return JSON.parse(text)
+}
+
+async function readVariantDirs(readFile, join, scriptDir) {
+  return (await readDevCuration(readFile, join, scriptDir)).variantDirs ?? []
 }
 
 export async function variantSources(readFile, stat, join, pluginsRoot, scriptDir) {
   if (!process.env.B3D_INCLUDE_DEV_BUNDLE) return []
-  const variantDirs = await readVariantDirs(readFile, join, scriptDir)
+
+  return variantSourcesIn(readFile, stat, join, pluginsRoot, await readVariantDirs(readFile, join, scriptDir))
+}
+
+async function variantSourcesIn(readFile, stat, join, pluginsRoot, variantDirs) {
+  if (!process.env.B3D_INCLUDE_DEV_BUNDLE) return []
   const sources = await Promise.all(
     variantDirs.map((relativeDir) => variantSource(readFile, stat, join, pluginsRoot, relativeDir)),
   )
+
   return sources.filter(Boolean)
 }
 
@@ -377,7 +389,7 @@ function packBakedSource(builder, source, outputDir, version) {
 // This is what pack-plugins.sh's build_core delegates to; pruning stale .b3 across repeated
 // invocations stays pack-plugins.sh's own concern (unchanged).
 export async function buildBundle(request) {
-  const { sourceRoot, outputDir, channel } = request
+  const { sourceRoot, outputDir, channel, devCuration } = request
   const fsPromises = await import('node:fs/promises')
   const { readFile, readdir, mkdir, stat } = fsPromises
   const path = await import('node:path')
@@ -389,13 +401,14 @@ export async function buildBundle(request) {
   const pluginsRoot = join(sourceRoot, '..', 'plugins')
 
   const releaseIds = new Set(await readBundleList(readFile, join, scriptDir, 'bundle.json'))
-  const devIds = channel === 'dev' ? new Set(await readBundleList(readFile, join, scriptDir, 'bundle.dev.json')) : new Set()
+  const devBundle = devCuration ?? await readDevCuration(readFile, join, scriptDir)
+  const devIds = channel === 'dev' ? new Set(devBundle.bundle ?? []) : new Set()
   const bundled = new Set([...releaseIds, ...devIds])
-  // Read unconditionally, release channel included: a variant dir's manifest deliberately shares its
+  // Taken unconditionally, release channel included: a variant dir's manifest deliberately shares its
   // id with the online atom, so it must never be discovered as that id's SOURCE dir in any channel (see
-  // pluginSources' own comment). Only the actual dev-only VARIANT SOURCING below (variantSources, via
+  // pluginSources' own comment). Only the actual dev-only VARIANT SOURCING below (variantSourcesIn, via
   // B3D_INCLUDE_DEV_BUNDLE) is channel-gated.
-  const variantRelDirs = await readVariantDirs(readFile, join, scriptDir)
+  const variantRelDirs = devBundle.variantDirs ?? []
   const variantDirPaths = new Set(variantRelDirs.map((relDir) => join(pluginsRoot, relDir)))
 
   const idSources = (await pluginSources(readFile, readdir, join, sourceRoot, variantDirPaths)).filter((source) => bundled.has(source.name))
@@ -404,7 +417,7 @@ export async function buildBundle(request) {
   } else {
     delete process.env.B3D_INCLUDE_DEV_BUNDLE
   }
-  const variants = await variantSources(readFile, stat, join, pluginsRoot, scriptDir)
+  const variants = await variantSourcesIn(readFile, stat, join, pluginsRoot, variantRelDirs)
   const sources = [...idSources, ...variants]
 
   const ownScriptDir = dirname(fileURLToPath(import.meta.url))

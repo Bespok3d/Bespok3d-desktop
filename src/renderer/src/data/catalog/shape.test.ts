@@ -34,6 +34,38 @@ describe('isLocalRegistry', () => {
   })
 })
 
+// A store page must show the words of the version it is offering. The publisher's build rewrites these
+// fields to the docs released beside the package; only that form can be read at runtime, so a source
+// path or a link for a human to click must not be handed to the fetch as if it were one.
+describe('the runtime-readable release notes', () => {
+  it('carries the notes and the README released with the offered version', () => {
+    const released = makeIndexEntry({
+      doc_url: 'https://api.github.com/repos/Bespok3d/u1-hw-camera/releases/assets/41',
+      changelog_url: 'https://api.github.com/repos/Bespok3d/u1-hw-camera/releases/assets/42',
+    })
+    const [plugin] = indexToPlugins([released], [])
+    expect(plugin?.docUrl).toBe('https://api.github.com/repos/Bespok3d/u1-hw-camera/releases/assets/41')
+    expect(plugin?.changelogUrl).toBe('https://api.github.com/repos/Bespok3d/u1-hw-camera/releases/assets/42')
+  })
+
+  it('does not offer a source path or a browse link as something to read', () => {
+    const unreleased = makeIndexEntry({
+      doc_url: 'https://github.com/Bespok3d/u1-hw-camera/blob/main/plugin/doc/README.md',
+      changelog_url: 'camera-hw-accel/doc/CHANGELOG.md',
+    })
+    const [plugin] = indexToPlugins([unreleased], [])
+    expect(plugin?.docUrl).toBeUndefined()
+    expect(plugin?.changelogUrl).toBeUndefined()
+  })
+
+  it('carries a collection\'s released notes the same way', () => {
+    const [collection] = indexToCollections([makeCollectionEntry({
+      changelog_url: 'https://api.github.com/repos/Bespok3d/main-index/releases/assets/7',
+    })])
+    expect(collection?.changelogUrl).toBe('https://api.github.com/repos/Bespok3d/main-index/releases/assets/7')
+  })
+})
+
 describe('indexToPlugins author + sw_version', () => {
   it('maps author and sw_version onto the plugin and its source variant', () => {
     const [plugin] = indexToPlugins([makeIndexEntry({ author: 'bespoked', sw_version: '1.37.2' })], [])

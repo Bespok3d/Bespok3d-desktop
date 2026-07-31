@@ -10,6 +10,7 @@ import { closeAllPrintStateWatches } from './daemon-client/feeds/print-state'
 import { closeAllPluginLogWatches } from './daemon-client/feeds/plugin-log'
 import { startAutoUpdates } from './app-update'
 import { installAppMenu } from './menu'
+import { createSplash } from './splash'
 import { addLocalPackages } from './registry/local'
 import { registerB3dScheme, b3dUrlsFromArgv, dispatchB3dUrl } from './protocol'
 import type { B3dRoute } from './protocol/url'
@@ -87,30 +88,6 @@ const APP_NAME = is.dev ? 'Bespok3d Dev' : 'Bespok3d'
 app.setName(APP_NAME)
 app.setAboutPanelOptions({ applicationName: APP_NAME, applicationVersion: app.getVersion() })
 
-const SPLASH_BG = '#161c24'
-
-const splashHtml = encodeURIComponent(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:${SPLASH_BG};display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;user-select:none;-webkit-user-select:none}
-h1{font-size:26px;font-weight:700;letter-spacing:-0.4px}
-p{margin-top:8px;font-size:12px;opacity:0.35}
-</style></head><body><h1>Bespok3d</h1><p>Loading…</p></body></html>`)
-
-function createSplash(): BrowserWindow {
-  const splash = new BrowserWindow({
-    width: 340,
-    height: 180,
-    frame: false,
-    center: true,
-    resizable: false,
-    backgroundColor: SPLASH_BG,
-    webPreferences: { nodeIntegration: false, contextIsolation: true },
-  })
-  splash.loadURL(`data:text/html;charset=utf-8,${splashHtml}`)
-
-  return splash
-}
-
 const PREFERRED_WIDTH = 1280
 
 function createWindow(splash: BrowserWindow): void {
@@ -172,10 +149,9 @@ app.whenReady().then(() => {
   registerIpc(() => mainWindow)
   installAppMenu(() => mainWindow)
   startAutoUpdates(() => mainWindow)
-  const splash = createSplash()
-  createWindow(splash)
+  createWindow(createSplash(APP_NAME))
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow(createSplash())
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(createSplash(APP_NAME))
   })
 })
 

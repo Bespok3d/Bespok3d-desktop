@@ -1,0 +1,28 @@
+{
+  "archives": [
+    "afc-lite",
+    "camera-hw-accel",
+    "fluidd",
+    "fluidd",
+    "idle-timeout",
+    "mainsail",
+    "mainsail",
+    "moonraker-notify",
+    "remote-screen",
+    "rfid-anycubic",
+    "rfid-bambu",
+    "rfid-creality",
+    "rfid-elegoo",
+    "rfid-generic-ndef",
+    "rfid-ntag",
+    "rfid-openprinttag",
+    "rfid-opentag",
+    "rfid-tigertag",
+    "spoolman",
+    "status-feed",
+    "tailscale",
+    "tun-module",
+    "u1-gcode-colors",
+    "zerotier"
+  ]
+}

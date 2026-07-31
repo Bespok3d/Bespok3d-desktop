@@ -12,6 +12,7 @@ import { CHANNELS } from '../../../data/catalog/bundled'
 import { useCatalog } from '../../../data/catalog'
 import { allowsChannel } from '../../../data/channels'
 import type { Channel, ReleaseChannel, SourceRow } from '../../../data/types'
+import { signInWouldReach } from '../../../data/source-failure'
 import cx from '../../../utils/cx'
 
 function useRepoSettings() {
@@ -86,7 +87,7 @@ interface SourceItemProps {
 }
 
 function SourceItem({ source, t, onToggle, onConnectGitHub }: SourceItemProps) {
-  const needsAuth = source.status === 'failed' && source.reason === 'auth'
+  const needsAuth = signInWouldReach(source)
 
   return (
     <div className={cx('set-row repo-row', !source.enabled && 'disabled', source.status === 'failed' && 'failed')}>

@@ -7,22 +7,37 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as openpgp from 'openpgp'
 import type { RegistryRef, SignatureCheck } from '../model'
+import type { AssetInfo, ReleaseInfo } from '../../git-host/connector'
 import type { CacheEntry } from './cache'
 import { fetchGitHostRegistry } from './fetch'
 
-const mocks = vi.hoisted(() => ({ entries: new Map<string, CacheEntry>(), writeCache: vi.fn(), verifyIndexSignature: vi.fn() }))
+const mocks = vi.hoisted(() => ({ entries: new Map<string, CacheEntry>(), writeCache: vi.fn(), verifyIndexSignature: vi.fn(), listReleases: vi.fn(), downloadReleaseAsset: vi.fn(), isConnected: vi.fn() }))
 
 // Mocking ./cache with a factory also keeps ../../app-paths (and with it electron) out of the run.
 vi.mock('./cache', () => ({ loadCache: () => mocks.entries, writeCache: mocks.writeCache, conditionalHeaders: () => ({}) }))
 vi.mock('./verify', () => ({ verifyIndexSignature: mocks.verifyIndexSignature }))
-vi.mock('../../git-host', () => ({ activeConnector: () => ({ getFile: () => Promise.resolve(null) }) }))
+vi.mock('../../git-host', () => ({
+  activeConnector: () => ({ getFile: () => Promise.resolve(null), listReleases: mocks.listReleases, downloadReleaseAsset: mocks.downloadReleaseAsset, isConnected: mocks.isConnected }),
+}))
 
 const REGISTRY_URL = 'https://lists.example.invalid/index.json'
 const GITHUB_URL = 'github:bespok3d-fixture/list-repo/index.json'
+// A `github:` ref is served by an anonymous avenue, and each avenue caches under the url it read, so
+// the release asset is where a cached entry for that ref lives.
+const GITHUB_AVENUE_URL = 'https://github.com/bespok3d-fixture/list-repo/releases/latest/download/index.json'
 const SIGNER_FINGERPRINT = '679939555819FB5F6423DC68C4388E76BFA9B4E0'
 const FIXTURE_INDEX = { schema_version: 1, name: 'Fixture List', publisher: 'PLACEHOLDER', updated: '2026-01-01', plugins: [] }
 const FIXTURE_BYTES = `${JSON.stringify(FIXTURE_INDEX, null, 2)}\n`
 const FIXTURE_SIGNATURE = '-----BEGIN PGP SIGNATURE-----\n\nOBVIOUSLY-FAKE-FIXTURE-SIGNATURE\n-----END PGP SIGNATURE-----\n'
+
+const LIST_OWNER = 'bespok3d-fixture'
+const LIST_REPO = 'list-repo'
+const RELEASE_ASSET_URL = `https://github.com/${LIST_OWNER}/${LIST_REPO}/releases/latest/download/index.json`
+const ASSET_API_BASE = `https://api.github.invalid/repos/${LIST_OWNER}/${LIST_REPO}/releases`
+const PUBLISHED_RELEASE_ID = 'published'
+const UNBLESSED_RELEASE_ID = 'unblessed'
+const UNBLESSED_LIST_NAME = 'Unblessed Prerelease List'
+const UNBLESSED_BYTES = FIXTURE_BYTES.replace('Fixture List', UNBLESSED_LIST_NAME)
 
 function listRef(): RegistryRef {
   return { url: REGISTRY_URL, trust: 'project', locked: true }
@@ -30,6 +45,45 @@ function listRef(): RegistryRef {
 
 function gitHubRef(): RegistryRef {
   return { url: GITHUB_URL, trust: 'project', locked: true }
+}
+
+function releaseAssetRef(): RegistryRef {
+  return { url: RELEASE_ASSET_URL, trust: 'project', locked: true }
+}
+
+function fixtureAsset(assetId: string, name: string): AssetInfo {
+  return { id: assetId, name, downloadUrl: `${ASSET_API_BASE}/assets/${assetId}`, downloadCount: 0 }
+}
+
+function releaseFixture(releaseId: string, prerelease: boolean, assetNames: string[]): ReleaseInfo {
+  const assets = assetNames.map((assetName) => fixtureAsset(`${releaseId}-${assetName}`, assetName))
+
+  return { id: releaseId, tag: `v0.0.1-${releaseId}`, name: releaseId, body: '', prerelease, publishedAt: '2026-01-01T00:00:00Z', url: `${ASSET_API_BASE}/${releaseId}`, assets }
+}
+
+// Newest first, the order the host answers in, so the prerelease is what a naive "take the first one"
+// would pick up. Its index carries a different list name, which is how the test sees which one loaded.
+function stubPublishedRelease(assetNames: string[]): void {
+  const unblessed = releaseFixture(UNBLESSED_RELEASE_ID, true, ['index.json'])
+  const published = releaseFixture(PUBLISHED_RELEASE_ID, false, assetNames)
+  const assets = [...unblessed.assets, ...published.assets]
+  mocks.listReleases.mockResolvedValue([unblessed, published])
+  mocks.downloadReleaseAsset.mockImplementation((downloadUrl: string) => Promise.resolve(Buffer.from(assetBody(assets, downloadUrl))))
+}
+
+// An asset is downloaded by its api url alone, so the fixture answers on that url the way the host
+// does: the asset's name never travels with the request.
+function assetBody(assets: AssetInfo[], downloadUrl: string): string {
+  const asset = assets.find((candidate) => candidate.downloadUrl === downloadUrl)
+  if (!asset) throw new Error(`the fixture holds no asset at ${downloadUrl}`)
+  if (asset.name.endsWith('.sig')) return FIXTURE_SIGNATURE
+
+  return asset.id.startsWith(UNBLESSED_RELEASE_ID) ? UNBLESSED_BYTES : FIXTURE_BYTES
+}
+
+// What a PRIVATE repo answers on a release download url, for everyone, with or without a token.
+function stubPrivateRepo(): void {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: false, status: 404 })))
 }
 
 function seedCacheAt(cacheKey: string, bytes: string, signature: string | null): void {
@@ -131,7 +185,10 @@ function asSignatureCheck(fingerprint: string | null): SignatureCheck {
 beforeEach(() => {
   mocks.entries.clear()
   mocks.writeCache.mockClear()
+  mocks.listReleases.mockReset()
+  mocks.downloadReleaseAsset.mockReset()
   mocks.verifyIndexSignature.mockReset().mockResolvedValue({ proof: 'signed', fingerprint: SIGNER_FINGERPRINT })
+  mocks.isConnected.mockReset().mockResolvedValue(true)
 })
 
 afterEach(() => {
@@ -253,15 +310,16 @@ describe('a 304 with no usable cache entry', () => {
     await expect(fetchGitHostRegistry(listRef())).rejects.toThrow('HTTP answered 304 to a request that sent no validators')
   })
 
-  it('names the unconditional 304 on the github transport too', async () => {
+  it('names the unconditional 304 on a github ref too, on whichever avenue answered it', async () => {
     stubNotModified()
-    await expect(fetchGitHostRegistry(gitHubRef())).rejects.toThrow('GitHub answered 304 to a request that sent no validators')
+    mocks.isConnected.mockResolvedValue(false)
+    await expect(fetchGitHostRegistry(gitHubRef())).rejects.toThrow('HTTP answered 304 to a request that sent no validators')
   })
 })
 
 describe('the github transport', () => {
   it('reports a 304 hit as cached, not as freshly read', async () => {
-    seedCacheAt(GITHUB_URL, FIXTURE_BYTES, FIXTURE_SIGNATURE)
+    seedCacheAt(GITHUB_AVENUE_URL, FIXTURE_BYTES, FIXTURE_SIGNATURE)
     stubNotModified()
     const fetched = await fetchGitHostRegistry(gitHubRef())
     expect(fetched.fromCache).toBe(true)
@@ -274,10 +332,67 @@ describe('the github transport', () => {
   })
 
   it('retries a missing sibling .sig on a 304 hit', async () => {
-    seedCacheAt(GITHUB_URL, FIXTURE_BYTES, null)
+    seedCacheAt(GITHUB_AVENUE_URL, FIXTURE_BYTES, null)
     stubNotModifiedWithSignature()
     await fetchGitHostRegistry(gitHubRef())
     expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE)
+  })
+})
+
+// A list published as an asset of its own repo's latest release. Its download url answers 404 on a
+// PRIVATE repo for everyone, token or not, which is exactly how nine of the ten registered lists
+// dropped out of the store: the app read that 404 as "gone" and never asked the host with the token.
+describe('a list published as a release asset on a private repo', () => {
+  it('serves it through the connected token, finding the asset by name off the latest release', async () => {
+    stubPrivateRepo()
+    stubPublishedRelease(['index.json', 'index.json.sig'])
+    const fetched = await fetchGitHostRegistry(releaseAssetRef())
+    expect(mocks.listReleases).toHaveBeenCalledWith({ owner: LIST_OWNER, repo: LIST_REPO })
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE)
+    expect(fetched.index.name).toBe('Fixture List')
+  })
+
+  // `releases/latest` is what the publisher blessed, so a newer prerelease must not move the store.
+  it('reads the latest published release and never a newer prerelease', async () => {
+    stubPrivateRepo()
+    stubPublishedRelease(['index.json'])
+    const fetched = await fetchGitHostRegistry(releaseAssetRef())
+    expect(fetched.index.name).toBe('Fixture List')
+  })
+
+  it('loads one released with no .sig beside it, with no proof of a signer', async () => {
+    stubPrivateRepo()
+    stubPublishedRelease(['index.json'])
+    mocks.verifyIndexSignature.mockResolvedValue({ proof: 'unsigned' })
+    const fetched = await fetchGitHostRegistry(releaseAssetRef())
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, null)
+    expect(fetched.signature).toEqual({ proof: 'unsigned' })
+  })
+
+  it('says the list is out of reach when the release carries no asset of that name', async () => {
+    stubPrivateRepo()
+    stubPublishedRelease(['some-other-list.json'])
+    await expect(fetchGitHostRegistry(releaseAssetRef())).rejects.toThrow('do not have access')
+  })
+})
+
+describe('a list published as a release asset on a public repo', () => {
+  // Publishing from a public repo has to keep working with no git host connected at all, so the plain
+  // download url is tried first and the host is never asked when it answers.
+  it('reads it over plain http without asking the host', async () => {
+    stubServedIndex(200)
+    const fetched = await fetchGitHostRegistry(releaseAssetRef())
+    expect(mocks.listReleases).not.toHaveBeenCalled()
+    expect(fetched.index.name).toBe('Fixture List')
+    expect(fetched.fromCache).toBe(false)
+  })
+
+  it('re-verifies the cached bytes on a 304 hit, same as any other list', async () => {
+    seedCacheAt(RELEASE_ASSET_URL, FIXTURE_BYTES, FIXTURE_SIGNATURE)
+    stubNotModified()
+    const fetched = await fetchGitHostRegistry(releaseAssetRef())
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE)
+    expect(fetched.fromCache).toBe(true)
   })
 })
 

@@ -32,6 +32,74 @@
   color: var(--ink-2);
 }
 
+.gh-device-steps {
+  margin: 0;
+  padding-left: 20px;
+  max-width: 340px;
+  text-align: left;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  line-height: 1.7;
+}
+
+.gh-code-copy-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.gh-code-copy-row {
+  position: relative;
+}
+
+.gh-code.gh-code-copy {
+  color: inherit;
+  cursor: pointer;
+  transition: border-color var(--dur-1) ease;
+}
+.gh-code.gh-code-copy:hover {
+  border-color: var(--accent);
+}
+
+.gh-copy-hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+/* Rises and fades out over its own lifetime, so the confirmation clears itself without a dismiss. */
+.gh-copied-balloon {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  pointer-events: none;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  white-space: nowrap;
+  animation: gh-copied-rise 3s ease-out forwards;
+}
+
+@keyframes gh-copied-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -28px);
+  }
+}
+
 .gh-repo-picker-wrap {
   flex-wrap: wrap;
 }

@@ -6,6 +6,8 @@ import type { Plugin, Printer, PluginConfigField } from '../../data/types'
 import type { PluginVarsSave, ScopeChoice } from '../../data/plugin-vars'
 import type { Collection } from '../../data/collections'
 import { useCatalog } from '../../data/catalog'
+import { emptyStoreReason, offersSignIn } from '../../data/source-failure'
+import type { EmptyStoreReason } from '../../data/source-failure'
 import { PanelSpinner } from '../common/feedback/PanelSpinner'
 import { Button } from '../common/Button'
 import { IconBox, IconGitHub } from '../../design-system/icons'
@@ -50,28 +52,19 @@ interface PluginStoreProps {
   onConnectGitHub?: () => void
 }
 
-// Shown when the catalog has no plugins to display. The auth variant is the key one: with the catalog
-// served online and no GitHub connection, the store is empty, so it says why and offers a one-click
-// sign-in (the bell notice alone is easy to miss, and can be read-from-a-previous-day).
-type EmptyReason = 'auth' | 'filtered' | 'none'
-
-// 'filtered' = there are plugins but the search/filters hide them; 'auth' = the catalog is empty
-// because a private source needs sign-in; 'none' = genuinely nothing available.
-function emptyStoreReason(hasCatalog: boolean, needsAuth: boolean): EmptyReason {
-  if (hasCatalog) return 'filtered'
-
-  return needsAuth ? 'auth' : 'none'
-}
-
-function EmptyStore({ reason, onConnectGitHub }: { reason: EmptyReason; onConnectGitHub: () => void }) {
+// Shown when the catalog has no plugins to display, saying which of the several very different things
+// went wrong: a spent anonymous request ration, a private list, an unreachable GitHub, or nothing to
+// show at all. Only the ones a sign-in actually fixes offer the button (the bell notice alone is easy
+// to miss, and can be read-from-a-previous-day).
+function EmptyStore({ reason, onConnectGitHub }: { reason: EmptyStoreReason; onConnectGitHub: () => void }) {
   const { t } = useI18n()
 
   return (
     <div className="main store-empty">
-      <div className="store-empty-icon">{reason === 'auth' ? <IconGitHub size={34} /> : <IconBox size={34} />}</div>
+      <div className="store-empty-icon">{offersSignIn(reason) ? <IconGitHub size={34} /> : <IconBox size={34} />}</div>
       <div className="store-empty-title">{t(`store.empty.${reason}.title`)}</div>
       <div className="store-empty-body">{t(`store.empty.${reason}.body`)}</div>
-      {reason === 'auth' && (
+      {offersSignIn(reason) && (
         <Button variant="primary" onClick={onConnectGitHub}>
           <IconGitHub size={15} /> {t('repos.sign_in')}
         </Button>
@@ -152,7 +145,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
       <div className="store-body">
         <FilterShoulder open={filtersOpen} {...facets} />
         {matchingPlugins.length === 0 ? (
-          <EmptyStore reason={emptyStoreReason(displayPlugins.length > 0, sources.some((source) => source.status === 'failed' && source.reason === 'auth'))} onConnectGitHub={() => onConnectGitHub?.()} />
+          <EmptyStore reason={emptyStoreReason(displayPlugins.length > 0, sources)} onConnectGitHub={() => onConnectGitHub?.()} />
         ) : (
           <StoreMain showFlat={showFlat} flatPlugins={flatPlugins} displayPlugins={displayPlugins} orphans={orphans} matchOpts={matchOpts} ctx={cardCtx} layout={layout} sortKey={sortKey} sortDir={sortDir} showCategory={facets.categories.length === 0} density={density} onOpen={setPanelPlugin}
             collectionShelf={selecting ? null : <CollectionSection collections={collections} plugins={catalogPlugins} installedIds={installedIds} onOpen={setPanelCollection} />} />

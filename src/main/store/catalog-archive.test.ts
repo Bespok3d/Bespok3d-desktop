@@ -4,10 +4,10 @@ import { describe, it, expect, vi } from 'vitest'
 
 const hoisted = vi.hoisted(() => ({ userDataDir: '' }))
 vi.mock('electron', () => ({ app: { getPath: () => hoisted.userDataDir } }))
-vi.mock('../git-host', () => ({ activeConnector: vi.fn() }))
+vi.mock('../registry/asset-read', () => ({ readReleaseAsset: vi.fn() }))
 
 import { discardCachedArchive, findCatalogEntry, findCatalogVariant, resolveArchiveBytes } from './catalog-archive'
-import { activeConnector } from '../git-host'
+import { readReleaseAsset } from '../registry/asset-read'
 import type { MergedEntry } from '../registry/model'
 import { mkdtempSync, writeFileSync, mkdirSync } from 'fs'
 import { tmpdir } from 'os'
@@ -76,15 +76,17 @@ describe('resolveArchiveBytes', () => {
     await expect(resolveArchiveBytes(catalogEntry({ name: 'spoolman' }))).rejects.toThrow('missing download_url')
   })
 
-  it('fetches a remote http download_url through the git host and caches it by version', async () => {
+  // Installing used to go through the git host, which demands a signed-in account, so someone who
+  // never wanted a GitHub account could browse the store and never install anything from it.
+  it('downloads a remote http download_url the way a visitor does and caches it by version', async () => {
     hoisted.userDataDir = mkdtempSync(join(tmpdir(), 'b3d-cache-'))
-    const downloadReleaseAsset = vi.fn().mockResolvedValue(Buffer.from('REMOTE'))
-    vi.mocked(activeConnector).mockReturnValue({ downloadReleaseAsset } as unknown as ReturnType<typeof activeConnector>)
+    const downloaded = vi.mocked(readReleaseAsset)
+    downloaded.mockReset().mockResolvedValue(Buffer.from('REMOTE'))
     const entry = catalogEntry({ name: 'spoolman', version: '0.1.2', download_url: 'https://example.test/spoolman-0.1.2.b3' })
 
     expect((await resolveArchiveBytes(entry)).toString()).toBe('REMOTE')
     expect((await resolveArchiveBytes(entry)).toString()).toBe('REMOTE')
-    expect(downloadReleaseAsset).toHaveBeenCalledTimes(1)
+    expect(downloaded).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -94,14 +96,14 @@ describe('resolveArchiveBytes', () => {
 describe('discardCachedArchive', () => {
   it('makes the next attempt fetch the package again instead of reusing the refused copy', async () => {
     hoisted.userDataDir = mkdtempSync(join(tmpdir(), 'b3d-cache-'))
-    const downloadReleaseAsset = vi.fn().mockResolvedValue(Buffer.from('REMOTE'))
-    vi.mocked(activeConnector).mockReturnValue({ downloadReleaseAsset } as unknown as ReturnType<typeof activeConnector>)
+    const downloaded = vi.mocked(readReleaseAsset)
+    downloaded.mockReset().mockResolvedValue(Buffer.from('REMOTE'))
     const entry = catalogEntry({ name: 'camera', version: '0.4.0', download_url: 'https://example.test/camera-0.4.0.b3' })
     await resolveArchiveBytes(entry)
 
     discardCachedArchive(entry)
     await resolveArchiveBytes(entry)
-    expect(downloadReleaseAsset).toHaveBeenCalledTimes(2)
+    expect(downloaded).toHaveBeenCalledTimes(2)
   })
 
   it('is content with a package that was never downloaded', () => {

@@ -3,6 +3,7 @@
 import { ipcRenderer } from 'electron'
 import type { AppSettings, ReleaseChannel } from '../main/settings'
 import type { Catalog } from '../main/registry'
+import type { AssetRead } from '../main/registry/asset-read'
 import type { RefreshOffer } from '../main/registry/listing-refresh'
 import type { RefreshPassResult } from '../main/registry/refresh-pass'
 
@@ -14,6 +15,11 @@ export const registryApi = {
     ipcRenderer.invoke('registry:setChannelEnabled', channel, enabled),
   assetInfo: (url: string): Promise<{ downloadCount: number | null; publishedAt: string | null }> =>
     ipcRenderer.invoke('registry:assetInfo', url),
+  // The README or the release notes published alongside the version a store page is offering, so the
+  // page shows that version's words and not the copy that happened to be bundled at app build time.
+  // A read that did not arrive comes back as a named problem rather than a rejection, because the page
+  // has the bundled copy to show and only needs to know that the newer words are not there.
+  releaseDoc: (url: string): Promise<AssetRead> => ipcRenderer.invoke('registry:releaseDoc', url),
   // null when the listed version is already the newest one the plugin's repo has released, and also
   // when that repo cannot be asked. Either way the store keeps showing the listed version.
   freshestVersion: (pluginId: string, sourceUrl?: string): Promise<string | null> =>

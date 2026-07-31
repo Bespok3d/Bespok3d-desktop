@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('./keychain', () => ({ load: vi.fn(() => 'TKN'), save: vi.fn(), clear: vi.fn() }))
 
 import { makeRestHost, type RestHostProfile, type JsonObject } from './rest-host'
+import { load } from './keychain'
 import type { AssetInfo } from './connector'
 
 function fakeProfile(overrides: Partial<RestHostProfile> = {}): RestHostProfile {
@@ -26,6 +27,12 @@ function fakeProfile(overrides: Partial<RestHostProfile> = {}): RestHostProfile 
     downloadAssetHeaders: (token) => ({ Authorization: `Token ${token}` }),
     ...overrides,
   }
+}
+
+// The token-optional header scheme both real profiles carry: signed when a token is there, and no
+// Authorization header at all when there is none.
+function fakeAuth(token: string): Record<string, string> {
+  return token ? { Authorization: `Token ${token}` } : {}
 }
 
 function jsonResponse(body: unknown) {
@@ -65,5 +72,33 @@ describe('makeRestHost - profile-driven shared engine', () => {
     fetchMock.mockResolvedValue(jsonResponse({ id: 9, tag_name: 'v1', html_url: 'r', assets: [{ id: 3, name: 'a.b3', dl: 'DOWN' }] }))
     const release = await makeRestHost(fakeProfile()).createRelease({ owner: 'o', repo: 'r' }, { tag: 'v1', title: 'v1' })
     expect(release.assets[0].downloadUrl).toBe('DOWN')
+  })
+})
+
+// Reading a published release used to demand a signed-in account, so someone who never wanted one got
+// 'Not connected to GitHub' where the version list belonged - and through the same call, no app update
+// check, no release list and no rollback. Publishing still needs the account; reading no longer does.
+describe('someone with no account reads what is published', () => {
+  const fetchMock = vi.fn()
+  const tokenOptional = fakeProfile({ requestHeaders: fakeAuth, downloadAssetHeaders: fakeAuth })
+  beforeEach(() => {
+    fetchMock.mockReset()
+    vi.stubGlobal('fetch', fetchMock)
+    vi.mocked(load).mockReturnValue(null)
+  })
+  afterEach(() => vi.mocked(load).mockReturnValue('TKN'))
+
+  it('lists the releases of a repo unsigned rather than refusing', async () => {
+    fetchMock.mockResolvedValue(jsonResponse([{ id: 1, tag_name: 'v1', html_url: 'r', assets: [] }]))
+    const releases = await makeRestHost(tokenOptional).listReleases({ owner: 'o', repo: 'r' })
+    expect(releases[0].tag).toBe('v1')
+    expect(fetchMock.mock.calls[0][1].headers).toEqual({})
+  })
+
+  it('downloads a release asset unsigned rather than refusing', async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, arrayBuffer: async () => new Uint8Array([0x50, 0x4b]).buffer } as unknown as Response)
+    const bytes = await makeRestHost(tokenOptional).downloadReleaseAsset('https://dl.fake.test/plugin.b3')
+    expect([...bytes]).toEqual([0x50, 0x4b])
+    expect(fetchMock.mock.calls[0][1].headers).toEqual({})
   })
 })

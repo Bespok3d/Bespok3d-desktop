@@ -60,6 +60,10 @@ export interface Collection {
   icon?: string
   doc?: string
   changelog?: string
+  // Where the README and the release notes of the offered version can be read at runtime, when the
+  // publisher released them with that version.
+  docUrl?: string
+  changelogUrl?: string
   // True when this collection came from the local bundled dev index rather than a published list.
   local?: boolean
 }

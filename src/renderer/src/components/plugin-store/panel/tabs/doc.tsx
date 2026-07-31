@@ -8,6 +8,7 @@ import { docAssetsFor } from '../../../../data/catalog/shape'
 import { useAsyncResource } from '../../../common/hooks/useAsyncResource'
 import { IconGlobe } from '../../../../design-system/icons'
 import { isSideloaded } from '../derive'
+import { useReleasedDoc } from '../released-doc'
 
 function useLocalDoc(plugin: Plugin): string | null {
   // A build-bundled doc (plugin.doc) wins; otherwise read the sideloaded package's README at runtime.
@@ -18,8 +19,8 @@ function useLocalDoc(plugin: Plugin): string | null {
   return useAsyncResource(loadDoc, [plugin.id, plugin.doc]).value
 }
 
-function DocBody({ plugin, localDoc, t }: { plugin: Plugin; localDoc: string | null; t: TFunction }) {
-  if (plugin.doc) return <Markdown source={plugin.doc} assets={docAssetsFor(plugin.id)} />
+function DocBody({ plugin, doc, localDoc, t }: { plugin: Plugin; doc: string | undefined; localDoc: string | null; t: TFunction }) {
+  if (doc) return <Markdown source={doc} assets={docAssetsFor(plugin.id)} />
   if (localDoc != null) return <Markdown source={localDoc} assets={{}} />
 
   return <p className="panel-doc-empty">{isSideloaded(plugin) ? t('store.doc_none') : t('store.doc_external_only')}</p>
@@ -27,11 +28,12 @@ function DocBody({ plugin, localDoc, t }: { plugin: Plugin; localDoc: string | n
 
 export function PanelDoc({ plugin }: { plugin: Plugin }) {
   const { t } = useI18n()
+  const doc = useReleasedDoc(plugin.docUrl, plugin.doc)
   const localDoc = useLocalDoc(plugin)
 
   return (
     <div className="panel-body panel-doc">
-      <DocBody plugin={plugin} localDoc={localDoc} t={t} />
+      <DocBody plugin={plugin} doc={doc} localDoc={localDoc} t={t} />
       {plugin.homepage && (
         <a className="btn outline doc-homepage-link" href={plugin.homepage} target="_blank" rel="noreferrer">
           <IconGlobe size={14} />{t('store.doc_homepage')}

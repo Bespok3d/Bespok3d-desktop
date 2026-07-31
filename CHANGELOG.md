@@ -2,6 +2,55 @@
 
 ---
 
+## 0.1.0-alpha.34 - 2026-07-31
+
+The store works, and installs, without a GitHub account, and connecting to GitHub no longer asks you to copy a code by eye.
+
+### The store needs no GitHub account
+
+Install the app, never sign in, and the store fills: every plugin from every list. Nothing at start-up asks you to log into GitHub, and nothing in the store is held back until you do.
+
+The app no longer asks GitHub's API where a list is. It downloads the published file straight from the release, and reads the file off the repository if there is no release. Neither of those is rationed, so the store cannot run out of requests. Even when you are signed in, loading a public list does not spend your own hourly ration.
+
+Signing in is now only ever the fallback, for a list or a plugin that is genuinely private.
+
+### Installing needs no GitHub account either
+
+The store filled, and then Install failed with "Not connected to GitHub". A published plugin is a public file, so it now downloads with no account, the same way anyone downloads it from the release page. Signing in is tried only for a plugin whose repository is genuinely private.
+
+When a download really cannot be done, the message says what you can do about it: the connection is down, the release was removed, GitHub is rationing this computer for now, or the plugin is not published publicly. None of them tell you your missing account was the problem.
+
+### The app can check for its own updates without an account
+
+Checking for a new version of Bespok3d, listing what versions exist, and rolling back to an earlier one all went through the same signed-in read, so signed out they did nothing. All three work with no account now.
+
+### A plugin's page reads its release notes without an account
+
+Opening a plugin used to need an account for two things that are public: the release notes and changelog published with the release, and how many times the download has been taken. Signed out, both were refused, the page quietly fell back to the copy shipped inside the app, and the download count was missing.
+
+Both are read without an account now. The page shows the notes published with the version it is offering you, and the count, whether you are signed in or not.
+
+### An empty store says which thing went wrong
+
+An empty store used to look the same whatever caused it. It now says which one it is, and offers the sign-in button only for the two that signing in actually fixes:
+
+- GitHub is rationing anonymous reads from your network: sign in and the ration goes up;
+- the list or the plugin is private, or it is gone: sign in and you may be able to see it;
+- GitHub could not be reached at all: nothing to sign into, check the connection;
+- the list arrived and had nothing in it: nothing is wrong on your machine, it is the publisher's end, try again in a few minutes.
+
+That last one used to be reported as being offline, which sent you off to fix a connection that was fine.
+
+### The GitHub sign-in code is already on your clipboard
+
+Connecting to GitHub shows a short code that GitHub wants you to type into a page in your browser. The app used to print it on screen and leave the rest to you, with nothing saying where that page was or what happened next.
+
+Now the code is on your clipboard the moment it appears, so the browser tab is one paste away. If you lose it off the clipboard, click the code itself, or the copy button next to it, and it goes back on. A **Copied** balloon rises and fades each time, so you know it took.
+
+The screen also says what is about to happen, in three steps: open github.com/login/device in your browser, paste the code, approve the access. The last step says the window finishes on its own, because it does, and there is nothing to click when it is over.
+
+---
+
 ## 0.1.0-alpha.33 - 2026-07-30
 
 The store stops installing yesterday's version: before it touches the printer, the app offers to check the plugin list is still current, and tells you what moved.

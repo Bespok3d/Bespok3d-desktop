@@ -25,6 +25,29 @@ describe('GitHostPane GitHub connect', () => {
     expect(b3d.openUrl).toHaveBeenCalledWith('https://github.com/login/device')
     expect(await screen.findByText(/Waiting for authorization/i)).toBeInTheDocument()
   })
+
+  it('puts the device code on the clipboard as soon as it is shown', async () => {
+    var neverResolves = new Promise<void>(function hold() {})
+    var waitForAuth = vi.fn(() => neverResolves)
+    var { user } = renderPane({ waitForAuth })
+    var writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+    await user.click(await screen.findByRole('button', { name: /Connect with GitHub/i }))
+    await screen.findByText(/Waiting for authorization/i)
+
+    const code = await screen.findByRole('button', { name: 'ABCD-1234' })
+    expect(writeText).toHaveBeenCalledWith('ABCD-1234')
+    expect(await screen.findByText('Copied')).toBeInTheDocument()
+
+    writeText.mockClear()
+    await user.click(code)
+    expect(writeText).toHaveBeenCalledWith('ABCD-1234')
+
+    writeText.mockClear()
+    await user.click(screen.getByRole('button', { name: /Copy the code/i }))
+    expect(writeText).toHaveBeenCalledWith('ABCD-1234')
+  })
 })
 
 describe('GitHostPane storage warning', () => {

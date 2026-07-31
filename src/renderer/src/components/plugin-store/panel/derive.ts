@@ -63,3 +63,9 @@ export function installGate(t: TFunction, plugin: Plugin, state: {
 
   return { block, canInstall }
 }
+
+// A plugin that released its notes with the version being offered has notes to show even when this app
+// build carries no copy of them, which is every plugin released after the app the user is running.
+export function hasReleaseNotes(plugin: Plugin): boolean {
+  return !!plugin.changelog || !!plugin.changelogUrl
+}

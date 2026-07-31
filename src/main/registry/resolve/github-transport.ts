@@ -1,22 +1,27 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// The `github:owner/repo/path` scheme. Public-first through the contents API with NO token, then the
-// user's connected token for a private list: a user who has not connected a git host can still browse
-// public lists, and public repos stay CDN-cheap.
+// The `github:owner/repo/path` scheme, resolved down a ladder of avenues: the release asset, then the
+// raw repo file, then - only for someone who actually signed in - the contents API. The API used to be
+// the FIRST rung, which is what broke the store for anonymous users: it rations an anonymous caller to
+// 60 requests an hour per IP, a catalog load costs about 22, and the third load of the day answered
+// 403 to everything. The first two rungs carry no ration and no credentials, so a public list loads
+// for someone with no GitHub account at all.
 import { RegistryFetchError } from '../model'
 import type { RegistryRef, ServedIndex, FetchedRegistry } from '../model'
-import { loadCache, conditionalHeaders } from './cache'
-import { httpGet, httpFailure, fetchSignatureAt } from './request'
-import { toFetchedRegistry, cacheServedIndex, withRetriedSignature } from './served-index'
+import { connectorFailure } from './request'
+import { firstOpenAvenue, connectedToAGitHost } from './anonymous-avenues'
+import { toFetchedRegistry } from './served-index'
+import type { ResolvedIndex } from './served-index'
 import { activeConnector } from '../../git-host'
 
 const GITHUB_REGISTRY_URL = /^github:([^/]+)\/([^/]+)\/(.+)$/
-const GITHUB_API_BASE = 'https://api.github.com'
-const GITHUB_RAW_HEADERS = { Accept: 'application/vnd.github.raw', 'X-GitHub-Api-Version': '2022-11-28' }
+const RELEASE_DOWNLOAD_BASE = 'https://github.com'
+const RAW_FILE_BASE = 'https://raw.githubusercontent.com'
 // A contents request that names no branch is answered with the repo's DEFAULT branch, and every
 // Bespok3d repo defaults to the working branch `dev`. A published list lives on main, so every read
 // of one names main - otherwise the store shows whatever is mid-flight in the repo.
 const PUBLISHED_BRANCH = 'main'
+const NO_ACCESS = 'Not found, or you do not have access to this private list'
 
 export interface GitHubListRef {
   owner: string
@@ -38,73 +43,38 @@ export async function fetchGitHubRegistry(ref: RegistryRef, list: GitHubListRef)
   return toFetchedRegistry(ref, resolved.served, resolved.fromCache)
 }
 
-// Whether the bytes came off the cache travels WITH them: a caller that assumed 'fresh' would tell the
-// user a list had just been re-read when it had not, and the staleness of a list is exactly what the
-// user is deciding on.
-interface ResolvedIndex {
-  served: ServedIndex
-  fromCache: boolean
+// A release asset has no directory, so a ref naming a path publishes under its last segment.
+function assetNamed(path: string): string {
+  return path.slice(path.lastIndexOf('/') + 1)
+}
+
+// Rung 1 is how a list is PUBLISHED (an asset of the repo's latest release) and rung 2 is how a
+// `github:` ref pins one to a branch, so which one answers depends on the publisher, not on us. Going
+// through `/releases/latest/` means the newest release is found by the url itself, with no API call
+// spent discovering a version.
+function anonymousAvenues(list: GitHubListRef): string[] {
+  return [
+    `${RELEASE_DOWNLOAD_BASE}/${list.owner}/${list.repo}/releases/latest/download/${assetNamed(list.path)}`,
+    `${RAW_FILE_BASE}/${list.owner}/${list.repo}/${PUBLISHED_BRANCH}/${list.path}`,
+  ]
 }
 
 async function resolveGitHubIndex(list: GitHubListRef): Promise<ResolvedIndex> {
-  const open = await fetchGitHubPublic(list)
-  if (open) return open
+  const walk = await firstOpenAvenue(anonymousAvenues(list))
+  if (walk.resolved) return walk.resolved
+  if (!(await connectedToAGitHost())) throw walk.failure ?? new RegistryFetchError('notfound', NO_ACCESS)
 
   return { served: await fetchGitHubAuthorized(list), fromCache: false }
 }
 
-// The signature url goes through here too: `${contentsUrl}.sig` would land the `.sig` on the ref query
-// instead of the path, 404 silently, and leave every plugin in the list showing as unverifiable.
-function contentsUrl(list: GitHubListRef, path: string): string {
-  return `${GITHUB_API_BASE}/repos/${list.owner}/${list.repo}/contents/${path}?ref=${PUBLISHED_BRANCH}`
-}
-
-function indexUrl(list: GitHubListRef): string {
-  return contentsUrl(list, list.path)
-}
-
-function signatureUrl(list: GitHubListRef): string {
-  return contentsUrl(list, `${list.path}.sig`)
-}
-
-// A 401/403/404 (private, rate-limited, or missing) returns null so the caller falls back to the
-// authenticated path; only a transport failure is hard. Conditional GET keeps the 60/hr anonymous
-// budget intact.
-async function fetchGitHubPublic(list: GitHubListRef): Promise<ResolvedIndex | null> {
-  const cacheKey = `github:${list.owner}/${list.repo}/${list.path}`
-  const cached = loadCache().get(cacheKey)
-  const url = indexUrl(list)
-  const response = await httpGet(url, { ...conditionalHeaders(cached), ...GITHUB_RAW_HEADERS })
-  if (response.status === 304 && cached) {
-    return { served: await withRetriedSignature(cacheKey, cached, () => fetchSignatureAt(signatureUrl(list), GITHUB_RAW_HEADERS)), fromCache: true }
-  }
-
-  return servedGitHubIndex(cacheKey, list, response.status === 304 ? await httpGet(url, GITHUB_RAW_HEADERS) : response)
-}
-
-async function servedGitHubIndex(cacheKey: string, list: GitHubListRef, response: Response): Promise<ResolvedIndex | null> {
-  if (response.status === 401 || response.status === 403 || response.status === 404) return null
-  if (!response.ok) throw httpFailure(response.status, 'GitHub')
-  const served = { bytes: await response.text(), signature: await fetchSignatureAt(signatureUrl(list), GITHUB_RAW_HEADERS) }
-  cacheServedIndex(cacheKey, served, response)
-
-  return { served, fromCache: false }
-}
-
-function authFallbackError(error: Error): never {
-  if (/not connected/i.test(error.message)) {
-    throw new RegistryFetchError('auth', 'Sign in to GitHub in Settings > Git Host to load this private list')
-  }
-  throw new RegistryFetchError('network', error.message)
-}
-
-// Authenticated fallback for a private list: the user's git-host token. A missing connection is an
-// actionable 'auth' failure (sign in), a 404 is 'notfound' (gone, or the user lacks access).
+// Rung 3, for a list no anonymous avenue serves: a private repo read with the user's own token. The
+// signature url goes through the connector too - `${contentsUrl}.sig` would land the `.sig` on the ref
+// query instead of the path, 404 silently, and leave every plugin in the list showing as unverifiable.
 async function fetchGitHubAuthorized(list: GitHubListRef): Promise<ServedIndex> {
   const repoRef = { owner: list.owner, repo: list.repo }
   const connector = activeConnector()
-  const file = await connector.getFile(repoRef, list.path, PUBLISHED_BRANCH).catch(authFallbackError)
-  if (!file) throw new RegistryFetchError('notfound', 'Not found, or you do not have access to this private list')
+  const file = await connector.getFile(repoRef, list.path, PUBLISHED_BRANCH).catch(connectorFailure)
+  if (!file) throw new RegistryFetchError('notfound', NO_ACCESS)
   const signatureFile = await connector.getFile(repoRef, `${list.path}.sig`, PUBLISHED_BRANCH).catch(() => null)
 
   return { bytes: file.content, signature: signatureFile?.content ?? null }

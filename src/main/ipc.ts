@@ -38,6 +38,7 @@ import { applyPatch } from './dev-tools/patch-apply'
 import type { ApplyRequest } from './dev-tools/types'
 import { loadCatalog } from './registry'
 import { offerListingRefresh, refreshListing } from './registry/listing-refresh'
+import { readAssetStat, readReleaseDoc } from './registry/asset-read'
 import { addLocalPackages, readLocalDoc, removeLocalPackage, userLocalSourceUrl } from './registry/local'
 import {
   installAppUpdate,
@@ -151,7 +152,11 @@ function registerRegistryHandlers(): void {
   ipcMain.handle('registry:setChannelEnabled', (_event, channel: ReleaseChannel, enabled: boolean) =>
     setChannelEnabled(channel, enabled),
   )
-  ipcMain.handle('registry:assetInfo', (_event, url: string) => activeConnector().assetInfo(url))
+  ipcMain.handle('registry:assetInfo', (_event, url: string) => readAssetStat(url))
+  // A doc published with a release is a release asset like the .b3 is, and a visitor reads it without an
+  // account. Neither of these two can reject: both are opened by simply looking at a plugin, and a
+  // rejection here is a stack trace in the log on every click that tells nobody anything.
+  ipcMain.handle('registry:releaseDoc', (_event, url: string) => readReleaseDoc(url))
   ipcMain.handle('registry:freshestVersion', (_event, pluginId: string, sourceUrl?: string) =>
     freshestListedVersion(pluginId, sourceUrl),
   )

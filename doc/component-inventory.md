@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-260 exported components + hooks across 20 areas.
+261 exported components + hooks across 20 areas.
 
 ## Common primitives
 
@@ -240,6 +240,7 @@ as you touch the file.
 - `usePanelActions` (hook) - [components/plugin-store/panel/actions.tsx](../src/renderer/src/components/plugin-store/panel/actions.tsx)
 - `usePanelConfigState` (hook) - [components/plugin-store/panel/tabs/config-tab.ts](../src/renderer/src/components/plugin-store/panel/tabs/config-tab.ts) - The Config tab's state, bundled for the panel: the install-form values, the per-field scope
 - `usePrintState` (hook) - [components/plugin-store/usePrintState.ts](../src/renderer/src/components/plugin-store/usePrintState.ts) - Truly-live blocked-action state for the open managed printer: watch only while the store is showing
+- `useReleasedDoc` (hook) - [components/plugin-store/panel/released-doc.ts](../src/renderer/src/components/plugin-store/panel/released-doc.ts) - A store page shows the words of the version it is offering. A plugin release publishes its README and
 - `useSelectMode` (hook) - [components/plugin-store/select/useSelectMode.ts](../src/renderer/src/components/plugin-store/select/useSelectMode.ts) - The pick state shared by the store's two mutually-exclusive batch modes (install-select and
 - `useUpdateAll` (hook) - [components/plugin-store/state.ts](../src/renderer/src/components/plugin-store/state.ts) - Builds the batch update specs and hands them to the App-level handler, which runs a single
 

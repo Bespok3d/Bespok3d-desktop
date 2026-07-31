@@ -3,7 +3,7 @@
 import { join, dirname } from 'path'
 import { readFileSync, existsSync, mkdirSync, writeFileSync, statSync, rmSync } from 'fs'
 import { userDataPath } from '../app-paths'
-import { activeConnector } from '../git-host'
+import { readReleaseAsset } from '../registry/asset-read'
 import type { ReleaseChannel } from '../settings'
 import type { MergedEntry } from '../registry/model'
 
@@ -64,8 +64,9 @@ function readLocalArchive(archivePath: string): Buffer {
 
 // Resolve a catalog entry's install payload through the same download_url the federated loader
 // records. The bundled list is on disk, so download_url is relative to the registry root and the
-// bytes are read locally. A remote http(s) download_url is fetched through the git host (private
-// release asset, authed) and cached by name-version. That key assumes the asset for a version never
+// bytes are read locally. A remote http(s) download_url is downloaded the way a visitor downloads it,
+// with no account (readReleaseAsset falls back to the signed-in account only for a plugin whose repo
+// is private), and cached by name-version. That key assumes the asset for a version never
 // changes, which a re-released build at the same version breaks, so the cached copy is a guess and
 // never the last word: whoever refuses it discards it (discardCachedArchive) and the next resolve
 // downloads the asset as it stands now.
@@ -75,7 +76,7 @@ export async function resolveArchiveBytes(entry: MergedEntry): Promise<Buffer> {
   if (!/^https?:\/\//.test(downloadUrl)) return readLocalArchive(join(dirname(entry.registry_url), downloadUrl))
   const cachePath = pluginCachePath(entry)
   if (existsSync(cachePath)) return readFileSync(cachePath)
-  const bytes = await activeConnector().downloadReleaseAsset(downloadUrl)
+  const bytes = await readReleaseAsset(downloadUrl)
   mkdirSync(dirname(cachePath), { recursive: true })
   writeFileSync(cachePath, bytes)
 

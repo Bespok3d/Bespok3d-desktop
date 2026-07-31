@@ -94,6 +94,10 @@ export interface Plugin {
   homepage?: string
   doc?: string
   changelog?: string
+  // Where the README and the release notes of the offered version can be read at runtime. Present only
+  // when the publisher released them with that version; the bundled copy above is what shows without it.
+  docUrl?: string
+  changelogUrl?: string
   macros?: PluginMacro[]
   log?: PluginLog
   // True when this entry came from the local bundled dev index rather than a published list. Only
@@ -157,7 +161,7 @@ export interface RegistrySummary {
 export type SourceStatus = 'ok' | 'failed' | 'disabled'
 // Why a source failed to load, so the pane can show an actionable hint (e.g. sign in) rather than a
 // raw error. Mirrors the main-process SourceFailureReason; null when the source is ok or disabled.
-export type SourceFailureReason = 'network' | 'auth' | 'notfound' | 'signature' | 'unknown'
+export type SourceFailureReason = 'network' | 'auth' | 'ratelimited' | 'notfound' | 'signature' | 'empty' | 'unknown'
 
 // One row in the Repositories pane: a configured plugin source with its real state. `label` is the
 // human-readable id (a github coordinate or "bundled"), `name` the catalog title.

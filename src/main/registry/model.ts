@@ -113,9 +113,13 @@ export interface RegistrySummary {
 }
 
 // Why a source could not be loaded, classified so the UI can give an actionable message instead of
-// a raw stack: 'auth' = sign in, 'notfound' = gone or no access, 'network' = transport, 'signature'
-// = failed verification, 'unknown' = anything else. A fetcher signals one by throwing RegistryFetchError.
-export type SourceFailureReason = 'network' | 'auth' | 'notfound' | 'signature' | 'unknown'
+// a raw stack: 'auth' = sign in, 'ratelimited' = the host is rationing anonymous reads and signing in
+// raises the ration, 'notfound' = gone or no access, 'network' = transport (the machine is offline, and
+// signing in fixes nothing), 'signature' = failed verification, 'empty' = the host answered and sent
+// nothing (the publisher shipped an empty file, or something in the way replaced it with one),
+// 'unknown' = anything else. Kept apart because only some of them are worth offering a sign-in for. A
+// fetcher signals one by throwing RegistryFetchError.
+export type SourceFailureReason = 'network' | 'auth' | 'ratelimited' | 'notfound' | 'signature' | 'empty' | 'unknown'
 
 export class RegistryFetchError extends Error {
   constructor(

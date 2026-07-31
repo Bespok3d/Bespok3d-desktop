@@ -6,6 +6,11 @@
 // ONLY consumer of that golden was the now-deleted compat quarantine). Per the watch-point, this
 // compares PARSED CONTENT, never raw bytes or key order.
 //
+// WHICH PLUGINS IT BUILDS. The golden's own bundled-plugins.json, never scripts/bundle.dev.json: that
+// file is a developer's scratch curation of their local dev build, and a rail that read it would go
+// red the moment someone trimmed their own list. Editing the dev list is free; editing the fixture is
+// a deliberate change to what the golden claims.
+//
 // WHAT THE GOLDEN MAY AND MAY NOT PIN. buildBundle passes plugin-content fields (version, dates, the
 // version-bearing .b3 filename) straight through from each manifest, so a golden that froze their
 // VALUES asserted the plugins' content rather than buildBundle's orchestration, and every legitimate
@@ -40,9 +45,13 @@ import {
   PLUGIN_SOURCES_DIR,
   REFRESH_COMMAND,
   buildGoldenBundle,
+  goldenDevCuration,
   goldenIndexText,
   hasPluginSources,
+  packedArchiveStems,
+  readGoldenArchives,
   readGoldenIndexText,
+  withoutDevBuildTags,
 } from '../monorepo-golden.mjs'
 import { APP_REPO_DIR, WORKSPACE_DIR, builderCore, ensureBuilderBuilt, makeScratchOutputDir } from './builder-checkout.mjs'
 
@@ -150,11 +159,6 @@ function assertPassthroughWellFormed(entry) {
   assert.equal(entry.download_url, `${entry.name}-${cleanVersion}.b3`, `${entry.name}: download_url disagrees with version`)
 }
 
-// `<name>-<semver>.b3` minus the version: the identity the golden can pin without pinning a release.
-function packageStem(filename) {
-  return filename.replace(/-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\.b3$/, '')
-}
-
 const LIST_PUBLIC_KEY_PATH = join(WORKSPACE_DIR, 'main-index', 'keys', 'bespok3d-list.pub.asc')
 const APP_VERIFY_PATH = join(APP_REPO_DIR, 'src', 'main', 'registry', 'resolve', 'verify.ts')
 
@@ -188,8 +192,7 @@ test('buildBundle (dev channel) reproduces the pre-consolidation monorepo golden
   index.plugins.forEach(assertPassthroughWellFormed)
   index.collections.forEach(assertPassthroughWellFormed)
 
-  const goldenStems = Object.keys(loadGolden('packages.json')).map(packageStem).sort()
-  assert.deepEqual(packages.map((packed) => packageStem(packed.filename)).sort(), goldenStems)
+  assert.deepEqual(packedArchiveStems(packages), readGoldenArchives(), STALE_GOLDEN_MESSAGE)
 
   // The pack and the index must name the same artifacts: a .b3 the catalog does not point at is
   // unreachable, and a download_url with no .b3 behind it is a broken install.
@@ -211,8 +214,19 @@ test('the committed golden is what the refresh command produces', { timeout: 300
 
   // Content first, so a drift reports as a readable field diff rather than as two walls of JSON, then
   // the bytes, which also catch a fixture that was re-ordered or re-indented by hand.
-  assert.deepEqual(index, JSON.parse(readGoldenIndexText()), STALE_GOLDEN_MESSAGE)
+  assert.deepEqual(withoutDevBuildTags(index), JSON.parse(readGoldenIndexText()), STALE_GOLDEN_MESSAGE)
   assert.equal(goldenIndexText(index), readGoldenIndexText(), STALE_GOLDEN_MESSAGE)
+})
+
+// The rails build what bundled-plugins.json names, and NOTHING here reads scripts/bundle.dev.json: a
+// developer trimming their own dev list must never turn someone else's check red (it did, on
+// 2026-07-30). This fails if the golden is ever wired back to that file, because the index it produced
+// would then describe whatever list the developer happens to carry instead of the fixture's own.
+test('the golden describes the plugin set its own fixture names', () => {
+  const claimed = JSON.parse(readGoldenIndexText())
+  const described = [...claimed.plugins, ...claimed.collections].map((entry) => entry.name)
+
+  assert.deepEqual([...new Set(described)].sort(), [...goldenDevCuration().bundle].sort(), STALE_GOLDEN_MESSAGE)
 })
 
 // The other half of the buy-back, and the drift guard the mirror rule demands: the list public key is

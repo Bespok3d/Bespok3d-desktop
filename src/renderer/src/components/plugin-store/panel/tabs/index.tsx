@@ -3,7 +3,7 @@
 import type { Plugin } from '../../../../data/types'
 import { useI18n } from '../../../../i18n/context'
 import cx from '../../../../utils/cx'
-import { isSideloaded } from '../derive'
+import { isSideloaded, hasReleaseNotes } from '../derive'
 
 export type DetailTab = 'overview' | 'versions' | 'doc' | 'config' | 'changelog' | 'log' | 'captured'
 
@@ -35,7 +35,7 @@ export function detailTabs(plugin: Plugin, hasLog: boolean, hasCaptured: boolean
   // Sideloaded packages always get a Doc tab: it renders their local README, or "no documentation".
   const hasDoc = !!plugin.doc || !!plugin.homepage || isSideloaded(plugin)
   const hasConfig = !!plugin.config
-  const hasChangelog = !!plugin.changelog
+  const hasChangelog = hasReleaseNotes(plugin)
   // Show Versions when there is something to reconcile: the catalog offers this plugin more than once,
   // OR the install on the printer is not cleanly the single listed source at the same version. That
   // covers a version mismatch AND an install whose source is not in the catalog (installed from an

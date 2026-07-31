@@ -17,11 +17,18 @@ function mapAsset(raw: JsonObject): AssetInfo {
   return { id: String(raw.id), name: String(raw.name), downloadUrl: String(raw.url), downloadCount: Number(raw.download_count) }
 }
 
+// Reading something public needs no account, so no token means no Authorization header at all: an
+// empty one is a malformed credential and GitHub answers 401 to it, which would read as "your account
+// is broken" to someone who never had one.
+function githubAuth(token: string): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 const githubProfile: RestHostProfile = {
   label: 'GitHub',
   keychainKey: GITHUB_KEYCHAIN_KEY,
   apiBase: API_BASE,
-  requestHeaders: (token, withBody) => ({ Authorization: `Bearer ${token}`, ...GITHUB_JSON_HEADERS, ...(withBody ? { 'Content-Type': 'application/json' } : {}) }),
+  requestHeaders: (token, withBody) => ({ ...githubAuth(token), ...GITHUB_JSON_HEADERS, ...(withBody ? { 'Content-Type': 'application/json' } : {}) }),
   mapAsset,
   accountName: (raw) => String(raw.name ?? raw.login),
   // Include org repos the user can use, not just their own, so org-owned lists/plugins are
@@ -35,7 +42,7 @@ const githubProfile: RestHostProfile = {
   uploadAssetUrl: (repo, releaseId, encodedName) =>
     `https://uploads.github.com/repos/${repo.owner}/${repo.repo}/releases/${releaseId}/assets?name=${encodedName}`,
   uploadAssetHeaders: (token) => ({ Authorization: `Bearer ${token}`, ...GITHUB_JSON_HEADERS, 'Content-Type': 'application/octet-stream' }),
-  downloadAssetHeaders: (token) => ({ Authorization: `Bearer ${token}`, Accept: 'application/octet-stream', 'X-GitHub-Api-Version': '2022-11-28' }),
+  downloadAssetHeaders: (token) => ({ ...githubAuth(token), Accept: 'application/octet-stream', 'X-GitHub-Api-Version': '2022-11-28' }),
 }
 
 function requireGitHubToken(): string {
@@ -55,11 +62,19 @@ async function getTokenInfo(): Promise<TokenInfo> {
   return { type: 'device-flow', scopes, expiresAt: null }
 }
 
+// A release asset's stats are public, so they are read WITHOUT an account: a visitor who has never
+// signed in sees the same download count and upload date the publisher sees. The token rides along
+// when there is one, which is what makes a private repo's asset answer at all; without one a private
+// asset simply has no stats, which is what the empty fields say.
+function assetHeaders(): Record<string, string> {
+  return { ...GITHUB_JSON_HEADERS, ...githubAuth(load(GITHUB_KEYCHAIN_KEY) ?? '') }
+}
+
 // Real stats for a release asset, by its API url (the same url plugins use as download_url): the
 // download count GitHub records and the asset's upload time (the actual publish date of that
 // version). JSON view of the asset, not the octet-stream download. Empty fields when unknown.
 async function assetInfo(url: string): Promise<AssetStat> {
-  const response = await fetch(url, { headers: { Authorization: `Bearer ${requireGitHubToken()}`, ...GITHUB_JSON_HEADERS } })
+  const response = await fetch(url, { headers: assetHeaders() })
   if (!response.ok) return { downloadCount: null, publishedAt: null }
   const asset = (await response.json()) as { download_count?: number; created_at?: string }
 

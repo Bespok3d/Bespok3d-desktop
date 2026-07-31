@@ -207,6 +207,10 @@ if [ "$RUN_SHELL" -eq 1 ]; then
     # artifacts, so a bundled build that silently packs unsigned (the app can only rate those 'unknown')
     # is caught here rather than at install time on a printer.
     run_check "bundled-build signing rail" node --test "$REPO_ROOT/scripts/test/signed-bundle.test.mjs"
+
+    # The dev menu-bar rail: proves node_modules' Electron.app is still renamed (and re-signed) so a
+    # dev run reads "Bespok3d Dev" in the macOS menu bar instead of "Electron".
+    run_check "dev menu-bar name rail" node --test "$REPO_ROOT/scripts/test/dev-bundle-name.test.mjs"
 else
     echo "  skipped (no scripts/ changes; ./scripts/check.sh full runs it)"
 fi

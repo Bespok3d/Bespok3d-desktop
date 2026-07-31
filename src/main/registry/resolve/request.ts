@@ -16,9 +16,20 @@ function networkError(error: Error): never {
   throw new RegistryFetchError('network', error.message)
 }
 
-function httpReason(status: number): SourceFailureReason {
-  if (status === 401 || status === 403) return 'auth'
-  if (status === 404) return 'notfound'
+// GitHub answers a spent anonymous ration with the same 403 it answers a forbidden repo with, and only
+// this header tells them apart. Getting it wrong offers "sign in, you may have access to this private
+// list" to someone whose list is public and whose real problem is that the machine has read too much
+// this hour.
+const RATION_REMAINING = 'x-ratelimit-remaining'
+
+function rationSpent(response: Response): boolean {
+  return response.status === 403 && response.headers.get(RATION_REMAINING) === '0'
+}
+
+export function httpReason(response: Response): SourceFailureReason {
+  if (rationSpent(response)) return 'ratelimited'
+  if (response.status === 401 || response.status === 403) return 'auth'
+  if (response.status === 404) return 'notfound'
 
   return 'network'
 }
@@ -27,10 +38,20 @@ function httpReason(status: number): SourceFailureReason {
 // NO validators: there is nothing the server can be calling unchanged. There is no index to serve and
 // no reason better than 'network' to file it under, so the message carries the mechanism instead - a
 // generic `HTTP 304` in a log tells whoever reads it nothing about which side is broken.
-export function httpFailure(status: number, transport: string): RegistryFetchError {
-  if (status === 304) return new RegistryFetchError('network', `${transport} answered 304 to a request that sent no validators`)
+export function httpFailure(response: Response, transport: string): RegistryFetchError {
+  if (response.status === 304) return new RegistryFetchError('network', `${transport} answered 304 to a request that sent no validators`)
+  if (rationSpent(response)) return new RegistryFetchError('ratelimited', `${transport} 403, the anonymous hourly request ration is spent`)
 
-  return new RegistryFetchError(httpReason(status), `${transport} ${status}`)
+  return new RegistryFetchError(httpReason(response), `${transport} ${response.status}`)
+}
+
+// A connector call that never reached the host. 'Not connected' is the one failure a user can act on -
+// no token is stored - so it is the one that names the fix; everything else is a network story.
+export function connectorFailure(error: Error): never {
+  if (/not connected/i.test(error.message)) {
+    throw new RegistryFetchError('auth', 'Sign in to GitHub in Settings > Git Host to load this private list')
+  }
+  throw new RegistryFetchError('network', error.message)
 }
 
 // A signature's absence is ordinary (most lists are unsigned) and never fails the fetch, so every

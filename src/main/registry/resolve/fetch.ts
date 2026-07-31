@@ -9,12 +9,16 @@ import type { RegistryRef, FetchedRegistry } from '../model'
 import { fetchDiskRegistry } from './disk-transport'
 import { isHttpUrl, fetchHttpRegistry } from './http-transport'
 import { toGitHubListRef, fetchGitHubRegistry } from './github-transport'
+import { toReleaseAssetListRef, fetchReleaseAssetRegistry } from './release-asset-transport'
 
-// Ordered by specificity: the `github:` scheme first, then plain http(s), and a disk path is what is
-// left when no scheme claims the ref.
+// Ordered by specificity: the `github:` scheme first, then a release-download url (an http url whose
+// path names an asset of a repo's latest release), then plain http(s), and a disk path is what is left
+// when no scheme claims the ref.
 export function fetchGitHostRegistry(ref: RegistryRef): Promise<FetchedRegistry> {
   const gitHubList = toGitHubListRef(ref.url)
   if (gitHubList) return fetchGitHubRegistry(ref, gitHubList)
+  const releaseAsset = toReleaseAssetListRef(ref.url)
+  if (releaseAsset) return fetchReleaseAssetRegistry(ref, releaseAsset)
   if (isHttpUrl(ref.url)) return fetchHttpRegistry(ref)
 
   return fetchDiskRegistry(ref)

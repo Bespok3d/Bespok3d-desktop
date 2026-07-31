@@ -9,6 +9,14 @@ import { writeCache } from './cache'
 import type { CacheEntry } from './cache'
 import { verifyIndexSignature } from './verify'
 
+// Whether the bytes came off the cache travels WITH them: a caller that assumed 'fresh' would tell the
+// user a list had just been re-read when it had not, and the staleness of a list is exactly what the
+// user is deciding on. Shared by every transport that resolves bytes before wrapping them.
+export interface ResolvedIndex {
+  served: ServedIndex
+  fromCache: boolean
+}
+
 // An unsigned or failing list still loads: what the check found travels whole for the trust layer to
 // render as a badge, so a signing mistake costs a wrong badge rather than a dead store.
 export async function toFetchedRegistry(ref: RegistryRef, served: ServedIndex, fromCache: boolean): Promise<FetchedRegistry> {
@@ -20,8 +28,11 @@ export async function toFetchedRegistry(ref: RegistryRef, served: ServedIndex, f
 
 // A 200 is not proof of an index: a captive portal answers every request with HTML. The failure is a
 // transport failure, not a caller's problem, so it arrives as a mapped RegistryFetchError rather than
-// a bare SyntaxError nothing downstream knows how to render.
+// a bare SyntaxError nothing downstream knows how to render. Nothing at all is its own answer and not
+// an offline machine: a list served as zero bytes reached us fine, and telling the user to check his
+// connection sends him to fix something that is not broken.
 function parseIndex(bytes: string): RegistryIndex {
+  if (bytes.trim().length === 0) throw new RegistryFetchError('empty', 'The list came back empty')
   try {
     return JSON.parse(bytes) as RegistryIndex
   } catch {
