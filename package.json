@@ -1,6 +1,6 @@
 {
   "name": "bespok3d",
-  "version": "0.1.0-alpha.33",
+  "version": "0.1.0-alpha.34",
   "description": "Plugin manager for Klipper 3D printers",
   "main": "./out/main/index.js",
   "author": "unlucio",
