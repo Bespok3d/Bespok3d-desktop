@@ -14,12 +14,12 @@ const THREE_HOURS_MS = 3 * 60 * 60 * 1000
 
 // An install asking to start, wired the way the app wires it: the gate is made once and the dialogs it
 // puts up are mounted beside the thing that asked.
-function InstallHarness({ onInstall }: { onInstall: () => void }) {
+function InstallHarness({ onInstall, sourceUrl }: { onInstall: () => void; sourceUrl?: string }) {
   const gate = useInstallGate()
 
   return (
     <>
-      <button type="button" onClick={() => gate.beforeInstall(onInstall)}>install</button>
+      <button type="button" onClick={() => gate.beforeInstall(onInstall, sourceUrl)}>install</button>
       <InstallGateModals gate={gate} />
     </>
   )
@@ -45,6 +45,31 @@ describe('what an install is asked before it starts', () => {
     })
     await harness.user.click(screen.getByText('install'))
     await waitFor(() => expect(screen.getByText(/it has been 03:00 since the last listing refresh/i)).toBeInTheDocument())
+  })
+
+  // A package held on this machine (dropped on the app, or built from bundle.dev.json) is the version
+  // being installed. There is nothing online to check for it, so asking would spend the hourly GitHub
+  // allowance to answer a question about a file on disk.
+  it('installs a version held on this machine without asking about the online lists', async () => {
+    const install = vi.fn()
+    const refreshOffer = vi.fn().mockResolvedValue({ offered: true, refreshedAt: null })
+    const harness = setup(<InstallHarness onInstall={install} sourceUrl="/Users/dev/Bespok3d/dist/plugins/index.json" />, {
+      withCatalog: true,
+      b3d: { registry: { refreshOffer } },
+    })
+    await harness.user.click(screen.getByText('install'))
+    await waitFor(() => expect(install).toHaveBeenCalledOnce())
+    expect(refreshOffer).not.toHaveBeenCalled()
+  })
+
+  it('still asks before installing a version that comes from a published list', async () => {
+    const refreshOffer = vi.fn().mockResolvedValue({ offered: true, refreshedAt: null })
+    const harness = setup(<InstallHarness onInstall={vi.fn()} sourceUrl="github:Bespok3d/main-index/index.json" />, {
+      withCatalog: true,
+      b3d: { registry: { refreshOffer } },
+    })
+    await harness.user.click(screen.getByText('install'))
+    await waitFor(() => expect(refreshOffer).toHaveBeenCalledOnce())
   })
 
   it('says the listing has never been refreshed when it has not', async () => {

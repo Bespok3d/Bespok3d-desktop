@@ -52,6 +52,10 @@ export interface PluginSource {
   publishedAt?: string
   downloadUrl?: string
   installed?: boolean
+  // The settings THIS version declares. A published list states them for the whole plugin, but a
+  // package held on this machine states them in its own manifest, and an experimental build that
+  // carries extra settings is unusable unless the panel shows the picked version's own list.
+  config?: PluginConfigField[]
 }
 
 // Marks a plugin whose running service writes a log we can tail and surface in the Captured tab.

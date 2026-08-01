@@ -115,7 +115,7 @@ export function usePluginOps(
     // caller can start one without the listing being offered first. A retry does not: it repeats a
     // call that already passed the gate.
     install: (printerId, pluginId, vars, depIds, sourceUrl, channel) =>
-      gatedInstall(() => runOp({ op: 'install', printerId, pluginId, vars, depIds, sourceUrl, channel })),
+      gatedInstall(() => runOp({ op: 'install', printerId, pluginId, vars, depIds, sourceUrl, channel }), sourceUrl),
     uninstall: (printerId, pluginId, cascade) => runOp({ op: 'uninstall', printerId, pluginId, cascade }),
     retry: () => { if (lastCall.current) runOp(lastCall.current) },
   }

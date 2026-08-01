@@ -4,10 +4,9 @@ import { app, shell, type BrowserWindow } from 'electron'
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
-import { load } from '../git-host/keychain'
-import { activeConnector } from '../git-host'
 import { loadSettings, saveSettings, type RepoCoords } from '../settings'
 import { autoUpdateFeed } from './feed'
+import { fetchPublishedReleases, fetchReleaseInstallers, downloadPublicAsset } from './public-releases'
 import { checkIntervalMs, pickPlatformAsset, type UpdateFrequency } from './schedule'
 import {
   updateStrategyForPlatform,
@@ -26,10 +25,6 @@ var appliedVersion: string | null = null
 export interface RollbackResult {
   outcome: 'installer' | 'page'
 }
-
-// Mirrors the GitHub token key in git-host/github.ts. electron-updater reaches private release
-// assets with the same keychain token the device flow stored.
-const GITHUB_TOKEN_KEY = 'github-token'
 
 // The release repo testers update from. Baked like the registry's OFFICIAL_REMOTE so a stale
 // settings.json can never drop it; settings.appUpdateRepo overrides it for a custom build.
@@ -56,12 +51,12 @@ function reportError(getMainWindow: WindowGetter, error: Error): void {
   sendToRenderer(getMainWindow, 'app-update:error', String(error))
 }
 
-// The GitHub release for the incoming version, so the modal can show the same notes the Update pane
-// does (independent of electron-updater's releaseNotes) and offer the release page as a manual
+// The published release for the incoming version, so the modal can show the same notes the Update
+// pane does (independent of electron-updater's releaseNotes) and offer the release page as a manual
 // fallback when the in-app download stalls.
 async function matchingRelease(version: string): Promise<{ body: string; url: string } | null> {
   try {
-    const releases = await activeConnector().listReleases(resolveAppRepo())
+    const releases = await fetchPublishedReleases(resolveAppRepo())
     const release = releases.find((entry) => entry.tag.replace(/^v/, '') === version)
 
     return release ? { body: release.body, url: release.url } : null
@@ -102,17 +97,17 @@ function applyPreferences(): void {
   autoUpdater.autoDownload = settings.appUpdateAutoDownload
   autoUpdater.autoInstallOnAppQuit = settings.appUpdateInstallOnQuit
   autoUpdater.allowPrerelease = true
-  // The release repo is PRIVATE, so a GitHub asset download 302-redirects to a signed S3 URL. The
-  // differential downloader (Windows NSIS / Linux AppImage) issues per-block HTTP range requests
-  // against that URL and stalls SILENTLY there (no error event), freezing the progress bar partway.
-  // Forcing a full-file download trades extra bytes for a path that actually completes.
+  // A release asset download 302-redirects to a storage host. The differential downloader (Windows
+  // NSIS / Linux AppImage) issues per-block HTTP range requests against that redirect target and
+  // stalls SILENTLY there (no error event), freezing the progress bar partway. Forcing a full-file
+  // download trades extra bytes for a path that actually completes.
   autoUpdater.disableDifferentialDownload = true
 }
 
-// True when an app repo + token are present. Also (win/linux) sets the feed once, wires listeners
-// once, and re-applies the user's preferences each call so reconfigure takes effect live.
+// True when an app repo is configured. Also sets the feed once, wires listeners once, and re-applies
+// the user's preferences each call so reconfigure takes effect live.
 function ensureConfigured(getMainWindow: WindowGetter): boolean {
-  const feed = autoUpdateFeed(resolveAppRepo(), load(GITHUB_TOKEN_KEY))
+  const feed = autoUpdateFeed(resolveAppRepo())
   if (!feed) return false
   if (!autoInstallSupported()) return true
   if (!listenersWired) {
@@ -126,7 +121,7 @@ function ensureConfigured(getMainWindow: WindowGetter): boolean {
 
 // macOS: check the latest release and let the modal open the download page; report up-to-date too.
 async function checkMacUpdate(getMainWindow: WindowGetter): Promise<void> {
-  const releases = await activeConnector().listReleases(resolveAppRepo())
+  const releases = await fetchPublishedReleases(resolveAppRepo())
   const release = newestApplicableRelease(releases, app.getVersion())
   if (!release) {
     sendToRenderer(getMainWindow, 'app-update:none', app.getVersion())
@@ -150,8 +145,8 @@ function schedulePoll(getMainWindow: WindowGetter, frequency: UpdateFrequency): 
   pollHandle = setInterval(() => runCheck(getMainWindow).catch((error) => reportError(getMainWindow, error)), interval)
 }
 
-// Check for an app update on launch and on a schedule. No-op until an app repo is resolvable AND a
-// GitHub token is present (the private feed needs it).
+// Check for an app update on launch and on a schedule. No-op only when no app repo is resolvable;
+// being signed out of GitHub changes nothing, because the release stream is public.
 export function startAutoUpdates(getMainWindow: WindowGetter): void {
   recordRunVersion()
   if (!ensureConfigured(getMainWindow)) return
@@ -183,25 +178,27 @@ export function openAppDownloadPage(url: string): void {
 }
 
 export async function listAppReleases(): Promise<AppReleaseRow[]> {
-  const releases = await activeConnector().listReleases(resolveAppRepo())
+  const releases = await fetchPublishedReleases(resolveAppRepo())
 
   return toReleaseRows(releases, app.getVersion())
 }
 
 // Manual rollback: download the chosen release's installer for this platform and hand it to the OS
-// (the NSIS exe / dmg reinstalls in place). With no matching asset, open the release page instead.
+// (the NSIS exe / dmg reinstalls in place). With no matching installer, open the release page instead.
 export async function rollbackToRelease(tag: string): Promise<RollbackResult> {
-  const releases = await activeConnector().listReleases(resolveAppRepo())
+  const appRepo = resolveAppRepo()
+  const releases = await fetchPublishedReleases(appRepo)
   const release = releases.find((entry) => entry.tag === tag)
   if (!release) throw new Error(`Release ${tag} not found`)
-  const asset = pickPlatformAsset(release.assets, process.platform, process.arch)
+  const installers = await fetchReleaseInstallers(appRepo, tag, process.platform, process.arch)
+  const asset = pickPlatformAsset(installers, process.platform, process.arch)
   if (!asset) {
     await shell.openExternal(release.url)
 
     return { outcome: 'page' }
   }
   const installerPath = join(app.getPath('temp'), asset.name)
-  writeFileSync(installerPath, await activeConnector().downloadReleaseAsset(asset.downloadUrl))
+  writeFileSync(installerPath, await downloadPublicAsset(asset.downloadUrl))
   const openError = await shell.openPath(installerPath)
   if (openError) throw new Error(openError)
 

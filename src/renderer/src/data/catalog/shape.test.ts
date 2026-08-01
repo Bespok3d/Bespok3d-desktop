@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
-import { isLocalRegistry, docFor, indexToPlugins, indexToCollections } from './shape'
+import { docFor, indexToPlugins, indexToCollections } from './shape'
+import { isLocalRegistry } from './local-source'
 import { makeIndexEntry, makeCollectionEntry } from '../../test/fixtures'
 import { NO_PLUGIN_SOURCES } from '../../test/plugin-sources'
 
@@ -31,6 +32,31 @@ describe('isLocalRegistry', () => {
 
   it('does not mark an http(s) list as local', () => {
     expect(isLocalRegistry('https://example.test/index.json')).toBe(false)
+  })
+})
+
+// Each listed version carries the settings its own entry declares. For a package on this machine that
+// entry was built from the package's manifest, so this is how an experimental build's extra settings
+// reach the panel at all.
+describe('the settings each listed version carries', () => {
+  it('gives every version its own settings, not only the merged entry', () => {
+    const merged = makeIndexEntry({
+      name: 'camera-hw-accel',
+      config: [{ key: 'port', label: 'Port', type: 'number', scope: 'printer' }],
+      variants: [
+        makeIndexEntry({ name: 'camera-hw-accel', registry_url: 'github:Bespok3d/main-index/index.json', config: [{ key: 'port', label: 'Port', type: 'number', scope: 'printer' }] }),
+        makeIndexEntry({ name: 'camera-hw-accel', registry_url: '/Users/dev/local/index.json', config: [{ key: 'exposure', label: 'Exposure', type: 'text', scope: 'printer' }] }),
+      ],
+    })
+    const [plugin] = indexToPlugins([merged], [])
+
+    expect(plugin?.sources.map((source) => source.config?.map((field) => field.key))).toEqual([['port'], ['exposure']])
+  })
+
+  it('leaves a version that declares no settings without any', () => {
+    const [plugin] = indexToPlugins([makeIndexEntry({ name: 'camera-hw-accel' })], [])
+
+    expect(plugin?.sources[0]?.config).toBeUndefined()
   })
 })
 

@@ -5,16 +5,13 @@ import { autoUpdateFeed } from './feed'
 
 describe('autoUpdateFeed', () => {
   it('is null when no app repo is configured (auto-update disabled by default)', () => {
-    expect(autoUpdateFeed(undefined, 'tok')).toBeNull()
+    expect(autoUpdateFeed(undefined)).toBeNull()
   })
 
-  it('is null when there is no token (cannot reach private release assets)', () => {
-    expect(autoUpdateFeed({ owner: 'unlucio', repo: 'bespok3d-app' }, null)).toBeNull()
-  })
-
-  it('builds a private github feed when both repo and token are present', () => {
-    expect(autoUpdateFeed({ owner: 'unlucio', repo: 'bespok3d-app' }, 'tok')).toEqual({
-      provider: 'github', owner: 'unlucio', repo: 'bespok3d-app', private: true, token: 'tok',
+  // The bug this replaces: signed out, the feed came back null and the app never checked at all.
+  it('arms updates for a signed-out user, with no token and never declared private', () => {
+    expect(autoUpdateFeed({ owner: 'unlucio', repo: 'bespok3d-app' })).toEqual({
+      provider: 'github', owner: 'unlucio', repo: 'bespok3d-app',
     })
   })
 })

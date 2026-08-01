@@ -49,6 +49,16 @@ export function defaultSelectedVariant(plugin: Plugin, ceiling: ReleaseChannel, 
     ?? plugin.sources[0]
 }
 
+// The plugin as the version the user picked describes itself. A version held on this machine (a dropped
+// .b3, a dev build) declares its settings in its own manifest, so those are the settings the form must
+// show and send: an experimental build's extra settings are undrivable otherwise. A published version
+// declares none of its own and keeps what its list says about the plugin.
+export function pluginAsPickedVersion(plugin: Plugin, picked: PluginSource | undefined): Plugin {
+  if (!picked?.local || !picked.config) return plugin
+
+  return { ...plugin, config: picked.config }
+}
+
 // Derives whether install is allowed and, when it is not, the single reason to show. Kept out of the
 // component body so the panel reads as a flat list of derived values.
 export function installGate(t: TFunction, plugin: Plugin, state: {

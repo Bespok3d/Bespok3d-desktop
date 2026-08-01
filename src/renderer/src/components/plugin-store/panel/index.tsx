@@ -29,7 +29,7 @@ import { PanelDoc } from './tabs/doc'
 import { PanelFoot } from './foot'
 import { useReleasedDoc } from './released-doc'
 import { PanelGates, useLocalRemove } from './gates'
-import { isOrphan, isSideloaded, isSwitchingVariant, defaultSelectedVariant, installGate, hasReleaseNotes } from './derive'
+import { isOrphan, isSideloaded, isSwitchingVariant, defaultSelectedVariant, installGate, hasReleaseNotes, pluginAsPickedVersion } from './derive'
 
 interface PluginPanelProps {
   plugin: Plugin
@@ -206,8 +206,11 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   const localRemove = useLocalRemove(plugin.id, () => { refresh(); onClose() })
   const ceiling = channelCeiling ?? primaryChannel ?? 'stable'
   const { selectedKey, setSelectedKey, selectedVariant, channelFilter, pickChannel } = useVariantSelection(plugin, ceiling, disabledChannels ?? [], installedSource, installedChannel, onChannelPref)
-  const multiFields = plugin.config
-  const configState = usePanelConfigState({ plugin, plugins, installed, installedIds: allInstalledIds ?? [], savedVars: savedPluginVars, printerId, scopeFor, onSaveVars })
+  // Everything about settings reads the picked version, not the merged listing: the fields shown, the
+  // install gate's "is it filled in", and whether there is a Config tab at all.
+  const picked = pluginAsPickedVersion(plugin, selectedVariant)
+  const multiFields = picked.config
+  const configState = usePanelConfigState({ plugin: picked, plugins, installed, installedIds: allInstalledIds ?? [], savedVars: savedPluginVars, printerId, scopeFor, onSaveVars })
   const { multiVars, multiScopes, otherUiPorts, makePrimary } = configState
   // A deep link can request a starting tab; else on an update open straight to the changelog so the
   // user sees what changed before updating. An unavailable tab is corrected by the activeTab guard.
@@ -217,7 +220,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   const missingDeps = resolveMissingDeps(plugins, plugin.id, allInstalledIds ?? [])
   const dependents = installed ? installedDependents(plugins, plugin.id, allInstalledIds ?? []) : []
   const conflicts = installed ? [] : installedConflicts(plugins, plugin.id, allInstalledIds ?? [])
-  const { block, canInstall } = installGate(t, plugin, { multiVars, printerId, conflicts, portError, printActive: !!printActive, blockedActions: blockedActions ?? [] })
+  const { block, canInstall } = installGate(t, picked, { multiVars, printerId, conflicts, portError, printActive: !!printActive, blockedActions: blockedActions ?? [] })
   const needsNewerDaemon = !!plugin.minDaemonVersion && !isDaemonVersionAtLeast(daemonVersion ?? '0.0.0', plugin.minDaemonVersion)
   // A completed install persists the vars it sent into the preference store (under each field's
   // chosen scope), so the next printer's form starts from what the user actually picked.
@@ -236,7 +239,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   const activeLog = sessionLog ?? installedLog
   const hasLog = installed && activeLog != null
   const showHistoryZone = !installed && (history?.length ?? 0) > 0 && ops.phase === 'idle'
-  const tabs = detailTabs(plugin, hasLog, installed && !!plugin.log, installed, installedVersion, installedSource)
+  const tabs = detailTabs(picked, hasLog, installed && !!plugin.log, installed, installedVersion, installedSource)
   // Keep the tabs through an install (was hidden while working, which made Doc/Config vanish); the
   // live status is shown as its own persistent strip below, so it does not need the overview tab.
   const showTabs = tabs.length > 1
@@ -256,7 +259,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
           {activeTab === 'doc' && <PanelDoc plugin={plugin} />}
           {activeTab === 'config' && (
             <PanelConfigArea
-              plugin={plugin} installed={installed} printerId={printerId} printerSelected={!!printer} otherUiPorts={otherUiPorts}
+              plugin={picked} installed={installed} printerId={printerId} printerSelected={!!printer} otherUiPorts={otherUiPorts}
               appliedVars={appliedVars} appliedVarsAt={appliedVarsAt} multiVars={multiVars}
               scopes={multiScopes} onScopeChange={configState.setFieldScope} onApplied={configState.saveConfigVars}
               onMultiVars={configState.setMultiVars} onMakePrimary={isUiPlugin(plugin) ? makePrimary : undefined}

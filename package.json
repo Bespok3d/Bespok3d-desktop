@@ -77,7 +77,6 @@
         "provider": "github",
         "owner": "Bespok3d",
         "repo": "Bespok3d-desktop",
-        "private": true,
         "releaseType": "prerelease"
       }
     ],

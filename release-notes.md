@@ -1,11 +1,29 @@
-# What's new in alpha 34
+# What's new in alpha 35
 
-Alpha 34 stops the GitHub sign-in asking you to copy a code by eye.
+Alpha 35 updates Bespok3d without a GitHub account.
 
-## The GitHub sign-in code is already on your clipboard
+## Check for updates works signed out
 
-Connecting to GitHub shows a short code that GitHub wants you to type into a page in your browser. The app used to print it on screen and leave the rest to you, with nothing saying where that page was or what happened next.
+Signed out, the Update panel answered with an error and did nothing else: no version list, no check for a newer version, no rollback. All of it works with no account now. The app reads the same public release page anyone can open in a browser, and downloads the installer from the link that page offers.
 
-Now the code is on your clipboard the moment it appears, so the browser tab is one paste away. If you lose it off the clipboard, click the code itself, or the copy button next to it, and it goes back on. A **Copied** balloon rises and fades each time, so you know it took.
+A GitHub account is asked for to publish a plugin, and for nothing else.
 
-The screen also says what is about to happen, in three steps: open github.com/login/device in your browser, paste the code, approve the access. The last step says the window finishes on its own, because it does, and there is nothing to click when it is over.
+## Opening the Update panel costs you nothing
+
+The version list and the release notes used to be read through GitHub's API, which hands a computer with no account a small number of requests an hour, shared with everything else the app reads. They now come from the published release feed and from the files of the release itself, and neither of those is rationed. Checking, updating and rolling back spend none of that allowance, signed in or signed out.
+
+## Rolling back reaches the ten most recent versions
+
+The published feed carries the ten newest releases, so those are the versions the rollback list offers. Anything older is still on the release page in a browser.
+
+## The store stops asking whether to look for a newer plugin version
+
+Before an install, the app offered to look for a newer version of the plugin lists even when it had just read them. It now offers only when what it knows is more than an hour old. Opening the app and clicking the refresh wheel both count as reading them, so the question stops repeating. If the lists could not be read at all, the offer still comes.
+
+## A plugin file on your machine installs without that question
+
+A `.b3` you drop on the app, or a package you built yourself, is the version being installed. There is nothing online to look for, so the app no longer asks.
+
+## A plugin on your machine shows the settings it carries
+
+The settings offered in the plugin panel came from the published list, so an experimental build carrying extra settings gave you no way to set them. A package held on your machine now shows the settings its own manifest declares.

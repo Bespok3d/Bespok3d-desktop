@@ -16,6 +16,7 @@ import type { ConfiguredSource, SourceRow } from './resolve/sources'
 import { fetchGitHostRegistry } from './resolve/fetch'
 import { devSourcePath } from './dev-sources'
 import { loadSettings } from '../settings'
+import { stampListingRefreshed } from './listing-freshness'
 import { userLocalSourceUrl, userLocalIndexExists } from './local'
 
 export type { CatalogResult } from './model'
@@ -86,11 +87,16 @@ function withRefreshedReleases(entry: MergedEntry): MergedEntry {
 // The catalog the renderer browses, plus the truthful source list for the Repositories pane. A
 // disabled source is left out of the fetch but still reported (as off), and the resolver isolates a
 // per-source fetch failure so one unreachable list never wipes the store.
+//
+// Every reader of the lists lands here (start-up, the refresh wheel, turning a source on), so this is
+// where "what we know is this old" is recorded. A pass that lost a source is not recorded as fresh:
+// starting the app with no network must not silence the offer to check.
 export async function loadCatalog(): Promise<Catalog> {
   const sources = configuredSources()
   const disabled = new Set((loadSettings().disabledSources ?? []).map(normalizeRegistryUrl))
   const enabled = sources.filter((source) => !disabled.has(normalizeRegistryUrl(source.url))).map(toRef)
   const result = await resolveCatalog(enabled, fetchGitHostRegistry, DEFAULT_LIMITS, (message) => console.warn(`[registry] ${message}`))
+  if (result.failures.length === 0) stampListingRefreshed()
 
   return { ...result, plugins: result.plugins.map(withRefreshedReleases), sources: buildSources(sources, result, disabled) }
 }

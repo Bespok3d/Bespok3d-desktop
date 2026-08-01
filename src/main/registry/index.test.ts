@@ -10,10 +10,11 @@ const userDataDir = mkdtempSync(join(tmpdir(), 'b3-registry-'))
 vi.mock('electron', () => ({ app: { getPath: () => userDataDir } }))
 vi.mock('@electron-toolkit/utils', () => ({ is: { dev: true } }))
 
-const mocks = vi.hoisted(() => ({ resolveCatalog: vi.fn(), cachedRelease: vi.fn() }))
+const mocks = vi.hoisted(() => ({ resolveCatalog: vi.fn(), cachedRelease: vi.fn(), stampListingRefreshed: vi.fn() }))
 
 vi.mock('./resolve', () => ({ resolveCatalog: mocks.resolveCatalog }))
 vi.mock('./resolve/latest-release', () => ({ cachedRelease: mocks.cachedRelease, fetchLatestRelease: vi.fn() }))
+vi.mock('./listing-freshness', () => ({ stampListingRefreshed: mocks.stampListingRefreshed }))
 
 import { configuredSources, loadCatalog } from './index'
 import { normalizeRegistryUrl } from './resolve/url'
@@ -79,7 +80,27 @@ function resolvedInto(plugins: MergedEntry[]): CatalogResult {
 beforeEach(() => {
   mocks.resolveCatalog.mockReset()
   mocks.cachedRelease.mockReset()
+  mocks.stampListingRefreshed.mockReset()
   mocks.cachedRelease.mockReturnValue(null)
+})
+
+// Opening the app and clicking the refresh wheel both read the lists through here, so both count as
+// having just checked: the install offer that follows within the hour has nothing to add.
+describe('reading the lists is what makes them recent', () => {
+  it('records the read when every source answered', async () => {
+    mocks.resolveCatalog.mockResolvedValue(resolvedInto([listed('rfid-tools', '0.1.9')]))
+    await loadCatalog()
+
+    expect(mocks.stampListingRefreshed).toHaveBeenCalledOnce()
+  })
+
+  it('does not record a read that lost a source, so an offline start still gets offered the check', async () => {
+    const lostASource = { ...resolvedInto([listed('rfid-tools', '0.1.9')]), failures: [{ url: OFFICIAL_URL, reason: 'network' as const, message: 'no answer' }] }
+    mocks.resolveCatalog.mockResolvedValue(lostASource)
+    await loadCatalog()
+
+    expect(mocks.stampListingRefreshed).not.toHaveBeenCalled()
+  })
 })
 
 describe('loadCatalog and the release the launch pass filed', () => {

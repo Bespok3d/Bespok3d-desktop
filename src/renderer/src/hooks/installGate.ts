@@ -15,14 +15,19 @@
 // re-run by a re-render, and a person who closes the dialog has not installed anything.
 import { createContext, useContext, useRef, useState } from 'react'
 import { shouldSkipConfirm } from '../components/common/overlay/ConfirmActionDialog'
-import type { RefreshOffer } from '../../../main/registry/listing-refresh'
+import { isLocalRegistry } from '../data/catalog/local-source'
+import type { RefreshOffer } from '../../../main/registry/listing-freshness'
 import type { RefreshedVersion } from '../../../main/registry/refresh-pass'
 
 // Kept in localStorage by ConfirmActionDialog. The what-moved list is information and not a warning, so
 // someone who has read it once can tell it not to come back.
 export const MOVED_VERSIONS_SUPPRESS_KEY = 'install-gate.moved-versions'
 
-export type GatedInstall = (startInstall: () => void) => void
+// `sourceUrl` is the registry the version being installed comes from, when the click knew it. A version
+// held on this machine (a dropped .b3, a dev build from bundle.dev.json) has nothing online to check,
+// so it is installed without the offer. Not knowing the source keeps the offer, which is what an
+// update-all does: those are online versions by definition.
+export type GatedInstall = (startInstall: () => void, sourceUrl?: string) => void
 
 export type InstallGateStep = 'idle' | 'offer' | 'refreshing' | 'moved'
 
@@ -81,8 +86,13 @@ function acceptRefresh(handles: GateHandles, reloadCatalog: () => Promise<void>)
     .catch(() => runPendingInstall(handles))
 }
 
-function beforeInstall(handles: GateHandles, startInstall: () => void): void {
+function beforeInstall(handles: GateHandles, startInstall: () => void, sourceUrl?: string): void {
   handles.pendingInstall.current = startInstall
+  if (sourceUrl && isLocalRegistry(sourceUrl)) {
+    runPendingInstall(handles)
+
+    return
+  }
   window.b3d.registry.refreshOffer()
     .then((offer) => offerOrInstall(handles, offer))
     .catch(() => runPendingInstall(handles))
@@ -104,7 +114,7 @@ export function useInstallGate(): InstallGate {
     step,
     refreshedAt,
     moved,
-    beforeInstall: (startInstall) => beforeInstall(handles, startInstall),
+    beforeInstall: (startInstall, sourceUrl) => beforeInstall(handles, startInstall, sourceUrl),
     acceptRefresh: (reloadCatalog) => acceptRefresh(handles, reloadCatalog),
     proceedWithInstall: () => runPendingInstall(handles),
     cancel: () => cancelInstall(handles),

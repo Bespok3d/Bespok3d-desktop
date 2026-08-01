@@ -4,6 +4,7 @@ import type { Plugin, IndexEntry, CatalogPayload, Repository, PluginSource, Sour
 import type { Collection, CollectionEntry } from '../collections'
 import type { Catalog } from '../../env'
 import { withExplicitScope } from '../plugin-config'
+import { isLocalRegistry } from './local-source'
 
 // The catalog is loaded from the generated index.json over IPC (data/catalog-context.tsx).
 // This module is the single snake_case -> camelCase boundary: it maps each index entry to the
@@ -99,12 +100,9 @@ export function docAssetsFor(pluginId: string): Record<string, string> {
   )
 }
 
-// A catalog entry is "local" when its source registry is the on-disk bundled dev index rather than
-// a published list (github:/http url). Only dev builds include the local index as a source.
-export function isLocalRegistry(registryUrl: string): boolean {
-  return !/^(github:|https?:)/.test(registryUrl)
-}
-
+// Each variant carries its own config fields, and for a local package that entry was built from the
+// package's own manifest: an experimental build's extra settings reach the panel only because they
+// travel with the variant the user picked, not with the merged entry the published list decided.
 function entryToSource(variant: IndexEntry, labels: Record<string, string>): PluginSource {
   return {
     registryUrl: variant.registry_url,
@@ -116,6 +114,7 @@ function entryToSource(variant: IndexEntry, labels: Record<string, string>): Plu
     local: isLocalRegistry(variant.registry_url),
     publishedAt: variant.published_at,
     downloadUrl: variant.download_url,
+    config: variant.config?.map(withExplicitScope),
   }
 }
 

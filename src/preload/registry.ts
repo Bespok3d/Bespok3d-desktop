@@ -4,7 +4,7 @@ import { ipcRenderer } from 'electron'
 import type { AppSettings, ReleaseChannel } from '../main/settings'
 import type { Catalog } from '../main/registry'
 import type { AssetRead } from '../main/registry/asset-read'
-import type { RefreshOffer } from '../main/registry/listing-refresh'
+import type { RefreshOffer } from '../main/registry/listing-freshness'
 import type { RefreshPassResult } from '../main/registry/refresh-pass'
 
 export const registryApi = {

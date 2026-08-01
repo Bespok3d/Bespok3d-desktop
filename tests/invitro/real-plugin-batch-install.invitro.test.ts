@@ -81,7 +81,7 @@ const PACKAGES: BatchUpdatePackage[] = [
   pkg('camera-hw-accel', 'plugins/u1-hw-camera/dist/camera-hw-accel-0.1.8.b3', CAMERA_HW_VARS),
   pkg('webcam-builtin', 'plugins/u1-camera-configs/dist/webcam-builtin-0.1.1.b3', { BUILTIN_CAMERA_NAME: 'internal' }),
   pkg('webcam-usb', 'plugins/u1-camera-configs/dist/webcam-usb-0.1.1.b3', { USB_CAMERA_NAME: 'external' }),
-  pkg('fluidd', 'plugins/fluidd-plugin/dist/fluidd-0.1.4.b3', { FLUIDD_PORT: String(FLUIDD_PORT) }),
+  pkg('fluidd', 'plugins/fluidd-plugin/dist/fluidd-0.1.5.b3', { FLUIDD_PORT: String(FLUIDD_PORT) }),
   pkg('mainsail', 'plugins/mainsail-plugin/dist/mainsail-0.1.5.b3', { MAINSAIL_PORT: String(MAINSAIL_PORT) }),
   pkg('idle-timeout', 'plugins/u1-klipper-config-enhancers/dist/idle-timeout-0.1.0.b3', { IDLE_TIMEOUT_SECONDS }),
   pkg('cpu-temp', 'plugins/u1-klipper-config-enhancers/dist/cpu-temp-0.1.2.b3'),
