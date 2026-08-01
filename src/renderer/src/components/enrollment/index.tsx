@@ -6,6 +6,7 @@ import { useEnrollment } from '../../hooks/enrollment'
 import type { SshCredentials, EnrollState, EnrollPhase } from '../../hooks/enrollment'
 import { useI18n } from '../../i18n/context'
 import { formatDateTime } from '../../utils/datetime'
+import { savedRecord } from '../../data/printers'
 import { Modal } from '../common/overlay/Modal'
 import { Button } from '../common/Button'
 import { CredentialsForm } from './CredentialsForm'
@@ -281,9 +282,8 @@ export function Enrollment({ printer, mode, fromAdd = false, onEnrolled, onClose
     retryFrom(stepId, credentials)
   }
   function handleDone() {
-    window.b3d.printers.load().then((records) => {
-      const savedRecord = records.find((record) => record.id === printer.id)
-      onEnrolled(savedRecord ? { ...printer, ...savedRecord } : { ...printer, status: 'managed' })
+    savedRecord(printer.id).then((record) => {
+      onEnrolled(record ? { ...printer, ...record } : { ...printer, status: 'managed' })
     })
   }
 

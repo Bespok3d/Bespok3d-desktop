@@ -28,6 +28,8 @@ Before an install, the app offered to look for a newer version of the plugin lis
 
 A `.b3` you drop on the app, or a package you built yourself, is the version being installed. There is nothing online to look for, so the app no longer asks.
 
+Updating everything at once follows the same rule. If every version in the set is held on your machine, the question does not come up. If even one of them comes from a published list, it does.
+
 ### A plugin on your machine shows the settings it carries
 
 The settings offered in the plugin panel came from the published list, so an experimental build carrying extra settings gave you no way to set them. A package held on your machine now shows the settings its own manifest declares.
@@ -36,6 +38,8 @@ The settings offered in the plugin panel came from the published list, so an exp
 
 The app used to look at every place a plugin is published, take the newest version anywhere, and install that. A plugin you run from your own bundle was therefore replaced by the published build. The update now comes from the same place the installed copy came from, on every route: the plugin's own button, "Update all" and "Install selected". If that place no longer lists the plugin, the app still offers the best it can find and the line says the update comes from somewhere else, instead of switching quietly.
 
+It takes effect the moment you install. Installing a plugin from a build packed on your machine used to leave the store still offering the published build, and "Update all" would push that build onto the printer, until you closed the app and opened it again. The app now re-reads where each installed copy came from every time it re-syncs with the printer.
+
 ### The confirmation before an update lists the other versions
 
 Each plugin in the confirmation carries a folded "Other versions" line. Opening it lists every place that plugin is published, with the version each one offers, and you can send one of those instead.
@@ -43,6 +47,14 @@ Each plugin in the confirmation carries a folded "Other versions" line. Opening 
 ### An install the printer accepted is no longer reported as failed
 
 The app asked the printer what plugins it already had before sending anything. A printer whose jinni was restarting answered that with an error, and the app showed the install as failed before a byte had been sent. That answer may now go missing without stopping the install, and a plugin that needs nothing else installed first is not asked at all.
+
+### The app opens in the machine's language
+
+A fresh install used to start in English whatever language the machine is set to. It now follows the machine, and Settings still lets you pick a language and stay on it.
+
+### The unfinished parts are not in the released app
+
+The Create tab, and the Keys and Labs panes in Settings, are work in progress and were on screen in the released app. They are now in a development build only. Starting the released app with `B3D_DEV_FEATURES=1` in the environment brings them back.
 
 ---
 

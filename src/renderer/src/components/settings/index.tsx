@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import './settings.css'
 import cx from '../../utils/cx'
+import { showsUnreleasedFeatures } from '../../utils/unreleased-features'
 import { useI18n } from '../../i18n/context'
 import { Modal } from '../common/overlay/Modal'
 import { IconKey, IconSearch, IconPrinter, IconGitBranch, IconChip, IconSliders, IconGlobe, IconInfo, IconClose, IconLayers, IconShield, IconBox, IconDownload } from '../../design-system/icons'
@@ -42,6 +43,16 @@ const NAV = [
 ] as const
 
 export type Section = (typeof NAV)[number]['id']
+
+// Panes a release build leaves out: key signing and the Labs experiments are for people building
+// plugins, not for the shipped app.
+const UNRELEASED_SECTIONS: Section[] = ['keys', 'labs']
+
+function releasedSections(): (typeof NAV)[number][] {
+  if (showsUnreleasedFeatures()) return NAV.slice()
+
+  return NAV.filter((navItem) => !UNRELEASED_SECTIONS.includes(navItem.id))
+}
 
 type Density = 'compact' | 'comfortable' | 'spacious'
 
@@ -198,10 +209,10 @@ export function Settings({
 
   function handleLocaleChange(next: LocaleSettings) {
     setLocaleSettings(next)
-    if (next.locale !== 'system') onSetLocale(next.locale)
+    onSetLocale(next.locale)
   }
 
-  const visibleSections = NAV.filter(
+  const visibleSections = releasedSections().filter(
     (navItem) => !search || navItem.label.toLowerCase().includes(search.toLowerCase())
   )
   const activeSection = NAV.find((navItem) => navItem.id === section)

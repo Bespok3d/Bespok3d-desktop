@@ -136,7 +136,7 @@ export function LanguagePane({ settings, onChange }: LanguagePaneProps) {
   function handleUseSystem(checked: boolean) {
     const newLocale = checked ? 'system' : effectiveCode
     onChange({ ...settings, locale: newLocale })
-    setLocale(checked ? systemCode : effectiveCode)
+    setLocale(newLocale)
   }
 
   function handlePickLocale(code: string) {

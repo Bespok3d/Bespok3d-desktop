@@ -245,6 +245,7 @@ export function makeB3dMock(overrides: B3dOverrides = {}): B3dHarness {
   var channels = makeChannels()
   var b3d: B3d = {
     platform: 'darwin', arch: 'arm64', daemonExpectedVersion: EXPECTED_DAEMON_VERSION,
+    unreleasedFeaturesForced: false,
     openUrl: voidFn(), onOpenAbout: sub(channels.openAbout), onB3dOpen: () => () => {},
     settings: mockSettings(overrides.settings), appUpdate: mockAppUpdate(channels, overrides.appUpdate),
     keys: mockKeys(overrides.keys), printers: mockPrinters(channels, overrides.printers),

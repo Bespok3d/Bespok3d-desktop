@@ -7,7 +7,7 @@
     {
       "name": "afc-lite",
       "title": "AFC Lite (Automated Filament Changer)",
-      "version": "0.1.16+dev.local",
+      "version": "0.1.10+dev.local",
       "description": "Lightweight Automated Filament Changer support for the Snapmaker U1's four toolheads. Ships the AFC, AFC_unit and AFC_lane Klipper extras plus an afc.cfg that maps the four lanes (E0-E3) to the U1 extruders and filament motion sensors, and adds gcode macros for color, material, vendor, map, spool id, weight, tool change and lane/tool unload. Per-lane state feeds the U1's SET_PRINT_FILAMENT_CONFIG so the slicer and screen track what is loaded.",
       "tagline": "Four-lane filament tracking and tool-change macros for the U1.",
       "category": "filament",
@@ -27,11 +27,11 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "afc-lite/doc/README.md",
-      "download_url": "afc-lite-0.1.16.b3",
+      "download_url": "afc-lite-0.1.10.b3",
       "config": [
         {
           "key": "AFC_TOOLMAP_ASK",
-          "label": "Hold a print until the lane-to-tool map is made",
+          "label": "Filament to tools mapper",
           "type": "select",
           "options": [
             "off",
@@ -39,6 +39,19 @@
           ],
           "default": "off",
           "hint": "Off by default. On, a print started from the web interface or the slicer never starts until Fluidd or Mainsail has asked which lane feeds each tool, so a print sent straight from the slicer can be mapped without the printer's screen. It waits as long as it takes, and dismissing the question drops the print instead of starting it.",
+          "userEditable": true,
+          "scope": "printer"
+        },
+        {
+          "key": "AFC_TOOLMAP_FEED",
+          "label": "Filament auto loaders",
+          "type": "select",
+          "options": [
+            "off",
+            "on"
+          ],
+          "default": "off",
+          "hint": "Off by default. On, once you have said which lane feeds each tool, the printer loads filament into the lanes that print needs and have none, the same way it does for a print started from its own screen, instead of starting and stopping on a filament error. It only acts on a print it held for the question above, and it leaves a lane alone when there is no spool in its feeder.",
           "userEditable": true,
           "scope": "printer"
         }
@@ -118,7 +131,7 @@
     {
       "name": "fluidd",
       "title": "Fluidd",
-      "version": "0.1.9+dev.local",
+      "version": "0.1.5+dev.local",
       "description": "Swaps SM's outdated Fluidd for the current upstream release. You get input-shaper graphs, integrated config/G-code editors, tool-colour preview, modern mesh viz. Uninstall restores the SM-shipped copy automatically; no nginx config touched.",
       "tagline": "Modern Fluidd v1.37.3: replaces the stock SM build.",
       "category": "ui",
@@ -138,7 +151,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "fluidd/doc/README.md",
-      "download_url": "fluidd-0.1.9.b3",
+      "download_url": "fluidd-0.1.5.b3",
       "homepage": "https://github.com/bespok3d-org/plugin-fluidd",
       "config": [
         {
@@ -148,6 +161,19 @@
           "default": "80",
           "hint": "Auto-assigned. Make Fluidd primary to serve it on port 80.",
           "userEditable": true
+        },
+        {
+          "key": "FLUIDD_HIDE_VIRTUAL_TOOLS",
+          "label": "Hide unused tool buttons",
+          "type": "select",
+          "options": [
+            "off",
+            "on"
+          ],
+          "default": "off",
+          "hint": "Off by default. On, the tool row shows one button per lane the printer actually has, instead of all 32 the firmware keeps room for. The tools are still there and a macro can still call them. Reload the page after changing this.",
+          "userEditable": true,
+          "scope": "printer"
         }
       ],
       "author": "bespoked",
@@ -163,7 +189,7 @@
     {
       "name": "fluidd",
       "title": "Fluidd",
-      "version": "0.2.0-experiment+dev.local",
+      "version": "0.2.1-experiment+dev.local",
       "description": "Swaps SM's outdated Fluidd for the current upstream release. You get input-shaper graphs, integrated config/G-code editors, tool-colour preview, modern mesh viz. Uninstall reverts to the SM-shipped copy automatically via overlayfs; no nginx config touched. Bleeding-edge build: adds the AFC \"Toolchanger Eject Mode\" toggle (Eject docks the mounted tool on a toolchanger).",
       "tagline": "Modern Fluidd v1.37.0: replaces the stock SM build.",
       "category": "ui",
@@ -183,7 +209,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "fluidd/doc/README.md",
-      "download_url": "fluidd-0.2.0-experiment.b3",
+      "download_url": "fluidd-0.2.1-experiment.b3",
       "homepage": "https://github.com/bespok3d-org/plugin-fluidd",
       "config": [
         {
@@ -246,7 +272,7 @@
     {
       "name": "mainsail",
       "title": "Mainsail",
-      "version": "0.1.7+dev.local",
+      "version": "0.1.6+dev.local",
       "description": "Installs Mainsail v2.18.0 as a second web frontend. Runs on port 81 by default so Fluidd stays on port 80. Set port 80 to make Mainsail primary; Fluidd shifts to 81 automatically.",
       "tagline": "Mainsail web interface alongside Fluidd, on your chosen port.",
       "category": "ui",
@@ -266,7 +292,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "mainsail/doc/README.md",
-      "download_url": "mainsail-0.1.7.b3",
+      "download_url": "mainsail-0.1.6.b3",
       "config": [
         {
           "key": "MAINSAIL_PORT",
@@ -276,6 +302,19 @@
           "hint": "Auto-assigned. Make Mainsail primary to serve it on port 80.",
           "required": true,
           "userEditable": true
+        },
+        {
+          "key": "MAINSAIL_HIDE_VIRTUAL_TOOLS",
+          "label": "Hide unused tool buttons",
+          "type": "select",
+          "options": [
+            "off",
+            "on"
+          ],
+          "default": "off",
+          "hint": "Off by default. On, the Extruder panel shows one button per lane the printer actually has, instead of all 32 the firmware keeps room for and the saved copy the printer keeps of each. The tools are still there and a macro can still call them. Reload the page after changing this.",
+          "userEditable": true,
+          "scope": "printer"
         }
       ],
       "author": "bespoked",
@@ -291,7 +330,7 @@
     {
       "name": "mainsail",
       "title": "Mainsail",
-      "version": "0.2.0-experiment+dev.local",
+      "version": "0.2.1-experiment+dev.local",
       "description": "Installs Mainsail v2.17.0 as a second web frontend. Runs on port 81 by default so Fluidd stays on port 80. Set port 80 to make Mainsail primary; Fluidd shifts to 81 automatically. Bleeding-edge build: adds the AFC \"Toolchanger Eject Mode\" toggle (Eject docks the mounted tool on a toolchanger).",
       "tagline": "Mainsail web interface alongside Fluidd, on your chosen port.",
       "category": "ui",
@@ -311,7 +350,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "mainsail/doc/README.md",
-      "download_url": "mainsail-0.2.0-experiment.b3",
+      "download_url": "mainsail-0.2.1-experiment.b3",
       "config": [
         {
           "key": "MAINSAIL_PORT",

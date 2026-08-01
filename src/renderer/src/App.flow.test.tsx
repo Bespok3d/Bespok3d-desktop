@@ -7,13 +7,17 @@ import { setup } from './test/harness'
 import { makeEnrollEvent } from './test/fixtures'
 import { makeT } from './i18n'
 import type { PrinterRecord } from '../../main/printers'
+import { showsUnreleasedFeatures } from './utils/unreleased-features'
 import App from './App'
 
 const en = makeT('en')
 
+vi.mock('./utils/unreleased-features', () => ({ showsUnreleasedFeatures: vi.fn(() => true) }))
+
 // App's useDisplayPrefs reads prefers-color-scheme; jsdom has no matchMedia, so stub it before render.
 beforeEach(() => {
   window.matchMedia = vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }) as never
+  vi.mocked(showsUnreleasedFeatures).mockReturnValue(true)
 })
 
 const enrolledRecord = {
@@ -85,5 +89,20 @@ describe('App flow: a managed printer whose plugin state drifted (group 5)', () 
     })
     await user.click(await screen.findByRole('button', { name: en('banner.drift_action') }))
     await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1'))
+  })
+})
+
+describe('App: the tabs a released build shows', () => {
+  it('a dev run offers the Create tab next to the Store one', async () => {
+    renderApp({})
+    expect(await screen.findByRole('button', { name: new RegExp(en('mode.create')) })).toBeInTheDocument()
+  })
+
+  it('a released build shows no tab strip at all, since only the Store is left', async () => {
+    vi.mocked(showsUnreleasedFeatures).mockReturnValue(false)
+    renderApp({})
+    await screen.findByText('Alpha')
+    expect(screen.queryByRole('button', { name: new RegExp(en('mode.create')) })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: new RegExp(en('mode.store')) })).not.toBeInTheDocument()
   })
 })

@@ -11,6 +11,8 @@ import { usePluginOps } from './pluginOps'
 import { useBatchOps } from '../components/batch-ops'
 
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000
+// A version that came off this machine: a dev build packed locally, not a listing that can be refreshed.
+const LOCAL_BUILD = '/Users/dev/Bespok3d/dist/plugins/index.json'
 
 // An install asking to start, wired the way the app wires it: the gate is made once and the dialogs it
 // puts up are mounted beside the thing that asked.
@@ -19,7 +21,21 @@ function InstallHarness({ onInstall, sourceUrl }: { onInstall: () => void; sourc
 
   return (
     <>
-      <button type="button" onClick={() => gate.beforeInstall(onInstall, sourceUrl)}>install</button>
+      <button type="button" onClick={() => gate.beforeInstall(onInstall, [sourceUrl])}>install</button>
+      <InstallGateModals gate={gate} />
+    </>
+  )
+}
+
+// Update-all wired the way the app wires it: the real gate, the real batch ops, and specs carrying the
+// registry each version comes from.
+function GatedBatchHarness({ updates }: { updates: PluginUpdateSpec[] }) {
+  const gate = useInstallGate()
+  const batchOps = useBatchOps([], () => undefined, gate.beforeInstall)
+
+  return (
+    <>
+      <button type="button" onClick={() => batchOps.runUpdateAll('printer-1', updates)}>update all</button>
       <InstallGateModals gate={gate} />
     </>
   )
@@ -53,7 +69,7 @@ describe('what an install is asked before it starts', () => {
   it('installs a version held on this machine without asking about the online lists', async () => {
     const install = vi.fn()
     const refreshOffer = vi.fn().mockResolvedValue({ offered: true, refreshedAt: null })
-    const harness = setup(<InstallHarness onInstall={install} sourceUrl="/Users/dev/Bespok3d/dist/plugins/index.json" />, {
+    const harness = setup(<InstallHarness onInstall={install} sourceUrl={LOCAL_BUILD} />, {
       withCatalog: true,
       b3d: { registry: { refreshOffer } },
     })
@@ -69,6 +85,40 @@ describe('what an install is asked before it starts', () => {
       b3d: { registry: { refreshOffer } },
     })
     await harness.user.click(screen.getByText('install'))
+    await waitFor(() => expect(refreshOffer).toHaveBeenCalledOnce())
+  })
+
+  // Updating everything at once is many installs, so the offer answers to all of their versions: a
+  // batch built entirely from local builds has nothing online to check, and asking would put the
+  // published build back on the printer.
+  it('updates everything without asking about the online lists when every version is held on this machine', async () => {
+    const refreshOffer = vi.fn().mockResolvedValue({ offered: true, refreshedAt: null })
+    const updates = [
+      { pluginId: 'spoolman', sourceUrl: LOCAL_BUILD },
+      { pluginId: 'camera', sourceUrl: LOCAL_BUILD },
+    ]
+    const harness = setup(<GatedBatchHarness updates={updates} />, { withCatalog: true, b3d: { registry: { refreshOffer } } })
+    await harness.user.click(screen.getByText('update all'))
+    await waitFor(() => expect(harness.b3d.store.updateBatch).toHaveBeenCalledOnce())
+    expect(refreshOffer).not.toHaveBeenCalled()
+  })
+
+  it('still asks before an update-all that carries one version from a published list', async () => {
+    const refreshOffer = vi.fn().mockResolvedValue({ offered: true, refreshedAt: null })
+    const updates = [
+      { pluginId: 'spoolman', sourceUrl: LOCAL_BUILD },
+      { pluginId: 'camera', sourceUrl: 'github:Bespok3d/main-index/index.json' },
+    ]
+    const harness = setup(<GatedBatchHarness updates={updates} />, { withCatalog: true, b3d: { registry: { refreshOffer } } })
+    await harness.user.click(screen.getByText('update all'))
+    await waitFor(() => expect(refreshOffer).toHaveBeenCalledOnce())
+    expect(harness.b3d.store.updateBatch).not.toHaveBeenCalled()
+  })
+
+  it('still asks before an update-all whose sources are not known', async () => {
+    const refreshOffer = vi.fn().mockResolvedValue({ offered: true, refreshedAt: null })
+    const harness = setup(<GatedBatchHarness updates={[{ pluginId: 'spoolman' }]} />, { withCatalog: true, b3d: { registry: { refreshOffer } } })
+    await harness.user.click(screen.getByText('update all'))
     await waitFor(() => expect(refreshOffer).toHaveBeenCalledOnce())
   })
 

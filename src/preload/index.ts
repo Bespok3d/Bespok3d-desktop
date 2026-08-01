@@ -20,6 +20,9 @@ import { gitHostApi } from './git-host'
 const b3dAPI = {
   platform: process.platform,
   arch: process.arch,
+  // Set B3D_DEV_FEATURES=1 to reveal the parts a release build hides (Create, Keys, Labs) in a
+  // packaged app. A dev run shows them anyway (utils/unreleased-features.ts).
+  unreleasedFeaturesForced: process.env.B3D_DEV_FEATURES === '1',
   daemonExpectedVersion: EXPECTED_DAEMON_VERSION,
   openUrl: (url: string): Promise<void> => ipcRenderer.invoke('shell:openUrl', url),
   // The menu "About" item (macOS app menu / Help menu elsewhere) opens our Settings > About pane.

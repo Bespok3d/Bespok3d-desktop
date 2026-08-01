@@ -23,11 +23,12 @@ import type { RefreshedVersion } from '../../../main/registry/refresh-pass'
 // someone who has read it once can tell it not to come back.
 export const MOVED_VERSIONS_SUPPRESS_KEY = 'install-gate.moved-versions'
 
-// `sourceUrl` is the registry the version being installed comes from, when the click knew it. A version
-// held on this machine (a dropped .b3, a dev build from bundle.dev.json) has nothing online to check,
-// so it is installed without the offer. Not knowing the source keeps the offer, which is what an
-// update-all does: those are online versions by definition.
-export type GatedInstall = (startInstall: () => void, sourceUrl?: string) => void
+// `sourceUrls` are the registries the versions being installed come from, one per version, when the
+// click knew them. A version held on this machine (a dropped .b3, a dev build from bundle.dev.json) has
+// nothing online to check. The offer answers to the whole install, so it is skipped only when EVERY
+// version in it is held here: an update-all of locally built plugins asks nothing, and one version from
+// a published list, or one whose source the click did not know, keeps the offer for the set.
+export type GatedInstall = (startInstall: () => void, sourceUrls?: Array<string | undefined>) => void
 
 export type InstallGateStep = 'idle' | 'offer' | 'refreshing' | 'moved'
 
@@ -86,9 +87,18 @@ function acceptRefresh(handles: GateHandles, reloadCatalog: () => Promise<void>)
     .catch(() => runPendingInstall(handles))
 }
 
-function beforeInstall(handles: GateHandles, startInstall: () => void, sourceUrl?: string): void {
+function isHeldOnThisMachine(sourceUrl: string | undefined): boolean {
+  return sourceUrl ? isLocalRegistry(sourceUrl) : false
+}
+
+// An empty list is an install whose sources the click did not know at all: it keeps the offer.
+function nothingOnlineToCheck(sourceUrls: Array<string | undefined>): boolean {
+  return sourceUrls.length > 0 && sourceUrls.every(isHeldOnThisMachine)
+}
+
+function beforeInstall(handles: GateHandles, startInstall: () => void, sourceUrls: Array<string | undefined> = []): void {
   handles.pendingInstall.current = startInstall
-  if (sourceUrl && isLocalRegistry(sourceUrl)) {
+  if (nothingOnlineToCheck(sourceUrls)) {
     runPendingInstall(handles)
 
     return
@@ -114,7 +124,7 @@ export function useInstallGate(): InstallGate {
     step,
     refreshedAt,
     moved,
-    beforeInstall: (startInstall, sourceUrl) => beforeInstall(handles, startInstall, sourceUrl),
+    beforeInstall: (startInstall, sourceUrls) => beforeInstall(handles, startInstall, sourceUrls),
     acceptRefresh: (reloadCatalog) => acceptRefresh(handles, reloadCatalog),
     proceedWithInstall: () => runPendingInstall(handles),
     cancel: () => cancelInstall(handles),

@@ -12,3 +12,10 @@ export function toPrinter(rec: PrinterRecord): Printer {
 export function toRecord(printer: Printer): PrinterRecord {
   return printer
 }
+
+// The saved record for one printer, as main last wrote it. Main owns everything the printer itself
+// cannot tell us (which listing each installed copy came from, on which channel, the log the install
+// wrote), so a live read of the printer can never bring those back: they are re-read from here.
+export function savedRecord(printerId: string): Promise<PrinterRecord | undefined> {
+  return window.b3d.printers.load().then((records) => records.find((record) => record.id === printerId))
+}

@@ -11,6 +11,7 @@ import { pingAndUpdate, refreshEndpoints } from '../../data/printers'
 import { mainProcessMessage } from '../../utils/errorMessage'
 import { reduceBatchProgress } from './progress'
 import { usePendingUpdate } from './pending-update'
+import { batchSources } from './sources'
 import './batch-ops.css'
 import type { BatchProgressState } from './progress'
 import type { GatedInstall } from '../../hooks/installGate'
@@ -139,12 +140,14 @@ export function useBatchOps(
       })
       .catch(batchDidNotRun(variant, setBusy))
   }
+  // Each spec carries the registry its version comes from, so a batch built entirely from versions held
+  // on this machine is installed without the offer to refresh the online lists.
   function runUpdateAll(printerId: string, updates: PluginUpdateSpec[]) {
-    gatedInstall(() => runBatch('update', printerId, updates, setUpdatingAll, setUpdateAllResult, window.b3d.store.updateBatch))
+    gatedInstall(() => runBatch('update', printerId, updates, setUpdatingAll, setUpdateAllResult, window.b3d.store.updateBatch), batchSources(updates))
   }
   const updateConfirm = usePendingUpdate(runUpdateAll)
   function runInstallBatch(printerId: string, specs: PluginUpdateSpec[]) {
-    gatedInstall(() => runBatch('install', printerId, specs, setInstallingBatch, setInstallBatchResult, window.b3d.store.installBatch))
+    gatedInstall(() => runBatch('install', printerId, specs, setInstallingBatch, setInstallBatchResult, window.b3d.store.installBatch), batchSources(specs))
   }
   function runUninstallBatch(printerId: string, pluginIds: string[], cascade: boolean) {
     setUninstallingBatch(true)

@@ -316,7 +316,7 @@ as you touch the file.
 
 - `AppModals` (component) - [app/AppModals.tsx](../src/renderer/src/app/AppModals.tsx)
 - `useAppCallbacks` (hook) - [app/callbacks.ts](../src/renderer/src/app/callbacks.ts)
-- `useAppI18n` (hook) - [app/locale.ts](../src/renderer/src/app/locale.ts)
+- `useAppI18n` (hook) - [app/locale.ts](../src/renderer/src/app/locale.ts) - The stored preference is either a locale code or 'system' (follow the OS), and 'system' is what a
 - `useB3dDeepLinks` (hook) - [app/deep-links.ts](../src/renderer/src/app/deep-links.ts) - A b3d:// link the OS handed us (window.b3d.onB3dOpen) maps to an in-app navigation; every route is
 - `usePluginVars` (hook) - [app/plugin-vars.ts](../src/renderer/src/app/plugin-vars.ts) - The renderer's one owner of the scoped plugin-vars store: boot migration (v1 flat map to v2
 

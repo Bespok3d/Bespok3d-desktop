@@ -3,13 +3,30 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
 import { screen } from '@testing-library/react'
-import { setup } from '../../../../test/harness'
-import { LanguagePane } from './index'
+import { setup, realI18nValue } from '../../../../test/harness'
+import { I18nProvider } from '../../../../i18n/context'
+import { LanguagePane, makeDefaultLocaleSettings } from './index'
 import type { LocaleSettings } from './index'
 
 const base: LocaleSettings = { locale: 'en', firstDayOfWeek: 'auto', units: 'metric' }
 
 describe('LanguagePane', () => {
+  it('a fresh install shows the machine-language toggle already on', () => {
+    setup(<LanguagePane settings={makeDefaultLocaleSettings()} onChange={vi.fn()} />)
+    expect(screen.getByRole('switch')).toBeChecked()
+  })
+
+  it('the machine-language toggle stores "system", not the language it currently resolves to', async () => {
+    var setLocale = vi.fn()
+    var { user } = setup(
+      <I18nProvider value={{ ...realI18nValue(), setLocale }}>
+        <LanguagePane settings={base} onChange={vi.fn()} />
+      </I18nProvider>
+    )
+    await user.click(screen.getByRole('switch'))
+    expect(setLocale).toHaveBeenCalledWith('system')
+  })
+
   it('switches to the system locale when the toggle is enabled', async () => {
     var onChange = vi.fn()
     var { user } = setup(<LanguagePane settings={base} onChange={onChange} />)

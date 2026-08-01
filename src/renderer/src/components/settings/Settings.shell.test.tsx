@@ -1,11 +1,16 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makeT } from '../../i18n'
+import { showsUnreleasedFeatures } from '../../utils/unreleased-features'
 import { Settings } from './index'
+
+vi.mock('../../utils/unreleased-features', () => ({ showsUnreleasedFeatures: vi.fn(() => true) }))
+
+beforeEach(() => { vi.mocked(showsUnreleasedFeatures).mockReturnValue(true) })
 
 const en = makeT('en')
 
@@ -30,6 +35,20 @@ describe('Settings shell', () => {
 
     await user.click(screen.getByRole('button', { name: en('btn.close') }))
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('a dev run lists Keys and Labs', () => {
+    setup(<Settings {...settingsProps(vi.fn())} />, { withCatalog: true, catalog: [] })
+    expect(screen.getByRole('button', { name: en('set.keys') })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: en('set.labs') })).toBeInTheDocument()
+  })
+
+  it('a released build leaves Keys and Labs out and keeps the rest', () => {
+    vi.mocked(showsUnreleasedFeatures).mockReturnValue(false)
+    setup(<Settings {...settingsProps(vi.fn())} />, { withCatalog: true, catalog: [] })
+    expect(screen.queryByRole('button', { name: en('set.keys') })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: en('set.labs') })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: en('set.printers') })).toBeInTheDocument()
   })
 
   it('filters the nav with the search box', async () => {

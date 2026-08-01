@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { Plugin, Printer, ReleaseChannel } from '../../data/types'
 import type { CeilingResolver } from '../../data/channels'
 import { applyToId } from '../../data/printers'
+import { refreshInstallProvenance } from './install-provenance'
 import { useI18n } from '../../i18n/context'
 import { batchBlockReason } from './batch-gate'
 import type { InstallBlock } from './panel/install-gate'
@@ -23,6 +24,15 @@ export interface PluginHistoryEntry {
   log?: InstallLog
 }
 
+// The history with one more entry on the end of that plugin's list, as a new map: React only re-renders
+// on a new object, so the map held in state is never mutated in place.
+function withHistoryEntry(history: Map<string, PluginHistoryEntry[]>, entry: PluginHistoryEntry): Map<string, PluginHistoryEntry[]> {
+  const next = new Map(history)
+  next.set(entry.pluginId, [...(history.get(entry.pluginId) ?? []), entry])
+
+  return next
+}
+
 export function useInstallState(printer: Printer | null | undefined, onPrinterUpdate: OnPrinterUpdate | undefined, batchBusy: boolean) {
   const [liveInstalledIds, setLiveInstalledIds] = useState<string[] | null>(null)
   const [liveInstalledVersions, setLiveInstalledVersions] = useState<Record<string, string> | null>(null)
@@ -38,6 +48,7 @@ export function useInstallState(printer: Printer | null | undefined, onPrinterUp
       return
     }
     const printerId = printer.id
+    refreshInstallProvenance(printerId, onPrinterUpdate)
     window.b3d.store.capabilities(printerId)
       .then((caps) => {
         setLiveInstalledIds(Object.keys(caps.installed))
@@ -62,9 +73,7 @@ export function useInstallState(printer: Printer | null | undefined, onPrinterUp
   function onOperationDone(ids: string[], pluginId: string, action: 'install' | 'uninstall', log?: InstallLog) {
     setLiveInstalledIds(ids)
     const entry: PluginHistoryEntry = { pluginId, action, timestamp: Date.now(), log }
-    setPluginHistory((prev) => { const next = new Map(prev); next.set(pluginId, [...(prev.get(pluginId) ?? []), entry]);
-
- return next })
+    setPluginHistory((prev) => withHistoryEntry(prev, entry))
     const notice = autoRecoveryNotice(log)
     if (notice) setSafetyNotice(notice)
     refreshCapabilities()

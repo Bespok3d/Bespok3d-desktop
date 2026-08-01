@@ -20,6 +20,7 @@ import { usePluginVars } from './app/plugin-vars'
 import { printerKeyFor } from './data/plugin-vars'
 import { AppModals } from './app/AppModals'
 import { InstallGateContext } from './hooks/installGate'
+import { showsUnreleasedFeatures } from './utils/unreleased-features'
 
 function App() {
   const { i18n, localePref, setLocalePref } = useAppI18n()
@@ -75,7 +76,7 @@ function App() {
           onAddPrinter={actions.openAdd} onUpdateDaemon={actions.handleUpdateDaemon} onUpdateJinni={actions.handleUpdateJinni} onUpdateAll={actions.handleUpdateAll}
           installingCount={0} empty={printers.length === 0}
         />
-        {printers.length > 0 && <ModeBar mode={mode} onModeChange={setMode} printerName={selectedPrinter?.nick} />}
+        {printers.length > 0 && showsUnreleasedFeatures() && <ModeBar mode={mode} onModeChange={setMode} printerName={selectedPrinter?.nick} />}
         <PrinterBanners selectedPrinter={selectedPrinter} bundledJinniVersion={selectedPrinter ? jinniVersions[selectedPrinter.adapter] : undefined} onRepair={actions.handleRepairPrinter} onRecover={actions.handleRecoverPrinter} onReactivate={actions.handleReactivatePrinter} onRecoverDrift={actions.handleRecoverDrift} onUpdateJinni={actions.handleUpdateJinni} />
         <div className="u-fill">
           {mainPane()}
