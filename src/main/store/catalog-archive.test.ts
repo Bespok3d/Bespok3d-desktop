@@ -55,6 +55,21 @@ describe('findCatalogVariant', () => {
   it('falls back to the winner when no variant matches the channel', () => {
     expect(findCatalogVariant(withVariants(), 'fluidd', undefined, 'lts').version).toBe('2.0.0')
   })
+
+  // The locally packed build is the one the printer already runs, so it is the one an update sends,
+  // even while a published list carries a higher number for the same plugin.
+  it('picks the variant offered by the named source over the higher-numbered one', () => {
+    const local = catalogEntry({ name: 'fluidd', version: '1.5.0', channel: 'stable', registry_url: 'local:dev-bundle' })
+    const published = catalogEntry({ name: 'fluidd', version: '2.0.0', channel: 'stable', registry_url: 'official' })
+    const catalog = [{ ...published, variants: [published, local] }]
+    const variant = findCatalogVariant(catalog, 'fluidd', 'local:dev-bundle')
+    expect(variant.version).toBe('1.5.0')
+    expect(variant.registry_url).toBe('local:dev-bundle')
+  })
+
+  it('falls back to the winner when the named source is gone from the catalog', () => {
+    expect(findCatalogVariant(withVariants(), 'fluidd', 'local:a-bundle-that-is-gone').version).toBe('2.0.0')
+  })
 })
 
 describe('resolveArchiveBytes', () => {

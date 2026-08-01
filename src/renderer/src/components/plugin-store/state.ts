@@ -8,6 +8,7 @@ import { useI18n } from '../../i18n/context'
 import { batchBlockReason } from './batch-gate'
 import type { InstallBlock } from './panel/install-gate'
 import { updatablePlugins, buildUpdateSpecs } from './update-all'
+import { installedFromRecords } from '../../data/channels/updates'
 import { autoRecoveryNotice } from './safety/notice'
 import type { SafetyNotice } from './safety/notice'
 
@@ -77,6 +78,7 @@ interface UpdateAllDeps {
   plugins: Plugin[]
   installedIds: string[]
   installedVersions: Record<string, string>
+  installedSources: Record<string, string>
   savedVars: Record<string, string>
   ceilingFor: CeilingResolver
   disabledChannels: ReleaseChannel[]
@@ -91,12 +93,13 @@ interface UpdateAllDeps {
 // while the printer is printing there is no update-all, exactly as there is no single install.
 export function useUpdateAll(deps: UpdateAllDeps): { updatableCount: number; updateBlock: InstallBlock | null; updateAll: () => void } {
   const { t } = useI18n()
-  const updatableCount = updatablePlugins(deps.plugins, deps.installedVersions, deps.ceilingFor, deps.disabledChannels).length
+  const installed = installedFromRecords(deps.installedVersions, deps.installedSources, deps.ceilingFor, deps.disabledChannels)
+  const updatableCount = updatablePlugins(deps.plugins, installed).length
   const updateBlock = batchBlockReason(t, { printerId: deps.printerId, printActive: deps.printActive, blockedActions: deps.blockedActions })
 
   function updateAll(): void {
     if (!deps.printerId || !deps.onUpdateAll || updatableCount === 0 || updateBlock) return
-    deps.onUpdateAll(deps.printerId, buildUpdateSpecs(deps.plugins, deps.installedIds, deps.installedVersions, deps.savedVars, deps.ceilingFor, deps.disabledChannels))
+    deps.onUpdateAll(deps.printerId, buildUpdateSpecs(deps.plugins, deps.installedIds, installed, deps.savedVars))
   }
 
   return { updatableCount, updateBlock, updateAll }

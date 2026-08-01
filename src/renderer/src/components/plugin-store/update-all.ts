@@ -1,17 +1,14 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Plugin, ReleaseChannel } from '../../data/types'
+import type { Plugin } from '../../data/types'
 import { resolveMissingDeps } from '../../data/deps'
-import { isNewerVersion } from '../../utils/version'
-import { availableVersion, ALLOW_ALL_CHANNELS } from '../../data/channels'
-import type { CeilingResolver } from '../../data/channels'
+import type { InstalledOnPrinter } from '../../data/channels/updates'
+import { hasUpdate, updateVariant } from '../../data/channels/updates'
 
-// Plugins whose available build (on the channel the user is on) is strictly newer than what is
-// installed (a real update). An installed version ahead of the catalog is NOT an update (no downgrade
-// prompts). The ceiling defaults to allow-all for callers that do not thread the real ceiling.
-export function updatablePlugins(plugins: Plugin[], installedVersions: Record<string, string>, ceilingFor: CeilingResolver = ALLOW_ALL_CHANNELS, disabledChannels: ReleaseChannel[] = []): Plugin[] {
-  return plugins.filter((plugin) =>
-    Boolean(installedVersions[plugin.id]) && isNewerVersion(availableVersion(plugin, ceilingFor(plugin.id), disabledChannels), installedVersions[plugin.id]))
+// Plugins with a newer build waiting on the source their installed copy came from (a real update). An
+// installed version ahead of what that source offers is NOT an update (no downgrade prompts).
+export function updatablePlugins(plugins: Plugin[], installed: InstalledOnPrinter): Plugin[] {
+  return plugins.filter((plugin) => hasUpdate(plugin, installed))
 }
 
 // The config values an install/update should carry: each declared field's saved value or its default,
@@ -24,18 +21,26 @@ export function pluginInstallVars(plugin: Plugin, savedVars: Record<string, stri
   )
 }
 
-// One update spec per updatable plugin: its saved config vars plus the deps a new version may need.
+// One plugin's update: its saved config vars, the deps a new version may need, and the source the offer
+// was computed from. The source travels with the spec because the printer must be sent the build the
+// user was offered, not whichever list happens to hold a higher number for that plugin.
+function updateSpec(plugin: Plugin, catalog: Plugin[], installedIds: string[], installed: InstalledOnPrinter, savedVars: Record<string, string>): PluginUpdateSpec {
+  const offered = updateVariant(plugin, installed)
+
+  return {
+    pluginId: plugin.id,
+    vars: pluginInstallVars(plugin, savedVars),
+    depIds: resolveMissingDeps(catalog, plugin.id, installedIds),
+    sourceUrl: offered?.registryUrl,
+    channel: offered?.channel,
+  }
+}
+
 export function buildUpdateSpecs(
   plugins: Plugin[],
   installedIds: string[],
-  installedVersions: Record<string, string>,
+  installed: InstalledOnPrinter,
   savedVars: Record<string, string>,
-  ceilingFor: CeilingResolver = ALLOW_ALL_CHANNELS,
-  disabledChannels: ReleaseChannel[] = [],
 ): PluginUpdateSpec[] {
-  return updatablePlugins(plugins, installedVersions, ceilingFor, disabledChannels).map((plugin) => ({
-    pluginId: plugin.id,
-    vars: pluginInstallVars(plugin, savedVars),
-    depIds: resolveMissingDeps(plugins, plugin.id, installedIds),
-  }))
+  return updatablePlugins(plugins, installed).map((plugin) => updateSpec(plugin, plugins, installedIds, installed, savedVars))
 }

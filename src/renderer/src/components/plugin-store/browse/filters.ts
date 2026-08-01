@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin, ReleaseChannel, TrustTier } from '../../../data/types'
 import type { CeilingResolver } from '../../../data/channels'
-import { ALLOW_ALL_CHANNELS, availableVersion, publishedChannels } from '../../../data/channels'
-import { isNewerVersion } from '../../../utils/version'
+import { publishedChannels } from '../../../data/channels'
+import { hasUpdate, installedFromRecords } from '../../../data/channels/updates'
 
 export type StatusFacet = 'installed' | 'not-installed' | 'needs-updating'
 
@@ -16,6 +16,8 @@ export interface MatchOpts {
   printerOnly: boolean
   installedIds: string[]
   installedVersions: Record<string, string>
+  // Where each installed copy came from, so needs-updating asks that source and not the whole catalog.
+  installedSources?: Record<string, string>
   // needs-updating compares against the user's real ceiling; absent in tests where it does not matter.
   ceilingFor?: CeilingResolver
   disabledChannels?: ReleaseChannel[]
@@ -33,10 +35,7 @@ function channelPass(selected: ReleaseChannel[], plugin: Plugin): boolean {
 }
 
 function needsUpdate(plugin: Plugin, opts: MatchOpts): boolean {
-  const installedVer = opts.installedVersions[plugin.id]
-  const ceiling = (opts.ceilingFor ?? ALLOW_ALL_CHANNELS)(plugin.id)
-
-  return !!installedVer && isNewerVersion(availableVersion(plugin, ceiling, opts.disabledChannels ?? []), installedVer)
+  return hasUpdate(plugin, installedFromRecords(opts.installedVersions, opts.installedSources, opts.ceilingFor, opts.disabledChannels))
 }
 
 function statusMatches(status: StatusFacet, plugin: Plugin, opts: MatchOpts): boolean {

@@ -32,6 +32,18 @@ A `.b3` you drop on the app, or a package you built yourself, is the version bei
 
 The settings offered in the plugin panel came from the published list, so an experimental build carrying extra settings gave you no way to set them. A package held on your machine now shows the settings its own manifest declares.
 
+### An update comes from the place the plugin was installed from
+
+The app used to look at every place a plugin is published, take the newest version anywhere, and install that. A plugin you run from your own bundle was therefore replaced by the published build. The update now comes from the same place the installed copy came from, on every route: the plugin's own button, "Update all" and "Install selected". If that place no longer lists the plugin, the app still offers the best it can find and the line says the update comes from somewhere else, instead of switching quietly.
+
+### The confirmation before an update lists the other versions
+
+Each plugin in the confirmation carries a folded "Other versions" line. Opening it lists every place that plugin is published, with the version each one offers, and you can send one of those instead.
+
+### An install the printer accepted is no longer reported as failed
+
+The app asked the printer what plugins it already had before sending anything. A printer whose jinni was restarting answered that with an error, and the app showed the install as failed before a byte had been sent. That answer may now go missing without stopping the install, and a plugin that needs nothing else installed first is not asked at all.
+
 ---
 
 ## 0.1.0-alpha.34 - 2026-07-31

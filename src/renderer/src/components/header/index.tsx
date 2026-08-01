@@ -17,6 +17,7 @@ export interface HeaderProps extends PrinterDropdownProps {
   onOpenSettingsPane: (pane: Section) => void
   onOpenPlugin: (pluginId: string) => void
   installedVersions: Record<string, string>
+  installedSources: Record<string, string>
   empty?: boolean
 }
 
@@ -27,6 +28,7 @@ export function Header({
   onOpenSettingsPane,
   onOpenPlugin,
   installedVersions,
+  installedSources,
   printers,
   selectedId,
   adapterIcons,
@@ -66,7 +68,7 @@ export function Header({
       )}
       <div className="header-spacer" />
       <div className="header-actions">
-        <NotificationCenter onOpenSettings={onOpenSettingsPane} onOpenPlugin={onOpenPlugin} installedVersions={installedVersions} />
+        <NotificationCenter onOpenSettings={onOpenSettingsPane} onOpenPlugin={onOpenPlugin} installedVersions={installedVersions} installedSources={installedSources} />
         <Button
           variant="ghost"
           icon

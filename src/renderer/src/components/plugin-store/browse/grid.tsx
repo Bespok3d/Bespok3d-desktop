@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ComponentType, ReactNode } from 'react'
 import { useI18n } from '../../../i18n/context'
-import { isNewerVersion } from '../../../utils/version'
-import type { Plugin, ReleaseChannel } from '../../../data/types'
+import type { Plugin, PluginSource, ReleaseChannel } from '../../../data/types'
 import { effectiveVariant, type CeilingResolver } from '../../../data/channels'
+import { hasUpdate, installedFromRecords, updateVariant } from '../../../data/channels/updates'
+import type { InstalledOnPrinter } from '../../../data/channels/updates'
 import { BUNDLED_CATEGORIES } from '../../../data/catalog/bundled'
 import { IconBox, IconChip } from '../../../design-system/icons'
 import type { IconProps } from '../../../design-system/icons'
@@ -22,6 +23,7 @@ export type Density = 'compact' | 'comfortable' | 'spacious'
 export interface StoreCardContext {
   installedIds: string[]
   installedVersions: Record<string, string>
+  installedSources: Record<string, string>
   installedChannels: Record<string, ReleaseChannel>
   deactivatedIds: string[]
   ceilingFor: CeilingResolver
@@ -48,16 +50,25 @@ function cardSelectProps(plugin: Plugin, selection: CardSelection | undefined) {
   }
 }
 
+// What the card says this plugin is at. An installed copy is read at its own source, so a card for a
+// locally packed build shows that build and not the published one it is never going to be updated to.
+function cardVariant(plugin: Plugin, ctx: StoreCardContext, installed: InstalledOnPrinter): PluginSource | undefined {
+  const winner = effectiveVariant(plugin, ctx.ceilingFor(plugin.id), ctx.disabledChannels)
+  if (!installed.versions[plugin.id]) return winner
+
+  return updateVariant(plugin, installed) ?? winner
+}
+
 function cardProps(plugin: Plugin, ctx: StoreCardContext) {
-  const installedVersion = ctx.installedVersions[plugin.id]
-  const variant = effectiveVariant(plugin, ctx.ceilingFor(plugin.id), ctx.disabledChannels)
+  const installed = installedFromRecords(ctx.installedVersions, ctx.installedSources, ctx.ceilingFor, ctx.disabledChannels)
+  const variant = cardVariant(plugin, ctx, installed)
   const displayVersion = variant?.version ?? plugin.version
   const displaySwVersion = variant?.swVersion ?? plugin.swVersion
 
   return {
     installed: ctx.installedIds.includes(plugin.id),
     deactivated: ctx.deactivatedIds.includes(plugin.id),
-    hasUpdate: !!installedVersion && isNewerVersion(displayVersion, installedVersion),
+    hasUpdate: hasUpdate(plugin, installed),
     displayVersion,
     displaySwVersion,
     displayChannel: variant?.channel ?? plugin.channel,

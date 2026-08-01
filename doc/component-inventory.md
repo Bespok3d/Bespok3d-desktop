@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-261 exported components + hooks across 20 areas.
+264 exported components + hooks across 21 areas.
 
 ## Common primitives
 
@@ -128,6 +128,7 @@ as you touch the file.
 - `BatchReportModal` (component) - [components/batch-ops/ReportModal.tsx](../src/renderer/src/components/batch-ops/ReportModal.tsx) - However a batch op ends, the user meets the same thing: what it was, one line saying how it went,
 - `OtaRecoveryResultsModal` (component) - [components/batch-ops/ResultsModal.tsx](../src/renderer/src/components/batch-ops/ResultsModal.tsx)
 - `useBatchOps` (hook) - [components/batch-ops/index.tsx](../src/renderer/src/components/batch-ops/index.tsx) - The daemon batch operations (OTA recover, update-all, install-selected, uninstall-selected). Recover
+- `usePendingUpdate` (hook) - [components/batch-ops/pending-update.ts](../src/renderer/src/components/batch-ops/pending-update.ts) - An update batch waits for the user to read it before it runs. Both entry points (the store's Update
 
 ## Feature: create
 
@@ -288,6 +289,11 @@ as you touch the file.
 - `useRollback` (hook) - [components/settings/panes/update/rollback.tsx](../src/renderer/src/components/settings/panes/update/rollback.tsx)
 - `useUpdatePrefs` (hook) - [components/settings/panes/update/preferences.tsx](../src/renderer/src/components/settings/panes/update/preferences.tsx)
 - `WhatsNewGroup` (component) - [components/settings/panes/update/whats-new.tsx](../src/renderer/src/components/settings/panes/update/whats-new.tsx) - The release notes for the currently-running version. Hidden until the releases list resolves and
+
+## Feature: update-confirm
+
+- `UpdateConfirmDialog` (component) - [components/update-confirm/index.tsx](../src/renderer/src/components/update-confirm/index.tsx) - What the update is about to do, before it does it: one line per plugin with the two versions and
+- `UpdateConfirmGate` (component) - [components/update-confirm/UpdateConfirmGate.tsx](../src/renderer/src/components/update-confirm/UpdateConfirmGate.tsx) - The dialog needs the catalog and the user's channel ceiling to read a batch back to them, and those
 
 ## Feature: upload
 

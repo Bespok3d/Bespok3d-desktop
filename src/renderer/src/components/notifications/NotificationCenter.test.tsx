@@ -17,7 +17,7 @@ function renderCenter(sources: SourceRow[], plugins: IndexEntry[] = [], installe
   const onOpenPlugin = vi.fn()
   const payload = makeCatalogPayload(plugins, { sources })
   const rendered = setup(
-    <NotificationCenter onOpenSettings={onOpenSettings} onOpenPlugin={onOpenPlugin} installedVersions={installedVersions} />,
+    <NotificationCenter onOpenSettings={onOpenSettings} onOpenPlugin={onOpenPlugin} installedVersions={installedVersions} installedSources={{}} />,
     { withCatalog: true, b3d: { registry: { catalog: vi.fn().mockResolvedValue(payload) } } },
   )
 

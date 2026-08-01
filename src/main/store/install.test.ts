@@ -11,7 +11,13 @@ vi.mock('../printers', () => ({ updatePrinter: vi.fn() }))
 vi.mock('../registry', () => ({ loadCatalog: vi.fn() }))
 vi.mock('./catalog-archive', () => ({ findCatalogVariant: vi.fn(), resolveArchiveBytes: vi.fn(), discardCachedArchive: vi.fn() }))
 vi.mock('./progress', () => ({ sendProgress: vi.fn(), sendUpload: vi.fn() }))
-vi.mock('./record-sync', () => ({ capsAfterInstall: vi.fn(), recordAppliedVars: () => ({}) }))
+// capsOrFallback is NOT stubbed: it is the degrade under test, so it runs for real over the mocked
+// printer reads below. A stub of it would prove only that the stub does not throw.
+vi.mock('./record-sync', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./record-sync')>()),
+  capsAfterInstall: vi.fn(),
+  recordAppliedVars: () => ({}),
+}))
 vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn(), installPlugin: vi.fn() }))
 vi.mock('../daemon-client/status', () => ({ getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }) }))
 vi.mock('../daemon-client/feeds/install-progress', () => ({ watchInstallProgress: vi.fn(), installPhaseMessage: (phase: string) => phase }))
@@ -288,5 +294,26 @@ describe('what a single install leaves behind when the plugin did not install', 
     await install()
     const [, recordPatch] = vi.mocked(updatePrinter).mock.calls[0]
     expect(Object.keys(patchAppliedToRecord(recordPatch, { failedInstallLogs: earlier }).failedInstallLogs ?? {})).toEqual(['camera'])
+  })
+})
+
+// Before a single byte is sent, the install reads the printer to work out which dependencies are
+// already there. A printer whose jinni is mid-restart answers that read with a 500, and that used to
+// abort an install that had not started yet and file the plugin as one that failed to install.
+describe('a printer that will not say what it already has', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('gets the plugin installed anyway, dependency and all', async () => {
+    stubADependencyResolvingTo(packageWith({ ...HONEST_MANIFEST, name: DEP_ID }), packageWith(HONEST_MANIFEST))
+    vi.mocked(fetchCapabilities).mockRejectedValue(new Error('daemon 500: Internal Server Error'))
+    await installWithDependency()
+    expect(vi.mocked(installPlugin).mock.calls.map((call) => call[2])).toEqual([DEP_ID, 'idle-timeout'])
+    expect(failedLogsWritten()).toEqual({})
+  })
+
+  it('is never asked by a plugin that needs nothing else installed first', async () => {
+    stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+    await install()
+    expect(fetchCapabilities).not.toHaveBeenCalled()
   })
 })

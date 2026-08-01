@@ -6,9 +6,9 @@ import { updatePrinter } from '../printers'
 import type { ReleaseChannel } from '../settings'
 import type { MergedEntry, PackageTrust } from '../registry/model'
 import type { InstallLog } from '@bespok3d/contract'
-import { fetchCapabilities, installPlugin } from '../daemon-client/client'
+import { installPlugin } from '../daemon-client/client'
 import { loadCatalog } from '../registry'
-import { getManagedRecord, parseCaps } from '../daemon-client/status'
+import { getManagedRecord } from '../daemon-client/status'
 import { withFreshestRelease } from '../registry/resolve/refresh-entry'
 import { discardCachedArchive, findCatalogVariant, resolveArchiveBytes } from './catalog-archive'
 import { MALFORMED_PACKAGE_PREFIX } from './malformed-package'
@@ -17,7 +17,7 @@ import { DependencyDidNotInstall, failedLogsAfter, refusedAttempt, whyItDidNotIn
 import { watchInstallProgress, installPhaseMessage } from '../daemon-client/feeds/install-progress'
 import { daemonGuardMessage } from '../daemon-client/guard'
 import { sendProgress, sendUpload } from './progress'
-import { capsAfterInstall, recordAppliedVars } from './record-sync'
+import { capsAfterInstall, capsOrFallback, recordAppliedVars } from './record-sync'
 
 // Deps install one at a time, in order (a dependency must be on the printer before the plugin that
 // needs it), so this walks the list head-then-tail by recursion rather than firing them concurrently.
@@ -52,6 +52,11 @@ async function installDepsInOrder(
 
 // Returns the dependencies this install put on the printer: a dependency that installed here is a
 // plugin that just installed, so an earlier failed attempt of it is no longer about anything.
+//
+// Reading the printer is only ever about the declared dependencies, so a plugin with none never asks.
+// The read is also allowed to fail: it happens BEFORE a single byte is sent, and a printer whose jinni
+// is mid-restart answers it with a 500. Letting that abort marked the plugin as failed to install when
+// nothing had been attempted, so an unreadable printer falls back to the set last known instead.
 async function installMissingDeps(
   win: BrowserWindow,
   record: PrinterRecord,
@@ -60,8 +65,11 @@ async function installMissingDeps(
   depIds?: string[],
   channel?: ReleaseChannel,
 ): Promise<string[]> {
-  const alreadyInstalled = parseCaps(await fetchCapabilities(record), record.ip).installedIds
-  const missingDeps = (depIds ?? []).filter((depId) => !alreadyInstalled.includes(depId))
+  const declaredDeps = depIds ?? []
+  if (declaredDeps.length === 0) return []
+
+  const alreadyInstalled = (await capsOrFallback(record, {})).installedIds
+  const missingDeps = declaredDeps.filter((depId) => !alreadyInstalled.includes(depId))
   await installDepsInOrder(win, record, catalog, pluginId, channel, missingDeps)
 
   return missingDeps

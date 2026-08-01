@@ -10,6 +10,7 @@ import { BatchFailedModal } from './FailedModal'
 import { pingAndUpdate, refreshEndpoints } from '../../data/printers'
 import { mainProcessMessage } from '../../utils/errorMessage'
 import { reduceBatchProgress } from './progress'
+import { usePendingUpdate } from './pending-update'
 import './batch-ops.css'
 import type { BatchProgressState } from './progress'
 import type { GatedInstall } from '../../hooks/installGate'
@@ -141,6 +142,7 @@ export function useBatchOps(
   function runUpdateAll(printerId: string, updates: PluginUpdateSpec[]) {
     gatedInstall(() => runBatch('update', printerId, updates, setUpdatingAll, setUpdateAllResult, window.b3d.store.updateBatch))
   }
+  const updateConfirm = usePendingUpdate(runUpdateAll)
   function runInstallBatch(printerId: string, specs: PluginUpdateSpec[]) {
     gatedInstall(() => runBatch('install', printerId, specs, setInstallingBatch, setInstallBatchResult, window.b3d.store.installBatch))
   }
@@ -158,7 +160,7 @@ export function useBatchOps(
 
   return {
     recoveryResults, setRecoveryResults, recovering,
-    updateAllResult, setUpdateAllResult, updatingAll, runUpdateAll,
+    updateAllResult, setUpdateAllResult, updatingAll, runUpdateAll, ...updateConfirm,
     installBatchResult, setInstallBatchResult, installingBatch, runInstallBatch,
     uninstallBatchResult, setUninstallBatchResult, uninstallingBatch, runUninstallBatch,
     batchProgress, runRecover,

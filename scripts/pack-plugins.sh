@@ -53,17 +53,15 @@ discover_plugin_dirs() {
 }
 
 # Variant dirs are read regardless of release mode here: a variant's manifest shares
-# its id with the online atom, so its dir must NEVER be discovered as the id's source dir (the
-# name-keyed map would otherwise resolve the id to whichever dir find(1) happened to list first).
-# Variants pack only by explicit path, via pack_variants.
+# its id with the online atom, so its dir must NEVER be discovered as the id's source dir: a variant
+# is a channel of that id rather than a claim on it. Variants pack only by explicit path, via
+# pack_variants.
 all_variant_dirs() {
   [ -f "$BUNDLE_DEV_CONFIG" ] || return 0
   jq -r '.variantDirs[]?' "$BUNDLE_DEV_CONFIG" 2>/dev/null
 }
 
-# Build a name<TAB>dir map once, excluding the variant dirs. The sibling-first ordering above means
-# the first line for a name is its sibling-tree source, so plugin_src_dir (awk, first match)
-# resolves sibling-wins.
+# Build a name<TAB>dir map once, excluding the variant dirs.
 build_plugin_map() {
   PLUGIN_MAP=$(mktemp)
   variant_exclusions=$(mktemp)
@@ -75,10 +73,33 @@ build_plugin_map() {
     [ -n "$name" ] && printf '%s\t%s\n' "$name" "$dir"
   done > "$PLUGIN_MAP"
   rm -f "$variant_exclusions"
+  warn_on_contested_ids
 }
 
+# The dir whose basename IS the plugin id owns that id. Two dirs can carry a manifest with the same
+# id (a plugin sitting beside its own experiment build), and find(1) hands them over in filesystem
+# order, so leaving the winner to that order made this script and app-bundle.mjs disagree about which
+# dir an id meant: this one then deleted the .b3 the bundler had just packed. Both sides apply this
+# same rule, so an id means one dir no matter who asks. app-bundle.mjs canonicalSourcePerId is the
+# other half, and scripts/test/app-bundle.test.mjs holds them to the same answer.
 plugin_src_dir() {
-  awk -F'\t' -v wanted="$1" '$1 == wanted { print $2; exit }' "$PLUGIN_MAP"
+  awk -F'\t' -v wanted="$1" '
+    $1 != wanted { next }
+    { dir_leaf = $2; sub(/^.*\//, "", dir_leaf) }
+    dir_leaf == wanted { print $2; owner_found = 1; exit }
+    first_claim == "" { first_claim = $2 }
+    END { if (!owner_found && first_claim != "") print first_claim }
+  ' "$PLUGIN_MAP"
+}
+
+warn_on_contested_ids() {
+  awk -F'\t' '
+    { claim_count[$1]++; claim_dirs[$1] = claim_dirs[$1] == "" ? $2 : claim_dirs[$1] ", " $2 }
+    END {
+      for (name in claim_count) if (claim_count[name] > 1)
+        printf "WARNING: plugin id %s is claimed by more than one source dir (%s). Using the dir named for the id; list the others in bundle.dev.json variantDirs to pack them as channel variants.\n", name, claim_dirs[name]
+    }
+  ' "$PLUGIN_MAP" >&2
 }
 
 # scripts/bundle.json `bundle` is the RELEASE opt-in list of plugin ids to pack into the bundled

@@ -5,8 +5,7 @@ import type { PluginVarsSave, ScopeChoice } from '../../../data/plugin-vars'
 import type { B3dEntityRef } from '../../../data/b3d-ref'
 import type { PluginHistoryEntry } from '../state'
 import type { ChannelPrefs } from '../../common/hooks/useChannelPrefs'
-import { isNewerVersion } from '../../../utils/version'
-import { availableVersion } from '../../../data/channels'
+import { hasUpdate, installedFromRecords } from '../../../data/channels/updates'
 import { B3dRefProvider } from '../../common/content/Markdown'
 import { PluginPanel } from '../panel'
 
@@ -57,6 +56,7 @@ interface DetailPanelInputs {
 export function StoreDetailPanel({ plugin, printer, view, channelPrefs, printActive, blockedActions, savedPluginVars, onSaveVars, scopeFor, onOperationDone, history, catalogPlugins, tabRequest, onSelectPlugin, onTabRequest }: DetailPanelInputs) {
   const { primary, disabledChannels, ceilingFor, setPref } = channelPrefs
   const installedVersion = view.installedVersions[plugin.id]
+  const installed = installedFromRecords(view.installedVersions, printer?.installedSources, ceilingFor, disabledChannels)
 
   return (
     <B3dRefProvider onRef={(ref) => openDocRef(ref, catalogPlugins, onSelectPlugin, onTabRequest)}>
@@ -65,7 +65,7 @@ export function StoreDetailPanel({ plugin, printer, view, channelPrefs, printAct
         plugin={plugin} printer={printer}
         installed={view.installedIds.includes(plugin.id)}
         deactivated={view.deactivatedIds.includes(plugin.id)}
-        hasUpdate={!!installedVersion && isNewerVersion(availableVersion(plugin, ceilingFor(plugin.id), disabledChannels), installedVersion)}
+        hasUpdate={hasUpdate(plugin, installed)}
         printerId={printer?.status === 'managed' ? printer.id : undefined}
         printActive={printActive} blockedActions={blockedActions} daemonVersion={printer?.daemonVersion}
         installedSource={printer?.installedSources?.[plugin.id]}

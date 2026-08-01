@@ -10,7 +10,7 @@ vi.mock('electron', () => ({ app: { getPath: () => '' } }))
 vi.mock('@electron-toolkit/utils', () => ({ is: { dev: false } }))
 vi.mock('../printers', () => ({ updatePrinter: vi.fn() }))
 vi.mock('../registry', () => ({ loadCatalog: vi.fn() }))
-vi.mock('./catalog-archive', () => ({ findCatalogEntry: vi.fn(), resolveArchiveBytes: vi.fn(), discardCachedArchive: vi.fn() }))
+vi.mock('./catalog-archive', () => ({ findCatalogEntry: vi.fn(), findCatalogVariant: vi.fn(), resolveArchiveBytes: vi.fn(), discardCachedArchive: vi.fn() }))
 vi.mock('./batch-progress', () => ({ streamBatchProgress: vi.fn() }))
 vi.mock('./progress', () => ({ sendUpload: vi.fn() }))
 vi.mock('./record-sync', () => ({ capsOrFallback: vi.fn() }))
@@ -27,7 +27,7 @@ import { orderedBatchPluginIds, runStoreUpdateBatch, runStoreInstallBatch } from
 import { loadCatalog } from '../registry'
 import { updatePrinter } from '../printers'
 import type { PrinterRecord } from '../printers'
-import { findCatalogEntry, resolveArchiveBytes, discardCachedArchive } from './catalog-archive'
+import { findCatalogVariant, resolveArchiveBytes, discardCachedArchive } from './catalog-archive'
 import { streamBatchProgress } from './batch-progress'
 import { capsOrFallback } from './record-sync'
 import { DaemonHttpError, fetchCapabilities, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
@@ -59,7 +59,7 @@ const IDLE_TIMEOUT_INSTALLED = { ok: true, results: [{ pluginId: 'idle-timeout',
 function stubTheBatchAround(archiveBytes: Buffer): void {
   vi.mocked(getManagedRecord).mockReturnValue({ id: 'printer-1', ip: '203.0.113.7' } as never)
   vi.mocked(loadCatalog).mockResolvedValue({ plugins: [LISTED_ENTRY] } as never)
-  vi.mocked(findCatalogEntry).mockReturnValue(LISTED_ENTRY)
+  vi.mocked(findCatalogVariant).mockReturnValue(LISTED_ENTRY)
   vi.mocked(resolveArchiveBytes).mockResolvedValue(archiveBytes)
   vi.mocked(fetchCapabilities).mockResolvedValue({} as never)
   vi.mocked(streamBatchProgress).mockResolvedValue(() => undefined)
@@ -134,13 +134,37 @@ describe('store batch package verification', () => {
   })
 })
 
+// The update the user was offered and the package the printer is sent have to be the same build. A
+// copy running from the dev bundle is updated from the dev bundle, whatever the published list holds.
+describe('store batch resolves each package from the source its update was offered from', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('asks the catalog for the offered source and channel, not for the winner', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    await runStoreUpdateBatch({} as BrowserWindow, 'printer-1', [{ pluginId: 'idle-timeout', sourceUrl: 'local:dev-bundle', channel: 'stable' }])
+    expect(findCatalogVariant).toHaveBeenCalledWith(expect.anything(), 'idle-timeout', 'local:dev-bundle', 'stable')
+  })
+
+  it('asks for the winner when the plugin has no recorded source', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    await updateBatch()
+    expect(findCatalogVariant).toHaveBeenCalledWith(expect.anything(), 'idle-timeout', undefined, undefined)
+  })
+
+  it('resolves an auto-added dependency from the winner, never from the target plugin\'s source', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    await runStoreUpdateBatch({} as BrowserWindow, 'printer-1', [{ pluginId: 'idle-timeout', depIds: ['print-prefs-core'], sourceUrl: 'local:dev-bundle', channel: 'stable' }])
+    expect(findCatalogVariant).toHaveBeenCalledWith(expect.anything(), 'print-prefs-core', undefined, undefined)
+  })
+})
+
 // A batch is a convenience button for installing these plugins one by one, so the result has to be the
 // same as installing them one by one: a refused package costs its own plugin, and any plugin that needs
 // it, and NOTHING else. The plugins left behind are reported at the end with the reason each was left.
 function stubBatchWhereOnePackageIsRefused(refusedName: string): void {
   stubTheBatchAround(packageWith(HONEST_MANIFEST))
   const byName = new Map([LISTED_ENTRY, CAMERA_ENTRY, SPOOLMAN_ENTRY].map((entry) => [entry.name, entry]))
-  vi.mocked(findCatalogEntry).mockImplementation((_plugins, pluginId) => byName.get(pluginId) as MergedEntry)
+  vi.mocked(findCatalogVariant).mockImplementation((_plugins, pluginId) => byName.get(pluginId) as MergedEntry)
   vi.mocked(resolveArchiveBytes).mockImplementation((entry) =>
     Promise.resolve(packageWith({ ...HONEST_MANIFEST, name: entry.name === refusedName ? 'a-different-plugin' : entry.name, version: entry.version })),
   )
@@ -190,7 +214,7 @@ describe('store batch installs the plugins it can and reports the ones it cannot
   // plugins that do not depend on it still install.
   it('installs the rest when one plugin is not in the catalog at all', async () => {
     stubTheBatchAround(packageWith(HONEST_MANIFEST))
-    vi.mocked(findCatalogEntry).mockImplementation((_plugins, pluginId) => {
+    vi.mocked(findCatalogVariant).mockImplementation((_plugins, pluginId) => {
       if (pluginId !== LISTED_ENTRY.name) throw new Error(`bundled plugin not found: ${pluginId}`)
 
       return LISTED_ENTRY
@@ -365,5 +389,19 @@ describe('a printer that refuses the batch because it is printing', () => {
     vi.mocked(updateBatchPackages).mockRejectedValue(printingRefusal())
     await expect(updateBatch()).rejects.toThrow(IN_PLAIN_WORDS)
     expect(recordAfterTheBatch().failedInstallLogs?.['idle-timeout'].phases[0].items[0].output).toContain('Try again when it is idle.')
+  })
+})
+
+// The same read that used to abort a single install aborted a whole batch: it happens before anything
+// is sent, and a printer whose jinni is mid-restart answers it with a 500. It now goes through the read
+// that is allowed to fail (record-sync's own test covers what that read does when it fails).
+describe('a printer that will not say what it already has', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('does not stop the batch being sent', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    await updateBatch()
+    expect(fetchCapabilities).not.toHaveBeenCalled()
+    expect(capsOrFallback).toHaveBeenCalled()
   })
 })

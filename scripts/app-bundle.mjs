@@ -34,6 +34,7 @@
 // download_url on top, which are the caller-specific flavor and deliberately not shared.
 
 import { createHash } from 'node:crypto'
+import { basename } from 'node:path'
 import { SIGNING_KEY_VAR, listPublisher, signPackages, stampPublisher, writeSignedIndex } from './bundle-signing.mjs'
 
 const REGISTRY_NAME = 'Bespok3d Official'
@@ -257,12 +258,31 @@ async function findManifestDirs(readdir, join, root, depth) {
   return nested.flat()
 }
 
+// A dir whose basename IS the plugin id owns that id. Two dirs can carry a manifest with the same id
+// (a plugin sitting beside its own experiment build), and readdir hands them over in filesystem
+// order, so leaving the winner to that order made this bundler and pack-plugins.sh disagree about
+// which dir an id meant: the shell then deleted the .b3 this had just packed. Both sides now apply
+// this same rule, so an id means one dir no matter who asks.
+export function canonicalSourcePerId(sources) {
+  const claimed = new Map()
+  sources.forEach((source) => {
+    if (outranksClaim(claimed.get(source.name), source)) claimed.set(source.name, source)
+  })
+
+  return [...claimed.values()]
+}
+
+function outranksClaim(holder, contender) {
+  if (!holder) return true
+
+  return basename(holder.dir) !== holder.name && basename(contender.dir) === contender.name
+}
+
 // Plugin sources discovered under the sibling `plugins/` tree. The display `name` is the manifest
-// .name (the index entry and the staged-doc dir both key on it), independent of the directory layout;
-// a duplicate name (a plugin present twice) is deduped, last writer winning. A dir listed in
-// bundle.dev.json variantDirs is NEVER an id source, in release mode too: its manifest shares its id
-// with the online atom, so discovering it here would make the name-keyed dedupe drop one of the two
-// atoms in filesystem order. Variants enter only by explicit path, via variantSources.
+// .name (the index entry and the staged-doc dir both key on it), independent of the directory layout.
+// A dir listed in bundle.dev.json variantDirs is NEVER an id source, in release mode too: its manifest
+// shares its id with the online atom, and a variant is a channel of that id rather than a claim on it.
+// Variants enter only by explicit path, via variantSources.
 async function pluginSources(readFile, readdir, join, repoDir, variantDirPaths) {
   const roots = [join(repoDir, '..', 'plugins')]
   const dirLists = await Promise.all(roots.map((root) => findManifestDirs(readdir, join, root, DISCOVERY_MAX_DEPTH)))
@@ -272,7 +292,8 @@ async function pluginSources(readFile, readdir, join, repoDir, variantDirPaths) 
       return { name: manifest.name, dir, manifest }
     }),
   )
-  return Object.values(Object.fromEntries(found.map((source) => [source.name, source]).reverse()))
+
+  return canonicalSourcePerId(found, basename)
 }
 
 // scripts/bundle.json `bundle` is the RELEASE opt-in list of plugin ids to pack into the bundled

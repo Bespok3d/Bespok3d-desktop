@@ -4,13 +4,14 @@ import type { BrowserWindow } from 'electron'
 import { updatePrinter } from '../printers'
 import type { PrinterRecord } from '../printers'
 import type { MergedEntry, PackageTrust } from '../registry/model'
+import type { ReleaseChannel } from '../settings'
 import type { PluginRecoveryResult, RecoverResult } from '@bespok3d/contract'
 import type { BatchUpdatePackage, UploadProgressFn } from '../daemon-client/client'
-import { fetchCapabilities, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
+import { updateBatchPackages, installBatchPackages } from '../daemon-client/client'
 import { loadCatalog } from '../registry'
-import { getManagedRecord, parseCaps } from '../daemon-client/status'
+import { getManagedRecord } from '../daemon-client/status'
 import { daemonGuardMessage } from '../daemon-client/guard'
-import { findCatalogEntry, resolveArchiveBytes } from './catalog-archive'
+import { findCatalogVariant, resolveArchiveBytes } from './catalog-archive'
 import { verifiedPackageTrustOrDiscard } from './package-check'
 import { streamBatchProgress } from './batch-progress'
 import { recordBatchOutcome, batchOkVersions } from './batch-install'
@@ -28,6 +29,11 @@ export interface PluginUpdateSpec {
   pluginId: string
   vars?: Record<string, string>
   depIds?: string[]
+  // The variant this update was offered from: the source the copy on the printer came from. Absent for
+  // a plugin whose source was never recorded, and for the deps a batch adds on its own, and those fall
+  // back to the catalog winner.
+  sourceUrl?: string
+  channel?: ReleaseChannel
 }
 
 // Ordered, deduped plugin ids for a batch update: each update's still-missing deps (a new version
@@ -56,8 +62,11 @@ interface VerifiedBatchPackage {
   trust: PackageTrust
 }
 
-async function resolveVerifiedPackage(catalog: readonly MergedEntry[], pluginId: string, vars?: Record<string, string>): Promise<VerifiedBatchPackage> {
-  const entry = findCatalogEntry(catalog, pluginId)
+async function resolveVerifiedPackage(catalog: readonly MergedEntry[], spec: PluginUpdateSpec): Promise<VerifiedBatchPackage> {
+  const { pluginId, vars } = spec
+  // Resolved from the source the update was offered from: a plugin running a locally packed build is
+  // updated from that same local source, never from the published copy that carries a higher number.
+  const entry = findCatalogVariant(catalog, pluginId, spec.sourceUrl, spec.channel)
   const bytes = await resolveArchiveBytes(entry)
 
   return { archive: { pluginId, bytes, vars }, entry, trust: await verifiedPackageTrustOrDiscard(bytes, entry) }
@@ -67,10 +76,9 @@ async function resolveVerifiedPackage(catalog: readonly MergedEntry[], pluginId:
 // are still installed. A refused package, or one that cannot be fetched, costs its own plugin only.
 function settlePackage(
   catalog: readonly MergedEntry[],
-  pluginId: string,
-  vars?: Record<string, string>,
+  spec: PluginUpdateSpec,
 ): Promise<VerifiedBatchPackage | UnsentPackage> {
-  return resolveVerifiedPackage(catalog, pluginId, vars).catch((error) => ({ pluginId, reason: refusalSentence(error) }))
+  return resolveVerifiedPackage(catalog, spec).catch((error) => ({ pluginId: spec.pluginId, reason: refusalSentence(error) }))
 }
 
 function isVerified(settled: VerifiedBatchPackage | UnsentPackage): settled is VerifiedBatchPackage {
@@ -90,9 +98,9 @@ interface SettledBatch {
 }
 
 async function settleBatch(catalog: readonly MergedEntry[], specs: PluginUpdateSpec[], installed: string[]): Promise<SettledBatch> {
-  const varsById = new Map(specs.map((spec) => [spec.pluginId, spec.vars]))
+  const specById = new Map(specs.map((spec) => [spec.pluginId, spec]))
   const pluginIds = orderedBatchPluginIds(specs, installed)
-  const settled = await Promise.all(pluginIds.map((pluginId) => settlePackage(catalog, pluginId, varsById.get(pluginId))))
+  const settled = await Promise.all(pluginIds.map((pluginId) => settlePackage(catalog, specById.get(pluginId) ?? { pluginId })))
   const leftOutIds = pluginsLeftOut(specs, new Set(settled.filter(isUnsent).map((item) => item.pluginId)))
   const stillSentIds = pluginsStillSent(specs, leftOutIds)
 
@@ -148,7 +156,9 @@ function guardedPoster(post: BatchPoster): BatchPoster {
 async function runStoreBatch(win: BrowserWindow, printerId: string, specs: PluginUpdateSpec[], post: BatchPoster): Promise<RecoverResult> {
   const record = getManagedRecord(printerId)
   const catalog = (await loadCatalog()).plugins
-  const installed = parseCaps(await fetchCapabilities(record), record.ip).installedIds
+  // Read before anything is sent, and allowed to fail the same way the single install's read is: a
+  // printer that will not say what it already has must not abort a batch that has not started yet.
+  const installed = (await capsOrFallback(record, {})).installedIds
   // The ordered plan (deps first) is decided here; the renderer renders every row up front, then ticks
   // each as streamBatchProgress mirrors the daemon's live feed, so a batch is never an opaque spinner.
   const { toSend, unsentRows } = await settleBatch(catalog, specs, installed)

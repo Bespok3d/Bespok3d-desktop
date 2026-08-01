@@ -28,19 +28,20 @@ interface StoreViewInputs {
 export function deriveStoreView({ printer, catalogPlugins, live, filters }: StoreViewInputs) {
   const installedIds = live.installedIds ?? (printer?.status === 'managed' ? (printer?.installedIds ?? []) : [])
   const installedVersions = live.installedVersions ?? printer?.installedVersions ?? {}
+  const installedSources = printer?.installedSources ?? {}
   const deactivatedIds = live.deactivatedIds ?? printer?.deactivatedIds ?? []
   const orphans = orphanPlugins(catalogPlugins, installedIds, installedVersions)
   const displayPlugins = [...catalogPlugins, ...orphans]
   const matchOpts: MatchOpts = {
     query: filters.query, channels: filters.channels, categories: filters.categories, trusts: filters.trusts,
-    statuses: filters.statuses, printerOnly: filters.printerOnly, installedIds, installedVersions,
+    statuses: filters.statuses, printerOnly: filters.printerOnly, installedIds, installedVersions, installedSources,
     ceilingFor: filters.ceilingFor, disabledChannels: filters.disabledChannels,
   }
   const matching = displayPlugins.filter((plugin) => matchesPlugin(plugin, matchOpts))
   const showFlat = filters.categories.length > 0 || !filters.grouped
   const flatPlugins = showFlat ? sortPlugins(matching, filters.sortKey, filters.sortDir) : []
 
-  return { installedIds, installedVersions, deactivatedIds, orphans, displayPlugins, matchOpts, showFlat, matchingPlugins: matching, flatPlugins }
+  return { installedIds, installedVersions, installedSources, deactivatedIds, orphans, displayPlugins, matchOpts, showFlat, matchingPlugins: matching, flatPlugins }
 }
 
 // The active select pick across both mutually-exclusive modes: install-select (pick not-installed) or

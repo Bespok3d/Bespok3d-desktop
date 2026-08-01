@@ -21,9 +21,9 @@ export const storeApi = {
     ipcRenderer.invoke('store:pluginConfig', printerId, pluginId),
   recover: (printerId: string): Promise<RecoverResult> =>
     ipcRenderer.invoke('store:recover', printerId),
-  updateBatch: (printerId: string, updates: Array<{ pluginId: string; vars?: Record<string, string>; depIds?: string[] }>): Promise<RecoverResult> =>
+  updateBatch: (printerId: string, updates: Array<{ pluginId: string; vars?: Record<string, string>; depIds?: string[]; sourceUrl?: string; channel?: ReleaseChannel }>): Promise<RecoverResult> =>
     ipcRenderer.invoke('store:update-batch', printerId, updates),
-  installBatch: (printerId: string, specs: Array<{ pluginId: string; vars?: Record<string, string>; depIds?: string[] }>): Promise<RecoverResult> =>
+  installBatch: (printerId: string, specs: Array<{ pluginId: string; vars?: Record<string, string>; depIds?: string[]; sourceUrl?: string; channel?: ReleaseChannel }>): Promise<RecoverResult> =>
     ipcRenderer.invoke('store:install-batch', printerId, specs),
   uninstallBatch: (printerId: string, pluginIds: string[], cascade: boolean): Promise<RecoverResult> =>
     ipcRenderer.invoke('store:uninstall-batch', printerId, pluginIds, cascade),

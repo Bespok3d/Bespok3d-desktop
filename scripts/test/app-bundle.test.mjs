@@ -33,13 +33,15 @@
 //
 // Run with: node --test scripts/test/app-bundle.test.mjs
 
+import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildIndex, firstSourcePerName } from '../app-bundle.mjs'
+import { buildIndex, canonicalSourcePerId, firstSourcePerName } from '../app-bundle.mjs'
 import {
   GOLDEN_DIR,
   PLUGIN_SOURCES_DIR,
@@ -284,4 +286,59 @@ test('bundled index entry does not drift from b3-builder core on the shared cata
   Object.keys(coreShared).forEach((field) => {
     assert.deepEqual(appEntry[field], coreShared[field], `shared catalog field "${field}" drifted from b3-builder core`)
   })
+})
+
+// A plugin can sit beside its own experiment build, both manifests carrying the same id. Which dir
+// that id means was left to filesystem order on both sides, and the two sides read that order
+// differently: the bundler packed mainsail 0.1.7 from plugins/mainsail-plugin/mainsail while
+// pack-plugins.sh read the version off mainsail-bleeding-edge, decided no such .b3 had been packed,
+// and deleted the one that just had been. The id belongs to the dir named for it, on both sides.
+const CONTESTED_ID = 'mainsail'
+const ID_OWNER_DIR = '/workspace/plugins/mainsail-plugin/mainsail'
+const EXPERIMENT_DIR = '/workspace/plugins/mainsail-plugin/mainsail-bleeding-edge'
+
+function contestedClaims(firstListed, secondListed) {
+  return [
+    { name: CONTESTED_ID, dir: firstListed, manifest: { name: CONTESTED_ID } },
+    { name: CONTESTED_ID, dir: secondListed, manifest: { name: CONTESTED_ID } },
+  ]
+}
+
+// Runs the shell's own resolver, lifted verbatim out of pack-plugins.sh so an edit to it is an edit
+// to what this test asserts.
+function shellResolvedDir(mapLines, wantedId) {
+  const resolver = readFileSync(join(APP_REPO_DIR, 'scripts', 'pack-plugins.sh'), 'utf8')
+    .match(/^plugin_src_dir\(\) \{$.*?^\}$/ms)[0]
+  const mapPath = join(mkdtempSync(join(tmpdir(), 'b3d-plugin-map-')), 'plugin-map.tsv')
+  writeFileSync(mapPath, mapLines.map((line) => `${line}\n`).join(''))
+
+  return execFileSync('sh', ['-c', `PLUGIN_MAP="$1"\n${resolver}\nplugin_src_dir "$2"`, 'sh', mapPath, wantedId], {
+    encoding: 'utf8',
+  }).trim()
+}
+
+test('an id claimed by two source dirs resolves to the dir named for it, whatever order they are listed in', () => {
+  const experimentFirst = canonicalSourcePerId(contestedClaims(EXPERIMENT_DIR, ID_OWNER_DIR))
+  const ownerFirst = canonicalSourcePerId(contestedClaims(ID_OWNER_DIR, EXPERIMENT_DIR))
+
+  assert.deepEqual(experimentFirst.map((source) => source.dir), [ID_OWNER_DIR])
+  assert.deepEqual(ownerFirst.map((source) => source.dir), [ID_OWNER_DIR])
+})
+
+test('pack-plugins.sh resolves a contested id to the same dir the bundler packs', () => {
+  const experimentFirst = [`${CONTESTED_ID}\t${EXPERIMENT_DIR}`, `${CONTESTED_ID}\t${ID_OWNER_DIR}`]
+  const ownerFirst = [`${CONTESTED_ID}\t${ID_OWNER_DIR}`, `${CONTESTED_ID}\t${EXPERIMENT_DIR}`]
+
+  assert.equal(shellResolvedDir(experimentFirst, CONTESTED_ID), ID_OWNER_DIR)
+  assert.equal(shellResolvedDir(ownerFirst, CONTESTED_ID), ID_OWNER_DIR)
+})
+
+// Not every plugin lives in a dir named for its id (camera-hw-accel is u1-hw-camera/plugin), and an
+// uncontested id must keep resolving to the only dir that claims it.
+test('an id claimed by one dir not named for it still resolves to that dir', () => {
+  const soleClaimDir = '/workspace/plugins/u1-hw-camera/plugin'
+  const soleClaim = [{ name: 'camera-hw-accel', dir: soleClaimDir, manifest: { name: 'camera-hw-accel' } }]
+
+  assert.deepEqual(canonicalSourcePerId(soleClaim), soleClaim)
+  assert.equal(shellResolvedDir([`camera-hw-accel\t${soleClaimDir}`], 'camera-hw-accel'), soleClaimDir)
 })

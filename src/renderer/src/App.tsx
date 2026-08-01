@@ -70,6 +70,7 @@ function App() {
           onOpenSettingsPane={(pane) => { setSettingsPane(pane); setSettingsOpen(true) }}
           onOpenPlugin={(id) => { setMode('store'); setFocusPluginId(id) }}
           installedVersions={selectedPrinter?.installedVersions ?? {}}
+          installedSources={selectedPrinter?.installedSources ?? {}}
           printers={printers} selectedId={selectedId} adapterIcons={adapterIcons} adapterJinniVersions={jinniVersions} savedPluginVars={savedPluginVars} onSelect={setSelectedId}
           onAddPrinter={actions.openAdd} onUpdateDaemon={actions.handleUpdateDaemon} onUpdateJinni={actions.handleUpdateJinni} onUpdateAll={actions.handleUpdateAll}
           installingCount={0} empty={printers.length === 0}

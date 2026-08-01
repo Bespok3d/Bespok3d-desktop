@@ -5,6 +5,7 @@ import { useI18n } from '../../../i18n/context'
 import { useClickOutside } from '../../common/hooks/useClickOutside'
 import { useCatalog } from '../../../data/catalog'
 import { buildUpdateSpecs } from '../../plugin-store/update-all'
+import { installedOnPrinter } from '../../../data/channels/updates'
 import { useChannelPrefs } from '../../common/hooks/useChannelPrefs'
 import { usePrinterUpdates } from './usePrinterUpdates'
 import { statusLabel } from '../status-presentation'
@@ -64,7 +65,7 @@ export function PrinterDropdown({
 
   function updateAllPlugins() {
     if (!selected) return
-    onUpdateAll(selected.id, buildUpdateSpecs(plugins, selected.installedIds, selected.installedVersions ?? {}, savedPluginVars, ceilingFor, disabledChannels))
+    onUpdateAll(selected.id, buildUpdateSpecs(plugins, selected.installedIds, installedOnPrinter(selected, ceilingFor, disabledChannels), savedPluginVars))
     setOpen(false)
   }
 

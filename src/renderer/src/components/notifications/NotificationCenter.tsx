@@ -56,16 +56,17 @@ export interface NotificationCenterProps {
   onOpenSettings: (pane: Section) => void
   onOpenPlugin: (pluginId: string) => void
   installedVersions: Record<string, string>
+  installedSources: Record<string, string>
 }
 
-export function NotificationCenter({ onOpenSettings, onOpenPlugin, installedVersions }: NotificationCenterProps) {
+export function NotificationCenter({ onOpenSettings, onOpenPlugin, installedVersions, installedSources }: NotificationCenterProps) {
   const { t } = useI18n()
   const { plugins, sources } = useCatalog()
   const { ceilingFor, disabledChannels } = useChannelPrefs()
   const { state, markRead, dismiss, markAllRead, dismissAll, markSeen, rearm } = useNoticeState()
   const [open, setOpen] = useState(false)
 
-  const notices = buildNotices({ sources, plugins, installedVersions, ceilingFor, disabledChannels })
+  const notices = buildNotices({ sources, plugins, installedVersions, installedSources, ceilingFor, disabledChannels })
   const visible = visibleNotices(notices, state.dismissed)
   const unread = unreadCount(notices, state)
   const visibleIds = visible.map((notice) => notice.id)

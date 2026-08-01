@@ -7,7 +7,7 @@
     {
       "name": "afc-lite",
       "title": "AFC Lite (Automated Filament Changer)",
-      "version": "0.1.12+dev.local",
+      "version": "0.1.16+dev.local",
       "description": "Lightweight Automated Filament Changer support for the Snapmaker U1's four toolheads. Ships the AFC, AFC_unit and AFC_lane Klipper extras plus an afc.cfg that maps the four lanes (E0-E3) to the U1 extruders and filament motion sensors, and adds gcode macros for color, material, vendor, map, spool id, weight, tool change and lane/tool unload. Per-lane state feeds the U1's SET_PRINT_FILAMENT_CONFIG so the slicer and screen track what is loaded.",
       "tagline": "Four-lane filament tracking and tool-change macros for the U1.",
       "category": "filament",
@@ -27,7 +27,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "afc-lite/doc/README.md",
-      "download_url": "afc-lite-0.1.12.b3",
+      "download_url": "afc-lite-0.1.16.b3",
       "config": [
         {
           "key": "AFC_TOOLMAP_ASK",
@@ -38,17 +38,7 @@
             "on"
           ],
           "default": "off",
-          "hint": "Off by default. On, a print started from the web interface or the slicer holds before its first line and asks in Fluidd or Mainsail which lane feeds each tool, so a print sent straight from the slicer can be mapped without the printer's screen.",
-          "userEditable": true,
-          "scope": "printer"
-        },
-        {
-          "key": "AFC_TOOLMAP_WAIT",
-          "label": "Seconds to hold the print",
-          "type": "text",
-          "placeholder": "120",
-          "default": "120",
-          "hint": "If nobody answers in this time the print carries on with the map the printer already had. Only used when the question is on.",
+          "hint": "Off by default. On, a print started from the web interface or the slicer never starts until Fluidd or Mainsail has asked which lane feeds each tool, so a print sent straight from the slicer can be mapped without the printer's screen. It waits as long as it takes, and dismissing the question drops the print instead of starting it.",
           "userEditable": true,
           "scope": "printer"
         }
@@ -128,7 +118,7 @@
     {
       "name": "fluidd",
       "title": "Fluidd",
-      "version": "0.1.6+dev.local",
+      "version": "0.1.9+dev.local",
       "description": "Swaps SM's outdated Fluidd for the current upstream release. You get input-shaper graphs, integrated config/G-code editors, tool-colour preview, modern mesh viz. Uninstall restores the SM-shipped copy automatically; no nginx config touched.",
       "tagline": "Modern Fluidd v1.37.3: replaces the stock SM build.",
       "category": "ui",
@@ -148,7 +138,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "fluidd/doc/README.md",
-      "download_url": "fluidd-0.1.6.b3",
+      "download_url": "fluidd-0.1.9.b3",
       "homepage": "https://github.com/bespok3d-org/plugin-fluidd",
       "config": [
         {
@@ -256,7 +246,7 @@
     {
       "name": "mainsail",
       "title": "Mainsail",
-      "version": "0.1.5+dev.local",
+      "version": "0.1.7+dev.local",
       "description": "Installs Mainsail v2.18.0 as a second web frontend. Runs on port 81 by default so Fluidd stays on port 80. Set port 80 to make Mainsail primary; Fluidd shifts to 81 automatically.",
       "tagline": "Mainsail web interface alongside Fluidd, on your chosen port.",
       "category": "ui",
@@ -276,7 +266,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "mainsail/doc/README.md",
-      "download_url": "mainsail-0.1.5.b3",
+      "download_url": "mainsail-0.1.7.b3",
       "config": [
         {
           "key": "MAINSAIL_PORT",

@@ -104,7 +104,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
   const { disabledChannels, ceilingFor } = channelPrefs
   const { liveInstalledIds, liveInstalledVersions, liveDeactivatedIds, pluginHistory, onOperationDone, safetyNotice, dismissSafetyNotice } = useInstallState(printer, onPrinterUpdate, installingSelected || uninstallingSelected || updatingAll)
   const { printActive, blockedActions } = usePrintState(printer)
-  const { installedIds, installedVersions, deactivatedIds, orphans, displayPlugins, matchOpts, showFlat, matchingPlugins, flatPlugins } = deriveStoreView({
+  const { installedIds, installedVersions, installedSources, deactivatedIds, orphans, displayPlugins, matchOpts, showFlat, matchingPlugins, flatPlugins } = deriveStoreView({
     printer, catalogPlugins,
     live: { installedIds: liveInstalledIds, installedVersions: liveInstalledVersions, deactivatedIds: liveDeactivatedIds },
     filters: { query, channels: facets.channels, categories: facets.categories, trusts: facets.trusts, statuses: facets.statuses, printerOnly: facets.printerOnly, grouped, sortKey, sortDir, ceilingFor, disabledChannels },
@@ -112,8 +112,8 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
   const batch = useBatchInstall({ catalogPlugins, installedIds, deactivatedIds, savedVars: savedPluginVars ?? {}, printerId: managedId, printActive, blockedActions, onSaveVars, onInstallSelected })
   const uninstall = useBatchUninstall({ plugins: catalogPlugins, installedIds, printerId: managedId, onUninstallSelected })
   const selection = activeSelection(batch, uninstall)
-  const cardCtx: StoreCardContext = { installedIds, installedVersions, installedChannels: printer?.installedChannels ?? {}, deactivatedIds, ceilingFor, disabledChannels, selection }
-  const { updatableCount, updateBlock, updateAll } = useUpdateAll({ printerId: managedId, plugins: catalogPlugins, installedIds, installedVersions, savedVars: savedPluginVars ?? {}, ceilingFor, disabledChannels, printActive, blockedActions, onUpdateAll })
+  const cardCtx: StoreCardContext = { installedIds, installedVersions, installedSources, installedChannels: printer?.installedChannels ?? {}, deactivatedIds, ceilingFor, disabledChannels, selection }
+  const { updatableCount, updateBlock, updateAll } = useUpdateAll({ printerId: managedId, plugins: catalogPlugins, installedIds, installedVersions, installedSources, savedVars: savedPluginVars ?? {}, ceilingFor, disabledChannels, printActive, blockedActions, onUpdateAll })
 
   useFocusPanel(focusPluginId, catalogPlugins, setPanelPlugin, onFocusHandled)
 

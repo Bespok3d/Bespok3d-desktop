@@ -8,7 +8,8 @@
 import type { Plugin, ReleaseChannel, SourceRow } from '../../data/types'
 import type { Section } from '../settings'
 import { updatablePlugins } from '../plugin-store/update-all'
-import { availableVersion, ALLOW_ALL_CHANNELS } from '../../data/channels'
+import { installedFromRecords, updateTargetVersion } from '../../data/channels/updates'
+import type { InstalledOnPrinter } from '../../data/channels/updates'
 import type { CeilingResolver } from '../../data/channels'
 
 export type NoticeSeverity = 'info' | 'warn' | 'error'
@@ -30,6 +31,7 @@ export interface NoticeInputs {
   sources: SourceRow[]
   plugins: Plugin[]
   installedVersions: Record<string, string>
+  installedSources?: Record<string, string>
   ceilingFor?: CeilingResolver
   disabledChannels?: ReleaseChannel[]
 }
@@ -60,16 +62,16 @@ function authNotice(sources: SourceRow[]): Notice | null {
 // user never opted into is neither offered nor shown as "update to the version you already run". The id
 // carries the target version so dismissing one update never suppresses the next release. Acting on it
 // opens the plugin; the label promises the changelog only when the plugin actually ships one.
-function updateNotices(plugins: Plugin[], installedVersions: Record<string, string>, ceilingFor: CeilingResolver, disabledChannels: ReleaseChannel[]): Notice[] {
-  return updatablePlugins(plugins, installedVersions, ceilingFor, disabledChannels).map((plugin) => {
-    const target = availableVersion(plugin, ceilingFor(plugin.id), disabledChannels)
+function updateNotices(plugins: Plugin[], installed: InstalledOnPrinter): Notice[] {
+  return updatablePlugins(plugins, installed).map((plugin) => {
+    const target = updateTargetVersion(plugin, installed)
 
     return {
       id: `plugin-update:${plugin.id}:${target}`,
       severity: 'info',
       titleKey: 'notif.update.title',
       bodyKey: 'notif.update.body',
-      params: { name: plugin.title, installed: installedVersions[plugin.id], version: target },
+      params: { name: plugin.title, installed: installed.versions[plugin.id], version: target ?? '' },
       action: { kind: 'open-plugin', pluginId: plugin.id, labelKey: plugin.changelog ? 'notif.update.action' : 'notif.update.action_plugin' },
     }
   })
@@ -77,7 +79,7 @@ function updateNotices(plugins: Plugin[], installedVersions: Record<string, stri
 
 export function buildNotices(inputs: NoticeInputs): Notice[] {
   const auth = authNotice(inputs.sources)
-  const updates = updateNotices(inputs.plugins, inputs.installedVersions, inputs.ceilingFor ?? ALLOW_ALL_CHANNELS, inputs.disabledChannels ?? [])
+  const updates = updateNotices(inputs.plugins, installedFromRecords(inputs.installedVersions, inputs.installedSources, inputs.ceilingFor, inputs.disabledChannels))
 
   return auth ? [auth, ...updates] : updates
 }
