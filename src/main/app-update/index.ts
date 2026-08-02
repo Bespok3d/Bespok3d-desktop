@@ -7,7 +7,8 @@ import { join } from 'path'
 import { reportEvent } from '../analytics'
 import { loadSettings, saveSettings, type RepoCoords } from '../settings'
 import { autoUpdateFeed } from './feed'
-import { fetchPublishedReleases, fetchReleaseInstallers, downloadPublicAsset } from './public-releases'
+import { updateProblemFromError, type UpdateProblem } from './problem'
+import { readPublishedReleases, fetchReleaseInstallers, downloadPublicAsset } from './public-releases'
 import { checkIntervalMs, pickPlatformAsset, type UpdateFrequency } from './schedule'
 import {
   updateStrategyForPlatform,
@@ -16,7 +17,7 @@ import {
   newestApplicableRelease,
   toReleaseRows,
   type UpdateAvailablePayload,
-  type AppReleaseRow,
+  type AppReleaseListing,
 } from './view'
 
 var listenersWired = false
@@ -47,23 +48,26 @@ function sendToRenderer(getMainWindow: WindowGetter, channel: string, payload: u
   getMainWindow().webContents.send(channel, payload)
 }
 
+// One shape for every way a check can fail, whichever half of the update path raised it: the reader's
+// own three answers and electron-updater's free text both arrive as a problem the renderer can put a
+// sentence in front of, with the original wording kept for the log and the modal's technical note.
+function sendProblem(getMainWindow: WindowGetter, problem: UpdateProblem, detail: string): void {
+  console.warn(`[updater] ${detail}`)
+  sendToRenderer(getMainWindow, 'app-update:error', { problem, detail })
+}
+
 function reportError(getMainWindow: WindowGetter, error: Error): void {
-  console.warn(`[updater] ${String(error)}`)
-  sendToRenderer(getMainWindow, 'app-update:error', String(error))
+  sendProblem(getMainWindow, updateProblemFromError(error), String(error))
 }
 
 // The published release for the incoming version, so the modal can show the same notes the Update
 // pane does (independent of electron-updater's releaseNotes) and offer the release page as a manual
 // fallback when the in-app download stalls.
 async function matchingRelease(version: string): Promise<{ body: string; url: string } | null> {
-  try {
-    const releases = await fetchPublishedReleases(resolveAppRepo())
-    const release = releases.find((entry) => entry.tag.replace(/^v/, '') === version)
+  const { releases } = await readPublishedReleases(resolveAppRepo())
+  const release = releases.find((entry) => entry.tag.replace(/^v/, '') === version)
 
-    return release ? { body: release.body, url: release.url } : null
-  } catch {
-    return null
-  }
+  return release ? { body: release.body, url: release.url } : null
 }
 
 async function emitAvailable(getMainWindow: WindowGetter, updateInfo: UpdateInfo): Promise<void> {
@@ -122,7 +126,12 @@ function ensureConfigured(getMainWindow: WindowGetter): boolean {
 
 // macOS: check the latest release and let the modal open the download page; report up-to-date too.
 async function checkMacUpdate(getMainWindow: WindowGetter): Promise<void> {
-  const releases = await fetchPublishedReleases(resolveAppRepo())
+  const { releases, problem } = await readPublishedReleases(resolveAppRepo())
+  if (problem) {
+    sendProblem(getMainWindow, problem, `Could not read the release list from github.com (${problem})`)
+
+    return
+  }
   const release = newestApplicableRelease(releases, app.getVersion())
   if (!release) {
     sendToRenderer(getMainWindow, 'app-update:none', app.getVersion())
@@ -178,19 +187,24 @@ export function openAppDownloadPage(url: string): void {
   shell.openExternal(url)
 }
 
-export async function listAppReleases(): Promise<AppReleaseRow[]> {
-  const releases = await fetchPublishedReleases(resolveAppRepo())
+// The version history, plus why it is empty when it is. Never rejects: a pane that cannot list
+// versions still has something true to say, and a rejected call would only reach the user as the
+// remote-method wording the IPC layer wraps it in.
+export async function listAppReleases(): Promise<AppReleaseListing> {
+  const { releases, problem } = await readPublishedReleases(resolveAppRepo())
 
-  return toReleaseRows(releases, app.getVersion())
+  return { releases: toReleaseRows(releases, app.getVersion()), problem }
 }
 
 // Manual rollback: download the chosen release's installer for this platform and hand it to the OS
 // (the NSIS exe / dmg reinstalls in place). With no matching installer, open the release page instead.
 export async function rollbackToRelease(tag: string): Promise<RollbackResult> {
   const appRepo = resolveAppRepo()
-  const releases = await fetchPublishedReleases(appRepo)
+  const { releases } = await readPublishedReleases(appRepo)
   const release = releases.find((entry) => entry.tag === tag)
-  if (!release) throw new Error(`Release ${tag} not found`)
+  // Only reachable when the list the user picked from has since stopped being readable, so the
+  // sentence says that rather than accusing the version of not existing.
+  if (!release) throw new Error(`Version ${tag} is no longer listed on github.com`)
   const installers = await fetchReleaseInstallers(appRepo, tag, process.platform, process.arch)
   const asset = pickPlatformAsset(installers, process.platform, process.arch)
   if (!asset) {

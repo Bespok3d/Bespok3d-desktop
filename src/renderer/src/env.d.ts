@@ -36,6 +36,9 @@ declare global {
   type RepoInfo = import('../../main/git-host/connector').RepoInfo
   type UpdateAvailablePayload = import('../../main/app-update/view').UpdateAvailablePayload
   type AppReleaseRow = import('../../main/app-update/view').AppReleaseRow
+  type AppReleaseListing = import('../../main/app-update/view').AppReleaseListing
+  type UpdateProblem = import('../../main/app-update/problem').UpdateProblem
+  type UpdateErrorPayload = import('../../main/app-update/problem').UpdateErrorPayload
   type UpdateFrequency = import('../../main/app-update/schedule').UpdateFrequency
   type AppSettings = import('../../main/settings').AppSettings
   type UpdatePrefs = Pick<AppSettings, 'appUpdateFrequency' | 'appUpdateAutoDownload' | 'appUpdateInstallOnQuit'>

@@ -48,4 +48,12 @@ describe('isReleaseNewer', () => {
     expect(isReleaseNewer('0.1.0-alpha.13', '0.1.0-alpha.13')).toBe(false)
     expect(isReleaseNewer('0.1.0-alpha.13', 'v0.1.0-alpha.12')).toBe(false)
   })
+
+  // Renaming the prerelease series from alpha to beta must not change what an installed app offers:
+  // the release triple decides first, and a suffix with no number is still a prerelease.
+  it('offers a beta to an app still on an alpha, on the version alone', () => {
+    expect(isReleaseNewer('0.1.0-alpha.36', 'v0.7.0-beta')).toBe(true)
+    expect(isReleaseNewer('0.7.0-beta', 'v0.7.0-beta')).toBe(false)
+    expect(isReleaseNewer('0.7.0-beta', 'v0.7.1-alpha.1')).toBe(true)
+  })
 })

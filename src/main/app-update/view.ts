@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ReleaseInfo } from '../git-host/connector'
+import type { UpdateProblem } from './problem'
 import { isReleaseNewer, compareSemanticVersions } from './version'
 
 // Pure mapping from an update source (electron-updater on Windows/Linux, a GitHub release on
@@ -33,6 +34,14 @@ export interface AppReleaseRow {
   // the renderer cannot order labelled prerelease versions. Meaningless when isCurrent is true.
   isNewer: boolean
   notes: string
+}
+
+// An empty list means two different things and the pane must not guess: no problem is "this address
+// publishes nothing yet", a problem is "the list could not be read". They read alike and need
+// opposite sentences.
+export interface AppReleaseListing {
+  releases: AppReleaseRow[]
+  problem: UpdateProblem | null
 }
 
 interface ElectronReleaseNote {

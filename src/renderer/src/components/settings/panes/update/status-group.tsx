@@ -6,11 +6,12 @@ import { SettingRow } from '../../../common/SettingRow'
 import { useI18n } from '../../../../i18n/context'
 import type { TFunction } from '../../../../i18n'
 import { useAppUpdate } from '../../../app-update/useAppUpdate'
+import { updateProblemTextKey } from '../../../../utils/updateProblem'
 
 type AppUpdate = ReturnType<typeof useAppUpdate>
 
 function statusText(t: TFunction, appUpdate: AppUpdate): string {
-  if (appUpdate.errorMessage) return t('set.update.error')
+  if (appUpdate.errorProblem) return t(updateProblemTextKey(appUpdate.errorProblem))
   if (appUpdate.checking) return t('set.update.checking')
   if (appUpdate.downloaded) return t('set.update.ready', { version: appUpdate.update?.version ?? '' })
   if (appUpdate.update && appUpdate.progressPercent !== null) {

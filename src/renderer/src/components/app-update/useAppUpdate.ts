@@ -15,6 +15,9 @@ interface AppUpdateState {
   downloadRequested: boolean
   upToDate: boolean
   checking: boolean
+  // Why the check failed, and the original wording behind it. The problem is what the user is told;
+  // the wording is only ever shown as the technical note under it.
+  errorProblem: UpdateProblem | null
   errorMessage: string | null
   appliedVersion: string | null
 }
@@ -26,6 +29,7 @@ const INITIAL_STATE: AppUpdateState = {
   downloadRequested: false,
   upToDate: false,
   checking: false,
+  errorProblem: null,
   errorMessage: null,
   appliedVersion: null,
 }
@@ -77,6 +81,7 @@ function subscribeToAppUpdate(setState: Dispatch<SetStateAction<AppUpdateState>>
         progressPercent: null,
         checking: false,
         upToDate: false,
+        errorProblem: null,
         errorMessage: null,
       }))
       if (payload.action === 'openDownload') notifyUpdateReady(t, payload.version)
@@ -91,8 +96,8 @@ function subscribeToAppUpdate(setState: Dispatch<SetStateAction<AppUpdateState>>
       setState((prev) => ({ ...prev, downloaded: true }))
       notifyUpdateReady(t, version)
     })
-    const unsubError = window.b3d.appUpdate.onUpdateError((message) =>
-      setState((prev) => ({ ...prev, errorMessage: message, checking: false }))
+    const unsubError = window.b3d.appUpdate.onUpdateError((payload) =>
+      setState((prev) => ({ ...prev, errorProblem: payload.problem, errorMessage: payload.detail, checking: false }))
     )
 
     return () => {
@@ -113,7 +118,7 @@ export function useAppUpdate() {
   useEffect(consumeAppliedUpdate(setState, t), [t])
 
   function check(): void {
-    setState((prev) => ({ ...prev, checking: true, upToDate: false, errorMessage: null }))
+    setState((prev) => ({ ...prev, checking: true, upToDate: false, errorProblem: null, errorMessage: null }))
     window.b3d.appUpdate.checkNow()
   }
   function download(): void {

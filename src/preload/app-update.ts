@@ -3,7 +3,8 @@
 import { ipcRenderer } from 'electron'
 import { subscribe } from './subscribe'
 import type { RollbackResult } from '../main/app-update'
-import { updateStrategyForPlatform, type UpdateAvailablePayload, type AppReleaseRow } from '../main/app-update/view'
+import type { UpdateErrorPayload } from '../main/app-update/problem'
+import { updateStrategyForPlatform, type UpdateAvailablePayload, type AppReleaseListing } from '../main/app-update/view'
 
 export const appUpdateApi = {
   canAutoInstall: updateStrategyForPlatform(process.platform) === 'autoInstall',
@@ -12,7 +13,7 @@ export const appUpdateApi = {
   checkNow: (): Promise<void> => ipcRenderer.invoke('app-update:checkNow'),
   download: (): Promise<void> => ipcRenderer.invoke('app-update:download'),
   reconfigure: (): Promise<void> => ipcRenderer.invoke('app-update:reconfigure'),
-  listReleases: (): Promise<AppReleaseRow[]> => ipcRenderer.invoke('app-update:listReleases'),
+  listReleases: (): Promise<AppReleaseListing> => ipcRenderer.invoke('app-update:listReleases'),
   rollback: (tag: string): Promise<RollbackResult> => ipcRenderer.invoke('app-update:rollback', tag),
   consumeApplied: (): Promise<string | null> => ipcRenderer.invoke('app-update:consumeApplied'),
   onUpdateAvailable: (callback: (payload: UpdateAvailablePayload) => void): (() => void) =>
@@ -23,7 +24,7 @@ export const appUpdateApi = {
     subscribe('app-update:progress', callback),
   onUpdateDownloaded: (callback: (version: string) => void): (() => void) =>
     subscribe('app-update:downloaded', callback),
-  onUpdateError: (callback: (message: string) => void): (() => void) =>
+  onUpdateError: (callback: (payload: UpdateErrorPayload) => void): (() => void) =>
     subscribe('app-update:error', callback),
   onOpenSettings: (callback: () => void): (() => void) =>
     subscribe('app-update:open-settings', callback),

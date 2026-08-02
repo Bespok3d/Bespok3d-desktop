@@ -49,7 +49,7 @@ interface Channels {
   upToDate: Channel<string>
   downloadProgress: Channel<number>
   updateDownloaded: Channel<string>
-  updateError: Channel<string>
+  updateError: Channel<UpdateErrorPayload>
   openAbout: Channel<void>
   openSettings: Channel<void>
 }
@@ -80,7 +80,7 @@ export interface Emit {
   upToDate: (version: string) => void
   downloadProgress: (percent: number) => void
   updateDownloaded: (version: string) => void
-  updateError: (message: string) => void
+  updateError: (payload: UpdateErrorPayload) => void
 }
 
 function makeEmit(channels: Channels): Emit {
@@ -126,7 +126,7 @@ function mockAppUpdate(channels: Channels, override: Partial<B3d['appUpdate']> =
   return {
     canAutoInstall: true,
     installNow: voidFn(), openDownload: voidFn(), checkNow: voidFn(), download: voidFn(),
-    reconfigure: voidFn(), listReleases: resolved([]), rollback: resolved({ outcome: 'page' as const }),
+    reconfigure: voidFn(), listReleases: resolved({ releases: [], problem: null }), rollback: resolved({ outcome: 'page' as const }),
     consumeApplied: resolved(null),
     onUpdateAvailable: sub(channels.updateAvailable), onUpToDate: sub(channels.upToDate),
     onDownloadProgress: sub(channels.downloadProgress), onUpdateDownloaded: sub(channels.updateDownloaded),

@@ -10,11 +10,27 @@ import { UpdatePane } from './index'
 const en = makeT('en')
 
 describe('UpdatePane', () => {
-  it('surfaces a failed release fetch instead of silently showing no releases', async () => {
+  // The version list must never present a failed read as "there are no other versions", and what it
+  // says is the reason in the user's own language, never the plumbing that carried it.
+  it('says why the version list is empty instead of showing no releases', async () => {
+    var listReleases = vi.fn().mockResolvedValue({ releases: [], problem: 'notPublished' })
+    setup(<UpdatePane />, { b3d: { appUpdate: { listReleases } } })
+    expect(await screen.findByText(en('set.update.problem_not_published'))).toBeInTheDocument()
+    expect(screen.queryByText(en('set.update.no_releases'))).not.toBeInTheDocument()
+  })
+
+  it('reads the version list again when the reason offers to try again', async () => {
+    var listReleases = vi.fn().mockResolvedValue({ releases: [], problem: 'unreachable' })
+    var { user } = setup(<UpdatePane />, { b3d: { appUpdate: { listReleases } } })
+    await user.click(await screen.findByRole('button', { name: en('set.update.retry') }))
+    expect(listReleases).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows a broken read as a reason, not as the message the main process threw', async () => {
     var listReleases = vi.fn().mockRejectedValue(new Error('release feed offline'))
     setup(<UpdatePane />, { b3d: { appUpdate: { listReleases } } })
-    expect(await screen.findByText('release feed offline')).toBeInTheDocument()
-    expect(screen.queryByText(en('set.update.no_releases'))).not.toBeInTheDocument()
+    expect(await screen.findByText(en('set.update.problem_unavailable'))).toBeInTheDocument()
+    expect(screen.queryByText('release feed offline')).not.toBeInTheDocument()
   })
 
   it('checks for updates on demand', async () => {

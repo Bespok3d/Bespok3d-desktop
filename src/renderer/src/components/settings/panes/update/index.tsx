@@ -16,7 +16,7 @@ export function UpdatePane() {
   const { t } = useI18n()
   const appUpdate = useAppUpdate()
   const { prefs, change } = useUpdatePrefs()
-  const { releases, error: releasesError } = useReleases()
+  const { releases, problem: releasesProblem, reload: reloadReleases } = useReleases()
   const rollback = useRollback()
   const [rollbackTarget, setRollbackTarget] = useState<AppReleaseRow | null>(null)
   const canAutoInstall = window.b3d.appUpdate.canAutoInstall
@@ -26,7 +26,13 @@ export function UpdatePane() {
       <UpdateStatusGroup appUpdate={appUpdate} />
       <WhatsNewGroup releases={releases} />
       {prefs && <UpdatePreferencesGroup prefs={prefs} onChange={change} canAutoInstall={canAutoInstall} />}
-      <UpdateRollbackGroup releases={releases} releasesError={releasesError} rollback={rollback} onPick={setRollbackTarget} />
+      <UpdateRollbackGroup
+        releases={releases}
+        releasesProblem={releasesProblem}
+        onRetryReleases={reloadReleases}
+        rollback={rollback}
+        onPick={setRollbackTarget}
+      />
       {rollbackTarget && (
         <ConfirmActionDialog
           title={t(`set.update.pick_confirm_title_${releaseVerb(rollbackTarget)}`, { version: rollbackTarget.version })}

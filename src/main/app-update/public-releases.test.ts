@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { fetchPublishedReleases, fetchReleaseInstallers, releaseDownloadUrl } from './public-releases'
+import { readPublishedReleases, fetchReleaseInstallers, releaseDownloadUrl } from './public-releases'
 
 const APP_REPO = { owner: 'Bespok3d', repo: 'Bespok3d-desktop' }
 
@@ -36,19 +36,42 @@ function serveUrls(bodyByUrl: Record<string, string>): string[] {
   return requested
 }
 
+// The feed url is reachable but answers with a failure, the way github answers a repo it will not
+// serve anonymously.
+function serveStatus(status: number): void {
+  vi.stubGlobal('fetch', function refusingFetch() {
+    return Promise.resolve({ ok: false, status, text: () => Promise.resolve('') })
+  })
+}
+
+// No network at all: fetch itself rejects, it never gets as far as a status.
+function serveNoNetwork(): void {
+  vi.stubGlobal('fetch', function offlineFetch() {
+    return Promise.reject(new Error('ENOTFOUND github.com'))
+  })
+}
+
+// The status says the feed is coming and then the connection dies mid body.
+function serveTornBody(): void {
+  vi.stubGlobal('fetch', function tearingFetch() {
+    return Promise.resolve({ ok: true, status: 200, text: () => Promise.reject(new Error('terminated')) })
+  })
+}
+
+const FEED_URL = 'https://github.com/Bespok3d/Bespok3d-desktop/releases.atom'
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('fetchPublishedReleases', () => {
-  const FEED_URL = 'https://github.com/Bespok3d/Bespok3d-desktop/releases.atom'
-
+describe('readPublishedReleases', () => {
   it('reads the public release feed, with no account and no api', async () => {
     const requested = serveUrls({ [FEED_URL]: atomFeed([atomEntry('v0.1.0-alpha.34', '0.1.0-alpha.34', 'notes')]) })
 
-    const releases = await fetchPublishedReleases(APP_REPO)
+    const { releases, problem } = await readPublishedReleases(APP_REPO)
 
     expect(releases).toHaveLength(1)
+    expect(problem).toBeNull()
     expect(requested).toEqual([FEED_URL])
     expect(requested[0]).not.toContain('api.github.com')
   })
@@ -58,42 +81,66 @@ describe('fetchPublishedReleases', () => {
   it('takes the version from the release link, not from the title', async () => {
     serveUrls({ [FEED_URL]: atomFeed([atomEntry('v0.1.0-alpha.34', '0.1.0-alpha.34', 'notes')]) })
 
-    const releases = await fetchPublishedReleases(APP_REPO)
+    const { releases } = await readPublishedReleases(APP_REPO)
 
     expect(releases[0].tag).toBe('v0.1.0-alpha.34')
     expect(releases[0].name).toBe('0.1.0-alpha.34')
     expect(releases[0].url).toBe('https://github.com/Bespok3d/Bespok3d-desktop/releases/tag/v0.1.0-alpha.34')
   })
 
-  it('calls a version with a prerelease suffix a prerelease, and a plain one stable', async () => {
+  // Nothing reads the label itself: alpha, beta or any other suffix is a prerelease, and a plain
+  // version is stable. Renaming the tag series must never change what the app finds.
+  it('calls any prerelease suffix a prerelease, and a plain version stable', async () => {
     serveUrls({
-      [FEED_URL]: atomFeed([atomEntry('v0.2.0-beta.1', 'beta', 'notes'), atomEntry('v0.1.0', 'stable', 'notes')]),
+      [FEED_URL]: atomFeed([atomEntry('v0.7.0-beta', 'beta', ''), atomEntry('v0.2.0-alpha.1', 'alpha', ''), atomEntry('v0.1.0', 'stable', '')]),
     })
 
-    const releases = await fetchPublishedReleases(APP_REPO)
+    const { releases } = await readPublishedReleases(APP_REPO)
 
-    expect(releases.map((release) => release.prerelease)).toEqual([true, false])
+    expect(releases.map((release) => release.prerelease)).toEqual([true, true, false])
   })
 
   it('turns the feed\'s html notes into the markdown the pane renders', async () => {
     serveUrls({ [FEED_URL]: atomFeed([atomEntry('v0.1.0', '0.1.0', '&lt;ul&gt;&lt;li&gt;update signed out&lt;/li&gt;&lt;/ul&gt;')]) })
 
-    const releases = await fetchPublishedReleases(APP_REPO)
+    const { releases } = await readPublishedReleases(APP_REPO)
 
     expect(releases[0].body).toBe('- update signed out')
     expect(releases[0].publishedAt).toBe('2026-07-31T09:15:00Z')
   })
+})
 
-  it('is an empty list when nothing has been released yet', async () => {
+// A read that fails must say WHY, because the three causes read differently to the user: nothing is
+// published, the machine is offline, or github is having a bad day.
+describe('readPublishedReleases when the feed cannot be read', () => {
+  it('reports an empty feed as no problem at all', async () => {
     serveUrls({ [FEED_URL]: atomFeed([]) })
 
-    await expect(fetchPublishedReleases(APP_REPO)).resolves.toEqual([])
+    await expect(readPublishedReleases(APP_REPO)).resolves.toEqual({ releases: [], problem: null })
   })
 
-  it('says github is unreachable rather than reporting no releases', async () => {
-    serveUrls({})
+  it('reports a feed github will not serve as nothing published', async () => {
+    serveStatus(404)
 
-    await expect(fetchPublishedReleases(APP_REPO)).rejects.toThrow('github.com')
+    await expect(readPublishedReleases(APP_REPO)).resolves.toEqual({ releases: [], problem: 'notPublished' })
+  })
+
+  it('reports an unreachable github as unreachable, never as no releases', async () => {
+    serveNoNetwork()
+
+    await expect(readPublishedReleases(APP_REPO)).resolves.toEqual({ releases: [], problem: 'unreachable' })
+  })
+
+  it('reports a github that answers badly as unavailable', async () => {
+    serveStatus(503)
+
+    await expect(readPublishedReleases(APP_REPO)).resolves.toEqual({ releases: [], problem: 'unavailable' })
+  })
+
+  it('reports a feed that stops arriving halfway as unavailable, and never rejects', async () => {
+    serveTornBody()
+
+    await expect(readPublishedReleases(APP_REPO)).resolves.toEqual({ releases: [], problem: 'unavailable' })
   })
 })
 
