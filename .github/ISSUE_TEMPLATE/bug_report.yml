@@ -1,0 +1,108 @@
+name: Bug report
+description: Something in the app does not work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The more of this you fill in, the fewer rounds of
+        "which version?" before anyone can act on it.
+
+        A problem with a **plugin** belongs in that plugin's own repository. This form is for the
+        desktop app itself: finding a printer, enrolling it, browsing the store, installing.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what the app did instead of what you expected.
+      placeholder: |
+        I clicked Install on the camera plugin and the app showed "enrollment lost" instead.
+        I expected the plugin to install.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      description: The steps, from a freshly started app, that get back to the problem.
+      placeholder: |
+        1. Open the app
+        2. Pick the printer
+        3. Open the store and click Install on ...
+        4. The screen shows ...
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: The version in the app's About panel. On macOS that is the Bespok3d menu, About Bespok3d.
+      placeholder: 0.7.0-beta
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Which build are you running
+      options:
+        - macOS, Apple silicon (arm64 dmg or zip)
+        - macOS, Intel (dmg or zip)
+        - Windows (Setup exe)
+        - Linux, x86_64 (AppImage)
+        - Linux, arm64 (AppImage)
+        - Built it myself from source
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: Operating system version
+      placeholder: macOS 15.5, Windows 11 23H2, Ubuntu 24.04
+    validations:
+      required: true
+
+  - type: input
+    id: printer
+    attributes:
+      label: Printer and firmware
+      description: Leave blank if the problem happens before any printer is involved.
+      placeholder: Snapmaker U1, firmware 1.5.1
+
+  - type: input
+    id: daemon-version
+    attributes:
+      label: Daemon version
+      description: Shown on the printer's page in the app once it is enrolled.
+      placeholder: 0.12.19
+
+  - type: textarea
+    id: errors
+    attributes:
+      label: Error text
+      description: >
+        Anything the app printed on screen, in full. If you started the app from a terminal, the
+        output there too. This is pasted into a code block for you, no backticks needed.
+      render: text
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or a video
+      description: >
+        Drag files straight into this box. A short screen recording is often faster than
+        describing what you saw.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you post
+      options:
+        - label: I searched the existing issues and this is not one of them
+          required: true
+        - label: The text and images above contain no printer serial, no network address I mind sharing, and no access token
+          required: true

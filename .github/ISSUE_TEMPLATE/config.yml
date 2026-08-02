@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question, idea or general talk
+    url: https://github.com/Bespok3d/Bespok3d-desktop/discussions
+    about: Anything that is not a bug report or a concrete feature request starts here.
+  - name: A plugin misbehaves
+    url: https://github.com/orgs/Bespok3d/repositories
+    about: Open it on the plugin's own repository, not here.
+  - name: A security problem
+    url: https://github.com/Bespok3d/Bespok3d-desktop/security/policy
+    about: Report it privately, the way the security policy says. Do not open a public issue.

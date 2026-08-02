@@ -1,0 +1,37 @@
+name: Feature request
+description: Ask for something the app does not do yet
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A feature for a **plugin** belongs in that plugin's own repository. This form is for the
+        desktop app itself.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The situation you are in, before any solution. What is awkward or impossible today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like the app to do
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you work around it today
+      description: Leave blank if there is no workaround.
+
+  - type: input
+    id: printer
+    attributes:
+      label: Printer
+      description: Only if the request is specific to one.
+      placeholder: Snapmaker U1
