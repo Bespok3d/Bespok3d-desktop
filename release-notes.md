@@ -1,27 +1,62 @@
-# What's new in alpha 36
+# Bespok3d is open
 
-Bespok3d can tell us what gets used and what breaks, if you say it may.
+This is the first release anybody can use. Bespok3d is a desktop app and a small daemon that lives on
+your printer. You browse a shelf of plugins, you click install, and the printer restarts with the
+thing running. Your Snapmaker U1 keeps its stock Snapmaker firmware. There is nothing to flash, no
+image to write, and no SSH session to keep open.
 
-## The app asks once, and no is the easy answer
+## Your printer is a Linux box you already own
 
-On its first start Bespok3d asks whether it may send anonymous usage data. Until you answer, it sends nothing. Closing the question, pressing escape or clicking away all count as no, so the question is never left hanging over you and never comes back on its own. Settings, General holds the answer and a switch to change it whenever you like.
+Every Klipper printer is a small computer that happens to move a nozzle. The reason you rarely get to
+use it that way is not that it is fragile, it is that changing anything usually means replacing the
+whole firmware and then waiting for whoever made it to bless the next version. Bespok3d takes the
+other route: it adds files next to what the manufacturer shipped, and it never replaces it. So new
+things arrive when someone writes them, not when a release train comes through.
 
-The question says what is sent and what is never sent on the screen you are looking at, not behind a link, and Settings shows you the same list.
+## What is on the shelf today
 
-## What is sent
+Forty three plugins and seven Collections, and a Collection is just a set of plugins installed
+together so you do not have to pick them one by one.
 
-That the app started, and a handful of things done with it: a printer enrolled, a plugin installed, the app updated. When something breaks, the kind of break and which part of the app it happened in. Your app version, the kind of app, the operating system it runs on and the language it is set to ride along with all of it.
+Cameras, including the U1's built in one and USB ones. Multi tool and AFC panels. Filament tags:
+Snapmaker, OpenSpool, Anycubic, TigerTag, OpenTag3D, OpenPrintTag and plain JSON on an NDEF tag, plus
+Bambu and Creality if you bring your own keys. Spoolman. Klipper tuning, motion and TMC autotune.
+Remote access over Tailscale or ZeroTier, OctoEverywhere, a mirror of the printer screen, and a
+Prometheus exporter. And the small quality of life ones: idle timeout, human readable print times,
+purge line placement, bed mesh, timelapse, LEDs.
 
-That is the whole list. There is no screen counting, no click recording and no session replay, because there is no analytics library in the app to do any of it: Bespok3d writes each message itself, in one file, and sends nothing else.
+Fluidd and Mainsail are both there, and both come with the multi tool panels rather than one of them
+being the second class option.
 
-## What is never sent
+## If a plugin breaks something, the printer puts itself back
 
-Nothing you type. Nothing about your printers: no serial numbers, no network addresses, no file names. Nothing about where you are: no country, no town, and the internet address your connection arrives on is never looked up and is never kept with what you send. No error text, only the kind of error.
+A plugin that stops Klipper or Moonraker from coming up is disabled automatically and the printer
+comes back on its own. Its files are left alone, so nothing you configured is thrown away, and you can
+put it back in one click. This has been running against Snapmaker firmware from 1.3.0 through 1.5.2.
 
-There is no installation id. Every copy of Bespok3d reports under the same name, so the numbers can say how often something happens and can never say it was you. That is also why saying yes creates nothing and saying no has nothing to destroy.
+A firmware update wipes parts of the printer that Bespok3d needs. The app notices the daemon is gone,
+offers to restore it, and then reapplies your plugins in the right order. Anything that cannot be
+restored stays disabled with its files untouched, and the app tells you which one it was.
 
-It goes to a server Bespok3d runs, not to anybody else's.
+## The part that matters most
 
-## Turning it off stops it there
+Anyone can publish. The plugin index is open and signed, the app tells you what it could check about a
+package before you install it, and nothing is hidden from you to keep you safe. You do not need our
+permission or our index either: an app that can install a `.b3` file straight from your disk is an app
+you still control if we disappear.
 
-Turning the switch off stops anything further being sent, at once. It cannot take back what was already sent, and the app says so rather than implying otherwise.
+If you have already built something for your printer, a macro set, a panel patch, a script you keep
+copying back after every update, this is where it stops being yours alone. Package it, publish it,
+and the next person clicks install instead of reading your forum post twice. Bring it. That is the
+whole point of the thing.
+
+## Not there yet
+
+There is no switch to turn SSH on, and that is on purpose: the moment there is one, the answer to
+every problem becomes "just SSH in", and the plugin format stops being the way things get done.
+
+There is no web page served by the printer either. The desktop app already gives you all of your
+printers in one place, and a page on each printer would be one more thing to keep in sync per machine.
+
+This is a beta because we are still willing to change our minds, not because something is missing.
+Tell us what breaks.

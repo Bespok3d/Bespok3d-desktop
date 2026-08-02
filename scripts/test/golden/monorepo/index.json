@@ -254,7 +254,7 @@
       "conflicts": [],
       "doc_url": "idle-timeout/doc/README.md",
       "download_url": "idle-timeout-0.1.0.b3",
-      "min_daemon_version": "0.10.1-dev",
+      "min_daemon_version": "0.10.1",
       "config": [
         {
           "key": "IDLE_TIMEOUT_SECONDS",
@@ -395,7 +395,7 @@
       "conflicts": [],
       "doc_url": "moonraker-notify/doc/README.md",
       "download_url": "moonraker-notify-0.1.0.b3",
-      "min_daemon_version": "0.10.33-dev",
+      "min_daemon_version": "0.10.33",
       "config": [
         {
           "key": "NOTIFY_NAME",
@@ -456,7 +456,7 @@
       ],
       "doc_url": "remote-screen/doc/README.md",
       "download_url": "remote-screen-0.1.22.b3",
-      "min_daemon_version": "0.10.1-dev",
+      "min_daemon_version": "0.10.1",
       "config": [
         {
           "key": "REMOTE_SCREEN_NAME",
@@ -765,7 +765,7 @@
     {
       "name": "spoolman",
       "title": "Spoolman Bridge",
-      "version": "0.1.30+dev.local",
+      "version": "0.1.31+dev.local",
       "description": "Spoolman for the U1 multi-tool: the active spool follows the tag the printer reads or the spool you pick, color and material reach the screen and AFC panel, tags are matched by their hardware UID, and you can record which printer each spool is on. Filament length per print is logged automatically.",
       "tagline": "Zero-config Spoolman: active spool always tracked.",
       "category": "filament",
@@ -787,8 +787,8 @@
       ],
       "conflicts": [],
       "doc_url": "spoolman/doc/README.md",
-      "download_url": "spoolman-0.1.30.b3",
-      "min_daemon_version": "0.10.1-dev",
+      "download_url": "spoolman-0.1.31.b3",
+      "min_daemon_version": "0.10.1",
       "homepage": "https://github.com/bespok3d-org/plugin-spoolman",
       "macros": [
         {
@@ -902,6 +902,19 @@
           "scope": "global"
         },
         {
+          "key": "CARD_UIDS_WRITE_FORM",
+          "label": "How tag UIDs are stored in Spoolman",
+          "type": "select",
+          "options": [
+            "array",
+            "comma_separated"
+          ],
+          "default": "array",
+          "hint": "array: a proper list, the right shape and the default. comma_separated: the same UIDs flattened into one comma-separated value, for when another app reading this field cannot handle a list. Either form is read back correctly here.",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
           "key": "SPOOLMAN_TRACK_LOCATION",
           "label": "Track spool location in Spoolman",
           "type": "select",
@@ -952,7 +965,7 @@
       "conflicts": [],
       "doc_url": "status-feed/doc/README.md",
       "download_url": "status-feed-0.1.0.b3",
-      "min_daemon_version": "0.10.33-dev",
+      "min_daemon_version": "0.10.33",
       "author": "bespoked",
       "log": {},
       "changelog_url": "status-feed/doc/CHANGELOG.md",
@@ -1058,7 +1071,7 @@
       "conflicts": [],
       "doc_url": "u1-gcode-colors/doc/README.md",
       "download_url": "u1-gcode-colors-0.1.1.b3",
-      "min_daemon_version": "0.10.1-dev",
+      "min_daemon_version": "0.10.1",
       "config": [
         {
           "key": "GCODE_COLORS_ENABLED",

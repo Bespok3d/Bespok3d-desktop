@@ -30,7 +30,7 @@ export interface AppReleaseRow {
   prerelease: boolean
   isCurrent: boolean
   // Newer than the running build (an update) vs older (a rollback install). Compared in main because
-  // the renderer cannot order prerelease (-alpha.N) versions. Meaningless when isCurrent is true.
+  // the renderer cannot order labelled prerelease versions. Meaningless when isCurrent is true.
   isNewer: boolean
   notes: string
 }

@@ -211,6 +211,17 @@ if [ "$RUN_SHELL" -eq 1 ]; then
     # The dev menu-bar rail: proves node_modules' Electron.app is still renamed (and re-signed) so a
     # dev run reads "Bespok3d Dev" in the macOS menu bar instead of "Electron".
     run_check "dev menu-bar name rail" node --test "$REPO_ROOT/scripts/test/dev-bundle-name.test.mjs"
+
+    # The version rail: proves a bump moves the semver triple and carries the maturity label ("beta")
+    # across untouched, so the beta line never starts counting its label the way the alphas did.
+    run_check "release version rail" node --test "$REPO_ROOT/scripts/test/release-bump.test.mjs"
+
+    # 'publish' cuts a real release and 'pre' cuts a prerelease, so the difference between the two is
+    # one word that a slip can get wrong, and 'pre' must keep the landing page out of it.
+    run_check "release kind rail" node --test "$REPO_ROOT/scripts/test/release-publish-kind.test.mjs"
+
+    # The landing page's download buttons are generated: if this breaks, the page offers four dead links.
+    run_check "web downloads rail" node --test "$REPO_ROOT/scripts/test/web-downloads.test.mjs"
 else
     echo "  skipped (no scripts/ changes; ./scripts/check.sh full runs it)"
 fi
