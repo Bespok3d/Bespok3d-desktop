@@ -18,6 +18,8 @@ import { watchInstallProgress, installPhaseMessage } from '../daemon-client/feed
 import { daemonGuardMessage } from '../daemon-client/guard'
 import { sendProgress, sendUpload } from './progress'
 import { capsAfterInstall, capsOrFallback, recordAppliedVars } from './record-sync'
+import { reportEvent } from '../analytics'
+import { reportErrorEvent } from '../analytics/errors'
 
 // Deps install one at a time, in order (a dependency must be on the printer before the plugin that
 // needs it), so this walks the list head-then-tail by recursion rather than firing them concurrently.
@@ -162,6 +164,9 @@ async function runStoreInstall(
     ...recordAppliedVars(current, pluginId, vars, new Date().toISOString()),
   }))
 
+  // One plugin, one event: the dependencies that came along with it are not plugins the user chose.
+  reportEvent('plugin_installed', {})
+
   return { installedIds: parsed.installedIds, log }
 }
 
@@ -184,6 +189,9 @@ export function installGuarded(
     const failure = message ? new Error(message) : error
 
     recordFailedInstall(printerId, pluginId, failure)
+    // An install the user asked for did not land. The kind of failure only: the message names the
+    // plugin, the printer, and sometimes a path on the printer's own filesystem.
+    reportErrorEvent(error, 'plugin-install')
     throw failure
   })
 }

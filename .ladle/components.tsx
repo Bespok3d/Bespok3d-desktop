@@ -92,6 +92,8 @@ function emitPrintState(notify: (event: { printerId: string; blockedActions: str
 // The catalog runs in a plain Vite browser context: there is no preload bridge and no vitest, so the
 // test b3d-mock (which imports vitest) cannot be reused. We install only the few window.b3d surfaces
 // the catalogued components actually touch; story data reuses the vitest-free fixtures factories.
+const catalogConsent: { answer: 'granted' | 'refused' | null } = { answer: null }
+
 const catalogB3d = {
   daemonExpectedVersion: '0.12.10-dev',
   jinniExpectedVersion: '0.1.6',
@@ -115,6 +117,19 @@ const catalogB3d = {
     onPrintState: emitPrintState,
   },
   registry: { catalog: () => Promise.resolve(makeCatalog(CATALOG_PLUGINS)) },
+  // Usage reporting reads its own answer back rather than taking it as a prop, so the stub keeps one
+  // in memory: the toggle in a story really flips, and the catalog starts unanswered because that is
+  // the only state in which the one-time request appears at all.
+  analytics: {
+    reportRenderFailure: () => Promise.resolve(),
+    consent: () => Promise.resolve({ answer: catalogConsent.answer, ask: catalogConsent.answer === null }),
+    setConsent: (granted: boolean) => {
+      catalogConsent.answer = granted ? 'granted' : 'refused'
+
+      return Promise.resolve()
+    },
+    resetIdentity: () => Promise.resolve(),
+  },
   // The plugin detail panel's install/uninstall/reconfigure + captured-log surfaces. Every call
   // resolves with dummy-but-plausible data so a story can be clicked through, not just looked at.
   store: {

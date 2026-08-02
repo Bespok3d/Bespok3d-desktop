@@ -57,6 +57,11 @@ export interface AppSettings {
   // answer was to proceed with the list as it stands.
   listingRefreshedAt?: number
   listingRefreshProposedAt?: number
+  // Usage reporting: the answer, and nothing else. Unset means the user has never been asked, so
+  // nothing is sent and nothing is kept to send later if they say yes. No value that could tell this
+  // install from another one is stored here or anywhere else, which is why saying yes creates nothing
+  // and saying no has nothing to destroy.
+  analyticsConsent?: 'granted' | 'refused'
 }
 
 const DEFAULTS: AppSettings = {

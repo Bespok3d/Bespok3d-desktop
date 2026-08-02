@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-264 exported components + hooks across 21 areas.
+267 exported components + hooks across 21 areas.
 
 ## Common primitives
 
@@ -280,6 +280,8 @@ as you touch the file.
 - `UpdatePreferencesGroup` (component) - [components/settings/panes/update/preferences.tsx](../src/renderer/src/components/settings/panes/update/preferences.tsx) - Update cadence + auto-download + install-timing preferences.
 - `UpdateRollbackGroup` (component) - [components/settings/panes/update/rollback.tsx](../src/renderer/src/components/settings/panes/update/rollback.tsx) - The rollback/version list: feedback line, then every published release as a pick-able row.
 - `UpdateStatusGroup` (component) - [components/settings/panes/update/status-group.tsx](../src/renderer/src/components/settings/panes/update/status-group.tsx) - The current-version + check-for-updates + download-progress status block.
+- `UsageReportingGroup` (component) - [components/settings/panes/usage-reporting/index.tsx](../src/renderer/src/components/settings/panes/usage-reporting/index.tsx)
+- `UsageReportingRequest` (component) - [components/settings/panes/usage-reporting/UsageReportingRequest.tsx](../src/renderer/src/components/settings/panes/usage-reporting/UsageReportingRequest.tsx)
 - `useAdaptersList` (hook) - [components/settings/state.ts](../src/renderer/src/components/settings/state.ts)
 - `useGitHostConnection` (hook) - [components/settings/panes/git-host/connection.ts](../src/renderer/src/components/settings/panes/git-host/connection.ts)
 - `useGitHostSettings` (hook) - [components/settings/state.ts](../src/renderer/src/components/settings/state.ts)
@@ -288,6 +290,7 @@ as you touch the file.
 - `useReleases` (hook) - [components/settings/panes/update/releases.ts](../src/renderer/src/components/settings/panes/update/releases.ts) - The published app releases (for the rollback/version list and the "what's new" notes). A failed fetch
 - `useRollback` (hook) - [components/settings/panes/update/rollback.tsx](../src/renderer/src/components/settings/panes/update/rollback.tsx)
 - `useUpdatePrefs` (hook) - [components/settings/panes/update/preferences.tsx](../src/renderer/src/components/settings/panes/update/preferences.tsx)
+- `WhatIsSent` (component) - [components/settings/panes/usage-reporting/what-is-sent.tsx](../src/renderer/src/components/settings/panes/usage-reporting/what-is-sent.tsx)
 - `WhatsNewGroup` (component) - [components/settings/panes/update/whats-new.tsx](../src/renderer/src/components/settings/panes/update/whats-new.tsx) - The release notes for the currently-running version. Hidden until the releases list resolves and
 
 ## Feature: update-confirm

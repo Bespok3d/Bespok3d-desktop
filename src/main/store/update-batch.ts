@@ -20,6 +20,7 @@ import type { UnsentPackage } from './batch-settlement'
 import { failedLogsAfter, refusalSentence, refusedAttempt } from './failed-installs'
 import { sendUpload } from './progress'
 import { capsOrFallback } from './record-sync'
+import { reportEvent } from '../analytics'
 
 // One batch daemon call: update-batch or install-batch. Both take the resolved packages and an upload
 // callback and return per-plugin results; the store orchestration around them is identical.
@@ -200,5 +201,18 @@ export function runStoreUpdateBatch(win: BrowserWindow, printerId: string, updat
 // the display compositor once for the whole set, not once per display plugin. A daemon conflict 409 is
 // surfaced readably (the renderer pre-checks, the daemon backstops two mutually-exclusive picks).
 export function runStoreInstallBatch(win: BrowserWindow, printerId: string, specs: PluginUpdateSpec[]): Promise<RecoverResult> {
-  return runStoreBatch(win, printerId, specs, guardedPoster(installBatchPackages))
+  return runStoreBatch(win, printerId, specs, guardedPoster(installBatchPackages)).then(countPluginsInstalled)
+}
+
+// Counted here and not inside runStoreBatch, which the update batch shares: an update is not an
+// install. Neither is the OTA recovery that puts twelve plugins back after a firmware update, and
+// that one is its own daemon call which passes nowhere near this file.
+function countPluginsInstalled(batch: RecoverResult): RecoverResult {
+  // A skipped row is the printer saying it already had that plugin. It counts as a success everywhere
+  // else in this file, and it is not somebody installing anything.
+  const newlyInstalled = batch.results.filter((row) => row.ok && !row.skipped)
+
+  newlyInstalled.forEach(() => reportEvent('plugin_installed', {}))
+
+  return batch
 }

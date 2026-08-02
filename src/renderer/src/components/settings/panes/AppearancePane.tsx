@@ -5,6 +5,7 @@ import { Segmented } from '../../common/Segmented'
 import { SettingRow } from '../../common/SettingRow'
 import { IconSun, IconMoon, IconScreen } from '../../../design-system/icons'
 import { RegionFormatsGroup } from './language'
+import { UsageReportingGroup } from './usage-reporting'
 import type { LocaleSettings } from './language'
 import { useI18n } from '../../../i18n/context'
 
@@ -68,6 +69,7 @@ export function AppearancePane({ theme, onSetTheme, density, onSetDensity, store
       </Group>
 
       <RegionFormatsGroup settings={localeSettings} onChange={onLocaleChange} />
+      <UsageReportingGroup />
     </>
   )
 }

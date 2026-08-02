@@ -1,29 +1,27 @@
-# What's new in alpha 35
+# What's new in alpha 36
 
-Alpha 35 updates Bespok3d without a GitHub account.
+Bespok3d can tell us what gets used and what breaks, if you say it may.
 
-## Check for updates works signed out
+## The app asks once, and no is the easy answer
 
-Signed out, the Update panel answered with an error and did nothing else: no version list, no check for a newer version, no rollback. All of it works with no account now. The app reads the same public release page anyone can open in a browser, and downloads the installer from the link that page offers.
+On its first start Bespok3d asks whether it may send anonymous usage data. Until you answer, it sends nothing. Closing the question, pressing escape or clicking away all count as no, so the question is never left hanging over you and never comes back on its own. Settings, General holds the answer and a switch to change it whenever you like.
 
-A GitHub account is asked for to publish a plugin, and for nothing else.
+The question says what is sent and what is never sent on the screen you are looking at, not behind a link, and Settings shows you the same list.
 
-## Opening the Update panel costs you nothing
+## What is sent
 
-The version list and the release notes used to be read through GitHub's API, which hands a computer with no account a small number of requests an hour, shared with everything else the app reads. They now come from the published release feed and from the files of the release itself, and neither of those is rationed. Checking, updating and rolling back spend none of that allowance, signed in or signed out.
+That the app started, and a handful of things done with it: a printer enrolled, a plugin installed, the app updated. When something breaks, the kind of break and which part of the app it happened in. Your app version, the kind of app, the operating system it runs on and the language it is set to ride along with all of it.
 
-## Rolling back reaches the ten most recent versions
+That is the whole list. There is no screen counting, no click recording and no session replay, because there is no analytics library in the app to do any of it: Bespok3d writes each message itself, in one file, and sends nothing else.
 
-The published feed carries the ten newest releases, so those are the versions the rollback list offers. Anything older is still on the release page in a browser.
+## What is never sent
 
-## The store stops asking whether to look for a newer plugin version
+Nothing you type. Nothing about your printers: no serial numbers, no network addresses, no file names. Nothing about where you are: no country, no town, and the internet address your connection arrives on is never looked up and is never kept with what you send. No error text, only the kind of error.
 
-Before an install, the app offered to look for a newer version of the plugin lists even when it had just read them. It now offers only when what it knows is more than an hour old. Opening the app and clicking the refresh wheel both count as reading them, so the question stops repeating. If the lists could not be read at all, the offer still comes.
+There is no installation id. Every copy of Bespok3d reports under the same name, so the numbers can say how often something happens and can never say it was you. That is also why saying yes creates nothing and saying no has nothing to destroy.
 
-## A plugin file on your machine installs without that question
+It goes to a server Bespok3d runs, not to anybody else's.
 
-A `.b3` you drop on the app, or a package you built yourself, is the version being installed. There is nothing online to look for, so the app no longer asks.
+## Turning it off stops it there
 
-## A plugin on your machine shows the settings it carries
-
-The settings offered in the plugin panel came from the published list, so an experimental build carrying extra settings gave you no way to set them. A package held on your machine now shows the settings its own manifest declares.
+Turning the switch off stops anything further being sent, at once. It cannot take back what was already sent, and the app says so rather than implying otherwise.

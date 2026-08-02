@@ -22,11 +22,14 @@ export function packagedBinary(): string {
 }
 
 // This sandbox forces ELECTRON_RUN_AS_NODE=1, which makes Electron run as plain Node (no app); strip it.
+// B3D_AUTOMATED_RUN tells the app it is being driven by this harness. These runs launch the REAL
+// packaged binary, so nothing else distinguishes them from a user's install, and without the flag
+// every end-to-end run would count itself as one more person using the app.
 export function appEnv(): Record<string, string> {
   const clean = { ...process.env } as Record<string, string>
   delete clean.ELECTRON_RUN_AS_NODE
 
-  return clean
+  return { ...clean, B3D_AUTOMATED_RUN: '1' }
 }
 
 export function rendererWindow(app: ElectronApplication): Promise<Page> {

@@ -30,6 +30,15 @@ function AppErrorFallback({ error }: { error: Error }) {
   )
 }
 
+// What broke, never the message shown above it: that message is written by whatever threw and can
+// name a printer, a file on this machine or something the user typed. A screen that just fell over is
+// no place to also fail at reporting, so the send is fire and forget in both directions.
+function reportRenderFailureToUsage(error: Error): void {
+  window.b3d?.analytics
+    .reportRenderFailure(error.constructor?.name ?? error.name)
+    .catch((unreported: unknown) => console.warn('render failure went unreported', unreported))
+}
+
 // The renderer's one class component: a React error boundary must be a class. It catches a render throw
 // from any descendant and shows a recoverable fallback, so a single bad render never white-screens the
 // app (printer-base-functions-non-negotiable, at the UI layer).
@@ -44,6 +53,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   // tester's bug report carries the cause the generic fallback message hides.
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('ErrorBoundary caught a render error', error, info.componentStack)
+    reportRenderFailureToUsage(error)
   }
 
   render() {

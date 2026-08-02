@@ -23,6 +23,15 @@ describe('ErrorBoundary', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  it('tells usage reporting what broke, once, and never what the message said', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const reportRenderFailure = vi.fn().mockResolvedValue(undefined)
+
+    setup(<ErrorBoundary><Boom /></ErrorBoundary>, { b3d: { analytics: { reportRenderFailure } } })
+
+    expect(reportRenderFailure.mock.calls).toEqual([['Error']])
+  })
+
   it('logs the caught error via componentDidCatch for bug reports', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     setup(<ErrorBoundary><Boom /></ErrorBoundary>)

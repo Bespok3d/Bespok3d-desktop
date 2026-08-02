@@ -226,6 +226,17 @@ function mockGitHost(override: Partial<B3d['gitHost']> = {}): B3d['gitHost'] {
   }
 }
 
+// A test install has already been asked and said yes, so no test meets the one-time request unless it
+// asks for it. A test about the request overrides consent and gets the state it wants to see.
+function mockAnalytics(override: Partial<B3d['analytics']> = {}): B3d['analytics'] {
+  return {
+    reportRenderFailure: voidFn(),
+    consent: resolved({ answer: 'granted' as const, ask: false }),
+    setConsent: voidFn(),
+    ...override,
+  }
+}
+
 function mockDevTools(override: Partial<B3d['devTools']> = {}): B3d['devTools'] {
   return {
     patch: {
@@ -253,6 +264,7 @@ export function makeB3dMock(overrides: B3dOverrides = {}): B3dHarness {
     mdns: { start: voidFn(), stop: voidFn(), onFound: sub(channels.found), ...overrides.mdns },
     registry: mockRegistry(overrides.registry), localStore: mockLocalStore(channels, overrides.localStore),
     devTools: mockDevTools(overrides.devTools), gitHost: mockGitHost(overrides.gitHost),
+    analytics: mockAnalytics(overrides.analytics),
   }
 
   return { b3d, emit: makeEmit(channels) }

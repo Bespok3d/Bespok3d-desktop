@@ -13,6 +13,8 @@ import { installAppMenu } from './menu'
 import { createSplash } from './splash'
 import { addLocalPackages } from './registry/local'
 import { registerB3dScheme, b3dUrlsFromArgv, dispatchB3dUrl } from './protocol'
+import { reportEvent, startAnalytics } from './analytics'
+import { reportErrorEvent } from './analytics/errors'
 import type { B3dRoute } from './protocol/url'
 
 var mainWindow: BrowserWindow
@@ -138,6 +140,25 @@ function createWindow(splash: BrowserWindow): void {
   }
 }
 
+// An automated test launch is a harness measuring itself, and its events would be noise in the same
+// numbers a person's use of the app makes. The harness drives the REAL packaged binary, so nothing
+// else would tell it apart from a user's install: it sets B3D_AUTOMATED_RUN to say so.
+//
+// A run from a working copy IS counted, apart, under its own name, so the project can see its own
+// activity without it being read as somebody's install. That separation is made once, here.
+function runIsWorthCounting(): boolean {
+  return !process.env.B3D_AUTOMATED_RUN
+}
+
+// A crash the app never hears about is a crash nobody fixes. The monitor form is what makes this
+// safe: it runs ALONGSIDE whatever the app already does with a crash instead of replacing it, so the
+// error dialog still appears and a run that used to end still ends. An ordinary handler would do the
+// opposite, keeping alive a process that was dying. It also sees an unhandled promise rejection, so
+// both halves of a break are covered once each rather than twice.
+function reportCrashToUsage(thrown: unknown): void {
+  reportErrorEvent(thrown, 'main-process')
+}
+
 app.whenReady().then(() => {
   if (!gotSingleInstanceLock) return
   const iconPath = join(__dirname, '../../resources/icons/icon.png')
@@ -146,6 +167,18 @@ app.whenReady().then(() => {
     app.dock.setIcon(icon)
   }
 
+  startAnalytics({
+    projectToken: __ANALYTICS_PROJECT_TOKEN__,
+    appVersion: app.getVersion(),
+    countThisRun: runIsWorthCounting(),
+    releaseRun: app.isPackaged,
+    systemLanguage: app.getLocale(),
+  })
+  // Armed the moment reporting is, and before any window exists, so nothing can break unheard.
+  process.on('uncaughtExceptionMonitor', reportCrashToUsage)
+  // The whole reason this exists: how many installs are running. Sent once per start, from the one
+  // place the app starts, so it cannot be missed by a window closing or double-counted by one opening.
+  reportEvent('app_launched', {})
   registerIpc(() => mainWindow)
   installAppMenu(() => mainWindow)
   startAutoUpdates(() => mainWindow)

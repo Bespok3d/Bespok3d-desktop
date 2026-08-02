@@ -10,6 +10,8 @@ import type { SshCredentials, EnrollContext, EnrollStep } from './adapter-loader
 import { listKeys } from './keys'
 import { loadSettings, clientId } from './settings'
 import { updatePrinter } from './printers'
+import { reportEvent } from './analytics'
+import { reportErrorEvent } from './analytics/errors'
 
 export interface CompletedStep {
   id: string
@@ -121,6 +123,9 @@ async function runStep(
   } catch (stepError) {
     const errorMessage = stepError instanceof Error ? stepError.message : String(stepError)
     emit(win, { ...base, status: 'failed', error: errorMessage, errorDetail: errorMessage, completedSteps: [...completedSoFar] })
+    // A user left with a printer that did not enrol. Only the kind of failure goes out: the message
+    // on screen names the printer, the step and often the network it is on, and none of that is ours.
+    reportErrorEvent(stepError, 'enrollment')
 
     return { failed: true, completed: completedSoFar }
   }
@@ -233,5 +238,10 @@ export async function enrollPrinter(
   const result = await runStepFromIndex(startIndex, [])
 
   session.close()
-  if (!result.failed) markEnrolled(printerId, adapterId, result.completed, ctx)
+  if (result.failed) return
+
+  markEnrolled(printerId, adapterId, result.completed, ctx)
+  // Every step ran and the printer is enrolled. An enrollment the user abandoned, or one a step
+  // refused, is not an enrollment and is counted as nothing.
+  reportEvent('printer_enrolled', {})
 }

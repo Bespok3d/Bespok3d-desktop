@@ -8,6 +8,8 @@ import type { MergedEntry } from '../registry/model'
 import type { PrinterRecord } from '../printers'
 
 vi.mock('../printers', () => ({ updatePrinter: vi.fn() }))
+vi.mock('../analytics', () => ({ reportEvent: vi.fn() }))
+vi.mock('../analytics/errors', () => ({ reportErrorEvent: vi.fn() }))
 vi.mock('../registry', () => ({ loadCatalog: vi.fn() }))
 vi.mock('./catalog-archive', () => ({ findCatalogVariant: vi.fn(), resolveArchiveBytes: vi.fn(), discardCachedArchive: vi.fn() }))
 vi.mock('./progress', () => ({ sendProgress: vi.fn(), sendUpload: vi.fn() }))
@@ -25,6 +27,8 @@ vi.mock('../daemon-client/guard', () => ({ daemonGuardMessage: vi.fn() }))
 vi.mock('../registry/resolve/latest-release', () => ({ fetchLatestRelease: vi.fn() }))
 
 import { installGuarded } from './install'
+import { reportErrorEvent } from '../analytics/errors'
+import { reportEvent } from '../analytics'
 import { fetchLatestRelease } from '../registry/resolve/latest-release'
 import { updatePrinter } from '../printers'
 import { loadCatalog } from '../registry'
@@ -315,5 +319,39 @@ describe('a printer that will not say what it already has', () => {
     stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
     await install()
     expect(fetchCapabilities).not.toHaveBeenCalled()
+  })
+})
+
+describe('what a single install counts', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('counts one install for the plugin the user chose, not one per package that went up', async () => {
+    stubADependencyResolvingTo(packageWith({ ...HONEST_MANIFEST, name: DEP_ID }), packageWith(HONEST_MANIFEST))
+    await installWithDependency()
+
+    expect(vi.mocked(reportEvent)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(reportEvent)).toHaveBeenCalledWith('plugin_installed', {})
+  })
+
+  it('counts nothing when the install threw, because a plugin that did not land is not installed', async () => {
+    stubTheHappyPathAround(packageWith({ ...HONEST_MANIFEST, name: 'some-other-plugin' }))
+    await install().catch(() => undefined)
+
+    expect(vi.mocked(reportEvent)).not.toHaveBeenCalled()
+  })
+
+  it('says an install failed, and what kind of failure it was', async () => {
+    stubTheHappyPathAround(packageWith({ ...HONEST_MANIFEST, name: 'some-other-plugin' }))
+    await install().catch(() => undefined)
+
+    expect(vi.mocked(reportErrorEvent)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(reportErrorEvent).mock.calls[0][1]).toBe('plugin-install')
+  })
+
+  it('says nothing about failures when the plugin installed', async () => {
+    stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+    await install()
+
+    expect(vi.mocked(reportErrorEvent)).not.toHaveBeenCalled()
   })
 })

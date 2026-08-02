@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AdmZip from 'adm-zip'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import type { BrowserWindow } from 'electron'
 import type { MergedEntry } from '../registry/model'
 import type { RecoverResult } from '@bespok3d/contract'
@@ -22,6 +24,7 @@ vi.mock('../daemon-client/client', async () => {
   return { DaemonHttpError, fetchCapabilities: vi.fn(), updateBatchPackages: vi.fn(), installBatchPackages: vi.fn() }
 })
 vi.mock('../daemon-client/status', () => ({ getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }) }))
+vi.mock('../analytics', () => ({ reportEvent: vi.fn() }))
 
 import { orderedBatchPluginIds, runStoreUpdateBatch, runStoreInstallBatch } from './update-batch'
 import { loadCatalog } from '../registry'
@@ -32,6 +35,7 @@ import { streamBatchProgress } from './batch-progress'
 import { capsOrFallback } from './record-sync'
 import { DaemonHttpError, fetchCapabilities, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
 import { getManagedRecord } from '../daemon-client/status'
+import { reportEvent } from '../analytics'
 
 const LISTED_ENTRY = { name: 'idle-timeout', version: '0.2.0', trust: 'project', signer: null, registry_url: '/registry/index.json', channel: 'stable' } as MergedEntry
 const CAMERA_ENTRY = { ...LISTED_ENTRY, name: 'camera', version: '0.4.0' } as MergedEntry
@@ -311,6 +315,39 @@ describe('what a batch leaves behind for a plugin that did not install', () => {
   })
 })
 
+const TWO_PLUGINS = [{ pluginId: 'idle-timeout' }, { pluginId: 'camera' }]
+
+function stubThePrinterAnswering(rows: { pluginId: string; ok: boolean }[]): void {
+  stubTheBatchAround(packageWith(HONEST_MANIFEST))
+  const answer = { ok: rows.every((row) => row.ok), results: rows.map((row) => ({ ...row, skipped: false, reason: '', log: [] })) }
+  vi.mocked(installBatchPackages).mockResolvedValue(answer as never)
+  vi.mocked(updateBatchPackages).mockResolvedValue(answer as never)
+}
+
+function pluginsCounted(): number {
+  return vi.mocked(reportEvent).mock.calls.filter(([name]) => name === 'plugin_installed').length
+}
+
+describe('installing several plugins at once', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('counts one per plugin the printer really put on, not one for the batch', async () => {
+    stubThePrinterAnswering([{ pluginId: 'idle-timeout', ok: true }, { pluginId: 'camera', ok: true }])
+
+    await runStoreInstallBatch({} as BrowserWindow, 'printer-1', TWO_PLUGINS)
+
+    expect(pluginsCounted()).toBe(2)
+  })
+
+  it('counts only the plugins that installed when the printer could not install them all', async () => {
+    stubThePrinterAnswering([{ pluginId: 'idle-timeout', ok: true }, { pluginId: 'camera', ok: false }])
+
+    await runStoreInstallBatch({} as BrowserWindow, 'printer-1', TWO_PLUGINS)
+
+    expect(pluginsCounted()).toBe(1)
+  })
+})
+
 const EARLIER_CAMERA_FAILURE = { camera: { pluginId: 'camera', timestamp: 1, ok: false, phases: [] } }
 
 describe('what a batch keeps about plugins it did not touch', () => {
@@ -403,5 +440,55 @@ describe('a printer that will not say what it already has', () => {
     await updateBatch()
     expect(fetchCapabilities).not.toHaveBeenCalled()
     expect(capsOrFallback).toHaveBeenCalled()
+  })
+})
+
+// An install count that counted updates would read as a plugin being taken up again every time it
+// shipped a release, and one that counted the OTA recovery would spike on the day a firmware update
+// wiped a printer. Both share the code that installs; only the install batch may count.
+describe('what a batch counts as a plugin someone installed', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('counts one per plugin the printer really installed', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    await runStoreInstallBatch({} as BrowserWindow, 'printer-1', ONE_SPEC)
+    expect(reportEvent).toHaveBeenCalledTimes(1)
+    expect(reportEvent).toHaveBeenCalledWith('plugin_installed', {})
+  })
+
+  it('counts nothing when the plugin was already there and the printer skipped it', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(installBatchPackages).mockResolvedValue({ ok: true, results: [{ pluginId: 'idle-timeout', ok: true, skipped: true, reason: 'already installed', log: [] }] } as never)
+    await runStoreInstallBatch({} as BrowserWindow, 'printer-1', ONE_SPEC)
+    expect(reportEvent).not.toHaveBeenCalled()
+  })
+
+  it('counts nothing for an update, which is the same plugin the same person already had', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    await updateBatch()
+    expect(reportEvent).not.toHaveBeenCalled()
+  })
+
+  it('counts nothing when the app refused the package and the printer was never asked', async () => {
+    stubTheBatchAround(packageWith({ ...HONEST_MANIFEST, name: 'camera' }))
+    await runStoreInstallBatch({} as BrowserWindow, 'printer-1', ONE_SPEC)
+    expect(installBatchPackages).not.toHaveBeenCalled()
+    expect(reportEvent).not.toHaveBeenCalled()
+  })
+
+  it('counts nothing when the printer refuses the install outright, mid-print or off the network', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(installBatchPackages).mockRejectedValue(new Error('a print is running'))
+    await runStoreInstallBatch({} as BrowserWindow, 'printer-1', ONE_SPEC).catch(() => undefined)
+    expect(reportEvent).not.toHaveBeenCalled()
+  })
+
+  // The recovery that re-applies every plugin after a firmware update is its own daemon call and
+  // never enters this file, so nothing here can prove it stays uncounted. Reading the two places it
+  // is triggered from is what fails the day someone counts it.
+  it('counts nothing for the recovery that re-applies plugins after a firmware update', () => {
+    const recoveryCallers = ['./handlers.ts', '../ops/printer-ops.ts'].map((path) => readFileSync(join(__dirname, path), 'utf-8'))
+
+    expect(recoveryCallers.some((source) => source.includes('reportEvent'))).toBe(false)
   })
 })

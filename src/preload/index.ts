@@ -16,6 +16,7 @@ import { registryApi } from './registry'
 import { localStoreApi } from './local-store'
 import { devToolsApi } from './dev-tools'
 import { gitHostApi } from './git-host'
+import { analyticsApi } from './analytics'
 
 const b3dAPI = {
   platform: process.platform,
@@ -42,6 +43,7 @@ const b3dAPI = {
   localStore: localStoreApi,
   devTools: devToolsApi,
   gitHost: gitHostApi,
+  analytics: analyticsApi,
 }
 
 // The single source of truth for the renderer's window.b3d surface: env.d.ts binds Window['b3d'] to

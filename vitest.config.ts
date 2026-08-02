@@ -4,7 +4,8 @@ import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
 
 export default defineConfig({
-  define: { __APP_VERSION__: '"test"' },
+  // A test run is keyless by construction, so no test can reach the analytics host even by accident.
+  define: { __APP_VERSION__: '"test"', __ANALYTICS_PROJECT_KEY__: '""' },
   // Plugin docs are imported as raw strings via import.meta.glob('**/doc/*.md', {query:'?raw'}). Mark
   // .md as an asset so Vite never runs JS import-analysis on it (which crashes the --changed run when
   // a catalog-importing test is in the changed set; the full run already tolerates it).

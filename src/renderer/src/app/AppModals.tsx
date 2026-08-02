@@ -7,6 +7,7 @@ import { ConfirmActionDialog } from '../components/common/overlay/ConfirmActionD
 import { BatchOpModal } from '../components/batch-ops'
 import { AddPrinter } from '../components/add-printer'
 import { UpdateModal } from '../components/app-update/UpdateModal'
+import { UsageReportingRequest } from '../components/settings/panes/usage-reporting/UsageReportingRequest'
 import { InstallGateModals } from '../components/install-gate'
 import { UpdateConfirmGate } from '../components/update-confirm/UpdateConfirmGate'
 import { useAppUpdate } from '../components/app-update/useAppUpdate'
@@ -25,6 +26,7 @@ export function AppModals({ actions, discovered, existingPrinters }: { actions: 
 
   return (
     <>
+      <UsageReportingRequest />
       {appUpdate.showModal && appUpdate.update && (
         <UpdateModal
           update={appUpdate.update}

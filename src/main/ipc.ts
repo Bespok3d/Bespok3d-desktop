@@ -31,6 +31,8 @@ import { registerPrinterOperationHandlers } from './ops/printer-ops'
 import { registerAccessHandlers } from './ops/access-ops'
 import { checkWriteLayer } from './ops/daemon-ops'
 import { registerStoreHandlers } from './store/handlers'
+import { reportRenderFailure } from './analytics/errors'
+import { setAnalyticsConsent, usageReportingConsent } from './analytics/consent'
 import { runStoreUninstall } from './store/uninstall'
 import { freshestListedVersion } from './store/listed-version'
 import { buildSession } from './dev-tools/patch-engine'
@@ -247,4 +249,17 @@ export function registerIpc(getMainWindow: () => BrowserWindow): void {
   registerRegistryHandlers()
   registerLocalStoreHandlers(getMainWindow)
   registerDevToolsHandlers()
+  registerAnalyticsHandlers()
+}
+
+// The window's one line to usage reporting. It hands over a class name and nothing else, and main
+// decides what that becomes: reportRenderFailure cleans the string and pins the area itself.
+//
+// Consent is written here rather than through settings:set on purpose: the answer is the one thing
+// that decides whether anything is sent at all, so it is written through the analytics code that
+// reads it rather than through the general settings door any window can push a value through.
+function registerAnalyticsHandlers(): void {
+  ipcMain.handle('analytics:renderFailure', (_ev, errorClass) => reportRenderFailure(errorClass))
+  ipcMain.handle('analytics:consent', () => usageReportingConsent())
+  ipcMain.handle('analytics:setConsent', (_ev, granted: boolean) => setAnalyticsConsent(granted))
 }

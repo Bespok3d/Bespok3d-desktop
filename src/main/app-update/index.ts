@@ -4,6 +4,7 @@ import { app, shell, type BrowserWindow } from 'electron'
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
+import { reportEvent } from '../analytics'
 import { loadSettings, saveSettings, type RepoCoords } from '../settings'
 import { autoUpdateFeed } from './feed'
 import { fetchPublishedReleases, fetchReleaseInstallers, downloadPublicAsset } from './public-releases'
@@ -210,8 +211,17 @@ export async function rollbackToRelease(tag: string): Promise<RollbackResult> {
 export function recordRunVersion(): void {
   const current = app.getVersion()
   const previous = loadSettings().lastRunVersion
-  if (previous && previous !== current) appliedVersion = current
+  if (previous && previous !== current) noteVersionChange(previous, current)
   saveSettings({ lastRunVersion: current })
+}
+
+// The one place that decides the version moved, so the confirmation the user sees and the usage event
+// can never disagree. A first run has no previous version and therefore reaches neither: a brand-new
+// install is never counted as an update. A rollback lands here too, and previous_version is what says
+// which way it went.
+function noteVersionChange(previous: string, current: string): void {
+  appliedVersion = current
+  reportEvent('app_updated', { previous_version: previous })
 }
 
 // Returns the version we landed on if it changed since last run, once, then clears it.

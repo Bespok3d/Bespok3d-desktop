@@ -10,6 +10,15 @@ const { version } = require('./package.json')
 
 export default defineConfig({
   main: {
+    // The project token travels in the build, not in the user's environment. A checkout whose shell
+    // has no token builds an app that is inert rather than one that fails: the empty string is what
+    // the gate reads on any machine but the release one. This is the write-only ingest token that
+    // every install is meant to carry, NEVER the owner's `phx_` configuration key: that one can read
+    // and rewrite the whole project, and anything baked into a build is readable by anyone who has
+    // the build.
+    define: {
+      __ANALYTICS_PROJECT_TOKEN__: JSON.stringify(process.env.BESPOK3D_POSTHOG_PROJECT_TOKEN ?? ''),
+    },
     resolve: {
       alias: {
         '@adapter-sdk': resolve(__dirname, 'src/main/adapter-loader/index.ts'),

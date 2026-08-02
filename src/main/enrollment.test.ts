@@ -8,6 +8,8 @@ import type { EnrollStep } from './adapter-loader'
 vi.mock('./ssh', () => ({ connect: vi.fn(), createPersistentSession: vi.fn() }))
 vi.mock('./adapter-loader', () => ({ getAdapter: vi.fn() }))
 vi.mock('./printers', () => ({ updatePrinter: vi.fn() }))
+vi.mock('./analytics', () => ({ reportEvent: vi.fn() }))
+vi.mock('./analytics/errors', () => ({ reportErrorEvent: vi.fn() }))
 vi.mock('./keys', () => ({ listKeys: vi.fn().mockReturnValue([]) }))
 vi.mock('./settings', () => ({
   loadSettings: () => ({ pgpEnabled: false, clientId: 'test-client' }),
@@ -18,7 +20,10 @@ import { checkSsh, enrollPrinter } from './enrollment'
 import { connect, createPersistentSession } from './ssh'
 import { getAdapter } from './adapter-loader'
 import { updatePrinter } from './printers'
+import { reportEvent } from './analytics'
+import { reportErrorEvent } from './analytics/errors'
 
+const mockReportEvent = vi.mocked(reportEvent)
 const mockConnect = vi.mocked(connect)
 const mockCreatePersistentSession = vi.mocked(createPersistentSession)
 const mockGetAdapter = vi.mocked(getAdapter)
@@ -123,5 +128,43 @@ describe('enrollPrinter', () => {
 
     expect(retryStep.run).toHaveBeenCalledTimes(2)
     expect(enrolledPatch()).toMatchObject({ status: 'managed' })
+  })
+})
+
+describe('what counts as an enrolled printer', () => {
+  it('counts an enrollment only once the printer is actually enrolled', async () => {
+    mockGetAdapter.mockReturnValue(mockAdapter([mockStep('step-a')]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS)
+
+    expect(mockReportEvent).toHaveBeenCalledTimes(1)
+    expect(mockReportEvent).toHaveBeenCalledWith('printer_enrolled', {})
+  })
+
+  it('counts nothing when a step refused, because the user has no enrolled printer', async () => {
+    mockGetAdapter.mockReturnValue(mockAdapter([mockStep('step-a', vi.fn().mockRejectedValue(new Error('SSH failed')))]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS)
+
+    expect(mockReportEvent).not.toHaveBeenCalled()
+  })
+})
+
+describe('an enrollment that did not work', () => {
+  it('says a printer failed to enrol, and what kind of failure it was', async () => {
+    mockGetAdapter.mockReturnValue(mockAdapter([mockStep('step-a', vi.fn().mockRejectedValue(new TypeError('SSH failed')))]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS)
+
+    expect(vi.mocked(reportErrorEvent)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(reportErrorEvent).mock.calls[0][1]).toBe('enrollment')
+  })
+
+  it('says nothing about failures when the printer enrolled', async () => {
+    mockGetAdapter.mockReturnValue(mockAdapter([mockStep('step-a')]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS)
+
+    expect(vi.mocked(reportErrorEvent)).not.toHaveBeenCalled()
   })
 })
