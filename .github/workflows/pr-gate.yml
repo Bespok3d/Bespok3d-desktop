@@ -7,11 +7,9 @@ name: pr-gate
 # live in lib_bespok3d, so that sibling is checked out beside the app at the path check.sh expects
 # (../lib_bespok3d). check.sh installs the app's own node_modules itself.
 #
-# lib_bespok3d is private, so a token that can read it is needed. This repo needs MAIN_INDEX_TOKEN as a
-# secret (the other repos already carry it), or make lib_bespok3d public.
-#
-# Go-public note: fork PRs get no secret, so the lib_bespok3d checkout fails for external contributors.
-# Before flipping public, make lib_bespok3d public or fetch it with a read-only token.
+# lib_bespok3d is public, so that checkout carries no token. A token here would break every fork pull
+# request, because a fork receives an empty secrets context and the checkout would die before the
+# contributor's code is read.
 on:
   pull_request:
   push:
@@ -32,7 +30,6 @@ jobs:
           # can push to lib_bespok3d changes what this gate executes. Bump this SHA when the shared
           # detectors move. The workflow-pinning guard fails the gate on any non-40-hex ref here.
           ref: 94724bda4ce0fc13438460601a7177ec194bd12a
-          token: ${{ secrets.MAIN_INDEX_TOKEN }}
           path: lib_bespok3d
       - uses: actions/setup-node@v4
         with:

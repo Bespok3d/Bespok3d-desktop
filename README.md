@@ -42,7 +42,7 @@ build is not one we chase. If you have an Apple Silicon Mac, take the `-arm64` b
 Intel one will run.
 
 Open the app and connect your GitHub account once (Settings, Git Host). That is what lets you
-install plugins and lets the app fetch its own updates from this private repo.
+install plugins.
 
 ## Updates
 
@@ -96,7 +96,7 @@ repos in the same workspace:
 
 ## Notes
 
-- This repo is private. Testers need to be granted access to see the releases.
+- This repo is public. Anyone can see the releases and download a build; no access grant is needed.
 - A build is a beta because its version says `beta`, not because of how it was published. The app's
   updater reads the version; GitHub's prerelease flag only decides what the releases page calls Latest.
 
