@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useI18n } from '../../../i18n/context'
 import cx from '../../../utils/cx'
 import type { TrustTier, ReleaseChannel } from '../../../data/types'
-import { IconSearch, IconGrid, IconListView, IconFilter, IconArrowUp, IconRefresh, IconCheckCircle } from '../../../design-system/icons'
+import { IconSearch, IconGrid, IconListView, IconFilter, IconArrowUp, IconRefresh, IconCheckCircle, IconClose } from '../../../design-system/icons'
 import { Button } from '../../common/Button'
 import { Flyout } from '../../common/overlay/Flyout'
 import type { InstallBlock } from '../panel/install-gate'
@@ -94,9 +94,14 @@ export function Toolbar({ query, count, layout, filtersOpen, filtersActive, sort
         <IconFilter size={15} />
         {filtersActive && <span className="filter-active-dot" />}
       </Button>
-      <div className="search">
+      <div className={cx('search', query !== '' && 'has-query')}>
         <span className="search-icon"><IconSearch size={16} /></span>
         <input type="text" placeholder={t('filter.search')} value={query} onChange={(changeEvent) => onQuery(changeEvent.target.value)} />
+        {query !== '' && (
+          <Button icon variant="ghost" size="sm" className="search-clear" onClick={() => onQuery('')} title={t('filter.search_clear')} aria-label={t('filter.search_clear')}>
+            <IconClose size={14} />
+          </Button>
+        )}
       </div>
       <span className="plugin-count">{t('store.plugin_count', { count })}</span>
       {selectAvailable && (

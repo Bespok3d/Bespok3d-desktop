@@ -10,6 +10,7 @@
   "header.installed_count": "{count} installiert",
   "header.plugin_count": "{count} Plugins",
   "filter.search": "Plugins suchen…",
+  "filter.search_clear": "Suche löschen",
   "filter.all": "Alle",
   "filter.printer": "Drucker",
   "filter.printer_specific": "Druckerspezifisch",

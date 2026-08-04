@@ -10,6 +10,7 @@
   "header.installed_count": "{count} 個インストール済み",
   "header.plugin_count": "{count} 個のプラグイン",
   "filter.search": "プラグインを検索…",
+  "filter.search_clear": "検索をクリア",
   "filter.all": "すべて",
   "filter.printer": "プリンター",
   "filter.printer_specific": "プリンター専用",
