@@ -47,6 +47,21 @@ describe('PluginStore filtering', () => {
     expect(screen.queryByText('Gamma')).not.toBeInTheDocument()
   })
 
+  it('clears the search from the clear button', async () => {
+    var { user } = renderStore()
+    await screen.findByText('Alpha')
+    expect(screen.queryByRole('button', { name: en('filter.search_clear') })).not.toBeInTheDocument()
+
+    await user.type(screen.getByPlaceholderText(en('filter.search')), 'Beta')
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: en('filter.search_clear') }))
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+    expect(screen.getByText('Gamma')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(en('filter.search'))).toHaveValue('')
+    expect(screen.queryByRole('button', { name: en('filter.search_clear') })).not.toBeInTheDocument()
+  })
+
   it('filters by category', async () => {
     var { user } = renderStore()
     await screen.findByText('Alpha')

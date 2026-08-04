@@ -10,6 +10,7 @@
   "header.installed_count": "{count}개 설치됨",
   "header.plugin_count": "플러그인 {count}개",
   "filter.search": "플러그인 검색…",
+  "filter.search_clear": "검색 지우기",
   "filter.all": "전체",
   "filter.printer": "프린터",
   "filter.printer_specific": "프린터 전용",

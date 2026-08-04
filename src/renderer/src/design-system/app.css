@@ -570,6 +570,15 @@ textarea {
   color: var(--ink-3);
   pointer-events: none;
 }
+.search .search-clear {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.search.has-query input {
+  padding-right: 36px;
+}
 
 .filter-group {
   display: flex;

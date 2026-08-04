@@ -10,6 +10,7 @@
   "header.installed_count": "{count} installed",
   "header.plugin_count": "{count} plugins",
   "filter.search": "Search plugins…",
+  "filter.search_clear": "Clear search",
   "filter.all": "All",
   "filter.printer": "Printer",
   "filter.printer_specific": "Printer-specific",

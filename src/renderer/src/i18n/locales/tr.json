@@ -10,6 +10,7 @@
   "header.installed_count": "{count} yüklü",
   "header.plugin_count": "{count} eklenti",
   "filter.search": "Eklenti ara…",
+  "filter.search_clear": "Aramayı temizle",
   "filter.all": "Tümü",
   "filter.printer": "Yazıcı",
   "filter.printer_specific": "Yazıcıya özel",

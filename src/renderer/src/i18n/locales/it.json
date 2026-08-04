@@ -10,6 +10,7 @@
   "header.installed_count": "Installati: {count}",
   "header.plugin_count": "{count} plugin",
   "filter.search": "Cerca plugin…",
+  "filter.search_clear": "Cancella ricerca",
   "filter.all": "Tutti",
   "filter.printer": "Stampante",
   "filter.printer_specific": "Specifici per stampante",
