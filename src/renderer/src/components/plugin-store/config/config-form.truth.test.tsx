@@ -22,7 +22,7 @@ const PLUGIN = makePlugin({ id: 'spoolman', config: FIELDS })
 function installedArea() {
   return (
     <PanelConfigArea
-      plugin={PLUGIN} installed printerId="printer-1" otherUiPorts={[]}
+      plugin={PLUGIN} installed printerId="printer-1"
       appliedVars={undefined} appliedVarsAt={undefined}
       multiVars={{}} onMultiVars={() => {}} onApplied={() => {}}
     />
@@ -43,7 +43,7 @@ describe('installed Config tab truth ladder', () => {
   it('tier 2: without a live read, shows what this computer sent with the visible as-sent marker', async () => {
     const { container } = setup(
       <PanelConfigArea
-        plugin={PLUGIN} installed printerId="printer-1" otherUiPorts={[]}
+        plugin={PLUGIN} installed printerId="printer-1"
         appliedVars={{ SPOOLMAN_SERVER: 'http://applied:8000', SPOOLMAN_MODE: 'auto' }} appliedVarsAt="2026-07-01T09:00:00.000Z"
         multiVars={{}} onMultiVars={() => {}} onApplied={() => {}}
       />,

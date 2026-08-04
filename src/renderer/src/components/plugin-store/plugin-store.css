@@ -766,7 +766,9 @@ button.install-zone:hover {
   gap: var(--space-2);
 }
 
-.config-make-primary {
+.config-port-roles {
+  display: flex;
+  gap: var(--space-1);
   align-self: flex-start;
   margin-top: var(--space-1);
 }
@@ -787,8 +789,48 @@ button.install-zone:hover {
   color: var(--ink-3);
 }
 
+/* A whole-address field: the protocol picker sits in front of the address, on one line, and the
+   address itself takes whatever room is left. */
+.config-url {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* the picker holds one short word, so it takes its own width and the address takes the rest */
+.config-url .config-select {
+  flex: 0 0 auto;
+  width: auto;
+}
+.config-url .config-input {
+  flex: 1;
+  min-width: 0;
+}
+
 .config-error {
   color: var(--err-fg);
+  font-size: 0.85em;
+  margin: var(--space-1) 0 0;
+}
+
+/* Under an address field: whether this computer could reach what was typed. Reaching it is good news
+   and reaching nothing is a warning, never an error, because the printer may reach what we cannot. */
+.config-reach {
+  color: var(--ink-3);
+  font-size: 0.85em;
+  margin: var(--space-1) 0 0;
+}
+
+.config-reach-ok {
+  color: var(--ok-fg);
+}
+
+.config-reach-warn {
+  color: var(--warn-fg);
+}
+
+/* Told before you commit: the web UI that will be moved off the port being claimed. */
+.config-swap-note {
+  color: var(--ink-3);
   font-size: 0.85em;
   margin: var(--space-1) 0 0;
 }

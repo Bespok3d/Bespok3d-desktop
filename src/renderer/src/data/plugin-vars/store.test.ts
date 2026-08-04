@@ -54,7 +54,8 @@ describe('effectiveScope', () => {
   })
 
   it('a legacy wire field (no scope key) is stamped global at the boundary before reaching here', () => {
-    expect(withExplicitScope({ key: 'SPOOLMAN_SERVER', label: 'Spoolman server', type: 'text' })).toEqual(makeField())
+    expect(withExplicitScope({ key: 'SPOOLMAN_SERVER', label: 'Spoolman server', type: 'text' }))
+      .toEqual({ ...makeField(), type: 'address' })
     expect(withExplicitScope(makeField({ scope: 'printer' })).scope).toBe('printer')
   })
 

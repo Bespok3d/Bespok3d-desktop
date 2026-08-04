@@ -262,6 +262,7 @@ export function makeB3dMock(overrides: B3dOverrides = {}): B3dHarness {
     keys: mockKeys(overrides.keys), printers: mockPrinters(channels, overrides.printers),
     access: mockAccess(overrides.access), store: mockStore(channels, overrides.store),
     mdns: { start: voidFn(), stop: voidFn(), onFound: sub(channels.found), ...overrides.mdns },
+    net: { probeService: async () => false, probeServiceUrl: async () => null, ...overrides.net },
     registry: mockRegistry(overrides.registry), localStore: mockLocalStore(channels, overrides.localStore),
     devTools: mockDevTools(overrides.devTools), gitHost: mockGitHost(overrides.gitHost),
     analytics: mockAnalytics(overrides.analytics),

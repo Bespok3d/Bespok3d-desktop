@@ -62,6 +62,18 @@ describe('PluginStore filtering', () => {
     expect(screen.queryByRole('button', { name: en('filter.search_clear') })).not.toBeInTheDocument()
   })
 
+  it('clears the search when Escape is pressed in the field', async () => {
+    var { user } = renderStore()
+    await screen.findByText('Alpha')
+
+    await user.type(screen.getByPlaceholderText(en('filter.search')), 'Beta')
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    expect(screen.getByPlaceholderText(en('filter.search'))).toHaveValue('')
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+  })
+
   it('filters by category', async () => {
     var { user } = renderStore()
     await screen.findByText('Alpha')

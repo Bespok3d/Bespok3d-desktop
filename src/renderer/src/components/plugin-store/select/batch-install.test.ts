@@ -61,4 +61,20 @@ describe('buildInstallSpecs', () => {
     const plugins = [makePlugin({ id: 'leaf', deps: ['core'] }), makePlugin({ id: 'core' })]
     expect(buildInstallSpecs(plugins, ['leaf'], ['core'], {})).toEqual([{ pluginId: 'leaf', vars: {}, depIds: [] }])
   })
+
+  function webUi(id: string) {
+    return makePlugin({ id, config: [{ key: `${id.toUpperCase()}_PORT`, label: 'Port', type: 'http-port', scope: 'global', default: '80' }] })
+  }
+
+  it('gives each web UI installed in one go a port of its own', () => {
+    const plugins = [webUi('mainsail'), webUi('fluidd')]
+    const specs = buildInstallSpecs(plugins, ['mainsail', 'fluidd'], [], {})
+    expect(specs.map((spec) => spec.vars)).toEqual([{ MAINSAIL_PORT: '80' }, { FLUIDD_PORT: '81' }])
+  })
+
+  it('starts a batch member above the port an installed web UI already holds', () => {
+    const plugins = [webUi('mainsail'), webUi('fluidd')]
+    const specs = buildInstallSpecs(plugins, ['fluidd'], ['mainsail'], { MAINSAIL_PORT: '80' })
+    expect(specs[0].vars).toEqual({ FLUIDD_PORT: '81' })
+  })
 })

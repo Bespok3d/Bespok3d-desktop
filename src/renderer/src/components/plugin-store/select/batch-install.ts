@@ -4,6 +4,7 @@ import type { Plugin, PluginConfigField } from '../../../data/types'
 import type { PluginVarsSave } from '../../../data/plugin-vars'
 import type { TFunction } from '../../../i18n'
 import { resolveMissingDeps } from '../../../data/deps'
+import { assignPort, httpPortField, uiPorts } from '../../../data/ports'
 import { initialConfigValues, configComplete } from '../config/config-form'
 import { pluginInstallVars } from '../update-all'
 import { splitByBatchGate } from '../batch-gate'
@@ -73,11 +74,43 @@ export function buildInstallSpecs(
   installedIds: string[],
   savedVars: Record<string, string>,
 ): PluginUpdateSpec[] {
-  return plugins
-    .filter((plugin) => selectedIds.includes(plugin.id))
-    .map((plugin) => ({
-      pluginId: plugin.id,
-      vars: pluginInstallVars(plugin, savedVars),
-      depIds: resolveMissingDeps(plugins, plugin.id, installedIds),
-    }))
+  const members = plugins.filter((plugin) => selectedIds.includes(plugin.id))
+  const portsHeldByInstalledUis = Object.values(uiPorts(plugins, installedIds, savedVars))
+  const built = members.reduce((state: BatchSpecs, plugin: Plugin) => {
+    const vars = installVarsOnAFreePort(plugin, savedVars, state.portsTaken)
+    const spec = { pluginId: plugin.id, vars, depIds: resolveMissingDeps(plugins, plugin.id, installedIds) }
+
+    return { specs: [...state.specs, spec], portsTaken: [...state.portsTaken, ...specPort(plugin, vars)] }
+  }, { specs: [], portsTaken: portsHeldByInstalledUis })
+
+  return built.specs
+}
+
+interface BatchSpecs {
+  specs: PluginUpdateSpec[]
+  portsTaken: number[]
+}
+
+// A batch member's web port: the one it would install with while that port is free, otherwise the
+// next free one. A single install is seeded the same way by the panel's form; a batch has no form,
+// so it is done here, and no member ever lands on a port another web UI already holds.
+function installVarsOnAFreePort(
+  plugin: Plugin,
+  savedVars: Record<string, string>,
+  portsTaken: number[],
+): Record<string, string> {
+  const vars = pluginInstallVars(plugin, savedVars)
+  const portField = httpPortField(plugin)
+  if (!portField) return vars
+  const wanted = Number(vars[portField.key])
+  const port = Number.isFinite(wanted) && wanted > 0 && !portsTaken.includes(wanted) ? wanted : assignPort(portsTaken)
+
+  return { ...vars, [portField.key]: String(port) }
+}
+
+function specPort(plugin: Plugin, vars: Record<string, string>): number[] {
+  const portField = httpPortField(plugin)
+  if (!portField) return []
+
+  return [Number(vars[portField.key])]
 }

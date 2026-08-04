@@ -10,7 +10,7 @@ function t(key: string, params?: Record<string, string | number>): string {
 }
 
 const READY: InstallBlockInput = {
-  printerId: 'p1', configReady: true, missingFields: [], portError: undefined,
+  printerId: 'p1', configReady: true, missingFields: [], portProblem: null,
   conflicts: [], printActive: false, blockedActions: [],
 }
 
@@ -42,8 +42,8 @@ describe('installBlockReason', () => {
     expect(block?.detail).toContain('Spoolman server address')
   })
 
-  it('surfaces the raw port error as the brief', () => {
-    const block = installBlockReason(t, { ...READY, portError: 'Port 80 is already used by another UI.' })
-    expect(block?.brief).toBe('Port 80 is already used by another UI.')
+  it('names the port that cannot be used as the brief', () => {
+    const block = installBlockReason(t, { ...READY, portProblem: { key: 'store.port_reserved', params: { port: 7125 } } })
+    expect(block?.brief).toBe('store.port_reserved {"port":7125}')
   })
 })

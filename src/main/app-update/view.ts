@@ -54,7 +54,15 @@ export interface ElectronUpdateInfo {
   releaseNotes?: string | ElectronReleaseNote[] | null
 }
 
-export function updateStrategyForPlatform(platform: NodeJS.Platform): UpdateStrategy {
+export function updateStrategyForPlatform(
+  platform: NodeJS.Platform,
+  flatpakSandboxId: string | undefined,
+): UpdateStrategy {
+  // A Flatpak install lives in a read-only sandbox that the app cannot rewrite, and it is updated by
+  // flatpak itself, so the in-app installer would only fail loudly. The sandbox always sets
+  // FLATPAK_ID, so its presence is the test. Those users get the download page instead.
+  if (flatpakSandboxId) return 'openDownload'
+
   // Windows/Linux update via electron-updater; macOS too, now that its builds are signed + notarized,
   // so Squirrel.Mac accepts the update. openDownload remains only for any unsupported platform.
   return platform === 'darwin' || platform === 'win32' || platform === 'linux' ? 'autoInstall' : 'openDownload'

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Plugin } from '../../../data/types'
 import type { ScopeChoice, ScopeFlipHandler } from '../../../data/plugin-vars'
+import type { PortClaim } from '../../../data/ports'
 import { useI18n } from '../../../i18n/context'
 import { useAsyncResource } from '../../common/hooks/useAsyncResource'
 import { PluginConfigSection } from './config-section'
@@ -23,16 +24,18 @@ interface InstalledConfigProps {
   // Per-field scope choices (panel-owned state) and their change handler, for the edit-mode control.
   scopes?: Record<string, ScopeChoice>
   onScopeChange?: ScopeFlipHandler
-  otherUiPorts: number[]
+  portClaim?: PortClaim
+  // What is on screen right now, so the panel's own buttons judge that and not the values the plugin
+  // was installed with: an address corrected here must free the version switch straight away.
+  onValuesChange: (values: Record<string, string>) => void
   onApplied: (values: Record<string, string>) => void
-  onMakePrimary?: () => void
 }
 
 // The installed Config tab: displays what the printer actually runs, never the app-global defaults
 // map (which is what this computer would send NEXT, not what was applied). Reads the daemon's
 // persisted vars as tier 1; a same-session apply immediately becomes the freshest tier-2 record
 // while the live value is re-read.
-function InstalledConfigArea({ plugin, printerId, printerSelected, appliedVars, appliedVarsAt, scopes, onScopeChange, otherUiPorts, onApplied, onMakePrimary }: InstalledConfigProps) {
+function InstalledConfigArea({ plugin, printerId, printerSelected, appliedVars, appliedVarsAt, scopes, onScopeChange, portClaim, onValuesChange, onApplied }: InstalledConfigProps) {
   const { t } = useI18n()
   const pluginId = plugin.id
   const [sessionApplied, setSessionApplied] = useState<{ values: Record<string, string>; at: string } | null>(null)
@@ -62,28 +65,28 @@ function InstalledConfigArea({ plugin, printerId, printerSelected, appliedVars, 
       pluginId={pluginId}
       scopes={scopes}
       onScopeChange={onScopeChange}
-      otherUiPorts={otherUiPorts}
+      portClaim={portClaim}
+      onValuesChange={onValuesChange}
       onApplied={(values) => {
         setSessionApplied({ values, at: new Date().toISOString() })
         liveConfig.reload()
         onApplied(values)
       }}
-      onMakePrimary={onMakePrimary}
     />
   )
 }
 
 // The plugin detail panel's Config tab body: the pre-install editable form feeding the install vars,
 // the truth-ladder view once installed, or nothing when the plugin declares no config.
-export function PanelConfigArea({ plugin, installed, printerId, printerSelected, appliedVars, appliedVarsAt, multiVars, scopes, onScopeChange, otherUiPorts, onMultiVars, onApplied, onMakePrimary }: {
+export function PanelConfigArea({ plugin, installed, printerId, printerSelected, appliedVars, appliedVarsAt, multiVars, scopes, onScopeChange, portClaim, onMultiVars, onApplied }: {
   plugin: Plugin; installed: boolean; printerId?: string; printerSelected?: boolean
   appliedVars?: Record<string, string>; appliedVarsAt?: string
   multiVars: Record<string, string>
   scopes?: Record<string, ScopeChoice>
   onScopeChange?: ScopeFlipHandler
-  otherUiPorts: number[]
+  portClaim?: PortClaim
   onMultiVars: (values: Record<string, string>) => void
-  onApplied: (values: Record<string, string>) => void; onMakePrimary?: () => void
+  onApplied: (values: Record<string, string>) => void
 }) {
   const multiFields = plugin.config
   if (!multiFields) return null
@@ -91,8 +94,8 @@ export function PanelConfigArea({ plugin, installed, printerId, printerSelected,
     return (
       <InstalledConfigArea
         plugin={plugin} printerId={printerId} printerSelected={printerSelected} appliedVars={appliedVars} appliedVarsAt={appliedVarsAt}
-        scopes={scopes} onScopeChange={onScopeChange}
-        otherUiPorts={otherUiPorts} onApplied={onApplied} onMakePrimary={onMakePrimary}
+        scopes={scopes} onScopeChange={onScopeChange} onValuesChange={onMultiVars}
+        portClaim={portClaim} onApplied={onApplied}
       />
     )
   }
@@ -107,10 +110,9 @@ export function PanelConfigArea({ plugin, installed, printerId, printerSelected,
       pluginId={plugin.id}
       scopes={scopes}
       onScopeChange={onScopeChange}
-      otherUiPorts={otherUiPorts}
+      portClaim={portClaim}
       onValuesChange={onMultiVars}
       onApplied={onApplied}
-      onMakePrimary={onMakePrimary}
     />
   )
 }

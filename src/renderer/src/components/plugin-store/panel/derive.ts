@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin, PluginSource, ReleaseChannel } from '../../../data/types'
 import type { TFunction } from '../../../i18n'
+import type { PortProblem } from '../../../data/ports'
+import { configAddressError } from '../../../data/address'
 import { effectiveVariant } from '../../../data/channels'
 import { isInstalledVariant } from './tabs/sources'
 import { configComplete, missingRequiredFields } from '../config/config-form'
@@ -63,13 +65,15 @@ export function pluginAsPickedVersion(plugin: Plugin, picked: PluginSource | und
 // component body so the panel reads as a flat list of derived values.
 export function installGate(t: TFunction, plugin: Plugin, state: {
   multiVars: Record<string, string>; printerId?: string
-  conflicts: string[]; portError: string | null; printActive: boolean; blockedActions: string[]
+  conflicts: string[]; portProblem: PortProblem | null; printActive: boolean; blockedActions: string[]
 }): { block: InstallBlock | null; canInstall: boolean } {
   const multiFields = plugin.config
   const configReady = multiFields ? configComplete(multiFields, state.multiVars) : true
   const missingFields = multiFields ? missingRequiredFields(multiFields, state.multiVars) : []
-  const canInstall = !!state.printerId && configReady && state.conflicts.length === 0 && !state.portError && !state.printActive
-  const block = installBlockReason(t, { ...state, configReady, missingFields })
+  const addressError = multiFields ? configAddressError(multiFields, state.multiVars) : null
+  const canInstall = !!state.printerId && configReady && state.conflicts.length === 0
+    && !state.portProblem && !addressError && !state.printActive
+  const block = installBlockReason(t, { ...state, configReady, missingFields, addressError })
 
   return { block, canInstall }
 }

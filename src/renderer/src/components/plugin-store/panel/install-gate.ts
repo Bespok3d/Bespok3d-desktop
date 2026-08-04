@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { TFunction } from '../../../i18n'
+import type { PortProblem } from '../../../data/ports'
 import { blockedActionsSummary } from './blocked-actions'
 
 // Why the Install button is disabled, in the 3-tier shape the rest of the app uses: a plain-language
@@ -16,7 +17,8 @@ export interface InstallBlockInput {
   printerId?: string
   configReady: boolean
   missingFields: string[]
-  portError?: string | null
+  portProblem?: PortProblem | null
+  addressError?: string | null
   conflicts: string[]
   printActive: boolean
   blockedActions: string[]
@@ -41,8 +43,11 @@ export function installBlockReason(t: TFunction, input: InstallBlockInput): Inst
 
     return { brief: t('store.block.config.brief'), detail: t('store.block.config.detail', { fields }), action: 'configure' }
   }
-  if (input.portError) {
-    return { brief: input.portError, detail: t('store.block.port.detail') }
+  if (input.portProblem) {
+    return { brief: t(input.portProblem.key, input.portProblem.params), detail: t('store.block.port.detail') }
+  }
+  if (input.addressError) {
+    return { brief: t(input.addressError), detail: t('store.block.address.detail'), action: 'configure' }
   }
 
   return null

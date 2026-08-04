@@ -1,62 +1,55 @@
-# Bespok3d is open
+# Two traps from the first public beta are gone
 
-This is the first release anybody can use. Bespok3d is a desktop app and a small daemon that lives on
-your printer. You browse a shelf of plugins, you click install, and the printer restarts with the
-thing running. Your Snapmaker U1 keeps its stock Snapmaker firmware. There is nothing to flash, no
-image to write, and no SSH session to keep open.
+Both of these came from people using the beta and telling us what happened. Keep doing that.
 
-## Your printer is a Linux box you already own
+## Taking a port from Mainsail or Fluidd moves it, instead of stopping you
 
-Every Klipper printer is a small computer that happens to move a nozzle. The reason you rarely get to
-use it that way is not that it is fragile, it is that changing anything usually means replacing the
-whole firmware and then waiting for whoever made it to bless the next version. Bespok3d takes the
-other route: it adds files next to what the manufacturer shipped, and it never replaces it. So new
-things arrive when someone writes them, not when a release train comes through.
+With both installed, giving one of them the port the other holds ended in "port already in use" and
+nowhere to go. You had to work out which one had the port and go and change that one first.
 
-## What is on the shelf today
+Now the port you type is yours. The other interface moves to a free port, and a line under the field
+tells you which one moves and where, before you commit to anything. The move happens on the printer
+first and your own install goes out after it. Installing several web interfaces at once gives each
+one a free port of its own.
 
-Forty three plugins and seven Collections, and a Collection is just a set of plugins installed
-together so you do not have to pick them one by one.
+**Make primary** fills the field in with 80, and a new **Make secondary** hands 80 back to the other
+interface and takes its port instead. Both only change what the field shows, and nothing reaches the
+printer until you press Update config, like every other change on that form.
 
-Cameras, including the U1's built in one and USB ones. Multi tool and AFC panels. Filament tags:
-Snapmaker, OpenSpool, Anycubic, TigerTag, OpenTag3D, OpenPrintTag and plain JSON on an NDEF tag, plus
-Bambu and Creality if you bring your own keys. Spoolman. Klipper tuning, motion and TMC autotune.
-Remote access over Tailscale or ZeroTier, OctoEverywhere, a mirror of the printer screen, and a
-Prometheus exporter. And the small quality of life ones: idle timeout, human readable print times,
-purge line placement, bed mesh, timelapse, LEDs.
+A port under 80, or one the printer itself needs, is still refused, and now says why in your language
+rather than in English.
 
-Fluidd and Mainsail are both there, and both come with the multi tool panels rather than one of them
-being the second class option.
+wlodeka could not open the remote screen. Chasing that produced the Mainsail plugin fixes in 0.1.7
+and 0.1.8 as well as the port work here.
 
-## If a plugin breaks something, the printer puts itself back
+## A server address is taken exactly as you write it, and tried straight away
 
-A plugin that stops Klipper or Moonraker from coming up is disabled automatically and the printer
-comes back on its own. Its files are left alone, so nothing you configured is thrown away, and you can
-put it back in one click. This has been running against Snapmaker firmware from 1.3.0 through 1.5.2.
+Spoolman's server field took a host and a port and assumed plain http, so a Spoolman published under
+a name and a certificate could not be given to it at all: `https://spoolman.example.org/` was kept as
+`spoolman.example.org:443` and the printer was sent to `http://spoolman.example.org:443`.
 
-A firmware update wipes parts of the printer that Bespok3d needs. The app notices the daemon is gone,
-offers to restore it, and then reapplies your plugins in the right order. Anything that cannot be
-restored stays disabled with its files untouched, and the app tells you which one it was.
+The whole address is now kept exactly as you write it, protocol and all. What you type is what the
+printer gets, and nothing is rewritten. A protocol picker sits beside the field for the one part a
+bare host and port leaves out, and setting it moves nothing else about what you typed.
 
-## The part that matters most
+The address is tried from this computer as soon as you stop typing, rather than when you leave the
+field, so choosing a protocol checks it there and then. The line under the field says the service is
+reachable, or, when the server is there but will not serve that address, gives you the code it
+answered with. Nothing answering is a warning, never a block, because your computer and your printer
+are not always on the same network. An address nobody can read does block, and says so.
 
-Anyone can publish. The plugin index is open and signed, the app tells you what it could check about a
-package before you install it, and nothing is hidden from you to keep you safe. You do not need our
-permission or our index either: an app that can install a `.b3` file straight from your disk is an app
-you still control if we disappear.
+Changing the configuration of a plugin you already have works the same way, and choosing a protocol
+frees Switch version instead of leaving it greyed out.
 
-If you have already built something for your printer, a macro set, a panel patch, a script you keep
-copying back after every update, this is where it stops being yours alone. Package it, publish it,
-and the next person clicks install instead of reading your forum post twice. Bring it. That is the
-whole point of the thing.
+Fields that ask for a host or an address rather than a whole address still tidy a browser paste when
+you leave them, so `http://192.168.1.50:8000/spoolman/` becomes the address the plugin wants.
 
-## Not there yet
+maxappel99 was fighting to get his Spoolman configured, and all of the address work came out of that.
 
-There is no switch to turn SSH on, and that is on purpose: the moment there is one, the answer to
-every problem becomes "just SSH in", and the plugin format stops being the way things get done.
+## The plugin search clears in one click
 
-There is no web page served by the printer either. The desktop app already gives you all of your
-printers in one place, and a page on each printer would be one more thing to keep in sync per machine.
+Searching the store and then wanting the whole list back meant selecting the text and deleting it. A
+clear button now sits at the end of the search field whenever there is something to clear, and
+Escape clears the field while you are still typing in it.
 
-This is a beta because we are still willing to change our minds, not because something is missing.
-Tell us what breaks.
+LixNix sent this one, the first change in the app to come from outside.

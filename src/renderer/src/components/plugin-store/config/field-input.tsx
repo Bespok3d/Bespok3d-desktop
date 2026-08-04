@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PluginConfigField } from '../../../data/types'
 import { Toggle } from '../../common/Toggle'
+import { AddressField } from './address-field'
+import { UrlField } from './url-field'
 
 export function FieldInput({ field, value, onChange }: {
   field: PluginConfigField; value: string; onChange: (next: string) => void
@@ -18,6 +20,8 @@ export function FieldInput({ field, value, onChange }: {
       </select>
     )
   }
+  if (field.type === 'address') return <AddressField field={field} value={value} onChange={onChange} />
+  if (field.type === 'url') return <UrlField field={field} value={value} onChange={onChange} />
   const numeric = field.type === 'number' || field.type === 'http-port'
 
   return (

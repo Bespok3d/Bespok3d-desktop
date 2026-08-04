@@ -16,9 +16,13 @@ function release(tag: string, body = ''): ReleaseInfo {
 
 describe('updateStrategyForPlatform', () => {
   it('auto-installs on the signed desktop platforms', () => {
-    expect(updateStrategyForPlatform('darwin')).toBe('autoInstall')
-    expect(updateStrategyForPlatform('win32')).toBe('autoInstall')
-    expect(updateStrategyForPlatform('linux')).toBe('autoInstall')
+    expect(updateStrategyForPlatform('darwin', undefined)).toBe('autoInstall')
+    expect(updateStrategyForPlatform('win32', undefined)).toBe('autoInstall')
+    expect(updateStrategyForPlatform('linux', undefined)).toBe('autoInstall')
+  })
+
+  it('sends a Flatpak install to the download page, because the sandbox cannot be rewritten', () => {
+    expect(updateStrategyForPlatform('linux', 'io.bespok3d.app')).toBe('openDownload')
   })
 })
 

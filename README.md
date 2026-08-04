@@ -34,7 +34,7 @@ Grab the latest from [Releases](../../releases):
 
 - **macOS:** the `-arm64` `.dmg`, for any Mac with Apple Silicon (2020 onward). Signed and notarized.
 - **Windows:** the `Setup` `.exe`.
-- **Linux:** the `.AppImage`.
+- **Linux:** the `.AppImage`, or the `.flatpak` if the release carries one.
 
 There is also an `-x64` macOS `.dmg` for Intel Macs. It is offered, not supported: Apple is winding
 Rosetta down, the app is tested only on Apple Silicon, and a problem that appears only on the Intel
@@ -50,6 +50,8 @@ The app updates itself from this repo's Releases:
 
 - **Windows / Linux:** updates install automatically. Settings, Update lets you choose how often it
   checks and when to apply (on next quit, or restart now).
+- **Linux Flatpak:** the sandbox is read-only, so the app cannot replace itself. It tells you a new
+  version is out and points you at the download page; `flatpak update` is what installs it.
 - **macOS:** signed builds auto-install; if a build is ever unsigned the app instead points you at
   the download page.
 
@@ -82,6 +84,21 @@ Playwright suite.
 | [`doc/roadmap.md`](doc/roadmap.md)                       | where the project is, what its thinking has settled, and what it is built to grow into       |
 | [`doc/for-manufacturers.md`](doc/for-manufacturers.md)   | what a printer manufacturer can do with Bespok3d, and the architecture that carries each one |
 | [`doc/stories/`](doc/stories/README.md)                  | every user story the project has, the only copy of each, with the repo that owns it          |
+
+### Building the Linux Flatpak
+
+`npm run package:flatpak` writes `dist/release/Bespok3d-<version>.flatpak`. It runs only on a Linux
+host with `flatpak-builder` installed, plus the Freedesktop 24.08 runtime and SDK and the Electron
+base app:
+
+```sh
+flatpak install flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08 \
+                        org.electronjs.Electron2.BaseApp//24.08
+npm run package:flatpak
+```
+
+`npm run package:linux` and the release cut stay AppImage-only, so a macOS cut is never blocked by a
+tool that host cannot have. `./scripts/release.sh` adds the Flatpak by itself when it runs on Linux.
 
 ### Checking out on its own
 

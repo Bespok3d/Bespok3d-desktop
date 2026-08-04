@@ -57,6 +57,7 @@ test('the buttons point at every installer of the version, and the page says tha
   assert.match(generated.page, new RegExp(`href="${base}/Bespok3d-Setup-0\\.7\\.0-beta\\.exe"`))
   assert.match(generated.page, new RegExp(`href="${base}/Bespok3d-0\\.7\\.0-beta\\.AppImage"`))
   assert.match(generated.page, new RegExp(`href="${base}/Bespok3d-0\\.7\\.0-beta-arm64\\.AppImage"`))
+  assert.match(generated.page, new RegExp(`href="${base}/Bespok3d-0\\.7\\.0-beta-x86_64\\.flatpak"`))
 })
 
 test('running it again on a page it already wrote changes nothing', () => {

@@ -7,7 +7,7 @@ import type { UpdateErrorPayload } from '../main/app-update/problem'
 import { updateStrategyForPlatform, type UpdateAvailablePayload, type AppReleaseListing } from '../main/app-update/view'
 
 export const appUpdateApi = {
-  canAutoInstall: updateStrategyForPlatform(process.platform) === 'autoInstall',
+  canAutoInstall: updateStrategyForPlatform(process.platform, process.env.FLATPAK_ID) === 'autoInstall',
   installNow: (): Promise<void> => ipcRenderer.invoke('app-update:installNow'),
   openDownload: (url: string): Promise<void> => ipcRenderer.invoke('app-update:openDownload', url),
   checkNow: (): Promise<void> => ipcRenderer.invoke('app-update:checkNow'),

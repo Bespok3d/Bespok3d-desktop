@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin } from '../../data/types'
 import type { TFunction } from '../../i18n'
+import { configAddressError } from '../../data/address'
 import { installedConflicts } from '../../data/deps'
-import { httpPortError, uiPorts } from '../../data/ports'
+import { httpPortError } from '../../data/ports'
 import { installBlockReason } from './panel/install-gate'
 import type { InstallBlock } from './panel/install-gate'
 import { pluginInstallVars } from './update-all'
@@ -48,21 +49,15 @@ export function batchBlockReason(t: TFunction, state: BatchGateState): InstallBl
     printActive: state.printActive,
     blockedActions: state.blockedActions,
     conflicts: [],
-    portError: null,
+    portProblem: null,
     configReady: true,
     missingFields: [],
   })
 }
 
-// The ports the OTHER installed web UIs hold, which is what a candidate's own port is judged against.
-function portsHeldByOtherUis(plugin: Plugin, context: BatchMemberContext): number[] {
-  return Object.entries(uiPorts(context.catalogPlugins, context.installedIds, context.savedVars))
-    .filter(([holderId]) => holderId !== plugin.id)
-    .map(([, port]) => port)
-}
-
 // Why this one member cannot join the batch (it clashes with something already installed, or its web
-// UI wants a port that is taken), or null. The batch-wide reasons answer first, exactly as they do
+// UI wants a port nothing may use), or null. A port another UI holds is not a refusal: the batch gives
+// this member a free port instead (`buildInstallSpecs`). The batch-wide reasons answer first, exactly as they do
 // for a single install.
 export function memberBlockReason(t: TFunction, plugin: Plugin, context: BatchMemberContext): InstallBlock | null {
   return installBlockReason(t, {
@@ -70,7 +65,8 @@ export function memberBlockReason(t: TFunction, plugin: Plugin, context: BatchMe
     printActive: context.printActive,
     blockedActions: context.blockedActions,
     conflicts: installedConflicts(context.catalogPlugins, plugin.id, context.installedIds),
-    portError: httpPortError(plugin.config ?? [], pluginInstallVars(plugin, context.savedVars), portsHeldByOtherUis(plugin, context)),
+    portProblem: httpPortError(plugin.config ?? [], pluginInstallVars(plugin, context.savedVars)),
+    addressError: configAddressError(plugin.config ?? [], pluginInstallVars(plugin, context.savedVars)),
     configReady: true,
     missingFields: [],
   })

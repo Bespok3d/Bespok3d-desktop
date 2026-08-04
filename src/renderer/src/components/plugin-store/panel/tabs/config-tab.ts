@@ -5,7 +5,8 @@ import type { Plugin, PluginConfigField } from '../../../../data/types'
 import type { PluginVarsSave, ScopeChoice } from '../../../../data/plugin-vars'
 import { seedFieldScopes } from '../../../../data/plugin-vars'
 import { initialConfigValues } from '../../config/config-form'
-import { httpPortField, uiPortFields, suggestedPort, uiPorts, makePrimaryPlan } from '../../../../data/ports'
+import type { PortClaimPlan } from '../../../../data/ports'
+import { httpPortField, httpPortValue, uiPortFields, suggestedPort, portClaimPlan, portSwapNote, steppedDownPort } from '../../../../data/ports'
 
 export function seedUiPort(
   plugin: Plugin,
@@ -25,23 +26,39 @@ export function uiPortControls(input: {
   plugin: Plugin; plugins: Plugin[]; installedIds: string[]
   savedVars?: Record<string, string>; printerId?: string
   onSaveVars?: (save: PluginVarsSave) => void
-  setMultiVars: (next: (prev: Record<string, string>) => Record<string, string>) => void
 }) {
-  const { plugin, plugins, installedIds, savedVars, printerId, onSaveVars, setMultiVars } = input
-  const ports = uiPorts(plugins, installedIds, savedVars ?? {})
-  const otherUiPorts = Object.entries(ports).filter(([id]) => id !== plugin.id).map(([, port]) => port)
-  async function makePrimary() {
-    const plan = makePrimaryPlan(plugins, installedIds, savedVars ?? {}, plugin.id)
-    const portField = httpPortField(plugin)
-    if (portField) setMultiVars((prev) => ({ ...prev, [portField.key]: plan.savedPatch[portField.key] }))
+  const { plugin, plugins, installedIds, savedVars, printerId, onSaveVars } = input
+  function swapNote(claimedPort: number) {
+    return portSwapNote(plugins, installedIds, savedVars ?? {}, plugin.id, claimedPort)
+  }
+  function ownSteppedDownPort() {
+    return steppedDownPort(plugins, installedIds, savedVars ?? {}, plugin.id)
+  }
+  // A port plan lands in two places: the saved vars every form reads from, and the printer, which
+  // rebuilds each moved UI on its new port. Offline, the saved half still lands.
+  async function applyPortPlan(plan: PortClaimPlan) {
     onSaveVars?.({ values: plan.savedPatch, fields: uiPortFields(plugins) })
     if (!printerId) return
     await Promise.all(
       plan.reconfigure.map((entry) => window.b3d.store.reconfigure(printerId, entry.pluginId, entry.vars)),
     )
   }
+  // Taking a port another UI holds moves that UI, on the printer and in the saved vars, before the
+  // claimant's own install or Update goes out.
+  async function claimPort(claimedPort: number) {
+    const plan = portClaimPlan(plugins, installedIds, savedVars ?? {}, plugin.id, claimedPort)
+    if (plan.displaced.length === 0) return
 
-  return { otherUiPorts, makePrimary }
+    await applyPortPlan(plan)
+  }
+
+  // The install form's own port, claimed from the values it is about to send.
+  async function claimFormPort(values: Record<string, string>) {
+    const claimed = httpPortValue(plugin.config ?? [], values)
+    if (claimed !== null) await claimPort(claimed)
+  }
+
+  return { portClaim: { swapNote, steppedDownPort: ownSteppedDownPort, claim: claimPort }, claimFormPort }
 }
 
 // The Config tab's state, bundled for the panel: the install-form values, the per-field scope
@@ -56,7 +73,7 @@ export function usePanelConfigState(input: {
   const { plugin, plugins, installed, installedIds, savedVars, printerId, scopeFor, onSaveVars } = input
   const [multiVars, setMultiVars] = useState(() => seedUiPort(plugin, plugins, installed, installedIds, savedVars))
   const [multiScopes, setMultiScopes] = useState(() => seedFieldScopes(plugin.config ?? [], scopeFor))
-  const { otherUiPorts, makePrimary } = uiPortControls({ plugin, plugins, installedIds, savedVars, printerId, onSaveVars, setMultiVars })
+  const { portClaim, claimFormPort } = uiPortControls({ plugin, plugins, installedIds, savedVars, printerId, onSaveVars })
   // A flip is a direct action on the preference store, not draft state: it persists the field's
   // shown value under the chosen scope immediately (a value-less flip can never reach Apply, and
   // panel state evaporates on unmount). It never talks to the printer; reconfigure stays the sender.
@@ -72,5 +89,5 @@ export function usePanelConfigState(input: {
     if (plugin.config) saveConfigVars(multiVars)
   }
 
-  return { multiVars, setMultiVars, multiScopes, setFieldScope, otherUiPorts, makePrimary, saveConfigVars, persistInstallVars }
+  return { multiVars, setMultiVars, multiScopes, setFieldScope, portClaim, claimFormPort, saveConfigVars, persistInstallVars }
 }

@@ -11,6 +11,7 @@ import { keysApi } from './keys'
 import { printersApi } from './printers'
 import { accessApi } from './access'
 import { mdnsApi } from './mdns'
+import { netApi } from './net'
 import { storeApi } from './store'
 import { registryApi } from './registry'
 import { localStoreApi } from './local-store'
@@ -38,6 +39,7 @@ const b3dAPI = {
   printers: printersApi,
   access: accessApi,
   mdns: mdnsApi,
+  net: netApi,
   store: storeApi,
   registry: registryApi,
   localStore: localStoreApi,

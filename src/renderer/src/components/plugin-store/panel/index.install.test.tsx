@@ -73,7 +73,7 @@ describe('PluginPanel install wiring', () => {
 
     await user.click(screen.getByRole('button', { name: en('btn.install') }))
     // The modal is open while installing (no click needed) and shows the live trail.
-    expect(screen.getByText(en('install.live.title'))).toBeInTheDocument()
+    expect(await screen.findByText(en('install.live.title'))).toBeInTheDocument()
     act(() => emit.pluginProgress({ printerId: 'printer-1', pluginId: 'demo', message: 'Symlinks' }))
     expect(screen.getAllByText('Symlinks').length).toBeGreaterThan(0)
 
@@ -130,7 +130,7 @@ describe('PluginPanel run modal dismissal', () => {
     )
 
     await user.click(screen.getByRole('button', { name: en('btn.install') }))
-    expect(screen.getByText(en('install.live.title'))).toBeInTheDocument()
+    expect(await screen.findByText(en('install.live.title'))).toBeInTheDocument()
 
     const modal = document.querySelector('.modal.install-log') as HTMLElement
     await user.click(within(modal).getByRole('button', { name: en('install.log.close') }))

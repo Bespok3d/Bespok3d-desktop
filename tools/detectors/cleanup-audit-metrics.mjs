@@ -32,6 +32,8 @@ const TEXT_FREE_COMPONENTS = new Set([
   'src/renderer/src/components/create/sections/sec-head.tsx', // renders title/blurb/tier props (parent localizes)
   'src/renderer/src/components/plugin-store/config/config-form.tsx', // PanelConfigArea composes PluginConfigSection, no prose
   'src/renderer/src/components/plugin-store/config/field-input.tsx', // renders an input from field props (label/placeholder are props)
+  'src/renderer/src/components/plugin-store/config/address-input.tsx', // a text box showing the address prop; placeholder comes from the manifest
+  'src/renderer/src/components/plugin-store/config/address-field.tsx', // composes AddressInput + ReachNote; both prose and placeholder belong to them
   'src/renderer/src/components/plugin-store/safety/SafetyNoticeOverlay.tsx', // resolves a plugin then renders SafetyRecoveryModal, no prose
   'src/renderer/src/components/install-gate/index.tsx', // picks which install-gate dialog the step wants; the prose lives in the dialogs
   'src/renderer/src/components/update-confirm/UpdateConfirmGate.tsx', // resolves the printer + channel prefs then renders UpdateConfirmDialog, no prose of its own

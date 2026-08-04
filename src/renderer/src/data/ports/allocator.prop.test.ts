@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
 import fc from 'fast-check'
-import { assignPort, makePrimary, PRIMARY_PORT, RESERVED_PORTS } from './allocator'
+import { assignPort, takePort, PRIMARY_PORT, RESERVED_PORTS } from './allocator'
 
 const portArb = fc.integer({ min: 1, max: 65535 })
 
@@ -24,10 +24,10 @@ function recordFrom(ids: string[], ports: number[]): Record<string, number> {
   return Object.fromEntries(ids.map((id, slot) => [id, ports[slot]]))
 }
 
-describe('makePrimary properties', () => {
+describe('taking port 80 properties', () => {
   it('puts the chosen plugin on the primary port while keeping every port distinct', () => {
     fc.assert(fc.property(idsArb, distinctPortsArb, (ids, ports) => {
-      const result = makePrimary(recordFrom(ids, ports), ids[0])
+      const result = takePort(recordFrom(ids, ports), ids[0], PRIMARY_PORT)
       expect(result[ids[0]]).toBe(PRIMARY_PORT)
       const assigned = Object.values(result)
       expect(new Set(assigned).size).toBe(assigned.length)
@@ -37,8 +37,8 @@ describe('makePrimary properties', () => {
 
   it('is idempotent once a plugin is already primary', () => {
     fc.assert(fc.property(idsArb, distinctPortsArb, (ids, ports) => {
-      const once = makePrimary(recordFrom(ids, ports), ids[0])
-      expect(makePrimary(once, ids[0])).toEqual(once)
+      const once = takePort(recordFrom(ids, ports), ids[0], PRIMARY_PORT)
+      expect(takePort(once, ids[0], PRIMARY_PORT)).toEqual(once)
     }))
   })
 })

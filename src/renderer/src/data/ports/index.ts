@@ -4,19 +4,33 @@
 // (they declare an `http-port` config field), what port each currently holds (read from the
 // flat saved-vars map by that field's key), and what to reconfigure when one is made primary.
 import type { Plugin, PluginConfigField } from '../types'
-import { assignPort, makePrimary, portConflict, PRIMARY_PORT } from './allocator'
+import type { PortProblem } from './allocator'
+import { assignPort, portConflict, takePort, PRIMARY_PORT } from './allocator'
+export { assignPort, PRIMARY_PORT } from './allocator'
+export type { PortProblem } from './allocator'
 
-// Why a UI plugin's pending http-port value is rejected (collides with another UI or a reserved
-// port), or null when it is acceptable. Used to gate both install and reconfigure.
+// Why a UI plugin's pending http-port value cannot be used (reserved or out of range), or null
+// when it can. Used to gate both install and reconfigure. A port another UI holds is not an
+// error here: `portClaimPlan` moves that other UI instead.
 export function httpPortError(
   fields: PluginConfigField[],
   values: Record<string, string>,
-  otherUiPorts: number[],
-): string | null {
+): PortProblem | null {
+  const claimed = httpPortValue(fields, values)
+  if (claimed === null) return null
+
+  return portConflict(claimed)
+}
+
+// The port a form is currently asking for, or null when the form has no http-port field.
+export function httpPortValue(
+  fields: PluginConfigField[],
+  values: Record<string, string>,
+): number | null {
   const field = fields.find((candidate) => candidate.type === 'http-port')
   if (!field) return null
 
-  return portConflict(Number(values[field.key]), otherUiPorts)
+  return Number(values[field.key])
 }
 
 export function httpPortField(plugin: Plugin): PluginConfigField | undefined {
@@ -75,25 +89,54 @@ export function suggestedPort(
   return assignPort(others)
 }
 
+// What a config form needs to hand a claimed port: what the user is told, the port this UI drops to
+// when it stands down from primary, and the move itself.
+export interface PortClaim {
+  swapNote: (claimedPort: number) => { name: string; port: number } | null
+  steppedDownPort: () => number | null
+  claim: (claimedPort: number) => Promise<void>
+}
+
+// The port a primary UI takes when it stands down: the lowest one another web UI holds above 80, so
+// claiming it swaps the two and hands port 80 to that UI instead of leaving the printer's plain
+// address serving nothing. When every other UI sits on 80 already (this one is only primary in the
+// form, not yet on the printer) standing down is simply taking the next free port back. Null when
+// this is the only web UI, where standing down would empty port 80.
+export function steppedDownPort(
+  plugins: Plugin[],
+  installedIds: string[],
+  savedVars: Record<string, string>,
+  selfId: string,
+): number | null {
+  const portsHeldByOthers = Object.entries(uiPorts(plugins, installedIds, savedVars))
+    .filter(([pluginId]) => pluginId !== selfId)
+    .map(([, port]) => port)
+  if (portsHeldByOthers.length === 0) return null
+  const secondaryPorts = portsHeldByOthers.filter((port) => port > PRIMARY_PORT)
+
+  return secondaryPorts.length > 0 ? Math.min(...secondaryPorts) : assignPort(portsHeldByOthers)
+}
+
 export interface PortReassignment {
   pluginId: string
   portKey: string
   port: number
 }
 
-// When `primaryId` is made primary, the OTHER installed UIs whose port changes, each with the
-// config-field key to write and the new port. Used to reconfigure them on the printer.
-export function reflowForPrimary(
+// When `claimantId` takes `claimedPort`, the OTHER installed UIs whose port changes, each with
+// the config-field key to write and the new port. Used to reconfigure them on the printer.
+function reflowForClaim(
   plugins: Plugin[],
   installedIds: string[],
   savedVars: Record<string, string>,
-  primaryId: string,
+  claimantId: string,
+  claimedPort: number,
 ): PortReassignment[] {
   const current = uiPorts(plugins, installedIds, savedVars)
-  const next = makePrimary(current, primaryId)
+  const next = takePort(current, claimantId, claimedPort)
 
   return Object.keys(next)
-    .filter((id) => id !== primaryId && next[id] !== current[id])
+    .filter((id) => id !== claimantId && next[id] !== current[id])
     .map((id) => reassignment(plugins, id, next[id]))
     .filter((entry): entry is PortReassignment => entry !== null)
 }
@@ -112,36 +155,45 @@ function pluginConfigVars(plugin: Plugin, savedVars: Record<string, string>): Re
   )
 }
 
-export interface MakePrimaryPlan {
+export interface PortClaimPlan {
   savedPatch: Record<string, string>
   reconfigure: Array<{ pluginId: string; vars: Record<string, string> }>
+  displaced: Array<{ pluginId: string; name: string; port: number }>
 }
 
-// Everything that changes when `primaryId` becomes primary: the flat saved-vars patch (the new
-// primary moves to 80, each displaced UI to its next port) and the per-plugin var sets to push to
-// the printer for the UIs that are installed (so their realization is rebuilt on the new port).
-export function makePrimaryPlan(
+// Everything that happens to the OTHER UIs when `claimantId` takes `claimedPort`: which one is
+// moved and where to, the flat saved-vars patch for it, and the var set to push to the printer.
+// The claimant's own value is saved and sent by the install or Update it came from.
+export function portClaimPlan(
   plugins: Plugin[],
   installedIds: string[],
   savedVars: Record<string, string>,
-  primaryId: string,
-): MakePrimaryPlan {
-  const reassignments = reflowForPrimary(plugins, installedIds, savedVars, primaryId)
-  const primary = plugins.find((plugin) => plugin.id === primaryId)
-  const primaryField = primary && httpPortField(primary)
-  const savedPatch = Object.fromEntries([
-    ...(primaryField ? [[primaryField.key, String(PRIMARY_PORT)]] : []),
-    ...reassignments.map((entry) => [entry.portKey, String(entry.port)]),
-  ])
+  claimantId: string,
+  claimedPort: number,
+): PortClaimPlan {
+  const reassignments = reflowForClaim(plugins, installedIds, savedVars, claimantId, claimedPort)
+  const savedPatch = Object.fromEntries(reassignments.map((entry) => [entry.portKey, String(entry.port)]))
   const merged = { ...savedVars, ...savedPatch }
-  const changedIds = [
-    ...(installedIds.includes(primaryId) ? [primaryId] : []),
-    ...reassignments.map((entry) => entry.pluginId),
-  ]
-  const reconfigure = changedIds
-    .map((id) => plugins.find((plugin) => plugin.id === id))
-    .filter((plugin): plugin is Plugin => plugin !== undefined)
-    .map((plugin) => ({ pluginId: plugin.id, vars: pluginConfigVars(plugin, merged) }))
+  const moved = reassignments
+    .map((entry) => ({ entry, plugin: plugins.find((candidate) => candidate.id === entry.pluginId) }))
+    .filter((pair): pair is { entry: PortReassignment; plugin: Plugin } => pair.plugin !== undefined)
 
-  return { savedPatch, reconfigure }
+  return {
+    savedPatch,
+    displaced: moved.map(({ entry, plugin }) => ({ pluginId: plugin.id, name: plugin.title, port: entry.port })),
+    reconfigure: moved.map(({ plugin }) => ({ pluginId: plugin.id, vars: pluginConfigVars(plugin, merged) })),
+  }
+}
+
+// A UI wanting a port a plugin-title carries: what the user is told before they commit to it.
+export function portSwapNote(
+  plugins: Plugin[],
+  installedIds: string[],
+  savedVars: Record<string, string>,
+  claimantId: string,
+  claimedPort: number,
+): { name: string; port: number } | null {
+  const [first] = portClaimPlan(plugins, installedIds, savedVars, claimantId, claimedPort).displaced
+
+  return first ? { name: first.name, port: first.port } : null
 }

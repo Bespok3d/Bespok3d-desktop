@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-267 exported components + hooks across 21 areas.
+274 exported components + hooks across 21 areas.
 
 ## Common primitives
 
@@ -42,6 +42,7 @@ as you touch the file.
 - `useLocalStorageState` (hook) - [components/common/hooks/useLocalStorageState.ts](../src/renderer/src/components/common/hooks/useLocalStorageState.ts) - Backs React state with a localStorage key: the initial value is read once (falling back to
 - `usePickerBehavior` (hook) - [components/common/editable-icon/usePickerBehavior.ts](../src/renderer/src/components/common/editable-icon/usePickerBehavior.ts)
 - `useScrimDismiss` (hook) - [components/common/hooks/useScrimDismiss.ts](../src/renderer/src/components/common/hooks/useScrimDismiss.ts)
+- `useSettledValue` (hook) - [components/common/hooks/useSettledValue.ts](../src/renderer/src/components/common/hooks/useSettledValue.ts) - The value as it stands once it has stopped moving for `pauseMs`. Work that costs something (asking
 
 ## Design system
 
@@ -189,6 +190,8 @@ as you touch the file.
 
 ## Feature: plugin-store
 
+- `AddressField` (component) - [components/plugin-store/config/address-field.tsx](../src/renderer/src/components/plugin-store/config/address-field.tsx) - A host or host:port field. Whatever is in it is checked as soon as it stands still and reads as an
+- `AddressInput` (component) - [components/plugin-store/config/address-input.tsx](../src/renderer/src/components/plugin-store/config/address-input.tsx) - The text box every address is typed into. It shows exactly what is in the field and hands back
 - `BatchConfigModal` (component) - [components/plugin-store/select/BatchConfigModal.tsx](../src/renderer/src/components/plugin-store/select/BatchConfigModal.tsx) - Collect the values the selected plugins need before a batch install. Install stays disabled until
 - `BugReportModal` (component) - [components/plugin-store/safety/BugReportModal.tsx](../src/renderer/src/components/plugin-store/safety/BugReportModal.tsx) - The shared scaffold for the two "something went wrong, here is a shareable report" modals (an
 - `CapturesView` (component) - [components/plugin-store/panel/tabs/CapturesView.tsx](../src/renderer/src/components/plugin-store/panel/tabs/CapturesView.tsx) - Captured strings (URLs/regex matches the plugin's service logged), newest first so the most recent
@@ -217,6 +220,7 @@ as you touch the file.
 - `PluginConfigSection` (component) - [components/plugin-store/config/config-section.tsx](../src/renderer/src/components/plugin-store/config/config-section.tsx)
 - `PluginPanel` (component) - [components/plugin-store/panel/index.tsx](../src/renderer/src/components/plugin-store/panel/index.tsx)
 - `PluginStore` (component) - [components/plugin-store/index.tsx](../src/renderer/src/components/plugin-store/index.tsx) - gate-allow components_without_story: the store shell; its surfaces (browse cards, the detail/config/collection panels) each have their own catalog stories, and a full-store story needs live catalog+printer+install providers that just re-render the running app.
+- `ReachNote` (component) - [components/plugin-store/config/reach-note.tsx](../src/renderer/src/components/plugin-store/config/reach-note.tsx) - The line under an address field: what is wrong with what was typed, or whether this computer could
 - `SafetyNoticeOverlay` (component) - [components/plugin-store/safety/SafetyNoticeOverlay.tsx](../src/renderer/src/components/plugin-store/safety/SafetyNoticeOverlay.tsx) - Renders the popup only when a fixer kicked in; resolves the plugin from the catalog so the caller
 - `SafetyRecoveryModal` (component) - [components/plugin-store/safety/RecoveryModal.tsx](../src/renderer/src/components/plugin-store/safety/RecoveryModal.tsx) - Shown after a single-plugin op when a safety fixer disabled the plugin to keep the printer working.
 - `ScopeControl` (component) - [components/plugin-store/config/scope-control.tsx](../src/renderer/src/components/plugin-store/config/scope-control.tsx) - The per-field scope choice: shared across the fleet, or this printer's own value. Always visible
@@ -227,6 +231,7 @@ as you touch the file.
 - `StoreDetailPanel` (component) - [components/plugin-store/detail/StoreDetailPanel.tsx](../src/renderer/src/components/plugin-store/detail/StoreDetailPanel.tsx) - The open plugin's detail modal, driven by the panelPlugin/tabRequest state PluginStore owns. hasUpdate
 - `StoreMain` (component) - [components/plugin-store/browse/grid.tsx](../src/renderer/src/components/plugin-store/browse/grid.tsx) - The store body: a flat grid (search/category-filtered) or the grouped category sections plus a
 - `Toolbar` (component) - [components/plugin-store/browse/Toolbar.tsx](../src/renderer/src/components/plugin-store/browse/Toolbar.tsx)
+- `UrlField` (component) - [components/plugin-store/config/url-field.tsx](../src/renderer/src/components/plugin-store/config/url-field.tsx) - The whole address of a service, protocol and all, kept exactly as it is typed: some of these live
 - `useAssetInfo` (hook) - [components/plugin-store/panel/tabs/sources.tsx](../src/renderer/src/components/plugin-store/panel/tabs/sources.tsx) - Real, fetched-from-GitHub stats for a source's release asset (download count + actual upload
 - `useBatchInstall` (hook) - [components/plugin-store/select/useBatchInstall.ts](../src/renderer/src/components/plugin-store/select/useBatchInstall.ts) - The multi-select-and-install flow as one hook: track the selection, and on "Install selected" either
 - `useBatchUninstall` (hook) - [components/plugin-store/select/useBatchUninstall.ts](../src/renderer/src/components/plugin-store/select/useBatchUninstall.ts) - The multi-select-and-uninstall flow as one hook, the removal twin of useBatchInstall (both share the
@@ -242,7 +247,9 @@ as you touch the file.
 - `usePanelConfigState` (hook) - [components/plugin-store/panel/tabs/config-tab.ts](../src/renderer/src/components/plugin-store/panel/tabs/config-tab.ts) - The Config tab's state, bundled for the panel: the install-form values, the per-field scope
 - `usePrintState` (hook) - [components/plugin-store/usePrintState.ts](../src/renderer/src/components/plugin-store/usePrintState.ts) - Truly-live blocked-action state for the open managed printer: watch only while the store is showing
 - `useReleasedDoc` (hook) - [components/plugin-store/panel/released-doc.ts](../src/renderer/src/components/plugin-store/panel/released-doc.ts) - A store page shows the words of the version it is offering. A plugin release publishes its README and
+- `useReportedDraft` (hook) - [components/plugin-store/config/use-reported-draft.ts](../src/renderer/src/components/plugin-store/config/use-reported-draft.ts) - The values the config form is editing, kept in front of whoever judges them. The detail panel reads
 - `useSelectMode` (hook) - [components/plugin-store/select/useSelectMode.ts](../src/renderer/src/components/plugin-store/select/useSelectMode.ts) - The pick state shared by the store's two mutually-exclusive batch modes (install-select and
+- `useServiceReach` (hook) - [components/plugin-store/config/use-service-reach.ts](../src/renderer/src/components/plugin-store/config/use-service-reach.ts) - Whether the address in the field answers, asked again every time the address stops changing: a
 - `useUpdateAll` (hook) - [components/plugin-store/state.ts](../src/renderer/src/components/plugin-store/state.ts) - Builds the batch update specs and hands them to the App-level handler, which runs a single
 
 ## Feature: settings

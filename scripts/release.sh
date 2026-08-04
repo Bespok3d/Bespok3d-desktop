@@ -41,6 +41,8 @@ Notes:
   On macOS a build covers mac + windows + linux (the NSIS .exe and the AppImage build on macOS
   without wine). Only the macOS .dmg cannot be cross-built, so a Linux host builds linux +
   windows (the .exe needs wine there). Run on a Mac to cover all three.
+  The Linux Flatpak is built by flatpak-builder, which runs only on Linux: a Linux host uses it
+  directly, and every other host runs it in a Linux container, so a cut anywhere produces it.
 
   'pre' decides what GitHub calls the release: a prerelease is kept off the repo's Latest
   pointer and off the download page people land on. The app's own updater does not read
@@ -124,6 +126,17 @@ build_all() {
   echo ""
   echo "Building Linux..."
   run npm --prefix "$APP_DIR" run package:linux -- --publish never
+
+  # flatpak-builder runs only on Linux. On a Linux host it is used directly; anywhere else the same
+  # tool runs in a Linux container against this build, so every cut produces the Flatpak on whatever
+  # machine it is cut from.
+  echo ""
+  echo "Building Linux Flatpak..."
+  if command -v flatpak-builder > /dev/null; then
+    run npm --prefix "$APP_DIR" run package:flatpak -- --publish never
+  else
+    run "$APP_DIR/scripts/flatpak-build.sh"
+  fi
 
   echo ""
   [ "$DRY_RUN" = true ] && echo "DRY-RUN would build $version into $OUTPUT_DIR/" || echo "Built $version into $OUTPUT_DIR/"

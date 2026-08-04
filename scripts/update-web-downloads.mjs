@@ -24,6 +24,9 @@ function downloadablePlatforms(version) {
     { os: 'windows', arch: 'x64', label: 'Windows', note: 'Installer', asset: `Bespok3d-Setup-${version}.exe`, built: `Bespok3d Setup ${version}.exe` },
     { os: 'linux', arch: 'x64', label: 'Linux', note: 'AppImage x86_64', asset: `Bespok3d-${version}.AppImage` },
     { os: 'linux', arch: 'arm64', label: 'Linux', note: 'AppImage arm64', asset: `Bespok3d-${version}-arm64.AppImage` },
+    // The Flatpak is x86_64 only: it is assembled against the x86_64 Electron base app, which is what
+    // Linux desktops run. An arm64 Linux user takes the AppImage row above.
+    { os: 'linux', arch: 'x64', label: 'Linux', note: 'Flatpak x86_64', asset: `Bespok3d-${version}-x86_64.flatpak` },
   ]
 }
 

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { PluginConfigSection } from './config-section'
 import type { PluginConfigField } from '../../../data/types'
 import type { ScopeChoice } from '../../../data/plugin-vars'
+import type { PortClaim } from '../../../data/ports'
 import '../plugin-store.css'
 
 export default { title: 'Store / Config / PluginConfigSection' }
@@ -18,18 +19,34 @@ const PORT_FIELDS: PluginConfigField[] = [
   { key: 'FLUIDD_PORT', label: 'Web UI port', type: 'http-port', default: '80', scope: 'global', hint: 'Only one plugin can serve on port 80 at a time.' },
 ]
 
+// The other web UI in the catalog for these stories: Mainsail, sitting on port 80, so typing 80 shows
+// the note that says it will be moved.
+const MAINSAIL_ON_80: PortClaim = {
+  swapNote: (claimedPort: number) => (claimedPort === 80 ? { name: 'Mainsail', port: 81 } : null),
+  steppedDownPort: () => 81,
+  claim: () => Promise.resolve(),
+}
+
+// Mainsail as the OTHER UI when this one already holds 80: standing down to 81 hands Mainsail the
+// primary port, which is what the note says.
+const MAINSAIL_ON_81: PortClaim = {
+  swapNote: (claimedPort: number) => (claimedPort === 81 ? { name: 'Mainsail', port: 80 } : null),
+  steppedDownPort: () => 81,
+  claim: () => Promise.resolve(),
+}
+
 // Wraps the section with the local draft state a real detail panel would own (PanelConfigArea), so
 // typing/toggling and the Apply flow behave exactly as they do in the real panel.
-function Section({ fields, current, installed, printerId, otherUiPorts = [], onMakePrimary }: {
+function Section({ fields, current, installed, printerId, portClaim }: {
   fields: PluginConfigField[]; current: Record<string, string>; installed: boolean
-  printerId?: string; otherUiPorts?: number[]; onMakePrimary?: () => void
+  printerId?: string; portClaim?: PortClaim
 }) {
   const [values, setValues] = useState(current)
 
   return (
     <PluginConfigSection
       fields={fields} current={values} installed={installed} printerId={printerId} pluginId="demo"
-      otherUiPorts={otherUiPorts} onValuesChange={setValues} onApplied={setValues} onMakePrimary={onMakePrimary}
+      portClaim={portClaim} onValuesChange={setValues} onApplied={setValues}
     />
   )
 }
@@ -98,9 +115,17 @@ export function InstalledValuesUnknown() {
   )
 }
 
-export function HttpPortWithMakePrimary() {
+export function HttpPortSecondaryUi() {
   return (
-    <Section fields={PORT_FIELDS} current={{ FLUIDD_PORT: '81' }} installed printerId="printer-1" otherUiPorts={[80]} onMakePrimary={() => {}} />
+    <Section fields={PORT_FIELDS} current={{ FLUIDD_PORT: '81' }} installed printerId="printer-1" portClaim={MAINSAIL_ON_80} />
+  )
+}
+
+// The UI that already holds port 80: Make primary is spent, and Make secondary offers to hand 80 to
+// Mainsail. Both only change what the field shows, until Update config is clicked.
+export function HttpPortPrimaryUi() {
+  return (
+    <Section fields={PORT_FIELDS} current={{ FLUIDD_PORT: '80' }} installed printerId="printer-1" portClaim={MAINSAIL_ON_81} />
   )
 }
 

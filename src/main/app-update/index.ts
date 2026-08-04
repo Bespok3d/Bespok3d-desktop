@@ -38,10 +38,10 @@ function resolveAppRepo(): RepoCoords {
   return loadSettings().appUpdateRepo ?? DEFAULT_APP_REPO
 }
 
-// Windows/Linux can auto-install via electron-updater; an unsigned, dmg-only macOS build cannot, so
-// it falls back to the manual open-download flow.
+// Windows/Linux can auto-install via electron-updater; an unsigned, dmg-only macOS build cannot, and
+// neither can a sandboxed Flatpak install, so both fall back to the manual open-download flow.
 function autoInstallSupported(): boolean {
-  return updateStrategyForPlatform(process.platform) === 'autoInstall'
+  return updateStrategyForPlatform(process.platform, process.env.FLATPAK_ID) === 'autoInstall'
 }
 
 function sendToRenderer(getMainWindow: WindowGetter, channel: string, payload: unknown): void {

@@ -15,6 +15,21 @@ function probePort(ip: string, port: number, timeoutMs: number, refusedMeansUp =
   })
 }
 
+// The http code a whole address, protocol and all, answers with from this computer, or null when
+// nothing answered at all. A TCP probe cannot serve here: an address behind a name and a certificate
+// is one host and one port for a dozen sites, so opening the socket proves nothing about whether this
+// one is there. A refused certificate, an unknown name and a dead host all read as no answer, which
+// is the truth for the app and a warning for the person, never a block.
+export async function probeServiceUrl(address: string): Promise<number | null> {
+  try {
+    const answer = await fetch(address, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(4000) })
+
+    return answer.status
+  } catch {
+    return null
+  }
+}
+
 export function pingPrinter(ip: string): Promise<boolean> { return probePort(ip, 80, 1000, true) }
 
 export function checkDaemon(ip: string): Promise<boolean> { return probePort(ip, 4269, 3000) }
@@ -22,6 +37,11 @@ export function checkDaemon(ip: string): Promise<boolean> { return probePort(ip,
 // True when SSH (port 22) accepts a connection. Enrollment and repair are all SSH, so an open port 22
 // means we can still fix or enroll the printer; a closed one means root access is off.
 export function checkSshOpen(ip: string): Promise<boolean> { return probePort(ip, 22, 3000) }
+
+// Whether some service a person typed an address for answers at all (a Spoolman server, say). It
+// claims nothing about what is listening: a socket that opens is the whole claim, which is enough to
+// tell "I typed it wrong" apart from "it is there and the plugin will find it".
+export function probeService(host: string, port: number): Promise<boolean> { return probePort(host, port, 2000) }
 
 // Moonraker (7125) answering is the strong "this address is really the printer" signal, not the bare
 // web port: a DHCP lease moves, the printer's old IP gets handed to some random LAN device, and that

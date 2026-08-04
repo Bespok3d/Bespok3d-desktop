@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "Bespok3d Official",
   "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
-  "updated": "2026-08-01",
+  "updated": "2026-08-04",
   "plugins": [
     {
       "name": "afc-lite",
@@ -272,7 +272,7 @@
     {
       "name": "mainsail",
       "title": "Mainsail",
-      "version": "0.1.6+dev.local",
+      "version": "0.1.8+dev.local",
       "description": "Installs Mainsail v2.18.0 as a second web frontend. Runs on port 81 by default so Fluidd stays on port 80. Set port 80 to make Mainsail primary; Fluidd shifts to 81 automatically.",
       "tagline": "Mainsail web interface alongside Fluidd, on your chosen port.",
       "category": "ui",
@@ -292,7 +292,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "mainsail/doc/README.md",
-      "download_url": "mainsail-0.1.6.b3",
+      "download_url": "mainsail-0.1.8.b3",
       "config": [
         {
           "key": "MAINSAIL_PORT",
@@ -330,7 +330,7 @@
     {
       "name": "mainsail",
       "title": "Mainsail",
-      "version": "0.2.1-experiment+dev.local",
+      "version": "0.2.3-experiment+dev.local",
       "description": "Installs Mainsail v2.17.0 as a second web frontend. Runs on port 81 by default so Fluidd stays on port 80. Set port 80 to make Mainsail primary; Fluidd shifts to 81 automatically. Bleeding-edge build: adds the AFC \"Toolchanger Eject Mode\" toggle (Eject docks the mounted tool on a toolchanger).",
       "tagline": "Mainsail web interface alongside Fluidd, on your chosen port.",
       "category": "ui",
@@ -350,7 +350,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "mainsail/doc/README.md",
-      "download_url": "mainsail-0.2.1-experiment.b3",
+      "download_url": "mainsail-0.2.3-experiment.b3",
       "config": [
         {
           "key": "MAINSAIL_PORT",
@@ -765,7 +765,7 @@
     {
       "name": "spoolman",
       "title": "Spoolman Bridge",
-      "version": "0.1.31+dev.local",
+      "version": "0.1.32+dev.local",
       "description": "Spoolman for the U1 multi-tool: the active spool follows the tag the printer reads or the spool you pick, color and material reach the screen and AFC panel, tags are matched by their hardware UID, and you can record which printer each spool is on. Filament length per print is logged automatically.",
       "tagline": "Zero-config Spoolman: active spool always tracked.",
       "category": "filament",
@@ -773,7 +773,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": false,
       "published_at": "2025-09-20",
-      "updated_at": "2026-07-03",
+      "updated_at": "2026-08-04",
       "requires": {
         "capabilities": [
           "klipper-generic"
@@ -787,7 +787,7 @@
       ],
       "conflicts": [],
       "doc_url": "spoolman/doc/README.md",
-      "download_url": "spoolman-0.1.31.b3",
+      "download_url": "spoolman-0.1.32.b3",
       "min_daemon_version": "0.10.1",
       "homepage": "https://github.com/bespok3d-org/plugin-spoolman",
       "macros": [
@@ -842,9 +842,9 @@
         {
           "key": "SPOOLMAN_SERVER",
           "label": "Spoolman server address",
-          "type": "text",
-          "placeholder": "192.168.1.50:8000",
-          "hint": "Host or host:port of your Spoolman instance.",
+          "type": "url",
+          "placeholder": "https://spoolman.example.org",
+          "hint": "The whole address of your Spoolman, protocol and all: a name over https, or http and a host and port.",
           "required": true,
           "userEditable": true,
           "scope": "global"

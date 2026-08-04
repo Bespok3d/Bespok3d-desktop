@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
 import type { Plugin } from '../types'
-import { uiPorts, suggestedPort, reflowForPrimary, isUiPlugin } from './index'
+import { uiPorts, suggestedPort, steppedDownPort, portClaimPlan, portSwapNote, isUiPlugin } from './index'
 
 function uiPlugin(id: string, portKey: string, defaultPort: string): Plugin {
   return {
@@ -52,16 +52,60 @@ describe('suggestedPort', () => {
   })
 })
 
-describe('reflowForPrimary', () => {
-  it('reports the displaced UI with its config key and new port', () => {
+describe('steppedDownPort', () => {
+  it('is the port the lowest-placed other UI holds, so that UI is promoted to 80', () => {
     const saved = { FLUIDD_PORT: '80', MAINSAIL_PORT: '81' }
-    expect(reflowForPrimary(PLUGINS, ['fluidd', 'mainsail'], saved, 'mainsail')).toEqual([
-      { pluginId: 'fluidd', portKey: 'FLUIDD_PORT', port: 81 },
-    ])
+    expect(steppedDownPort(PLUGINS, ['fluidd', 'mainsail'], saved, 'fluidd')).toBe(81)
   })
 
-  it('reassigns nothing when the target already holds 80', () => {
+  it('is the lowest of several other UIs, never a higher free port', () => {
+    const saved = { FLUIDD_PORT: '80', MAINSAIL_PORT: '82' }
+    expect(steppedDownPort(PLUGINS, ['fluidd', 'mainsail'], saved, 'fluidd')).toBe(82)
+  })
+
+  it('is the next free port when the other UI still holds 80, so a form-only primary can step back', () => {
+    const saved = { FLUIDD_PORT: '81', MAINSAIL_PORT: '80' }
+    expect(steppedDownPort(PLUGINS, ['fluidd', 'mainsail'], saved, 'fluidd')).toBe(81)
+  })
+
+  it('is null for the only web UI, which cannot stand down without emptying port 80', () => {
+    expect(steppedDownPort(PLUGINS, ['fluidd'], { FLUIDD_PORT: '80' }, 'fluidd')).toBeNull()
+  })
+})
+
+describe('portClaimPlan', () => {
+  it('moves the UI holding the claimed port, and says where it went', () => {
     const saved = { FLUIDD_PORT: '80', MAINSAIL_PORT: '81' }
-    expect(reflowForPrimary(PLUGINS, ['fluidd', 'mainsail'], saved, 'fluidd')).toEqual([])
+    const plan = portClaimPlan(PLUGINS, ['fluidd', 'mainsail'], saved, 'mainsail', 80)
+
+    expect(plan.displaced).toEqual([{ pluginId: 'fluidd', name: PLUGINS[0].title, port: 81 }])
+    expect(plan.savedPatch).toEqual({ FLUIDD_PORT: '81' })
+    expect(plan.reconfigure.map((entry) => entry.pluginId)).toEqual(['fluidd'])
+  })
+
+  it('carries the new port of the moved UI in the vars pushed to the printer', () => {
+    const saved = { FLUIDD_PORT: '80', MAINSAIL_PORT: '81' }
+    const plan = portClaimPlan(PLUGINS, ['fluidd', 'mainsail'], saved, 'mainsail', 80)
+
+    expect(plan.reconfigure[0].vars.FLUIDD_PORT).toBe('81')
+  })
+
+  it('moves nobody when the claimed port is free', () => {
+    const saved = { FLUIDD_PORT: '80' }
+    const plan = portClaimPlan(PLUGINS, ['fluidd'], saved, 'mainsail', 81)
+
+    expect(plan.displaced).toEqual([])
+    expect(plan.savedPatch).toEqual({})
+  })
+})
+
+describe('portSwapNote', () => {
+  it('names the UI that will move and the port it will move to', () => {
+    const saved = { FLUIDD_PORT: '80', MAINSAIL_PORT: '81' }
+    expect(portSwapNote(PLUGINS, ['fluidd', 'mainsail'], saved, 'mainsail', 80)).toEqual({ name: PLUGINS[0].title, port: 81 })
+  })
+
+  it('says nothing when the port is free', () => {
+    expect(portSwapNote(PLUGINS, ['fluidd'], { FLUIDD_PORT: '80' }, 'mainsail', 81)).toBeNull()
   })
 })

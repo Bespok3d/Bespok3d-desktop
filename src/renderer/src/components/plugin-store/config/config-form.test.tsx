@@ -21,6 +21,71 @@ async function editServerAndUpdate(user: ReturnType<typeof setup>['user']): Prom
   await user.click(screen.getByRole('button', { name: en('store.update_config') }))
 }
 
+// The port claim a second web UI (Mainsail on 80) presents to this form.
+function mainsailOn80(claim: ReturnType<typeof vi.fn>) {
+  return {
+    swapNote: (claimedPort: number) => (claimedPort === 80 ? { name: 'Mainsail', port: 81 } : null),
+    steppedDownPort: () => 81,
+    claim,
+  }
+}
+
+describe('PluginConfigSection port roles', () => {
+  it('shows port 80 and says where the other UI goes, without touching the printer, until Update config', async () => {
+    var claim = vi.fn().mockResolvedValue(undefined)
+    var { user, container, b3d } = setup(
+      <PluginConfigSection fields={[portField]} current={{ PORT: '81' }} installed printerId="printer-1" pluginId="fluidd" portClaim={mainsailOn80(claim)} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: '81' }))
+    await user.click(screen.getByRole('button', { name: en('store.make_primary') }))
+
+    expect(screen.getByRole('spinbutton')).toHaveValue(80)
+    expect(container.querySelector('.config-swap-note')?.textContent).toBe(en('store.port_swap_note', { other: 'Mainsail', port: 81 }))
+    expect(claim).not.toHaveBeenCalled()
+    expect(b3d.store.reconfigure).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: en('store.update_config') }))
+
+    expect(claim).toHaveBeenCalledWith(80)
+    expect(b3d.store.reconfigure).toHaveBeenCalledWith('printer-1', 'fluidd', { PORT: '80' })
+  })
+
+  it('stands down onto the other UI\'s port, so that UI takes 80 when the config is updated', async () => {
+    var claim = vi.fn().mockResolvedValue(undefined)
+    var portClaim = {
+      swapNote: (claimedPort: number) => (claimedPort === 81 ? { name: 'Mainsail', port: 80 } : null),
+      steppedDownPort: () => 81,
+      claim,
+    }
+    var { user, b3d } = setup(
+      <PluginConfigSection fields={[portField]} current={{ PORT: '80' }} installed printerId="printer-1" pluginId="fluidd" portClaim={portClaim} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: '80' }))
+    await user.click(screen.getByRole('button', { name: en('store.make_secondary') }))
+
+    expect(screen.getByRole('spinbutton')).toHaveValue(81)
+    expect(b3d.store.reconfigure).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: en('store.update_config') }))
+
+    expect(claim).toHaveBeenCalledWith(81)
+    expect(b3d.store.reconfigure).toHaveBeenCalledWith('printer-1', 'fluidd', { PORT: '81' })
+  })
+
+  it('offers no stand-down button when this is the only web UI', async () => {
+    var { user } = setup(
+      <PluginConfigSection fields={[portField]} current={{ PORT: '80' }} installed printerId="printer-1" pluginId="fluidd"
+        portClaim={{ swapNote: () => null, steppedDownPort: () => null, claim: vi.fn() }} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: '80' }))
+
+    expect(screen.queryByRole('button', { name: en('store.make_secondary') })).toBeNull()
+  })
+})
+
 describe('PluginConfigSection reconfigure', () => {
   it('reconfigures an installed plugin with the edited value', async () => {
     var { user, b3d } = setup(
@@ -43,16 +108,32 @@ describe('PluginConfigSection reconfigure', () => {
     expect(container.querySelector('.config-error')?.textContent).toBe('daemon unreachable')
   })
 
-  it('blocks the update when an http-port collides with another UI plugin', async () => {
+  it('says which web UI moves rather than blocking, when the port is one another UI holds', async () => {
+    var claim = vi.fn().mockResolvedValue(undefined)
+    var portClaim = { swapNote: (port: number) => (port === 80 ? { name: 'Mainsail', port: 81 } : null), steppedDownPort: () => 81, claim }
     var { user, container } = setup(
-      <PluginConfigSection fields={[portField]} current={{ PORT: '81' }} installed printerId="printer-1" pluginId="fluidd" otherUiPorts={[80]} />,
+      <PluginConfigSection fields={[portField]} current={{ PORT: '81' }} installed printerId="printer-1" pluginId="fluidd" portClaim={portClaim} />,
     )
 
     await user.click(screen.getByRole('button', { name: '81' }))
     await user.clear(screen.getByRole('spinbutton'))
     await user.type(screen.getByRole('spinbutton'), '80')
 
-    expect(container.querySelector('.config-error')).not.toBeNull()
+    expect(container.querySelector('.config-swap-note')?.textContent).toBe(en('store.port_swap_note', { other: 'Mainsail', port: 81 }))
+    expect(container.querySelector('.config-error')).toBeNull()
+    expect(screen.getByRole('button', { name: en('store.update_config') })).not.toBeDisabled()
+  })
+
+  it('refuses a port the printer itself keeps, and says so', async () => {
+    var { user, container } = setup(
+      <PluginConfigSection fields={[portField]} current={{ PORT: '81' }} installed printerId="printer-1" pluginId="fluidd" />,
+    )
+
+    await user.click(screen.getByRole('button', { name: '81' }))
+    await user.clear(screen.getByRole('spinbutton'))
+    await user.type(screen.getByRole('spinbutton'), '7125')
+
+    expect(container.querySelector('.config-error')?.textContent).toBe(en('store.port_reserved', { port: 7125 }))
     expect(screen.getByRole('button', { name: en('store.update_config') })).toBeDisabled()
   })
 })

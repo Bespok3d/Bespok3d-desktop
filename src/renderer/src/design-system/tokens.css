@@ -9,6 +9,10 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
+  /* Scrollbars, dropdown lists and form controls are painted by the platform, not by us: this is the
+     only way to tell it which of the two palettes it is painting into. */
+  color-scheme: light;
+
   /* ── Type ─────────────────────────────────────────────────────────────── */
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
@@ -142,6 +146,8 @@
    Activate by setting `data-theme="dark"` on the root element (or any
    container; child shells can override the page). */
 [data-theme='dark'] {
+  color-scheme: dark;
+
   --bg: oklch(20% 0.012 215);
   --bg-elev: oklch(24% 0.014 215);
   --bg-sunken: oklch(17% 0.012 215);

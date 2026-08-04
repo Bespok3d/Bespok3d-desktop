@@ -18,7 +18,7 @@ import {
   setKeyIcon,
   setPublishedAt,
 } from './keys'
-import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, pingPrinter, checkSshOpen, resolveLiveAddress } from './printers'
+import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, pingPrinter, checkSshOpen, probeService, probeServiceUrl, resolveLiveAddress } from './printers'
 import type { PublicPrinterRecord } from './printers'
 import { setAddressResolver } from './daemon-client/client'
 import { watchPrintState, unwatchPrintState } from './daemon-client/feeds/print-state'
@@ -87,6 +87,9 @@ function registerPrinterHandlers(getMainWindow: () => BrowserWindow): void {
   ipcMain.handle('printers:remove', (_ev, id) => removePrinter(id))
   ipcMain.handle('printers:ping', (_ev, ip) => pingPrinter(ip))
   ipcMain.handle('printers:checkSshOpen', (_ev, ip: string) => checkSshOpen(ip))
+  // Any address a person typed into a plugin's config, checked from this computer before it is sent.
+  ipcMain.handle('net:probeService', (_ev, host: string, port: number) => probeService(host, port))
+  ipcMain.handle('net:probeServiceUrl', (_ev, address: string) => probeServiceUrl(address))
   ipcMain.handle('printers:checkWriteLayer', (_ev, printerId: string) => checkWriteLayer(printerId))
   ipcMain.handle('printers:checkDaemon', (_ev, printerId: string) => checkDaemonRecord(printerId))
   ipcMain.handle('printers:watchPrintState', (_ev, printerId: string) =>

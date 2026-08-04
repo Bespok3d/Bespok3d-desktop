@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import { useI18n } from '../../../i18n/context'
 import cx from '../../../utils/cx'
 import type { TrustTier, ReleaseChannel } from '../../../data/types'
@@ -29,6 +30,29 @@ function ViewControls({ layout, onLayout }: {
       <Button icon variant="ghost" size="sm" className={cx(layout === 'list' && 'active')} onClick={() => onLayout('list')} title={t('store.view_list')}>
         <IconListView size={15} />
       </Button>
+    </div>
+  )
+}
+
+function SearchField({ query, onQuery }: { query: string; onQuery: (typed: string) => void }) {
+  const { t } = useI18n()
+
+  function clearOnEscape(keyPress: KeyboardEvent<HTMLInputElement>) {
+    if (keyPress.key !== 'Escape' || query === '') return
+
+    keyPress.stopPropagation()
+    onQuery('')
+  }
+
+  return (
+    <div className="search">
+      <span className="search-icon"><IconSearch size={16} /></span>
+      <input type="text" placeholder={t('filter.search')} value={query} onChange={(changeEvent) => onQuery(changeEvent.target.value)} onKeyDown={clearOnEscape} />
+      {query !== '' && (
+        <Button icon variant="ghost" size="sm" className="search-clear" onClick={() => onQuery('')} title={t('filter.search_clear')} aria-label={t('filter.search_clear')}>
+          <IconClose size={16} />
+        </Button>
+      )}
     </div>
   )
 }
@@ -94,15 +118,7 @@ export function Toolbar({ query, count, layout, filtersOpen, filtersActive, sort
         <IconFilter size={15} />
         {filtersActive && <span className="filter-active-dot" />}
       </Button>
-      <div className={cx('search', query !== '' && 'has-query')}>
-        <span className="search-icon"><IconSearch size={16} /></span>
-        <input type="text" placeholder={t('filter.search')} value={query} onChange={(changeEvent) => onQuery(changeEvent.target.value)} />
-        {query !== '' && (
-          <Button icon variant="ghost" size="sm" className="search-clear" onClick={() => onQuery('')} title={t('filter.search_clear')} aria-label={t('filter.search_clear')}>
-            <IconClose size={14} />
-          </Button>
-        )}
-      </div>
+      <SearchField query={query} onQuery={onQuery} />
       <span className="plugin-count">{t('store.plugin_count', { count })}</span>
       {selectAvailable && (
         <SelectControl active={selectActive} canUninstall={canUninstall} onSelectInstall={onSelectInstall} onSelectUninstall={onSelectUninstall} onExit={onExitSelect} />

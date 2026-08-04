@@ -14,7 +14,7 @@ import { usePluginOps, type UsePluginOpsResult } from '../../../hooks/pluginOps'
 import { InstallZone, HistoryZone, InstallLogView, InstallRunModal } from './install-log'
 import type { PluginHistoryEntry } from '../state'
 import { resolveMissingDeps, installedDependents, installedConflicts } from '../../../data/deps'
-import { httpPortError, isUiPlugin } from '../../../data/ports'
+import { httpPortError } from '../../../data/ports'
 import { SourcesSection, ChannelSelector, sourceKey, newestSourceOfChannel } from './tabs/sources'
 import { usePanelActions } from './actions'
 import { PanelConfigArea } from '../config/config-form'
@@ -211,16 +211,16 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   const picked = pluginAsPickedVersion(plugin, selectedVariant)
   const multiFields = picked.config
   const configState = usePanelConfigState({ plugin: picked, plugins, installed, installedIds: allInstalledIds ?? [], savedVars: savedPluginVars, printerId, scopeFor, onSaveVars })
-  const { multiVars, multiScopes, otherUiPorts, makePrimary } = configState
+  const { multiVars, multiScopes, portClaim } = configState
   // A deep link can request a starting tab; else on an update open straight to the changelog so the
   // user sees what changed before updating. An unavailable tab is corrected by the activeTab guard.
   const [tab, setTab] = useState<DetailTab>((initialTab as DetailTab) ?? (hasUpdate && hasReleaseNotes(plugin) ? 'changelog' : 'overview'))
   const installVars = multiFields ? multiVars : undefined
-  const portError = httpPortError(multiFields ?? [], installVars ?? {}, otherUiPorts)
+  const portProblem = httpPortError(multiFields ?? [], installVars ?? {})
   const missingDeps = resolveMissingDeps(plugins, plugin.id, allInstalledIds ?? [])
   const dependents = installed ? installedDependents(plugins, plugin.id, allInstalledIds ?? []) : []
   const conflicts = installed ? [] : installedConflicts(plugins, plugin.id, allInstalledIds ?? [])
-  const { block, canInstall } = installGate(t, picked, { multiVars, printerId, conflicts, portError, printActive: !!printActive, blockedActions: blockedActions ?? [] })
+  const { block, canInstall } = installGate(t, picked, { multiVars, printerId, conflicts, portProblem, printActive: !!printActive, blockedActions: blockedActions ?? [] })
   const needsNewerDaemon = !!plugin.minDaemonVersion && !isDaemonVersionAtLeast(daemonVersion ?? '0.0.0', plugin.minDaemonVersion)
   // A completed install persists the vars it sent into the preference store (under each field's
   // chosen scope), so the next printer's form starts from what the user actually picked.
@@ -230,7 +230,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   }
   const ops = usePluginOps(handleOperationDone)
   const [runOpen, setRunOpen] = useRunModalState(ops.phase)
-  const actions = usePanelActions({ ops, printerId, pluginId: plugin.id, installVars, missingDeps, dependents, needsNewerDaemon, selectedSource: selectedVariant?.registryUrl, selectedChannel: selectedVariant?.channel })
+  const actions = usePanelActions({ ops, printerId, pluginId: plugin.id, installVars, missingDeps, dependents, needsNewerDaemon, selectedSource: selectedVariant?.registryUrl, selectedChannel: selectedVariant?.channel, beforeInstall: () => configState.claimFormPort(installVars ?? {}) })
   const switching = isSwitchingVariant(installed, selectedVariant, installedSource, installedChannel, installedVersion)
   const lastInstallEntry = [...(history ?? [])].reverse().find((historyEntry) => historyEntry.action === 'install')
   // sessionLog is this session's fresh install (drives the one-off "View report" strip on overview);
@@ -259,10 +259,10 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
           {activeTab === 'doc' && <PanelDoc plugin={plugin} />}
           {activeTab === 'config' && (
             <PanelConfigArea
-              plugin={picked} installed={installed} printerId={printerId} printerSelected={!!printer} otherUiPorts={otherUiPorts}
+              plugin={picked} installed={installed} printerId={printerId} printerSelected={!!printer} portClaim={portClaim}
               appliedVars={appliedVars} appliedVarsAt={appliedVarsAt} multiVars={multiVars}
               scopes={multiScopes} onScopeChange={configState.setFieldScope} onApplied={configState.saveConfigVars}
-              onMultiVars={configState.setMultiVars} onMakePrimary={isUiPlugin(plugin) ? makePrimary : undefined}
+              onMultiVars={configState.setMultiVars}
             />
           )}
           {activeTab === 'changelog' && <PanelChangelog plugin={plugin} />}

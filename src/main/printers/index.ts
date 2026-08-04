@@ -9,5 +9,5 @@ export type {
 export { toPublicRecord } from './record'
 export { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter } from './store'
 export { mergeCapture, appendPluginCapture, pluginCaptures } from './captures'
-export { pingPrinter, checkDaemon, checkSshOpen, checkMoonraker, gradeReach } from './probe'
+export { pingPrinter, checkDaemon, checkSshOpen, checkMoonraker, gradeReach, probeService, probeServiceUrl } from './probe'
 export { resolveLiveAddress, knownAddresses } from './resolve'

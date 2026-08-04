@@ -545,7 +545,7 @@ textarea {
 }
 .search input {
   width: 100%;
-  padding: var(--space-2) var(--space-3) var(--space-2) 36px;
+  padding: var(--space-2) 38px var(--space-2) 36px;
   background: var(--bg-elev);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
@@ -570,14 +570,20 @@ textarea {
   color: var(--ink-3);
   pointer-events: none;
 }
-.search .search-clear {
+/* Element type added (button) so this beats `.btn.icon { position: relative }` below, which ties on
+   class count and loads later; without it the clear button stays in flow and lands on the search
+   icon instead of at the far end of the field. The room for it is reserved whether it is showing or
+   not, so the first character typed does not shove the text sideways. */
+.search > button.search-clear {
   position: absolute;
-  right: 3px;
+  right: 5px;
   top: 50%;
   transform: translateY(-50%);
+  border-radius: var(--r-pill);
+  color: var(--ink-2);
 }
-.search.has-query input {
-  padding-right: 36px;
+.search > button.search-clear:hover {
+  color: var(--ink);
 }
 
 .filter-group {

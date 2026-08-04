@@ -14,14 +14,21 @@ export interface PanelActionInputs {
   needsNewerDaemon: boolean
   selectedSource?: string
   selectedChannel?: ReleaseChannel
+  // Runs before the install goes out: the port this install claims is taken off whoever holds it.
+  beforeInstall?: () => Promise<void>
 }
 
 export function usePanelActions(input: PanelActionInputs) {
-  const { ops, printerId, pluginId, installVars, missingDeps, dependents, needsNewerDaemon, selectedSource, selectedChannel } = input
+  const { ops, printerId, pluginId, installVars, missingDeps, dependents, needsNewerDaemon, selectedSource, selectedChannel, beforeInstall } = input
   const [showDaemonGate, setShowDaemonGate] = useState(false)
   const [showCascadeGate, setShowCascadeGate] = useState(false)
-  function startInstall() {
-    if (printerId) ops.install(printerId, pluginId, installVars, missingDeps, selectedSource, selectedChannel)
+  // Moving the other web UI off the claimed port is a courtesy to that UI, not the thing the user
+  // clicked. If the printer refuses the move, the install still goes out and its own trail reports
+  // what went wrong, rather than the button silently doing nothing.
+  async function startInstall() {
+    if (!printerId) return
+    await beforeInstall?.().catch((error: unknown) => console.error('port hand-over failed', error))
+    ops.install(printerId, pluginId, installVars, missingDeps, selectedSource, selectedChannel)
   }
   function requestInstall() {
     if (needsNewerDaemon) { setShowDaemonGate(true);
