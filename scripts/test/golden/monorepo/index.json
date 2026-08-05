@@ -57,6 +57,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - afc-lite\n\n**Plugin author:** paxx12 (Extended Firmware overlay `31-feature-afc-lite`) and Bespok3d, extended from that overlay\n\nKlipper support for an AFC filament changer.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Extended Firmware overlay `31-feature-afc-lite` | paxx12 | GPL-3.0 | no | yes |\n\nThe Klipper extras in this package come from the Extended Firmware overlay `31-feature-afc-lite`\n(paxx12), GPL-3.0. `AFC_unit.py` ships unchanged. `AFC.py` and `AFC_lane.py` are that overlay's\nfiles extended here; about half of what this plugin ships is still that overlay's code.\n",
+      "license_url": "https://github.com/Bespok3d/u1-afc-lite/blob/dev/afc-lite/doc/LICENSE",
       "changelog_url": "afc-lite/doc/CHANGELOG.md"
     },
     {
@@ -116,6 +118,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - camera-hw-accel\n\n**Plugin author:** Bespok3d, vendoring v4l2-mpp (paxx12), Rockchip MPP, libdatachannel (Paul-Louis Ageneau) and live555 (Live Networks); two helper programs come from the Extended Firmware camera overlay `60-app-camera` (paxx12)\n\nHardware-accelerated camera capture and streaming.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| v4l2-mpp | paxx12 | GPL-3.0-or-later | yes | yes |\n| Rockchip MPP (Media Process Platform) | Rockchip | Apache-2.0 | yes | no |\n| libdatachannel (WebRTC) | Paul-Louis Ageneau and contributors | MPL-2.0 | yes | no |\n| live555 streaming media (RTSP) | Live Networks, Inc. | LGPL-2.1 | yes | no |\n\nThe capture and streaming binaries are built from a fork of https://github.com/paxx12/v4l2-mpp at\npinned commit `10fc3b9d935d9c79bacc014839c05de4a004c4ac`; that tree lives in this repo under\n`src/v4l2-mpp/` and carries its own LICENSE. The web pages in `plugin/files/html/` and the two Python\nprograms `camera-stream.py` and `control-v4l2.py` are byte-identical copies from that same tree.\nRockchip MPP, libdatachannel and live555 are pulled and linked at build time by the toolchain.\n\nTwo smaller programs come from somewhere else: `fake-service` and `libv4l2-imposter.so` are derived\nfrom the `apps/fake-service` and `apps/v4l2-imposter` sources in the Extended Firmware overlay\n`60-app-camera`, GPL-3.0, written by paxx12. They live here under `src/fake-service/` and\n`src/v4l2-imposter/` and differ from the overlay's originals only in identifier naming.\n\nThat overlay was called `12-camera-v4l2-mpp` until it was renamed in March 2026, and other Extended\nFirmware contributors have commits in it. One of them made `fake-service` build under a cross\ncompiler, and that change is in the Makefile shipped here. @justinh-rahb added the V4L2 controls\nintegration and liberodark corrected a shebang; both of those touched the overlay's own firmware\nwiring, which this plugin does not ship, because it places its own init scripts through the Bespok3d\ndaemon. The Extended Firmware history names every one of them.\n\n## Copyright notices\n\nThe capture and streaming binaries this plugin ships are linked against Rockchip MPP, libdatachannel\nand live555. Their licences require the notices to travel with the shipped binaries, even though no\nsource from those three projects is in this repo. The full licence texts are in `LICENSES/` at the\nroot of this repo.\n\n| Component | Licence | Copyright notice, as the project states it |\n| --- | --- | --- |\n| v4l2-mpp fork | GPL-3.0-or-later | the project's `LICENSE` names no copyright holder line; the fork is paxx12's |\n| Rockchip MPP | Apache-2.0 | `Copyright 2015 Rockchip Electronics Co. LTD` |\n| libdatachannel | MPL-2.0 | the project's `LICENSE` is the MPL-2.0 text with no copyright line, which MPL-2.0 does not require |\n| live555 | LGPL-2.1 | `Copyright (c) 1996-2026 Live Networks, Inc.  All rights reserved.` |\n\nRead from `inc/rk_mpi.h` at MPP commit `437bfbeb9567cca9cd9080e3f6954aa9d6a94f18`, from `LICENSE` at\nlibdatachannel commit `222529eb2c8ae44f96462504ae38023f62809cec`, and from a live555 source header,\nall retrieved 2026-07-28. The live555 release the toolchain fetches is `live.2025.11.06.tar.gz`,\nsha256 `7614fa0a293e61b24bfd715a30a1c020fb4fe5490ebb02e71b0dadb5efc1d17c`, checked by\n`src/v4l2-mpp/deps/compile_livemedia.sh`.\n\nlive555 is LGPL-2.1, so a user is entitled to what is needed to relink the shipped binary against\ntheir own build of it. Bespok3d compiles live555 itself, so that material is ours to hand over: that\nrelease at the sha256 above, the build script `src/v4l2-mpp/deps/compile_livemedia.sh` with live555's\nown `linux-no-std-lib` config, the v4l2-mpp source in `src/v4l2-mpp/`, and the toolchain in\n`toolchain/`, all of which are public. libdatachannel is MPL-2.0, so its source is\navailable from the project at the commit named above.\n",
+      "license_url": "https://github.com/Bespok3d/u1-hw-camera/blob/main/plugin/doc/LICENSE",
       "changelog_url": "camera-hw-accel/doc/CHANGELOG.md",
       "endpoints": [
         {
@@ -178,6 +182,8 @@
       ],
       "author": "bespoked",
       "sw_version": "1.37.3",
+      "attributions": "# Attributions - fluidd\n\n**Plugin author:** the Fluidd project (fluidd-core), packaged by Bespok3d\n\nInstalls the Fluidd web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Fluidd | the Fluidd project (fluidd-core), started by Craig Bassett (cadriel) | GPL-3.0 | yes | yes |\n\nThe released Fluidd web bundle is shipped verbatim inside this plugin (currently v1.37.3). Upstream:\nhttps://github.com/fluidd-core/fluidd\n\nThe U1 packaging approach follows the Extended Firmware overlay `62-app-fluidd` (paxx12), GPL-3.0.\n",
+      "license_url": "https://github.com/Bespok3d/fluidd-plugin/blob/dev/fluidd/doc/LICENSE",
       "changelog_url": "fluidd/doc/CHANGELOG.md",
       "endpoints": [
         {
@@ -222,6 +228,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - fluidd\n\n**Plugin author:** the Fluidd project (fluidd-core), packaged by Bespok3d\n\nInstalls the Fluidd web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Fluidd | the Fluidd project (fluidd-core), started by Craig Bassett (cadriel) | GPL-3.0 | yes | yes |\n\nThe released Fluidd web bundle is shipped verbatim inside this plugin (currently v1.37.2). Upstream:\nhttps://github.com/fluidd-core/fluidd\n\nThe U1 packaging approach follows the Extended Firmware overlay `62-app-fluidd` (paxx12), GPL-3.0.\n",
+      "license_url": "https://github.com/Bespok3d/fluidd-plugin/blob/dev/fluidd-bleeding-edge/doc/LICENSE",
       "changelog_url": "fluidd/doc/CHANGELOG.md",
       "endpoints": [
         {
@@ -267,6 +275,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - idle-timeout\n\n**Plugin author:** Bespok3d\n\nSets how long the printer waits before going idle.\n\nNo third-party code ships in this package.\n",
+      "license_url": "https://github.com/Bespok3d/u1-klipper-config-enhancers/blob/dev/idle-timeout/doc/LICENSE",
       "changelog_url": "idle-timeout/doc/CHANGELOG.md"
     },
     {
@@ -319,6 +329,8 @@
       ],
       "author": "bespoked",
       "sw_version": "2.18.0",
+      "attributions": "# Attributions - mainsail\n\n**Plugin author:** the mainsail-crew, packaged by Bespok3d\n\nInstalls the Mainsail web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Mainsail | the mainsail-crew | GPL-3.0 | yes | yes |\n\nThe released Mainsail web bundle is shipped verbatim inside this plugin (currently v2.18.0).\nUpstream: https://github.com/mainsail-crew/mainsail\n\nThe U1 packaging approach follows the Extended Firmware overlay `63-app-mainsail` (paxx12), GPL-3.0.\n",
+      "license_url": "https://github.com/Bespok3d/mainsail-plugin/blob/main/mainsail/doc/LICENSE",
       "changelog_url": "mainsail/doc/CHANGELOG.md",
       "endpoints": [
         {
@@ -363,6 +375,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - mainsail\n\n**Plugin author:** the mainsail-crew, packaged by Bespok3d\n\nInstalls the Mainsail web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Mainsail | the mainsail-crew | GPL-3.0 | yes | yes |\n\nThe released Mainsail web bundle is shipped verbatim inside this plugin (currently v2.18.0).\nUpstream: https://github.com/mainsail-crew/mainsail\n\nThe U1 packaging approach follows the Extended Firmware overlay `63-app-mainsail` (paxx12), GPL-3.0.\n",
+      "license_url": "https://github.com/Bespok3d/mainsail-plugin/blob/main/mainsail-bleeding-edge/doc/LICENSE",
       "changelog_url": "mainsail/doc/CHANGELOG.md",
       "endpoints": [
         {
@@ -428,6 +442,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - moonraker-notify\n\n**Plugin author:** Bespok3d, vendoring Apprise (Chris Caron) and its dependencies; Apprise on the U1 was first done in the Extended Firmware overlay `12-patch-moonraker` (paxx12)\n\nSends print notifications through Moonraker's notifier.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Apprise | Chris Caron (caronc) and contributors | BSD-2-Clause | yes | yes |\n| Python-Markdown | the Python-Markdown project | BSD-3-Clause | yes | yes |\n| Click | the Pallets project | BSD-3-Clause | yes | yes |\n| Requests | Kenneth Reitz and the Requests contributors | Apache-2.0 | yes | yes |\n| urllib3 | Andrey Petrov and the urllib3 contributors | MIT | yes | yes |\n| charset-normalizer | Ahmed Tahri and contributors | MIT | yes | yes |\n| idna | Kim Davies and contributors | BSD-3-Clause | yes | yes |\n| certifi | Kenneth Reitz and the certifi contributors | MPL-2.0 | yes | yes |\n| PyYAML | Ingy dot Net, Kirill Simonov and contributors | MIT | yes | yes |\n| OAuthLib | the OAuthLib contributors | BSD-3-Clause | yes | yes |\n| Requests-OAuthlib | the Requests-OAuthlib contributors | ISC | yes | yes |\n\nApprise and its dependencies are shipped inside this plugin so Moonraker's `[notifier]` can import\nthem. Upstream: https://github.com/caronc/apprise\n\nPorted from the Extended Firmware overlay `12-patch-moonraker` (paxx12), GPL-3.0.\n\n## Copyright notices\n\nReproduced because these licences require the notice to travel with the code. The full licence texts\nare in `LICENSES/` at the root of this repo. Each line is read from the package's own licence file\ninside `files/site-packages/*.dist-info/`.\n\n| Component | Licence | Copyright notice, as the component states it |\n| --- | --- | --- |\n| Apprise | BSD-2-Clause | `Copyright (c) 2026, Chris Caron <lead2gold@gmail.com>` |\n| Python-Markdown | BSD-3-Clause | `Copyright 2004 Manfred Stienstra (the original version)`, `Copyright 2004, 2005, 2006 Yuri Takhteyev (v. 0.2-1.6b)`, `Copyright 2007, 2008 The Python Markdown Project (v. 1.7 and later)` |\n| Click | BSD-3-Clause | `Copyright 2014 Pallets` |\n| Requests | Apache-2.0 | `Copyright 2019 Kenneth Reitz` |\n| urllib3 | MIT | `Copyright (c) 2008-2020 Andrey Petrov and contributors.` |\n| charset-normalizer | MIT | `Copyright (c) 2025 TAHRI Ahmed R.` |\n| idna | BSD-3-Clause | `Copyright (c) 2013-2026, Kim Davies and contributors.` |\n| certifi | MPL-2.0 | the package states no copyright line, and MPL-2.0 does not require one |\n| PyYAML | MIT | `Copyright (c) 2006-2016 Kirill Simonov`, `Copyright (c) 2017-2021 Ingy döt Net` |\n| OAuthLib | BSD-3-Clause | `Copyright (c) The OAuthlib Community` |\n| Requests-OAuthlib | ISC | `Copyright (c) 2014 Kenneth Reitz.` |\n",
+      "license_url": "https://github.com/Bespok3d/u1-extras/blob/dev/moonraker-notify/doc/LICENSE",
       "changelog_url": "moonraker-notify/doc/CHANGELOG.md"
     },
     {
@@ -470,6 +486,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - remote-screen\n\n**Plugin author:** Bespok3d, with the web app from the Extended Firmware overlay `61-app-remote-screen` by @horzadome; the framebuffer server here is written from scratch\n\nMirrors and controls the printer's screen from a browser.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Extended Firmware overlay `61-app-remote-screen` | the PWA by @horzadome, packaged by paxx12 | GPL-3.0 | no | yes |\n\nThe web app in this package comes from the Extended Firmware overlay `61-app-remote-screen`,\nGPL-3.0, whose PWA is credited to @horzadome and whose framebuffer double-buffering in\n`fb-http-server.py` is credited to @suchmememanyskill; packaging by paxx12. `html/manifest.json`\nships with one value changed (`start_url`) and `html/icon.svg` with its comments removed, and parts\nof `html/index.html`, `html/auth.js` and the nginx location file match that overlay. Each of those\nfiles carries a dated note of what changed, except `manifest.json`, which is JSON and cannot hold a\ncomment.\n\nThe framebuffer server, the touch input path and the watchdog are written from scratch.\n",
+      "license_url": "https://github.com/Bespok3d/u1-remote-screen/blob/dev/remote-screen/doc/LICENSE",
       "log": {},
       "changelog_url": "remote-screen/doc/CHANGELOG.md",
       "endpoints": [
@@ -505,6 +523,8 @@
       "download_url": "rfid-anycubic-0.1.0.b3",
       "homepage": "https://github.com/DnG-Crafts/ACE-RFID",
       "author": "bespoked",
+      "attributions": "# Attributions - rfid-anycubic\n\n**Plugin author:** Bespok3d, tag format documented by DnG-Crafts\n\nReads Anycubic ACE filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| ACE-RFID tag-format research | DnG-Crafts and contributors | see the project | no | no |\n\nField layout follows the community reverse-engineering write-up at\nhttps://github.com/DnG-Crafts/ACE-RFID. No code from that project is used here.\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-anycubic/doc/LICENSE",
       "changelog_url": "rfid-anycubic/doc/CHANGELOG.md"
     },
     {
@@ -544,6 +564,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - rfid-bambu\n\n**Plugin author:** Bespok3d, tag format documented by the Bambu Research Group\n\nReads Bambu Lab filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| RFID-Tag-Guide | the Bambu Research Group | MIT | no | no |\n\nKey derivation is written clean-room from the published HKDF-SHA256 description in\nhttps://github.com/Bambu-Research-Group/RFID-Tag-Guide. No code from that project is used here.\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-bambu/doc/LICENSE",
       "changelog_url": "rfid-bambu/doc/CHANGELOG.md"
     },
     {
@@ -592,6 +614,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - rfid-creality\n\n**Plugin author:** Bespok3d, tag format documented by DnG-Crafts (K2-RFID) and the Bambu Research Group\n\nReads Creality filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| RFID-Tag-Guide and the K2-RFID community schema | DnG-Crafts (K2-RFID) and the Bambu Research Group | MIT | no | no |\n\nThe AES used to derive the sector key and decrypt the payload is a clean-room implementation of the\npublished FIPS-197 standard (`aes_min.py`), tested against the FIPS-197 known-answer vectors. It is\nnot taken from any third-party crypto library.\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-creality/doc/LICENSE",
       "changelog_url": "rfid-creality/doc/CHANGELOG.md"
     },
     {
@@ -620,6 +644,8 @@
       "download_url": "rfid-elegoo-0.1.2.b3",
       "homepage": "https://github.com/ELEGOO-3D/ELEGOO-RFID-Tag-Guide",
       "author": "bespoked",
+      "attributions": "# Attributions - rfid-elegoo\n\n**Plugin author:** Bespok3d, tag format published by ELEGOO\n\nReads Elegoo filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| ELEGOO-RFID-Tag-Guide | ELEGOO | see the project | no | no |\n\nField layout follows ELEGOO's published guide at https://github.com/ELEGOO-3D/ELEGOO-RFID-Tag-Guide.\nNo code from it is used here.\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-elegoo/doc/LICENSE",
       "changelog_url": "rfid-elegoo/doc/CHANGELOG.md"
     },
     {
@@ -648,6 +674,8 @@
       "download_url": "rfid-generic-ndef-0.1.0.b3",
       "homepage": "https://github.com/Bespok3d/all-the-tags",
       "author": "bespoked",
+      "attributions": "# Attributions - rfid-generic-ndef\n\n**Plugin author:** Bespok3d, NDEF published by the NFC Forum\n\nReads any plain NDEF tag.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| NDEF specification | the NFC Forum | published specification | no | no |\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-generic-ndef/doc/LICENSE",
       "changelog_url": "rfid-generic-ndef/doc/CHANGELOG.md"
     },
     {
@@ -676,6 +704,8 @@
       "download_url": "rfid-ntag-0.1.9.b3",
       "homepage": "https://github.com/bespok3d-org/plugin-rfid-ntag",
       "author": "bespoked",
+      "attributions": "# Attributions - rfid-ntag\n\n**Plugin author:** Bespok3d, with parts of the Extended Firmware overlay `13-patch-rfid`, OpenRFID there by @suchmememanyskill and the OpenSpool `subtype` field by @morgendagen\n\nReads NTAG filament tags on the printer's built-in reader.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenSpool tag format | the OpenSpool project | published format | no | no |\n| Extended Firmware overlay `13-patch-rfid` | @suchmememanyskill and @morgendagen, packaged by paxx12 | GPL-3.0 | no | yes |\n\nThe patches in this plugin modify Snapmaker's own firmware files on the printer, and the Extended\nFirmware overlay `13-patch-rfid`, GPL-3.0, patches the same files. About a fifth of the lines our\nFM175xx reader patch adds are lines that overlay adds too. In `openspool_mapper.py`, 22 lines are\nthat overlay's: they fill Snapmaker's own tray structure field by field, with the same defaults.\nOpenRFID in that firmware is credited to @suchmememanyskill and the OpenSpool `subtype` field to\n@morgendagen.\n\nThe rest of the reader code (`bespok3d_rfid.py`, `ntag_reader.py`, `ndef_parser.py`,\n`mifare_classic.py`) is written from scratch.\n",
+      "license_url": "https://github.com/Bespok3d/u1-enhanced-rfid/blob/dev/rfid-ntag/doc/LICENSE",
       "changelog_url": "rfid-ntag/doc/CHANGELOG.md"
     },
     {
@@ -704,6 +734,8 @@
       "download_url": "rfid-openprinttag-0.1.1.b3",
       "homepage": "https://specs.openprinttag.org",
       "author": "bespoked",
+      "attributions": "# Attributions - rfid-openprinttag\n\n**Plugin author:** Bespok3d, tag format published by the OpenPrintTag project\n\nReads OpenPrintTag filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenPrintTag specification | the OpenPrintTag project | published specification | no | no |\n\nThe CBOR reader (`cbor_min.py`) is a clean-room implementation of the RFC 8949 subset OpenPrintTag\nuses, because Python's standard library has no CBOR codec. It is not taken from any third-party CBOR\nlibrary.\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-openprinttag/doc/LICENSE",
       "changelog_url": "rfid-openprinttag/doc/CHANGELOG.md"
     },
     {
@@ -732,6 +764,8 @@
       "download_url": "rfid-opentag-0.1.0.b3",
       "homepage": "https://opentag3d.info/",
       "author": "bespoked",
+      "attributions": "# Attributions - rfid-opentag\n\n**Plugin author:** Bespok3d, tag format published by the OpenTag3D project\n\nReads OpenTag filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenTag specification | the OpenTag3D project | published specification | no | no |\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-opentag/doc/LICENSE",
       "changelog_url": "rfid-opentag/doc/CHANGELOG.md"
     },
     {
@@ -760,6 +794,8 @@
       "download_url": "rfid-tigertag-0.1.0.b3",
       "homepage": "https://tigertag.io",
       "author": "bespoked",
+      "attributions": "# Attributions - rfid-tigertag\n\n**Plugin author:** Bespok3d, tag format published by TigerTag\n\nReads TigerTag filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| TigerTag specification | TigerTag | published specification | no | no |\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-tigertag/doc/LICENSE",
       "changelog_url": "rfid-tigertag/doc/CHANGELOG.md"
     },
     {
@@ -939,6 +975,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - spoolman\n\n**Plugin author:** Bespok3d (unlucio). This is a Klipper and Moonraker helper that talks to a Spoolman server; Spoolman itself is Daniel Hultgren (Donkie) and contributors, and none of its code is here\n\nConnects the printer to a Spoolman filament server.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Spoolman | Daniel Hultgren (Donkie) and contributors | AGPL-3.0 | yes | no |\n\nSpoolman runs on your own machine or server; nothing from it ships inside this plugin. The Moonraker\nproxy component here is written from scratch. Upstream: https://github.com/Donkie/Spoolman\n",
+      "license_url": "https://github.com/Bespok3d/spoolman-klipper-helper/blob/main/spoolman/doc/LICENSE",
       "changelog_url": "spoolman/doc/CHANGELOG.md"
     },
     {
@@ -967,6 +1005,8 @@
       "download_url": "status-feed-0.1.0.b3",
       "min_daemon_version": "0.10.33",
       "author": "bespoked",
+      "attributions": "# Attributions - status-feed\n\n**Plugin author:** Bespok3d\n\nA reference plugin: publishes a small printer-status feed.\n\nNo third-party code ships in this package.\n",
+      "license_url": "https://github.com/Bespok3d/reference-python-plugins/blob/dev/status-feed/doc/LICENSE",
       "log": {},
       "changelog_url": "status-feed/doc/CHANGELOG.md",
       "endpoints": [
@@ -1016,6 +1056,8 @@
       ],
       "author": "bespoked",
       "sw_version": "1.98.8",
+      "attributions": "# Attributions - tailscale\n\n**Plugin author:** Tailscale Inc., packaged by Bespok3d; the idea of a VPN on the U1 comes from the Extended Firmware overlay `66-app-vpn`, initial Tailscale support there by @mcristina422\n\nPuts the printer on a Tailscale network.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Tailscale client | Tailscale Inc. | BSD-3-Clause | yes | yes |\n\nThe official arm64 Tailscale build (currently 1.98.8) is downloaded from https://pkgs.tailscale.com\nat build time and shipped inside the package.\n\nThe binaries are Tailscale's own builds, shipped byte for byte as downloaded; nothing of\nTailscale's is stored in this repository. The licence text and the provenance note are in\n`vendor/tailscale/` at the root of this repository.\n\nPorted from the Extended Firmware overlay `66-app-vpn`, GPL-3.0, whose Tailscale work is credited to\n@mcristina422.\n",
+      "license_url": "https://github.com/Bespok3d/networking/blob/dev/tailscale/doc/LICENSE",
       "log": {},
       "changelog_url": "tailscale/doc/CHANGELOG.md"
     },
@@ -1045,6 +1087,8 @@
       "download_url": "tun-module-0.1.0.b3",
       "config": [],
       "author": "bespoked",
+      "attributions": "# Attributions - tun-module\n\n**Plugin author:** the Linux kernel contributors, built by Bespok3d from the printer kernel source\n\nLoads the kernel `tun` driver the VPN plugins need.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Linux kernel `tun` driver 6.1.99 | the Linux kernel contributors | GPL-2.0-only | yes | yes |\n\nThe module is cross-built at build time from the Rockchip kernel tree at commit\n`8533b2249e1550b233a4836d039d64e3bb2fed7a`, against the stock Snapmaker U1 kernel configuration, and\nshipped as a `.ko`. The licence text and the provenance note are in `vendor/linux-tun/` at the root\nof this repository.\n\nBecause Bespok3d builds this binary, Bespok3d owes its Corresponding Source: the pinned upstream\ncommit plus the `Dockerfile` and `junior-6.1.99.config` in `tun-module/toolchain/`, both published\nwith every release. The inventory entry is in `Bespok3d_history/doc/gpl-source-inventory.md`.\n\nRelated Extended Firmware overlay: `10-patch-kernel-modules` (paxx12), GPL-3.0.\n",
+      "license_url": "https://github.com/Bespok3d/networking/blob/dev/tun-module/doc/LICENSE",
       "changelog_url": "tun-module/doc/CHANGELOG.md"
     },
     {
@@ -1086,6 +1130,8 @@
         }
       ],
       "author": "bespoked",
+      "attributions": "# Attributions - u1-gcode-colors\n\n**Plugin author:** Bespok3d\n\nShows per-tool filament colours in the slicer preview.\n\nNo third-party code ships in this package.\n",
+      "license_url": "https://github.com/Bespok3d/u1-extras/blob/dev/u1-gcode-colors/doc/LICENSE",
       "changelog_url": "u1-gcode-colors/doc/CHANGELOG.md"
     },
     {
@@ -1128,6 +1174,8 @@
       ],
       "author": "bespoked",
       "sw_version": "1.16.2",
+      "attributions": "# Attributions - zerotier\n\n**Plugin author:** ZeroTier, Inc., packaged by Bespok3d\n\nPuts the printer on a ZeroTier network.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| ZeroTier One 1.16.2, agent | ZeroTier, Inc. | MPL-2.0 | yes | yes |\n| ZeroTier One 1.16.2, controller and related parts | ZeroTier, Inc. | ZeroTier SOURCE-AVAILABLE LICENSE Version 1.0, no SPDX identifier | yes | yes |\n\nThe official arm64 ZeroTier build (1.16.2) is downloaded from https://download.zerotier.com at build\ntime, pinned by URL and sha256, and shipped inside the package byte for byte as downloaded. Nothing\nof ZeroTier's is stored in this repository and Bespok3d modifies nothing in it.\n\nZeroTier's own notice states the software is source-available and is not open source as defined by\nthe Open Source Initiative, and that commercial use as its licence defines it requires a paid licence\nfrom ZeroTier, Inc. Both licence texts are reproduced verbatim in `vendor/zerotier-one/` at the root\nof this repository, with the provenance note.\n\nRelated Extended Firmware overlay: `66-app-vpn`, GPL-3.0.\n",
+      "license_url": "https://github.com/Bespok3d/networking/blob/dev/zerotier/doc/LICENSE",
       "log": {},
       "changelog_url": "zerotier/doc/CHANGELOG.md"
     }
@@ -1189,6 +1237,8 @@
       ],
       "doc_url": "all-the-tags/doc/README.md",
       "author": "bespoked",
+      "attributions": "",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/all-the-tags/doc/LICENSE",
       "changelog_url": "all-the-tags/doc/CHANGELOG.md"
     }
   ],

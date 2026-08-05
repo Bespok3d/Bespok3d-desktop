@@ -277,6 +277,8 @@ test('bundled index entry does not drift from b3-builder core on the shared cata
     macros: { SAMPLE: 'value' },
     config: { key: 'value' },
     changelog: 'CHANGELOG.md',
+    license: 'https://example.com/sample-publisher/sample-plugin/blob/main/doc/LICENSE',
+    attributions: '# Credits\n\nSample upstream project, under its own licence.\n',
     endpoints: [{ path: '/sample' }],
   }
 

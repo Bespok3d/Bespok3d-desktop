@@ -152,9 +152,17 @@ function buildCollectionEntry(manifest) {
     members: manifest.members ?? [],
     doc_url: `${manifest.name}/doc/README.md`,
   }
-  copyIfPresent(entry, manifest, ['icon', 'homepage', 'author'])
+  copyIfPresent(entry, manifest, ['icon', 'homepage', 'author', 'attributions'])
+  applyLicenseUrl(entry, manifest)
   if (manifest.changelog) entry.changelog_url = `${manifest.name}/${manifest.changelog}`
   return entry
+}
+
+// Unlike the changelog, a licence file is never staged next to the index and never a release asset: it
+// lives in the plugin's own repo and the store only links out to it. So the manifest carries the whole
+// link and the entry passes it through, rather than a disk-relative path.
+function applyLicenseUrl(entry, manifest) {
+  if (manifest.license) entry.license_url = manifest.license
 }
 
 function latestUpdated(entries) {
@@ -181,7 +189,8 @@ function buildIndexEntry(manifest, providers, buildTags) {
     doc_url: `${manifest.name}/doc/README.md`,
     download_url: `${manifest.name}-${manifest.version}.b3`,
   }
-  copyIfPresent(entry, manifest, ['icon', 'min_daemon_version', 'homepage', 'macros', 'config', 'author', 'sw_version'])
+  copyIfPresent(entry, manifest, ['icon', 'min_daemon_version', 'homepage', 'macros', 'config', 'author', 'sw_version', 'attributions'])
+  applyLicenseUrl(entry, manifest)
   const log = logSource(manifest)
   if (log) entry.log = log
   if (manifest.changelog) entry.changelog_url = `${manifest.name}/${manifest.changelog}`
