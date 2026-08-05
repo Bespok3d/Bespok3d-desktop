@@ -3,9 +3,9 @@
 import type { Plugin } from '../../../../data/types'
 import { useI18n } from '../../../../i18n/context'
 import cx from '../../../../utils/cx'
-import { isSideloaded, hasReleaseNotes } from '../derive'
+import { isSideloaded, hasReleaseNotes, hasLicenceInfo } from '../derive'
 
-export type DetailTab = 'overview' | 'versions' | 'doc' | 'config' | 'changelog' | 'log' | 'captured'
+export type DetailTab = 'overview' | 'versions' | 'doc' | 'config' | 'changelog' | 'license' | 'log' | 'captured'
 
 const TAB_LABEL: Record<DetailTab, string> = {
   overview: 'store.tab_overview',
@@ -13,6 +13,7 @@ const TAB_LABEL: Record<DetailTab, string> = {
   doc: 'store.tab_docs',
   config: 'store.tab_config',
   changelog: 'store.tab_changelog',
+  license: 'store.tab_licence',
   log: 'store.tab_log',
   captured: 'store.tab_captured',
 }
@@ -36,6 +37,7 @@ export function detailTabs(plugin: Plugin, hasLog: boolean, hasCaptured: boolean
   const hasDoc = !!plugin.doc || !!plugin.homepage || isSideloaded(plugin)
   const hasConfig = !!plugin.config
   const hasChangelog = hasReleaseNotes(plugin)
+  const hasLicence = hasLicenceInfo(plugin)
   // Show Versions when there is something to reconcile: the catalog offers this plugin more than once,
   // OR the install on the printer is not cleanly the single listed source at the same version. That
   // covers a version mismatch AND an install whose source is not in the catalog (installed from an
@@ -45,10 +47,10 @@ export function detailTabs(plugin: Plugin, hasLog: boolean, hasCaptured: boolean
   const needsReconcile = installed && !!installedVersion && (installedVersion !== plugin.version || !installedLinked)
   const hasVersions = plugin.sources.length > 1 || needsReconcile
 
-  return (['overview', 'versions', 'doc', 'config', 'changelog', 'log', 'captured'] as DetailTab[]).filter((tabId) =>
+  return (['overview', 'versions', 'doc', 'config', 'changelog', 'license', 'log', 'captured'] as DetailTab[]).filter((tabId) =>
     tabId === 'overview' || (tabId === 'versions' && hasVersions) || (tabId === 'doc' && hasDoc)
-    || (tabId === 'config' && hasConfig) || (tabId === 'changelog' && hasChangelog) || (tabId === 'log' && hasLog)
-    || (tabId === 'captured' && hasCaptured))
+    || (tabId === 'config' && hasConfig) || (tabId === 'changelog' && hasChangelog) || (tabId === 'license' && hasLicence)
+    || (tabId === 'log' && hasLog) || (tabId === 'captured' && hasCaptured))
 }
 
 // With more than one source, the first Install click opens the Versions picker so the user chooses

@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-277 exported components + hooks across 21 areas.
+278 exported components + hooks across 21 areas.
 
 ## Common primitives
 
@@ -218,6 +218,7 @@ as you touch the file.
 - `PanelFoot` (component) - [components/plugin-store/panel/foot.tsx](../src/renderer/src/components/plugin-store/panel/foot.tsx)
 - `PanelGates` (component) - [components/plugin-store/panel/gates/index.tsx](../src/renderer/src/components/plugin-store/panel/gates/index.tsx) - The modal/dialog layer that sits over the panel: a hard install error, the daemon-too-old gate, the
 - `PanelHead` (component) - [components/plugin-store/panel/head.tsx](../src/renderer/src/components/plugin-store/panel/head.tsx)
+- `PanelLicence` (component) - [components/plugin-store/panel/tabs/licence.tsx](../src/renderer/src/components/plugin-store/panel/tabs/licence.tsx) - The licence is a link, never the wall of text: a full GPL in the panel buries the one line the user
 - `PanelTabs` (component) - [components/plugin-store/panel/tabs/index.tsx](../src/renderer/src/components/plugin-store/panel/tabs/index.tsx)
 - `PluginCard` (component) - [components/plugin-store/browse/PluginCard.tsx](../src/renderer/src/components/plugin-store/browse/PluginCard.tsx)
 - `PluginConfigSection` (component) - [components/plugin-store/config/config-section.tsx](../src/renderer/src/components/plugin-store/config/config-section.tsx)

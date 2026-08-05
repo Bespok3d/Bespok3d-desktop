@@ -145,6 +145,11 @@ function entryToCatalogBase(entry: IndexEntry | CollectionEntry) {
     docUrl: fetchableDocUrl(entry.doc_url),
     changelog: entry.changelog_url ? changelogFor(entry.name) : undefined,
     changelogUrl: fetchableDocUrl(entry.changelog_url),
+    // The licence link and the attributions text ride the entry itself: unlike the README and the
+    // release notes there is nothing to fetch and no package to open, so what the list says is what
+    // the Licence tab shows.
+    licenseUrl: entry.license_url,
+    attributions: entry.attributions,
     local: isLocalRegistry(entry.registry_url),
   }
 }

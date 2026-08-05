@@ -102,6 +102,10 @@ export interface Plugin {
   // when the publisher released them with that version; the bundled copy above is what shows without it.
   docUrl?: string
   changelogUrl?: string
+  // Where the plugin's licence can be read, and who its code is owed to. Both come straight from the
+  // list entry, so the Licence tab never has to open the package to show them.
+  licenseUrl?: string
+  attributions?: string
   macros?: PluginMacro[]
   log?: PluginLog
   // True when this entry came from the local bundled dev index rather than a published list. Only
@@ -142,6 +146,8 @@ export interface IndexEntry {
   registry_url: string
   endpoints?: PluginEndpoint[]
   changelog_url?: string
+  license_url?: string
+  attributions?: string
   icon?: string
   min_daemon_version?: string
   homepage?: string

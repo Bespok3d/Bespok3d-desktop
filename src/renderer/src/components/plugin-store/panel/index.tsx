@@ -26,6 +26,7 @@ import { PanelHead } from './head'
 import { PanelBody } from './tabs/overview'
 import { PanelTabs, detailTabs, nudgeInstall, type DetailTab } from './tabs'
 import { PanelDoc } from './tabs/doc'
+import { PanelLicence } from './tabs/licence'
 import { PanelFoot } from './foot'
 import { useReleasedDoc } from './released-doc'
 import { PanelGates, useLocalRemove } from './gates'
@@ -266,6 +267,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
             />
           )}
           {activeTab === 'changelog' && <PanelChangelog plugin={plugin} />}
+          {activeTab === 'license' && <PanelLicence plugin={plugin} />}
           {activeTab === 'captured' && <CapturedTab printerId={printerId} plugin={plugin} installed={installed} />}
           <PanelZones
             activeTab={activeTab} ops={ops} activeLog={activeLog} showOverviewLog={installed && sessionLog != null && ops.phase === 'idle'}

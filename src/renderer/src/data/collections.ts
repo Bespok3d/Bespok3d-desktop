@@ -30,6 +30,8 @@ export interface CollectionEntry {
   signer?: string | null
   registry_url: string
   changelog_url?: string
+  license_url?: string
+  attributions?: string
   icon?: string
   homepage?: string
 }

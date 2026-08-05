@@ -83,3 +83,9 @@ export function installGate(t: TFunction, plugin: Plugin, state: {
 export function hasReleaseNotes(plugin: Plugin): boolean {
   return !!plugin.changelog || !!plugin.changelogUrl
 }
+
+// Either half is worth a tab on its own: a plugin that ships no borrowed code still has a licence, and
+// one whose list entry predates the licence link can still say who its code is owed to.
+export function hasLicenceInfo(plugin: Plugin): boolean {
+  return !!plugin.licenseUrl || !!plugin.attributions
+}

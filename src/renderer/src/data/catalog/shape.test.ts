@@ -137,3 +137,21 @@ describe('indexToCollections', () => {
     expect(collection.local).toBe(true)
   })
 })
+
+// The licence link and the attributions text are the only doc-shaped fields the store never fetches
+// and never opens the package for: whatever the list entry states is what the Licence tab shows.
+describe('the licence facts carried on the list entry', () => {
+  it('carries the licence link and the attributions text straight through to the plugin', () => {
+    const link = 'https://github.com/Bespok3d/u1-hw-camera/blob/main/plugin/doc/LICENSE'
+    const credits = '# Attributions\n\nUpstream: go2rtc, MIT.\n'
+    const [plugin] = indexToPlugins([makeIndexEntry({ license_url: link, attributions: credits })], [])
+    expect(plugin.licenseUrl).toBe(link)
+    expect(plugin.attributions).toBe(credits)
+  })
+
+  it('leaves both unset for an entry from a list that states neither', () => {
+    const [plugin] = indexToPlugins([makeIndexEntry()], [])
+    expect(plugin.licenseUrl).toBeUndefined()
+    expect(plugin.attributions).toBeUndefined()
+  })
+})
