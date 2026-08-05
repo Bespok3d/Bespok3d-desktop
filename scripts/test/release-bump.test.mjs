@@ -17,6 +17,12 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const RELEASE_SCRIPT = join(REPO_ROOT, 'scripts', 'release.sh')
 const currentVersion = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version
 
+// Expectations are read off the shipped version rather than written in by hand, because a hand
+// written next version goes stale on the very release that produces it and fails a green build.
+const [shippedTriple, shippedLabel] = currentVersion.split('-')
+const [shippedMajor, shippedMinor, shippedPatch] = shippedTriple.split('.').map(Number)
+const label = shippedLabel ? `-${shippedLabel}` : ''
+
 function runRelease(args) {
   return spawnSync('bash', [RELEASE_SCRIPT, ...args, '--dry-run'], {
     cwd: REPO_ROOT,
@@ -43,12 +49,12 @@ test('the shipped version is plain semver with an uncounted label', () => {
 })
 
 test('a bump raises the patch number and leaves the label alone', () => {
-  assert.equal(bumpTo(), '0.7.1-beta')
+  assert.equal(bumpTo(), `${shippedMajor}.${shippedMinor}.${shippedPatch + 1}${label}`)
 })
 
 test('minor and major raise their own place and zero the ones below', () => {
-  assert.equal(bumpTo('minor'), '0.8.0-beta')
-  assert.equal(bumpTo('major'), '1.0.0-beta')
+  assert.equal(bumpTo('minor'), `${shippedMajor}.${shippedMinor + 1}.0${label}`)
+  assert.equal(bumpTo('major'), `${shippedMajor + 1}.0.0${label}`)
 })
 
 test('a bump level with no bump to apply it to is refused, never ignored', () => {

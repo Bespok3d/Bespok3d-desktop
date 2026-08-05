@@ -216,6 +216,11 @@ if [ "$RUN_SHELL" -eq 1 ]; then
     # across untouched, so the beta line never starts counting its label the way the alphas did.
     run_check "release version rail" node --test "$REPO_ROOT/scripts/test/release-bump.test.mjs"
 
+    # The Windows installer must carry no code signature and no owner name: a Windows build that
+    # inherits the mac signing key gets signed with a certificate Windows cannot trust, and every
+    # copy already installed then refuses every later update, permanently.
+    run_check "windows update signing rail" node --test "$REPO_ROOT/scripts/test/release-signing.test.mjs"
+
     # 'publish' cuts a real release and 'pre' cuts a prerelease, so the difference between the two is
     # one word that a slip can get wrong, and 'pre' must keep the landing page out of it.
     run_check "release kind rail" node --test "$REPO_ROOT/scripts/test/release-publish-kind.test.mjs"

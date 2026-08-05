@@ -119,13 +119,19 @@ build_all() {
     run npm --prefix "$APP_DIR" run package:mac -- --publish never
   fi
 
+  # CSC_LINK/CSC_KEY_PASSWORD hold the Apple Developer ID key for the macOS build. electron-builder
+  # reads the same two variables for Windows and Linux, so leaving them set signs the .exe with the
+  # Apple certificate, which Windows never trusts, and bakes the certificate's owner name into
+  # app-update.yml as publisherName - after which every auto-update refuses to install.
   echo ""
   echo "Building Windows..."
-  run npm --prefix "$APP_DIR" run package:win -- --publish never
+  run env -u CSC_LINK -u CSC_KEY_PASSWORD -u WIN_CSC_LINK -u WIN_CSC_KEY_PASSWORD \
+    npm --prefix "$APP_DIR" run package:win -- --publish never
 
   echo ""
   echo "Building Linux..."
-  run npm --prefix "$APP_DIR" run package:linux -- --publish never
+  run env -u CSC_LINK -u CSC_KEY_PASSWORD \
+    npm --prefix "$APP_DIR" run package:linux -- --publish never
 
   # flatpak-builder runs only on Linux. On a Linux host it is used directly; anywhere else the same
   # tool runs in a Linux container against this build, so every cut produces the Flatpak on whatever

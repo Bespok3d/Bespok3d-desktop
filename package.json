@@ -177,7 +177,8 @@
     },
     "win": {
       "icon": "resources/icons/icon.png",
-      "target": "nsis"
+      "target": "nsis",
+      "verifyUpdateCodeSignature": false
     },
     "linux": {
       "icon": "resources/icons/icon.png",
