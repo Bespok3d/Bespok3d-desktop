@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
-import { repairBannerCondition, recoverBannerCondition, repairOrRecover, rootAccessBannerCondition, isWithinExpectedRestart, driftBannerCondition, driftedPluginCount, jinniBannerCondition } from './printer-banners'
+import { repairBannerCondition, recoverBannerCondition, repairOrRecover, rootAccessBannerCondition, isWithinExpectedRestart, driftBannerCondition, driftedPluginCount, printerProblemBannerCondition, printerProblemCount, jinniBannerCondition, rebootBannerCondition } from './printer-banners'
 import { jinniLags } from '../data/printers'
 import type { Printer } from '../data/types'
 
@@ -174,6 +174,41 @@ describe('driftedPluginCount', () => {
   })
 })
 
+const UNWIRED_WITH_NO_PLUGINS_LEFT: Printer = {
+  ...MANAGED,
+  printerProblems: [
+    { kind: 'includes_missing', detail: 'printer.cfg', pluginId: null },
+    { kind: 'includes_missing', detail: 'moonraker.conf', pluginId: null },
+  ],
+}
+
+describe('printerProblemCount', () => {
+  it('is zero when the check reported no printer problem', () => {
+    expect(printerProblemCount(MANAGED)).toBe(0)
+  })
+
+  it('counts what the printer needs and does not have', () => {
+    expect(printerProblemCount(UNWIRED_WITH_NO_PLUGINS_LEFT)).toBe(2)
+  })
+})
+
+describe('printerProblemBannerCondition', () => {
+  it('is true for a printer that ignores bespok3d even with no plugins left to drift', () => {
+    expect(driftedPluginCount(UNWIRED_WITH_NO_PLUGINS_LEFT)).toBe(0)
+    expect(printerProblemBannerCondition(UNWIRED_WITH_NO_PLUGINS_LEFT)).toBe(true)
+  })
+
+  it('is false when nothing is wrong with the printer', () => {
+    expect(printerProblemBannerCondition(MANAGED)).toBe(false)
+  })
+
+  it('is suppressed inside the expected-restart window', () => {
+    const futureUntil = 10_000
+    const currentInstant = 5_000
+    expect(printerProblemBannerCondition({ ...UNWIRED_WITH_NO_PLUGINS_LEFT, expectedRestartUntil: futureUntil }, currentInstant)).toBe(false)
+  })
+})
+
 describe('driftBannerCondition', () => {
   it('is true when a managed printer has drift outside the restart window', () => {
     expect(driftBannerCondition(DRIFTED)).toBe(true)
@@ -195,6 +230,47 @@ describe('driftBannerCondition', () => {
     const futureUntil = 10_000
     const currentInstant = 5_000
     expect(driftBannerCondition({ ...DRIFTED, expectedRestartUntil: futureUntil }, currentInstant)).toBe(false)
+  })
+})
+
+const NEEDS_REBOOT: Printer = {
+  ...MANAGED,
+  rebootRequired: ['some-future-token'],
+}
+
+describe('rebootBannerCondition', () => {
+  it('is true for a managed printer the daemon says needs a power cycle', () => {
+    expect(rebootBannerCondition(NEEDS_REBOOT)).toBe(true)
+  })
+
+  it('is false when rebootRequired is absent', () => {
+    expect(rebootBannerCondition(MANAGED)).toBe(false)
+  })
+
+  it('is false when rebootRequired is an empty list', () => {
+    expect(rebootBannerCondition({ ...MANAGED, rebootRequired: [] })).toBe(false)
+  })
+
+  it('is false when the printer is not managed', () => {
+    expect(rebootBannerCondition({ ...NEEDS_REBOOT, status: 'online' })).toBe(false)
+  })
+
+  it('is suppressed inside the expected-restart window', () => {
+    const futureUntil = 10_000
+    const currentInstant = 5_000
+    expect(rebootBannerCondition({ ...NEEDS_REBOOT, expectedRestartUntil: futureUntil }, currentInstant)).toBe(false)
+  })
+
+  it('is false for a printer whose screen only went to sleep', () => {
+    // The U1 screen blanks itself when it is left alone, and printers on the older adapter still
+    // report that ordinary blank as a dead screen. Showing it accused a healthy printer every time.
+    expect(rebootBannerCondition({ ...MANAGED, rebootRequired: ['display-pipe-wedged'] })).toBe(false)
+  })
+
+  it('ranks above drift: a printer with both conditions still needs the reboot banner first', () => {
+    const both = { ...NEEDS_REBOOT, daemonDrift: DRIFTED.daemonDrift }
+    expect(rebootBannerCondition(both)).toBe(true)
+    expect(driftBannerCondition(both)).toBe(true)
   })
 })
 

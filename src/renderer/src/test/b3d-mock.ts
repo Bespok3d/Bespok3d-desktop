@@ -151,7 +151,7 @@ function mockPrinters(channels: Channels, override: Partial<B3d['printers']> = {
     adapterGet: resolved(makeAdapterInfo()), adaptersList: resolved([makeAdapterInfo()]),
     checkSsh: resolved({ ok: true }), enroll: voidFn(), onEnrollProgress: sub(channels.enrollProgress),
     watchPrintState: voidFn(), unwatchPrintState: voidFn(), onPrintState: sub(channels.printState),
-    deactivate: voidFn(), reactivate: voidFn(), uninstall: voidFn(), repair: voidFn(),
+    deactivate: voidFn(), reactivate: voidFn(), uninstall: voidFn(), reboot: voidFn(), repair: voidFn(),
     updateDaemon: voidFn(), updateJinni: voidFn(), resetAccess: voidFn(),
     ...override,
   }

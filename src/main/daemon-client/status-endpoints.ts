@@ -16,9 +16,29 @@ export interface PluginDrift {
   symlink_issues: SymlinkIssue[]
 }
 
+// A printer-level problem as the daemon words it: what is wrong, which thing it is wrong about, and
+// the plugin it belongs to when it belongs to one.
+export interface PrinterProblemWire {
+  kind: string
+  detail: string
+  plugin_id: string | null
+}
+
+// A daemon that predates the printer-level check answers with `ok` and `drift` only, so both new
+// lists are optional and an absent one reads as "nothing reported", never as "unknown".
 export interface SelfCheckResult {
-  ok: boolean
-  drift: PluginDrift[]
+  ok?: boolean
+  // Whether bespok3d is switched off ON THE PRINTER: its config includes are gone and its plugins are
+  // unlinked because someone asked for that, not because anything broke. The app kept this in its own
+  // records, so a printer switched off from another machine (or found already off) looked untouched.
+  // A daemon too old to answer it omits the key, which reads as "on", the state that printer is in.
+  switched_off?: boolean
+  problems?: PrinterProblemWire[]
+  drift?: PluginDrift[]
+  // Machine tokens the printer says require a power cycle to clear (e.g. "display-pipe-wedged").
+  // Absent or empty reads as "no reboot needed"; a daemon too old to answer omits the key, which
+  // must read the same way, never as "unknown".
+  reboot_required?: string[]
 }
 
 export async function fetchDaemonStatus(record: PrinterRecord, timeoutMs?: number): Promise<DaemonStatusResult> {

@@ -16,10 +16,11 @@ interface BannerHandlers {
   onReactivate: ReturnType<typeof vi.fn>
   onRecoverDrift: ReturnType<typeof vi.fn>
   onUpdateJinni: ReturnType<typeof vi.fn>
+  onReboot: ReturnType<typeof vi.fn>
 }
 
 function makeHandlers(): BannerHandlers {
-  return { onRepair: vi.fn(), onRecover: vi.fn(), onReactivate: vi.fn(), onRecoverDrift: vi.fn(), onUpdateJinni: vi.fn() }
+  return { onRepair: vi.fn(), onRecover: vi.fn(), onReactivate: vi.fn(), onRecoverDrift: vi.fn(), onUpdateJinni: vi.fn(), onReboot: vi.fn() }
 }
 
 function renderBanners(printer: ReturnType<typeof makePrinter> | null, handlers: BannerHandlers, bundledJinniVersion?: string) {
@@ -69,6 +70,14 @@ describe('PrinterBanners render + action wiring', () => {
     expect(handlers.onRecoverDrift).toHaveBeenCalledWith('printer-1')
   })
 
+  it('offers repair for a broken printer with no plugins left, which used to render no banner at all', async () => {
+    var handlers = makeHandlers()
+    var printer = makePrinter({ status: 'managed', installedIds: [], printerProblems: [{ kind: 'includes_missing', detail: 'printer.cfg', pluginId: null }] })
+    var { user } = renderBanners(printer, handlers)
+    await user.click(screen.getByRole('button', { name: en('banner.printer_problem_action') }))
+    expect(handlers.onRecoverDrift).toHaveBeenCalledWith('printer-1')
+  })
+
   it('shows the jinni-update banner when the deployed jinni lags the bundled one', async () => {
     var handlers = makeHandlers()
     var { user } = renderBanners(makePrinter({ status: 'managed', jinniVersion: '0.1.0' }), handlers, '0.1.1')
@@ -103,5 +112,35 @@ describe('PrinterBanners render + action wiring', () => {
     renderBanners(printer, makeHandlers(), '0.1.1')
     expect(screen.getByRole('button', { name: en('banner.drift_action') })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: en('banner.jinni_action') })).not.toBeInTheDocument()
+  })
+})
+
+describe('PrinterBanners reboot banner', () => {
+  it('shows the reboot banner for a managed printer the daemon says needs a power cycle, and reboots on click', async () => {
+    var handlers = makeHandlers()
+    var printer = makePrinter({ status: 'managed', rebootRequired: ['some-future-token'] })
+    var { user } = renderBanners(printer, handlers)
+    await user.click(screen.getByRole('button', { name: en('banner.reboot_action') }))
+    expect(handlers.onReboot).toHaveBeenCalledWith('printer-1')
+  })
+
+  it('says nothing when the printer only reports its screen having gone to sleep', () => {
+    var printer = makePrinter({ status: 'managed', rebootRequired: ['display-pipe-wedged'] })
+    renderBanners(printer, makeHandlers())
+    expect(screen.queryByRole('button', { name: en('banner.reboot_action') })).not.toBeInTheDocument()
+  })
+
+  it('falls back to the unknown reason for a token this build does not recognize, never rendering the raw token', () => {
+    var printer = makePrinter({ status: 'managed', rebootRequired: ['some-future-token'] })
+    renderBanners(printer, makeHandlers())
+    expect(screen.getByText(en('banner.reboot_reason.unknown'), { exact: false })).toBeInTheDocument()
+    expect(screen.queryByText(/some-future-token/)).not.toBeInTheDocument()
+  })
+
+  it('prefers reboot over the drift banner when both apply', () => {
+    var printer = makePrinter({ status: 'managed', rebootRequired: ['some-future-token'], daemonDrift: [{ pluginId: 'spoolman', symlinkIssueCount: 1 }] })
+    renderBanners(printer, makeHandlers())
+    expect(screen.getByRole('button', { name: en('banner.reboot_action') })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: en('banner.drift_action') })).not.toBeInTheDocument()
   })
 })

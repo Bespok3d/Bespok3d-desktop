@@ -9,4 +9,6 @@ export type BatchVariant = 'recovery' | 'update' | 'install' | 'uninstall'
 export interface BatchFailure {
   variant: BatchVariant
   reason: string
+  // Which printer refused, so a refusal that only re-enrolling can clear can offer that re-enrollment.
+  printerId: string
 }

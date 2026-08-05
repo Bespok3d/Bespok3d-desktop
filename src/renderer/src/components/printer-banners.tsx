@@ -81,6 +81,54 @@ export function driftBannerCondition(printer: Printer, now: number = Date.now())
   return driftedPluginCount(printer) > 0
 }
 
+// Tokens this app build knows how to word. A newer daemon may report a token this build predates;
+// falling back to the unknown reason keeps a raw machine token from ever reaching the user.
+const KNOWN_REBOOT_TOKENS: string[] = []
+
+// The U1's screen blanks itself when it is left alone, and the printer used to report that ordinary
+// blank as a screen that had died. Printers still running that version keep sending it, so it is
+// dropped here as well: no user is told their working screen is dead while their printer catches up.
+const REBOOT_TOKENS_NOT_WORTH_A_BANNER = ['display-pipe-wedged']
+
+function rebootTokensWorthShowing(printer: Printer): string[] {
+  return (printer.rebootRequired ?? []).filter((token) => !REBOOT_TOKENS_NOT_WORTH_A_BANNER.includes(token))
+}
+
+// Only the first token is shown, one line ("here is why"), never a list.
+function rebootReasonToken(printer: Printer): string {
+  const reportedToken = rebootTokensWorthShowing(printer)[0]
+
+  return reportedToken && KNOWN_REBOOT_TOKENS.includes(reportedToken) ? reportedToken : 'unknown'
+}
+
+// The printer itself says it needs a power cycle to clear something (a wedged subsystem a restart
+// fixes, not a config or plugin problem). Ranked above drift/printer-problem (more urgent: nothing
+// else works right until it is restarted) and below recover/repair/root-access/deactivated (those
+// mean the daemon or root access itself is not there to ask in the first place).
+export function rebootBannerCondition(printer: Printer, now: number = Date.now()): boolean {
+  if (printer.status !== 'managed') return false
+  if (isWithinExpectedRestart(printer, now)) return false
+
+  return rebootTokensWorthShowing(printer).length > 0
+}
+
+export function printerProblemCount(printer: Printer): number {
+  if (!printer.printerProblems) return 0
+
+  return printer.printerProblems.length
+}
+
+// Something is wrong with the printer itself, not with one plugin's links: it no longer includes
+// bespok3d in its own config, part of the bespok3d tree is gone, a plugin was left half removed. A
+// printer with no plugins left has no drift to show and can still be in this state, which is exactly
+// the case that used to render no banner at all.
+export function printerProblemBannerCondition(printer: Printer, now: number = Date.now()): boolean {
+  if (printer.status !== 'managed') return false
+  if (isWithinExpectedRestart(printer, now)) return false
+
+  return printerProblemCount(printer) > 0
+}
+
 export function jinniBannerCondition(printer: Printer, bundledVersion: string, now: number = Date.now()): boolean {
   if (printer.status !== 'managed') return false
   if (isWithinExpectedRestart(printer, now)) return false
@@ -105,7 +153,7 @@ function useTickWhilePending(target: number | undefined): void {
   useEffect(scheduleTickAtTarget, [target])
 }
 
-export function PrinterBanners({ selectedPrinter, bundledJinniVersion, onRepair, onRecover, onReactivate, onRecoverDrift, onUpdateJinni }: { selectedPrinter: Printer | null; bundledJinniVersion?: string; onRepair: (id: string) => void; onRecover: (id: string) => void; onReactivate: (id: string) => void; onRecoverDrift: (id: string) => void; onUpdateJinni: (id: string) => void }) {
+export function PrinterBanners({ selectedPrinter, bundledJinniVersion, onRepair, onRecover, onReactivate, onRecoverDrift, onUpdateJinni, onReboot }: { selectedPrinter: Printer | null; bundledJinniVersion?: string; onRepair: (id: string) => void; onRecover: (id: string) => void; onReactivate: (id: string) => void; onRecoverDrift: (id: string) => void; onUpdateJinni: (id: string) => void; onReboot: (id: string) => void }) {
   const { t } = useI18n()
   useTickWhilePending(selectedPrinter?.expectedRestartUntil)
   if (!selectedPrinter) return null
@@ -144,6 +192,26 @@ export function PrinterBanners({ selectedPrinter, bundledJinniVersion, onRepair,
         message={<><strong>{selectedPrinter.nick || selectedPrinter.model}</strong>{' '}{t('banner.deactivated_hint')}</>}
         actionLabel={t('printers.reactivate')}
         onAction={() => onReactivate(selectedPrinter.id)}
+      />
+    )
+  }
+
+  if (rebootBannerCondition(selectedPrinter)) {
+    return (
+      <PrinterBanner
+        message={t('banner.reboot_body', { name: selectedPrinter.nick || selectedPrinter.model, reason: t(`banner.reboot_reason.${rebootReasonToken(selectedPrinter)}`) })}
+        actionLabel={t('banner.reboot_action')}
+        onAction={() => onReboot(selectedPrinter.id)}
+      />
+    )
+  }
+
+  if (printerProblemBannerCondition(selectedPrinter)) {
+    return (
+      <PrinterBanner
+        message={t('banner.printer_problem_body', { name: selectedPrinter.nick || selectedPrinter.model, count: String(printerProblemCount(selectedPrinter)) })}
+        actionLabel={t('banner.printer_problem_action')}
+        onAction={() => onRecoverDrift(selectedPrinter.id)}
       />
     )
   }

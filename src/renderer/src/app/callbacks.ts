@@ -194,6 +194,7 @@ export function useAppCallbacks(
     addPrinterModal, setAddPrinterModal, markExpectedRestart, installGate,
     openAdd: (pickedId?: string) => setAddPrinterModal({ tab: 'scan', pickedId }),
     openManual: () => setAddPrinterModal({ tab: 'manual' }),
+    handleReboot: (id: string) => openEnrollModal(id, 'reboot'),
     ...actions,
     ...gateHandles(enrollGate),
     ...enrollModeHandlers(openEnrollModal),

@@ -54,22 +54,30 @@ function BatchBusyView({ variant, progress }: { variant: BatchVariant; progress:
 
 // A batch op (recover / update-all / install-selected) shows the same two-step UI: live progress while
 // it runs, then the per-plugin results report. One component for all three so the variants cannot drift.
-export function BatchOpModal({ variant, busy, result, progress, failure, onClose, onDismissFailure }: {
+export function BatchOpModal({ variant, busy, result, progress, failure, onRepairPrinter, onClose, onDismissFailure }: {
   variant: BatchVariant
   busy: boolean
   result: RecoverResult | null
   progress?: BatchProgressState | null
   // The app's current batch refusal, whichever operation it belongs to: each modal shows only its own.
   failure: BatchFailure | null
+  // Repair the printer's Bespok3d software, for the refusals that only a matched pair clears; the
+  // repair re-applies the installed plugins too.
+  onRepairPrinter: (printerId: string) => void
   onClose: () => void
   onDismissFailure: () => void
 }) {
+  function repairTheRefusingPrinter() {
+    if (failure) onRepairPrinter(failure.printerId)
+    onDismissFailure()
+  }
+
   return (
     <>
       {busy && !result && <BatchBusyView variant={variant} progress={progress} />}
       {result && <OtaRecoveryResultsModal results={result} variant={variant} onClose={onClose} />}
       {failure?.variant === variant && (
-        <BatchFailedModal variant={variant} reason={failure.reason} onClose={onDismissFailure} />
+        <BatchFailedModal variant={variant} reason={failure.reason} onRepairPrinter={repairTheRefusingPrinter} onClose={onDismissFailure} />
       )}
     </>
   )
@@ -105,10 +113,10 @@ export function useBatchOps(
   // A printer that refuses the call (busy printing, off the network) ends the batch with no results to
   // report, so the reason it gave is what goes on screen. Dropping it is what used to leave the user
   // watching a spinner stop with nothing to read and no idea the batch never ran.
-  function batchDidNotRun(variant: BatchVariant, setBusy: (busy: boolean) => void) {
+  function batchDidNotRun(variant: BatchVariant, printerId: string, setBusy: (busy: boolean) => void) {
     return function showWhyItDidNotRun(error: unknown) {
       setBusy(false)
-      setBatchFailure({ variant, reason: mainProcessMessage(error) })
+      setBatchFailure({ variant, printerId, reason: mainProcessMessage(error) })
     }
   }
   function dismissBatchFailure() {
@@ -126,7 +134,7 @@ export function useBatchOps(
     setBatchFailure(null)
     window.b3d.store.recover(printerId)
       .then((results) => { setRecovering(false); setRecoveryResults(results) })
-      .catch(batchDidNotRun('recovery', setRecovering))
+      .catch(batchDidNotRun('recovery', printerId, setRecovering))
   }
   function runBatch(variant: BatchVariant, printerId: string, specs: PluginUpdateSpec[], setBusy: (busy: boolean) => void, setResult: (result: RecoverResult) => void, post: BatchPoster) {
     setBusy(true)
@@ -138,7 +146,7 @@ export function useBatchOps(
         setResult(result)
         refreshAfterBatch(printerId)
       })
-      .catch(batchDidNotRun(variant, setBusy))
+      .catch(batchDidNotRun(variant, printerId, setBusy))
   }
   // Each spec carries the registry its version comes from, so a batch built entirely from versions held
   // on this machine is installed without the offer to refresh the online lists.
@@ -158,7 +166,7 @@ export function useBatchOps(
         setUninstallBatchResult(result)
         refreshAfterBatch(printerId)
       })
-      .catch(batchDidNotRun('uninstall', setUninstallingBatch))
+      .catch(batchDidNotRun('uninstall', printerId, setUninstallingBatch))
   }
 
   return {

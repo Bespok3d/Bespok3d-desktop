@@ -11,6 +11,20 @@
 .recovery-foot {
   padding: var(--space-3) var(--space-6);
   border-top: 1px solid var(--line);
+  display: flex;
+  gap: var(--space-2);
+}
+.batch-failed-advice {
+  padding: 0 var(--space-6) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+.batch-failed-verbatim {
+  display: block;
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
 }
 .recovery-row {
   display: flex;

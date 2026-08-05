@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-274 exported components + hooks across 21 areas.
+277 exported components + hooks across 21 areas.
 
 ## Common primitives
 
@@ -123,7 +123,7 @@ as you touch the file.
 
 ## Feature: batch-ops
 
-- `BatchFailedModal` (component) - [components/batch-ops/FailedModal.tsx](../src/renderer/src/components/batch-ops/FailedModal.tsx) - The printer's own words are the verdict. A refusal while a print is running already reads as a
+- `BatchFailedModal` (component) - [components/batch-ops/FailedModal.tsx](../src/renderer/src/components/batch-ops/FailedModal.tsx) - The verdict a user meets is a sentence. A refusal while a print is running is already one (it names
 - `BatchInstallProgress` (component) - [components/batch-ops/InstallProgress.tsx](../src/renderer/src/components/batch-ops/InstallProgress.tsx) - The live batch-install modal: the ordered plugin list with each row ticking pending -> installing
 - `BatchOpModal` (component) - [components/batch-ops/index.tsx](../src/renderer/src/components/batch-ops/index.tsx) - A batch op (recover / update-all / install-selected) shows the same two-step UI: live progress while
 - `BatchReportModal` (component) - [components/batch-ops/ReportModal.tsx](../src/renderer/src/components/batch-ops/ReportModal.tsx) - However a batch op ends, the user meets the same thing: what it was, one line saying how it went,
@@ -163,6 +163,9 @@ as you touch the file.
 - `CredentialsForm` (component) - [components/enrollment/CredentialsForm.tsx](../src/renderer/src/components/enrollment/CredentialsForm.tsx)
 - `Enrollment` (component) - [components/enrollment/index.tsx](../src/renderer/src/components/enrollment/index.tsx)
 - `EnrollmentProgress` (component) - [components/enrollment/EnrollmentProgress.tsx](../src/renderer/src/components/enrollment/EnrollmentProgress.tsx)
+- `GoAheadStep` (component) - [components/enrollment/GoAheadStep.tsx](../src/renderer/src/components/enrollment/GoAheadStep.tsx) - The screen the user says yes on. The title above it already says what is about to happen, so this
+- `useGoAhead` (hook) - [components/enrollment/useGoAhead.ts](../src/renderer/src/components/enrollment/useGoAhead.ts) - Holds the op on its go-ahead screen, and answers which screen the modal shows once the user has
+- `usePostOpReboot` (hook) - [components/enrollment/usePostOpReboot.ts](../src/renderer/src/components/enrollment/usePostOpReboot.ts) - Reboots the printer the moment the op reports success, and answers whether the success screen has to
 
 ## Feature: header
 

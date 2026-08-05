@@ -17,7 +17,7 @@ export type ReleaseChannel = 'lts' | 'stable' | 'rc' | 'testing' | 'experiment'
 // module, data/printer.ts (same split-by-concern pattern as collections.ts and plugin-config.ts);
 // re-exported here so importers keep a single data/types entry point.
 export type { EnrollmentLogStep, EnrollmentLog, Printer, ConnectionReach, PrinterConnection } from './printer'
-export type { DriftReport } from '@bespok3d/contract'
+export type { DriftReport, PrinterProblem } from '@bespok3d/contract'
 
 export interface PluginMacro {
   name: string

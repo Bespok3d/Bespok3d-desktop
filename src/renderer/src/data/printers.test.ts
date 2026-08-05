@@ -150,9 +150,17 @@ describe('statusAfterProbe', () => {
     expect(statusAfterProbe('online', 'offline', 1)).toEqual({ status: 'offline', misses: 0 })
   })
 
-  it('settles the first probe immediately from the checking start state (no stale-green hold)', () => {
-    expect(statusAfterProbe('checking', 'offline', 0)).toEqual({ status: 'offline', misses: 0 })
-    expect(statusAfterProbe('checking', 'online', 0)).toEqual({ status: 'online', misses: 0 })
+  // At app start the app knows nothing yet, and a daemon that is still coming up answers late. Acting
+  // on that first answer is what made the app flicker between offering an update and offering recovery
+  // for the first half-minute after launch. The printer stays 'checking' (grey, never a stale green)
+  // until a second probe agrees, and a healthy answer is believed at once.
+  it('waits for a second probe to agree before it grades a printer worse than checking', () => {
+    expect(statusAfterProbe('checking', 'offline', 0)).toEqual({ status: 'checking', misses: 1 })
+    expect(statusAfterProbe('checking', 'online', 0)).toEqual({ status: 'checking', misses: 1 })
+    expect(statusAfterProbe('checking', 'online', 1)).toEqual({ status: 'online', misses: 0 })
+  })
+
+  it('believes a healthy first answer straight away', () => {
     expect(statusAfterProbe('checking', 'managed', 0)).toEqual({ status: 'managed', misses: 0 })
   })
 })
@@ -205,7 +213,7 @@ describe('pingAndUpdate', () => {
 // (pingAndUpdate -> repairBannerCondition). A single missed daemon probe holds BOTH status (managed)
 // and reach (managed, via the line-144 guard), and the banner is gated on status==='online', so the
 // repair banner cannot show. Only the SECOND consecutive miss downgrades status to online + reach to
-// recoverable, at which point the repair banner is the correct, deliberate signal.
+// recoverable, at which point the repair banner is the right thing to show.
 describe('connection hiccup does not jump the repair banner', () => {
   const MANAGED: Printer = { ...ENROLLED, status: 'managed', connection: { reach: 'managed', sshOpen: true } }
 

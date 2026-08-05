@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ReleaseChannel } from '../settings'
 import type { PackageTrust } from '../registry/model'
-import type { InstallLog, Endpoint, DriftReport, ConfigTruthRecords } from '@bespok3d/contract'
+import type { InstallLog, Endpoint, DriftReport, PrinterProblem, ConfigTruthRecords } from '@bespok3d/contract'
 
 export interface EnrollmentLogStep {
   id: string
@@ -16,7 +16,7 @@ export interface EnrollmentLog {
   steps: EnrollmentLogStep[]
 }
 
-export type { DriftReport }
+export type { DriftReport, PrinterProblem }
 
 // The truth-ladder records (appliedPluginVars/-At, printerUuid) come from ConfigTruthRecords in
 // @bespok3d/contract, the single definition shared with the renderer Printer state.
@@ -69,6 +69,10 @@ export interface PrinterRecord extends ConfigTruthRecords {
   daemonUpdatedAt?: string
   deactivatedAt?: string
   daemonDrift?: DriftReport[]
+  printerProblems?: PrinterProblem[]
+  // Machine tokens the printer says require a power cycle to clear (e.g. "display-pipe-wedged").
+  // Empty or absent = no reboot needed; see DaemonMetadata in @bespok3d/contract for the full rule.
+  rebootRequired?: string[]
   firmwareVersion?: string
   jinniVersion?: string
   jinniCapabilities?: string[]

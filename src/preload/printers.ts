@@ -32,6 +32,8 @@ export const printersApi = {
     ipcRenderer.invoke('printer:reactivate', printerId, ip, user, password, port),
   uninstall: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
     ipcRenderer.invoke('printer:uninstall', printerId, ip, user, password, port),
+  reboot: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
+    ipcRenderer.invoke('printer:reboot', printerId, ip, user, password, port),
   repair: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
     ipcRenderer.invoke('printer:repair', printerId, ip, user, password, port),
   updateDaemon: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>

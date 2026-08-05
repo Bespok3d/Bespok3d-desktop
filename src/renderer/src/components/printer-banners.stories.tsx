@@ -11,7 +11,7 @@ const ENROLLED = { enrollmentLog: { enrolledAt: '2026-06-16T22:03:00Z', adapterI
 
 function noop() {}
 
-const HANDLERS = { onRepair: noop, onRecover: noop, onReactivate: noop, onRecoverDrift: noop, onUpdateJinni: noop }
+const HANDLERS = { onRepair: noop, onRecover: noop, onReactivate: noop, onRecoverDrift: noop, onUpdateJinni: noop, onReboot: noop }
 
 function Banner({ printer, bundledJinniVersion }: { printer: Printer; bundledJinniVersion?: string }) {
   return <PrinterBanners selectedPrinter={printer} bundledJinniVersion={bundledJinniVersion} {...HANDLERS} />
@@ -36,9 +36,19 @@ export function Deactivated() {
   return <Banner printer={makePrinter({ status: 'deactivated', ...ENROLLED })} />
 }
 
+// The printer stopped including bespok3d in its own config, and has no plugins left to drift.
+export function PrinterProblem() {
+  return <Banner printer={makePrinter({ status: 'managed', installedIds: [], printerProblems: [{ kind: 'includes_missing', detail: 'printer.cfg', pluginId: null }], ...ENROLLED })} />
+}
+
 // Plugin state on a managed printer drifted from what is installed.
 export function Drift() {
   return <Banner printer={makePrinter({ status: 'managed', daemonDrift: [{ pluginId: 'spoolman', symlinkIssueCount: 2 }], ...ENROLLED })} />
+}
+
+// The printer itself says it needs a power cycle to clear something (ranks above drift).
+export function RebootRequired() {
+  return <Banner printer={makePrinter({ status: 'managed', rebootRequired: ['some-future-token'], ...ENROLLED })} />
 }
 
 // The deployed adapter (jinni) lags the one this app build ships.

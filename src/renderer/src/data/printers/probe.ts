@@ -13,8 +13,16 @@ interface DaemonResult extends DaemonMetadata {
   networkInterfaces?: Array<{ label?: string; ip: string }>
 }
 
+// A reachable daemon is not the same thing as a working printer. A printer someone switched off keeps
+// answering (that is the only way back on), so treating every answer as "managed" put the switched-off
+// printer back to looking healthy on the very next ping, banner and all, seconds after it was switched
+// off. The printer's own answer decides which of the two it is.
+function statusFromDaemon(result: DaemonResult): Printer['status'] {
+  return result.switchedOff ? 'deactivated' : 'managed'
+}
+
 function onDaemonResult(printer: Printer, result: DaemonResult, set: SetPrinters): void {
-  const patch: Partial<Printer> = { status: 'managed', connection: { reach: 'managed', sshOpen: true }, daemonVersion: result.daemonVersion, daemonUpdateAvailable: result.daemonUpdateAvailable }
+  const patch: Partial<Printer> = { status: statusFromDaemon(result), deactivated: result.switchedOff === true, connection: { reach: 'managed', sshOpen: true }, daemonVersion: result.daemonVersion, daemonUpdateAvailable: result.daemonUpdateAvailable }
   // The printer answered on this address; adopt it so the dropdown and every SSH op use the live IP,
   // not the lease it had at app start (otherwise an op SSHes to a stale IP after the printer moved).
   if (result.ip && result.ip !== printer.ip) patch.ip = result.ip
@@ -24,6 +32,8 @@ function onDaemonResult(printer: Printer, result: DaemonResult, set: SetPrinters
   if (result.installedIds !== undefined) patch.installedIds = result.installedIds
   if (result.installedVersions !== undefined) patch.installedVersions = result.installedVersions
   if (result.daemonDrift !== undefined) patch.daemonDrift = result.daemonDrift
+  if (result.printerProblems !== undefined) patch.printerProblems = result.printerProblems
+  if (result.rebootRequired !== undefined) patch.rebootRequired = result.rebootRequired
   if (result.jinniVersion !== undefined) patch.jinniVersion = result.jinniVersion
   if (result.jinniCapabilities !== undefined) patch.jinniCapabilities = result.jinniCapabilities
   if (result.jinniExtras !== undefined) patch.jinniExtras = result.jinniExtras
@@ -52,6 +62,7 @@ const writeLayerChecksInFlight = new Set<string>()
 // auto-probe) and fall back to the op-time write-layer backstop.
 function maybeCheckWriteLayer(printer: Printer, detail: PrinterConnection, set: SetPrinters): void {
   if (detail.reach !== 'recoverable') return
+  if (printer.deactivated) return
   if (!printer.enrollmentLog || printer.customSshCredentials) return
   if (printer.writeLayerIntact !== undefined) return
   if (writeLayerChecksInFlight.has(printer.id)) return
@@ -72,6 +83,13 @@ function connectionDetail(report: DaemonResult): PrinterConnection {
   return { reach: report.reach ?? 'offline', sshOpen: report.sshOpen ?? false }
 }
 
+// Switching bespok3d off takes the boot hook with it, so once the printer restarts there is no daemon
+// left to answer, and that silence is the state the user asked for, not a fault. Reading it as a fault
+// is what offered Repair, Recover and a version update on a printer that was switched off.
+function statusWhileSwitchedOff(reach: ConnectionReach): Printer['status'] {
+  return reach === 'offline' ? 'offline' : 'deactivated'
+}
+
 // Walks the connection ladder (daemon -> Moonraker/nginx -> SSH -> nothing) via one IPC, then maps the
 // rung reached to the status dot with downgrade hysteresis. A managed answer is authoritative and
 // refreshes daemon metadata; anything lower stores the reach so the banners can offer the right action.
@@ -84,7 +102,7 @@ export async function pingAndUpdate(printer: Printer, set: SetPrinters): Promise
 
  return }
   const detail = decision.status === 'managed' ? { reach: 'managed' as const, sshOpen: true } : connectionDetail(safe)
-  const patch: Partial<Printer> = { status: decision.status, connection: detail }
+  const patch: Partial<Printer> = { status: printer.deactivated ? statusWhileSwitchedOff(detail.reach) : decision.status, connection: detail }
   // Adopt the address the printer just answered on even when it is not managed (it may have moved to a
   // new lease), so a repair/enroll/recover op targets the live IP rather than the stale recorded one.
   if (safe.ip && safe.ip !== printer.ip) patch.ip = safe.ip

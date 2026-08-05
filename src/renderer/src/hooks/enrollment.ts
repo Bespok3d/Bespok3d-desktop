@@ -27,6 +27,25 @@ function nextEnrollPhase(status: EnrollProgressEvent['status'], isLastStep: bool
   return 'enrolling'
 }
 
+// Every lifecycle op the app runs over SSH takes the same arguments and reports on the same progress
+// feed, so they are all the one shape: name the op, get the starter that runs it on this printer.
+function sshLifecycleStarters(printer: Printer, startOp: (invoke: () => Promise<void>) => void) {
+  const printers = window.b3d.printers
+  function starterFor(op: SshLifecycleOp): (creds: SshCredentials) => void {
+    return (creds) => startOp(() => op(printer.id, printer.ip, creds.user, creds.password, creds.port))
+  }
+
+  return {
+    startDeactivate: starterFor(printers.deactivate),
+    startReactivate: starterFor(printers.reactivate),
+    startUninstall: starterFor(printers.uninstall),
+    startReboot: starterFor(printers.reboot),
+    startRepair: starterFor(printers.repair),
+    startUpdateDaemon: starterFor(printers.updateDaemon),
+    startUpdateJinni: starterFor(printers.updateJinni),
+  }
+}
+
 export function useEnrollment(printer: Printer) {
   const [state, setState] = useState<EnrollState>({ phase: 'credentials', latestEvent: null })
 
@@ -49,9 +68,6 @@ export function useEnrollment(printer: Printer) {
     // not this POST promise; a rejection here means the IPC dispatch itself failed, so log it (don't swallow).
     invoke().catch((error) => console.error('[enroll] start-op IPC failed', error))
   }
-  function lifecycleStarter(op: SshLifecycleOp): (creds: SshCredentials) => void {
-    return (creds) => startOp(() => op(printer.id, printer.ip, creds.user, creds.password, creds.port))
-  }
   function startEnrollment(creds: SshCredentials): void {
     startOp(() => printers.enroll(printer.id, printer.ip, printer.adapter, creds.user, creds.password, creds.port))
   }
@@ -64,13 +80,5 @@ export function useEnrollment(printer: Printer) {
     setState({ phase: 'credentials', latestEvent: null })
   }
 
-  return {
-    state, startEnrollment, retryFrom, reset,
-    startDeactivate: lifecycleStarter(printers.deactivate),
-    startReactivate: lifecycleStarter(printers.reactivate),
-    startUninstall: lifecycleStarter(printers.uninstall),
-    startRepair: lifecycleStarter(printers.repair),
-    startUpdateDaemon: lifecycleStarter(printers.updateDaemon),
-    startUpdateJinni: lifecycleStarter(printers.updateJinni),
-  }
+  return { state, startEnrollment, retryFrom, reset, ...sshLifecycleStarters(printer, startOp) }
 }

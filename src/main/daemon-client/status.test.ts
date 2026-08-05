@@ -20,7 +20,7 @@ vi.mock('../mdns/arp', () => ({ macForIp: vi.fn().mockReturnValue(undefined) }))
 
 import {
   summarizeDrift, dedupeEndpoints, parseCaps, daemonNeedsUpdate, assertDaemonVersion,
-  verifyDaemonVersion, getManagedRecord, recordOrThrow, checkDaemonRecord,
+  verifyDaemonVersion, getManagedRecord, recordOrThrow, checkDaemonRecord, switchedOffCorrection,
 } from './status'
 import { fetchDaemonStatus, fetchCapabilities, fetchSelfCheck } from './client'
 import { loadPrinters, updatePrinter, checkDaemon, checkMoonraker, checkSshOpen, resolveLiveAddress } from '../printers'
@@ -252,5 +252,75 @@ describe('checkDaemonRecord follows a moved or recycled IP (Bug B)', () => {
     expect(result.isManaged).toBe(true)
     expect(result.reach).toBe('managed')
     expect(result.ip).toBe('10.0.0.9')
+  })
+})
+
+describe('switchedOffCorrection (the printer decides, not the app records)', () => {
+  const managed = { id: 'p1', status: 'managed' } as never
+  const offRecord = { id: 'p1', status: 'deactivated', deactivated: true, deactivatedAt: '2026-01-01T00:00:00.000Z' } as never
+
+  it('marks a printer deactivated when the printer says it is switched off', () => {
+    const patch = switchedOffCorrection(managed, { ok: true, switched_off: true })
+    expect(patch.status).toBe('deactivated')
+    expect(patch.deactivated).toBe(true)
+    expect(typeof patch.deactivatedAt).toBe('string')
+  })
+
+  it('switches the record back on when the printer no longer reports it off', () => {
+    expect(switchedOffCorrection(offRecord, { ok: true, switched_off: false }))
+      .toEqual({ deactivated: false, status: 'managed', deactivatedAt: undefined })
+  })
+
+  it('changes nothing when the record already agrees with the printer', () => {
+    expect(switchedOffCorrection(managed, { ok: true, switched_off: false })).toEqual({})
+    expect(switchedOffCorrection(offRecord, { ok: true, switched_off: true })).toEqual({})
+  })
+
+  it('reads a daemon too old to answer the question as switched on', () => {
+    expect(switchedOffCorrection(managed, { ok: true })).toEqual({})
+  })
+})
+
+describe('checkDaemonRecord carries the switched-off fact off the printer', () => {
+  it('reports switchedOff and writes the deactivated status onto the record', async () => {
+    mockManagedRecord()
+    mockDaemonAnswers('0.12.12-dev')
+    vi.mocked(fetchSelfCheck).mockResolvedValue({ ok: true, switched_off: true, drift: [] })
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.switchedOff).toBe(true)
+    expect(vi.mocked(updatePrinter)).toHaveBeenCalledWith('p1', expect.objectContaining({ status: 'deactivated' }))
+  })
+
+  it('reports a printer that is on as not switched off', async () => {
+    mockManagedRecord()
+    mockDaemonAnswers('0.12.12-dev')
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.switchedOff).toBe(false)
+  })
+})
+
+describe('checkDaemonRecord carries reboot_required off the printer', () => {
+  it('reports the tokens the printer says need a power cycle', async () => {
+    mockManagedRecord()
+    mockDaemonAnswers('0.12.12-dev')
+    vi.mocked(fetchSelfCheck).mockResolvedValue({ ok: true, drift: [], reboot_required: ['display-pipe-wedged'] })
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.rebootRequired).toEqual(['display-pipe-wedged'])
+    expect(vi.mocked(updatePrinter)).toHaveBeenCalledWith('p1', expect.objectContaining({ rebootRequired: ['display-pipe-wedged'] }))
+  })
+
+  it('reads an absent key (a daemon too old to report it) as no reboot needed, never unknown', async () => {
+    mockManagedRecord()
+    mockDaemonAnswers('0.12.12-dev')
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.rebootRequired).toEqual([])
   })
 })

@@ -22,7 +22,7 @@ export function AppModals({ actions, discovered, existingPrinters }: { actions: 
   const enrollModal = actions.enrollModal
   // One batch runs at a time, so all four modals are handed the same refusal and each shows it only
   // when it is the one that was refused.
-  const refusal = { failure: actions.batchFailure, onDismissFailure: actions.dismissBatchFailure }
+  const refusal = { failure: actions.batchFailure, onDismissFailure: actions.dismissBatchFailure, onRepairPrinter: actions.handleRepairPrinter }
 
   return (
     <>

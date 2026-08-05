@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Printer } from '../../data/types'
 import { useEnrollment } from '../../hooks/enrollment'
-import type { SshCredentials, EnrollState, EnrollPhase } from '../../hooks/enrollment'
+import type { SshCredentials, EnrollState } from '../../hooks/enrollment'
 import { useI18n } from '../../i18n/context'
 import { formatDateTime } from '../../utils/datetime'
 import { savedRecord } from '../../data/printers'
@@ -11,6 +11,9 @@ import { Modal } from '../common/overlay/Modal'
 import { Button } from '../common/Button'
 import { CredentialsForm } from './CredentialsForm'
 import { EnrollmentProgress } from './EnrollmentProgress'
+import { GoAheadStep } from './GoAheadStep'
+import { usePostOpReboot, postOpRebootCalls } from './usePostOpReboot'
+import { useGoAhead, autoStartEligible } from './useGoAhead'
 import './enrollment.css'
 
 export type EnrollMode =
@@ -23,6 +26,7 @@ export type EnrollMode =
   | 'deactivate'
   | 'reactivate'
   | 'uninstall'
+  | 'reboot'
 
 interface EnrollmentProps {
   printer: Printer
@@ -34,22 +38,10 @@ interface EnrollmentProps {
   onExpectedRestart?: (printerId: string) => void
 }
 
-const DAEMON_RESTART_MODES: ReadonlySet<EnrollMode> = new Set<EnrollMode>(['update-daemon', 'update-jinni', 'repair', 'reactivate', 'recovery', 'enroll'])
+const DAEMON_RESTART_MODES: ReadonlySet<EnrollMode> = new Set<EnrollMode>(['update-daemon', 'update-jinni', 'repair', 'reactivate', 'recovery', 'enroll', 'reboot'])
 
 export function isDaemonRestartMode(mode: EnrollMode): boolean {
   return DAEMON_RESTART_MODES.has(mode)
-}
-
-// A daemon update must be the user's own choice, so update-daemon never auto-starts: it waits for the
-// confirm step (which shows the target version) before running. history has nothing to start.
-export function autoStartEligible(mode: EnrollMode, customSshCredentials: boolean): boolean {
-  if (mode === 'history' || mode === 'update-daemon') return false
-
-  return !customSshCredentials
-}
-
-export function awaitingUpdateConfirm(mode: EnrollMode, phase: EnrollPhase, updateConfirmed: boolean): boolean {
-  return mode === 'update-daemon' && phase === 'credentials' && !updateConfirmed
 }
 
 function buildHistoryEvent(printer: Printer): EnrollProgressEvent | null {
@@ -74,19 +66,25 @@ function EnrollModalTitle({ printer, mode, fromAdd, bundledJinniVersion }: { pri
   if (mode === 'deactivate') return (
     <>
       <h2>Deactivate {printerLabel}</h2>
-      <p>Enter SSH credentials to stop plugin services and remove the boot hook.</p>
+      <p>Plugin services stop and the boot hook is removed. The printer restarts, and keeps printing on its own firmware.</p>
     </>
   )
   if (mode === 'reactivate') return (
     <>
       <h2>Reactivate {printerLabel}</h2>
-      <p>Enter SSH credentials to restore plugins and restart the daemon.</p>
+      <p>Your plugins are put back and the daemon starts again. The printer restarts to pick them up.</p>
+    </>
+  )
+  if (mode === 'reboot') return (
+    <>
+      <h2>Restart {printerLabel}</h2>
+      <p>The printer powers down now and comes back on its own.</p>
     </>
   )
   if (mode === 'uninstall') return (
     <>
       <h2>Remove Bespok3d from {printerLabel}</h2>
-      <p>Enter SSH credentials to uninstall all plugins and remove the workspace.</p>
+      <p>Every plugin is uninstalled and the Bespok3d workspace is removed. The printer restarts and goes back to how it came.</p>
     </>
   )
   if (mode === 'recovery') return (
@@ -98,7 +96,7 @@ function EnrollModalTitle({ printer, mode, fromAdd, bundledJinniVersion }: { pri
   if (mode === 'repair') return (
     <>
       <h2>Repair {printerLabel}</h2>
-      <p>Bespok3d found a problem with the daemon. Enter SSH credentials to re-deploy a fresh daemon, clean up the old files, and re-apply plugins.</p>
+      <p>Bespok3d found a problem with the daemon. A fresh daemon goes on, the old files are cleaned up, and your plugins are re-applied.</p>
     </>
   )
   if (mode === 'update-daemon') return (
@@ -164,19 +162,7 @@ const ACTION_LABELS: Partial<Record<EnrollMode, string>> = {
   'deactivate': 'Deactivate',
   'reactivate': 'Reactivate',
   'uninstall': 'Remove Bespok3d',
-}
-
-function UpdateDaemonConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
-  const { t } = useI18n()
-
-  return (
-    <div className="enroll-body">
-      <div className="modal-foot">
-        <Button variant="outline" onClick={onCancel}>{t('btn.cancel')}</Button>
-        <Button variant="primary" onClick={onConfirm}>{t('btn.update')}</Button>
-      </div>
-    </div>
-  )
+  'reboot': 'Restart the printer',
 }
 
 interface EnrollmentBodyProps {
@@ -185,19 +171,21 @@ interface EnrollmentBodyProps {
   state: EnrollState
   credentials: SshCredentials
   showCredentialsForm: boolean
-  awaitingUpdateConfirm: boolean
+  awaitingGoAhead: boolean
   onStart: (creds: SshCredentials) => void
-  onConfirmUpdate: () => void
+  onGoAhead: () => void
+  onOwnCredentials: () => void
   onClose: () => void
   onDone: () => void
   onRetry: (stepId: string) => void
   onReset: () => void
   onEscalate?: () => void
+  printerIsRebooting: boolean
 }
 
 function EnrollmentBody(props: EnrollmentBodyProps) {
   const { t } = useI18n()
-  if (props.awaitingUpdateConfirm) return <UpdateDaemonConfirm onConfirm={props.onConfirmUpdate} onCancel={props.onClose} />
+  if (props.awaitingGoAhead) return <GoAheadStep actionLabel={ACTION_LABELS[props.mode] ?? t('btn.update')} onConfirm={props.onGoAhead} onOwnCredentials={props.onOwnCredentials} onCancel={props.onClose} />
   if (props.showCredentialsForm) return (
     <CredentialsForm
       printerId={props.printer.id}
@@ -218,6 +206,7 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
       onRetry={props.onRetry}
       onReset={props.onReset}
       onEscalate={props.mode === 'repair' ? props.onEscalate : undefined}
+      printerIsRebooting={props.printerIsRebooting}
     />
   )
 
@@ -234,18 +223,22 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
 }
 
 export function Enrollment({ printer, mode, fromAdd = false, onEnrolled, onClose, onEscalateRecovery, onExpectedRestart }: EnrollmentProps) {
-  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startRepair, startUpdateDaemon, startUpdateJinni, reset } = useEnrollment(printer)
+  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset } = useEnrollment(printer)
   const [credentials, setCredentials] = useState<SshCredentials>({ user: '', password: '', port: 22 })
-  const [updateConfirmed, setUpdateConfirmed] = useState(false)
   const [adapterInfo, setAdapterInfo] = useState<AdapterInfo | null>(null)
   const autoStarted = useRef(false)
+
+  const printerIsRebooting = usePostOpReboot({
+    printer, mode, phase: state.phase, credentials,
+    ...postOpRebootCalls(printer, startReboot, onExpectedRestart),
+  })
 
   function loadAdapterInfo() {
     window.b3d.printers.adapterGet(printer.adapter).then(setAdapterInfo)
   }
   useEffect(loadAdapterInfo, [])
 
-  const opStarters: Partial<Record<EnrollMode, (creds: SshCredentials) => void>> = { 'update-daemon': startUpdateDaemon, 'update-jinni': startUpdateJinni, repair: startRepair, deactivate: startDeactivate, reactivate: startReactivate, uninstall: startUninstall }
+  const opStarters: Partial<Record<EnrollMode, (creds: SshCredentials) => void>> = { 'update-daemon': startUpdateDaemon, 'update-jinni': startUpdateJinni, repair: startRepair, deactivate: startDeactivate, reactivate: startReactivate, uninstall: startUninstall, reboot: startReboot }
 
   function handleStart(creds: SshCredentials) {
     setCredentials(creds)
@@ -269,11 +262,15 @@ export function Enrollment({ printer, mode, fromAdd = false, onEnrolled, onClose
   }
   useEffect(autoStartWithDefaultCredentials, [])
 
-  function confirmUpdateDaemon() {
-    setUpdateConfirmed(true)
-    if (printer.customSshCredentials) return
+  function startOnAdapterDefaults() {
     window.b3d.printers.adapterGet(printer.adapter).then(startWithAdapterDefaults)
   }
+  const goAhead = useGoAhead({
+    mode, phase: state.phase,
+    customSshCredentials: Boolean(printer.customSshCredentials),
+    startWithAdapterDefaults: startOnAdapterDefaults,
+  })
+
   function handleRetry(stepId: string) {
     const opStart = opStarters[mode]
     if (opStart) { opStart(credentials);
@@ -289,20 +286,17 @@ export function Enrollment({ printer, mode, fromAdd = false, onEnrolled, onClose
 
   if (mode === 'history') return <HistoryModal printer={printer} onClose={onClose} />
 
-  const isAwaitingUpdateConfirm = awaitingUpdateConfirm(mode, state.phase, updateConfirmed)
-  const showCredentialsForm = state.phase === 'credentials' && Boolean(printer.customSshCredentials) && !isAwaitingUpdateConfirm
-  const dismissable = showCredentialsForm || isAwaitingUpdateConfirm
-
   return (
-    <Modal onClose={dismissable ? onClose : undefined} className="enrollment">
+    <Modal onClose={goAhead.dismissable ? onClose : undefined} className="enrollment">
       <div className="modal-head">
         <EnrollModalTitle printer={printer} mode={mode} fromAdd={fromAdd} bundledJinniVersion={adapterInfo?.jinniVersion} />
       </div>
       <EnrollmentBody
         printer={printer} mode={mode} state={state} credentials={credentials}
-        showCredentialsForm={showCredentialsForm} awaitingUpdateConfirm={isAwaitingUpdateConfirm}
-        onStart={handleStart} onConfirmUpdate={confirmUpdateDaemon} onClose={onClose}
+        showCredentialsForm={goAhead.showCredentialsForm} awaitingGoAhead={goAhead.awaiting}
+        onStart={handleStart} onGoAhead={goAhead.give} onOwnCredentials={goAhead.askForOwnCredentials} onClose={onClose}
         onDone={handleDone} onRetry={handleRetry} onReset={reset} onEscalate={onEscalateRecovery}
+        printerIsRebooting={printerIsRebooting}
       />
     </Modal>
   )

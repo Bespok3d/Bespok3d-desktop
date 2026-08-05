@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { DriftReport, ConfigTruthRecords } from '@bespok3d/contract'
+import type { DriftReport, PrinterProblem, ConfigTruthRecords } from '@bespok3d/contract'
 import type { ReleaseChannel } from './types'
 
 export interface EnrollmentLogStep {
@@ -60,6 +60,10 @@ export interface Printer extends ConfigTruthRecords {
   deactivatedAt?: string
   expectedRestartUntil?: number
   daemonDrift?: DriftReport[]
+  printerProblems?: PrinterProblem[]
+  // Machine tokens the printer says require a power cycle to clear (e.g. "display-pipe-wedged").
+  // Empty or absent = no reboot needed; see DaemonMetadata in @bespok3d/contract for the full rule.
+  rebootRequired?: string[]
   firmwareVersion?: string
   jinniVersion?: string
   jinniCapabilities?: string[]

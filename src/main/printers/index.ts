@@ -4,7 +4,7 @@
 // (userData persistence + the field-level merge write), captures (per-plugin log-capture list),
 // probe (network reachability + the connection-ladder grading). This barrel is the public surface.
 export type {
-  EnrollmentLog, EnrollmentLogStep, DriftReport, PrinterRecord, PublicPrinterRecord, ConnectionReach,
+  EnrollmentLog, EnrollmentLogStep, DriftReport, PrinterProblem, PrinterRecord, PublicPrinterRecord, ConnectionReach,
 } from './record'
 export { toPublicRecord } from './record'
 export { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter } from './store'

@@ -26,7 +26,13 @@ export type ProbeStatus = 'managed' | 'online' | 'offline'
 
 const STATUS_RANK: Record<ProbeStatus, number> = { offline: 0, online: 1, managed: 2 }
 
+// 'checking' is the absence of a reading, not a bad one. Ranking it with the worst reading made the
+// very first probe a verdict, so a daemon that was merely still coming up at app start got the app
+// offering Repair or Recover and then taking the offer back a tick later. Ranked with the best, an
+// early non-managed answer is one strike and the printer stays 'checking' until a second probe agrees.
 function statusRank(status: Printer['status']): number {
+  if (status === 'checking') return STATUS_RANK.managed
+
   return STATUS_RANK[status as ProbeStatus] ?? STATUS_RANK.offline
 }
 

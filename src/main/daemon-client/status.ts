@@ -5,7 +5,7 @@ import type { ConnectionReach, PrinterRecord, DriftReport } from '../printers'
 import { macForIp } from '../mdns/arp'
 import { fetchCapabilities, fetchDaemonStatus, fetchSelfCheck, EXPECTED_DAEMON_VERSION } from './client'
 import { isReleaseNewer } from '../app-update/version'
-import type { CapabilitiesResult, DaemonMetadata } from '@bespok3d/contract'
+import type { CapabilitiesResult, DaemonMetadata, PrinterProblem } from '@bespok3d/contract'
 import type { SelfCheckResult } from './client'
 
 export interface CheckDaemonResult extends DaemonMetadata {
@@ -53,10 +53,35 @@ export function parseCaps(caps: CapabilitiesResult, ip: string) {
 export function summarizeDrift(selfCheck: SelfCheckResult): DriftReport[] {
   if (selfCheck.ok) return []
 
-  return selfCheck.drift.map((pluginReport) => ({
+  return (selfCheck.drift ?? []).map((pluginReport) => ({
     pluginId: pluginReport.plugin_id,
     symlinkIssueCount: pluginReport.symlink_issues.length,
   }))
+}
+
+export function summarizeProblems(selfCheck: SelfCheckResult): PrinterProblem[] {
+  return (selfCheck.problems ?? []).map((problem) => ({
+    kind: problem.kind,
+    detail: problem.detail,
+    pluginId: problem.plugin_id,
+  }))
+}
+
+// The printer decides whether bespok3d is switched off on it, not the app's own notes. Those two used
+// to be able to disagree forever: the marker lives on the device, the status lived in this app's
+// records, and a printer switched off from another machine, from a fresh install, or found already off
+// kept showing as fully managed with no way back on offered. Returns only what has to change, so a
+// printer whose records already agree with it is not rewritten on every ping.
+export function switchedOffCorrection(record: PrinterRecord, selfCheck: SelfCheckResult): Partial<PrinterRecord> {
+  const switchedOff = selfCheck.switched_off === true
+  if (switchedOff && record.status !== 'deactivated') {
+    return { deactivated: true, status: 'deactivated', deactivatedAt: record.deactivatedAt ?? new Date().toISOString() }
+  }
+  if (!switchedOff && record.status === 'deactivated') {
+    return { deactivated: false, status: 'managed', deactivatedAt: undefined }
+  }
+
+  return {}
 }
 
 export function getManagedRecord(printerId: string): PrinterRecord {
@@ -122,11 +147,21 @@ async function daemonMetadata(record: PrinterRecord): Promise<DaemonMetadata | n
     const [status, caps, selfCheck] = await Promise.all([
       fetchDaemonStatus(record, DAEMON_QUERY_TIMEOUT_MS),
       fetchCapabilities(record, DAEMON_QUERY_TIMEOUT_MS),
-      fetchSelfCheck(record, DAEMON_QUERY_TIMEOUT_MS).catch(() => ({ ok: true, drift: [] } as SelfCheckResult)),
+      // A check that did not answer says nothing about the printer's health. Claiming "all fine" here
+      // is what let a broken printer look sound, so an unanswered check leaves the last known health
+      // on the record untouched instead of overwriting it with a clean bill.
+      fetchSelfCheck(record, DAEMON_QUERY_TIMEOUT_MS).catch(() => null),
     ])
     const daemonUpdateAvailable = daemonNeedsUpdate(status.version)
     const parsed = parseCaps(caps, record.ip)
-    const daemonDrift = summarizeDrift(selfCheck)
+    // A daemon too old to know about power cycles omits the key entirely, and that reads as "nothing
+    // to reboot for", never as "unknown": an old daemon must not make the app nag for a power cycle.
+    const health = selfCheck ? {
+      daemonDrift: summarizeDrift(selfCheck),
+      printerProblems: summarizeProblems(selfCheck),
+      rebootRequired: selfCheck.reboot_required ?? [],
+    } : {}
+    const switchState = selfCheck ? switchedOffCorrection(record, selfCheck) : {}
     // Learn the printer's MAC once from the ARP table: it is the identity that follows the printer
     // across a DHCP lease move when its hostname (`lava`) is shared with other U1s. Captured here on a
     // confirmed managed probe so a later flap can re-resolve by MAC, not just an ambiguous hostname.
@@ -134,14 +169,15 @@ async function daemonMetadata(record: PrinterRecord): Promise<DaemonMetadata | n
     // The daemon-minted stable identity. Old daemons omit the key, a rootless daemon reports null;
     // both mean "no uuid to learn", and neither may clear a uuid already on the record.
     const printerUuid = status.printer_uuid ?? undefined
-    updatePrinter(record.id, { daemonVersion: status.version, daemonUpdateAvailable, daemonDrift, ...parsed, ...(learnedMac ? { mac: learnedMac } : {}), ...(printerUuid ? { printerUuid } : {}) })
+    updatePrinter(record.id, { daemonVersion: status.version, daemonUpdateAvailable, ...health, ...switchState, ...parsed, ...(learnedMac ? { mac: learnedMac } : {}), ...(printerUuid ? { printerUuid } : {}) })
 
     return {
       daemonVersion: status.version,
       daemonUpdateAvailable,
       installedIds: parsed.installedIds,
       installedVersions: parsed.installedVersions,
-      daemonDrift,
+      ...health,
+      switchedOff: selfCheck?.switched_off === true,
       jinniVersion: parsed.jinniVersion,
       jinniCapabilities: parsed.jinniCapabilities,
       jinniExtras: parsed.jinniExtras,

@@ -23,20 +23,28 @@ function removePrinter(ctx: SyncCtx, id: string): void {
   })
 }
 
+// At app start every printer is 'checking', and one probe is not a verdict: a daemon that is still
+// coming up answers "not managed" and then answers "managed" a moment later. The confirming probe runs
+// straight away rather than at the next poll, so the user waits a moment for the right banner instead
+// of watching the app offer Recover and take the offer back.
+const START_SETTLE_MS = 1200
+
 export function usePrinterSync() {
   const [printers, setPrinters] = useState<Printer[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const printerListRef = useRef<Printer[]>([])
+  const startSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const ctx: SyncCtx = { selectedId, setSelectedId, setPrinters }
 
   function syncListRef() { printerListRef.current = printers }
   function startStatusPolling() {
-    const pollInterval = setInterval(() => {
-      printerListRef.current.forEach((printer) => pingAndUpdate(printer, setPrinters))
-    }, 15000)
+    const pollInterval = setInterval(probeEveryPrinter, 15000)
 
     return () => clearInterval(pollInterval)
+  }
+  function probeEveryPrinter() {
+    printerListRef.current.forEach((printer) => pingAndUpdate(printer, setPrinters))
   }
   function loadSavedPrinters() {
     window.b3d.printers.load().then((records) => {
@@ -44,7 +52,12 @@ export function usePrinterSync() {
       setPrinters(loaded)
       setSelectedId(loaded[0]?.id ?? null)
       loaded.forEach((printer) => pingAndUpdate(printer, setPrinters))
+      startSettleTimer.current = setTimeout(probeEveryPrinter, START_SETTLE_MS)
     })
+
+    return function cancelStartSettle() {
+      if (startSettleTimer.current) clearTimeout(startSettleTimer.current)
+    }
   }
 
   function handleRemovePrinter(id: string) { removePrinter(ctx, id) }

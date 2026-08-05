@@ -25,6 +25,7 @@ const SUCCESS_COPY: Partial<Record<EnrollMode, SuccessCopy>> = {
   deactivate: { titleKey: 'enroll.success.deactivate.title', subKey: 'enroll.success.deactivate.sub' },
   reactivate: { titleKey: 'enroll.success.reactivate.title', subKey: 'enroll.success.reactivate.sub' },
   repair: { titleKey: 'enroll.success.repair.title', subKey: 'enroll.success.repair.sub' },
+  reboot: { titleKey: 'enroll.success.reboot.title', subKey: 'enroll.success.reboot.sub' },
   recovery: { titleKey: 'enroll.success.recovery.title', subKey: 'enroll.success.recovery.sub' },
   'update-daemon': { titleKey: 'enroll.success.update_daemon.title', subKey: 'enroll.success.update_daemon.sub' },
   'update-jinni': { titleKey: 'enroll.success.update_jinni.title', subKey: 'enroll.success.update_jinni.sub' },
@@ -43,6 +44,7 @@ interface EnrollmentProgressProps {
   onReset: () => void
   onEscalate?: () => void
   mode?: EnrollMode
+  printerIsRebooting?: boolean
 }
 
 const REBOOT_STEP_ID = 'reboot-and-reconnect'
@@ -84,7 +86,7 @@ function RebootCountdown() {
   )
 }
 
-function SuccessView({ event, message, onDone }: { event: EnrollProgressEvent; message: SuccessCopy; onDone: () => void }) {
+function SuccessView({ event, message, onDone, printerIsRebooting }: { event: EnrollProgressEvent; message: SuccessCopy; onDone: () => void; printerIsRebooting?: boolean }) {
   const { t } = useI18n()
 
   return (
@@ -94,6 +96,7 @@ function SuccessView({ event, message, onDone }: { event: EnrollProgressEvent; m
           <span className="enroll-success-icon"><IconCheckCircle size={32} /></span>
           <div className="enroll-success-title">{t(message.titleKey)}</div>
           <div className="enroll-success-sub">{t(message.subKey)}</div>
+          {printerIsRebooting && <div className="enroll-success-sub">{t('enroll.success.printer_rebooting')}</div>}
         </div>
         {event.completedSteps.length > 0 && (
           <div className="enroll-step-list u-mt-3">
@@ -163,16 +166,23 @@ function EnrollFooter({ phase, stepId, onReset, onRetry, onEscalate }: {
   )
 }
 
-export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, onEscalate, mode }: EnrollmentProgressProps) {
+// A step that is running has started, so the bar shows it half done rather than sitting at nothing.
+// Deactivate and reactivate are three or four long steps, and counting only finished ones left the bar
+// empty and still for the whole first step, which reads as an app that has hung.
+export function progressFill(stepsDone: number, stepsTotal: number, stepRunning: boolean): number {
+  if (stepsTotal <= 0) return 0
+
+  return Math.round(((stepsDone + (stepRunning ? 0.5 : 0)) / stepsTotal) * 100)
+}
+
+export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, onEscalate, mode, printerIsRebooting }: EnrollmentProgressProps) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState(false)
   const [acting, setActing] = useState(false)
 
   useEffect(() => setActing(false), [event.stepId])
 
-  const pct = Math.round((event.completedSteps.length / event.totalSteps) * 100)
-
-  if (phase === 'success') return <SuccessView event={event} message={successCopy(mode)} onDone={onDone} />
+  if (phase === 'success') return <SuccessView event={event} message={successCopy(mode)} onDone={onDone} printerIsRebooting={printerIsRebooting} />
 
   function handleReset() { setExpanded(false); setActing(true); onReset() }
   function handleRetry(stepId: string) { setExpanded(false); setActing(true); onRetry(stepId) }
@@ -183,6 +193,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
 
   const showFailed = phase === 'failed' && !acting
   const currentStepStatus = showFailed ? 'failed' : 'running'
+  const pct = progressFill(event.completedSteps.length, event.totalSteps, !showFailed)
   const detail = showFailed && event.errorDetail ? event.errorDetail : event.stepDetail
   const stepLabel = phase === 'failed' && acting ? t('enroll.progress.starting') : event.stepLabel
 
@@ -191,7 +202,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
       <div className="enroll-body">
         <div className="enroll-progress">
           <div className="progress">
-            <div className="progress-bar" style={{ width: `${pct}%` }} />
+            <div className={showFailed ? 'progress-bar' : 'progress-bar indeterminate'} style={{ width: `${pct}%` }} />
           </div>
           {event.stepId === REBOOT_STEP_ID && !showFailed && <RebootCountdown />}
           {event.hint && <div className="enroll-hint">{event.hint}</div>}

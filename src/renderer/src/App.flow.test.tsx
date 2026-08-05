@@ -27,6 +27,10 @@ const enrolledRecord = {
   daemonToken: 'T', daemonCert: 'C',
 } as unknown as PrinterRecord
 
+// A printer that answers "the daemon is not there" is not graded on that one answer: the app probes
+// again a moment later and only then puts a banner up, so these waits outlast that confirming probe.
+const AFTER_THE_CONFIRMING_PROBE = { timeout: 3000 }
+
 function renderApp(printersOverride: Record<string, unknown>) {
   return setup(<App />, { b3d: { printers: { load: vi.fn().mockResolvedValue([enrolledRecord]), ...printersOverride } } })
 }
@@ -39,7 +43,11 @@ describe('App flow: a known enrolled printer whose daemon went down (groups 2-4)
       checkWriteLayer: vi.fn().mockResolvedValue(true),
       repair,
     })
-    await user.click(await screen.findByRole('button', { name: en('banner.repair_action') }))
+    await user.click(await screen.findByRole('button', { name: en('banner.repair_action') }, AFTER_THE_CONFIRMING_PROBE))
+
+    // The banner opens the window; nothing runs on the printer until the user says go on it.
+    expect(repair).not.toHaveBeenCalled()
+    await user.click(screen.getAllByRole('button', { name: 'Repair daemon' })[1])
     await waitFor(() => expect(repair).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22))
   })
 
@@ -48,7 +56,7 @@ describe('App flow: a known enrolled printer whose daemon went down (groups 2-4)
       checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }),
       checkWriteLayer: vi.fn().mockResolvedValue(false),
     })
-    await screen.findByRole('button', { name: en('banner.recover_action') })
+    await screen.findByRole('button', { name: en('banner.recover_action') }, AFTER_THE_CONFIRMING_PROBE)
     expect(screen.queryByRole('button', { name: en('banner.repair_action') })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: en('banner.recover_action') }))
@@ -68,7 +76,7 @@ describe('App flow: a known enrolled printer whose daemon went down (groups 2-4)
         },
       },
     })
-    await user.click(await screen.findByRole('button', { name: en('banner.recover_action') }))
+    await user.click(await screen.findByRole('button', { name: en('banner.recover_action') }, AFTER_THE_CONFIRMING_PROBE))
     await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalled())
 
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Finished', stepIndex: 13, totalSteps: 14 })))

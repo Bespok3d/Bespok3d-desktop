@@ -3,13 +3,19 @@
 import { ipcMain, type BrowserWindow } from 'electron'
 import { updatePrinter, removePrinter, resolveLiveAddress } from '../printers'
 import { getAdapter } from '../adapter-loader'
-import { patchS90lmd } from '@adapters/snapmaker-u1/client/snapmaker-u1'
+import {
+  bespok3dIncludeCommand,
+  KLIPPER_INCLUDE,
+  MOONRAKER_INCLUDE,
+  patchS90lmd,
+} from '@adapters/snapmaker-u1/client/snapmaker-u1'
 import type { SshSession } from '../ssh'
 import { runSshOp } from './op-runner'
 import { waitForDaemon, tailDaemonLog } from './daemon-log'
 import { getManagedRecord, recordOrThrow } from '../daemon-client/status'
 import { deactivateAll, teardownDaemon, recoverPackages } from '../daemon-client/client'
 import { runRepair, runUpdateDaemon, runUpdateJinni } from './daemon-ops'
+import { waitForThePrinterToComeBack } from './reboot-wait'
 
 async function runDeactivate(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
   const record = getManagedRecord(printerId)
@@ -31,24 +37,8 @@ async function runDeactivate(win: BrowserWindow, printerId: string, ip: string, 
 }
 
 async function reactivateRestoreIncludes(ssh: SshSession, printerData: string): Promise<void> {
-  await ssh.exec(
-    `grep -q 'bespok3d/klipper' ${printerData}/config/printer.cfg 2>/dev/null || python3 -c "
-content = open('${printerData}/config/printer.cfg').read()
-marker = '#*# <---------------------- SAVE_CONFIG'
-line = '\\n[include bespok3d/klipper/*.cfg]\\n'
-idx = content.find(marker)
-open('${printerData}/config/printer.cfg', 'w').write(content[:idx]+line+content[idx:] if idx>=0 else content+line)
-"`
-  )
-  await ssh.exec(
-    `grep -q 'bespok3d/moonraker' ${printerData}/config/moonraker.conf 2>/dev/null || python3 -c "
-content = open('${printerData}/config/moonraker.conf').read()
-marker = '#*# <---------------------- SAVE_CONFIG'
-line = '\\n[include bespok3d/moonraker/*.cfg]\\n'
-idx = content.find(marker)
-open('${printerData}/config/moonraker.conf', 'w').write(content[:idx]+line+content[idx:] if idx>=0 else content+line)
-"`
-  )
+  await ssh.exec(bespok3dIncludeCommand(`${printerData}/config/printer.cfg`, KLIPPER_INCLUDE))
+  await ssh.exec(bespok3dIncludeCommand(`${printerData}/config/moonraker.conf`, MOONRAKER_INCLUDE))
 }
 
 async function reactivateBootHook(ssh: SshSession): Promise<void> {
@@ -108,6 +98,33 @@ async function runUninstall(win: BrowserWindow, printerId: string, ip: string, u
   removePrinter(printerId)
 }
 
+// The printer drops the link the moment it starts going down, so the exec never returns cleanly:
+// that dropped connection IS the reboot happening, not a failure to report to the user.
+async function askForThePowerCycle(ssh: SshSession): Promise<void> {
+  try {
+    await ssh.exec('reboot')
+  } catch {
+    /* the connection dies as the printer goes down; expected */
+  }
+}
+
+// Some states clear only on a power cycle, and stopping, restarting or removing bespok3d leaves the
+// printer running something other than what is now on disk. The step only reports done once the printer
+// is answering again, so the screen never says it is back while it is still down.
+async function runReboot(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
+  await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
+    {
+      id: 'reboot-and-reconnect',
+      label: 'Rebooting your printer',
+      detail: 'Asks the printer to power cycle, then waits for it to come back and rejoin the network',
+      run: async () => {
+        await askForThePowerCycle(ssh)
+        await waitForThePrinterToComeBack(ip)
+      },
+    },
+  ])
+}
+
 // The address an SSH op should connect to: the one the printer answers on right now, found by probing
 // its recorded IP plus every fresh discovery sighting. A printer whose DHCP lease moved (or is
 // flip-flopping between two leases) is followed to its live address instead of the renderer's possibly
@@ -131,6 +148,9 @@ export function registerPrinterOperationHandlers(getMainWindow: () => BrowserWin
   )
   ipcMain.handle('printer:uninstall', async (_ev, printerId: string, ip: string, user: string, password: string, port: number) =>
     runUninstall(getMainWindow(), printerId, await opAddress(printerId, ip), user, password, port)
+  )
+  ipcMain.handle('printer:reboot', async (_ev, printerId: string, ip: string, user: string, password: string, port: number) =>
+    runReboot(getMainWindow(), printerId, await opAddress(printerId, ip), user, password, port)
   )
   ipcMain.handle('printer:repair', async (_ev, printerId: string, ip: string, user: string, password: string, port: number) =>
     runRepair(getMainWindow(), printerId, await opAddress(printerId, ip), user, password, port)
