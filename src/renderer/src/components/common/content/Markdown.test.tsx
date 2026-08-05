@@ -36,3 +36,22 @@ describe('Markdown b3d:// links', () => {
     expect(link.getAttribute('target')).toBe('_blank')
   })
 })
+
+// The attribution tables our plugin docs are written in are GitHub-flavoured markdown. Without the GFM
+// plugin they rendered as a paragraph full of pipe characters.
+describe('Markdown GitHub-flavoured tables', () => {
+  const CREDITS_TABLE = '| Upstream project | Licence |\n| --- | --- |\n| Spoolman | AGPL-3.0 |\n'
+
+  it('renders a pipe table as a real table, not a line of pipes', () => {
+    const { container } = render(<Markdown source={CREDITS_TABLE} />)
+    expect(container.querySelectorAll('table')).toHaveLength(1)
+    expect(screen.getByText('Upstream project').tagName).toBe('TH')
+    expect(screen.getByText('AGPL-3.0').tagName).toBe('TD')
+    expect(container.textContent).not.toContain('|')
+  })
+
+  it('renders a bare url as a link', () => {
+    render(<Markdown source="Upstream: https://github.com/Donkie/Spoolman" />)
+    expect(screen.getByText('https://github.com/Donkie/Spoolman').getAttribute('href')).toBe('https://github.com/Donkie/Spoolman')
+  })
+})

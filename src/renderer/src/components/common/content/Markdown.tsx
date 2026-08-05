@@ -4,6 +4,7 @@ import { createContext, useContext } from 'react'
 import type { AnchorHTMLAttributes, ImgHTMLAttributes, ReactNode } from 'react'
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import type { Components } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { isB3dUrl, parseEntityRef, type B3dEntityRef } from '../../../data/b3d-ref'
 import { B3dRefContext } from './b3d-ref-context'
 import './markdown.css'
@@ -53,6 +54,10 @@ function DocImage({ node, src, alt }: ImgHTMLAttributes<HTMLImageElement> & { no
 
 const MARKDOWN_COMPONENTS: Components = { 'a': DocAnchor, 'img': DocImage }
 
+// Our docs are written in GitHub-flavoured markdown: without this the attribution tables render as a
+// run of pipe characters and every plugin's credits become unreadable.
+const MARKDOWN_PLUGINS = [remarkGfm]
+
 // react-markdown's default sanitizer strips any non http/https/mailto/tel href, which would drop our
 // in-app b3d:// entity links. Allow b3d:// through and keep the default sanitization for everything
 // else (so javascript: etc. is still neutralized).
@@ -64,7 +69,7 @@ export function Markdown({ source, assets, onB3dRef }: { source: string; assets?
   const body = (
     <DocAssetsContext.Provider value={assets ?? {}}>
       <div className="markdown">
-        <ReactMarkdown components={MARKDOWN_COMPONENTS} urlTransform={transformUrl}>{source}</ReactMarkdown>
+        <ReactMarkdown components={MARKDOWN_COMPONENTS} remarkPlugins={MARKDOWN_PLUGINS} urlTransform={transformUrl}>{source}</ReactMarkdown>
       </div>
     </DocAssetsContext.Provider>
   )
