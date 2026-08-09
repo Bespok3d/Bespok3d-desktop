@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { load, clear } from './keychain'
+import { PACKAGE_FETCH_TIMEOUT_MS } from '../net/fetch-deadlines'
 import { mapRelease, mapRepo } from './mappers'
 import type { GitHostAccount, RepoRef, RepoInfo, FileContent, PrOptions, PrInfo, ReleaseOptions, ReleaseInfo, AssetInfo } from './connector'
 
@@ -201,8 +202,13 @@ function makeRestReleaseOps(profile: RestHostProfile, account: RestAccountOps) {
     return releases.map((raw) => mapRelease(raw, profile.mapAsset))
   }
 
+  // The same deadline the public route carries. Without one a stalled connection leaves the install
+  // spinning with nothing to show and no way out, and which route a person is on is not their choice.
   async function downloadReleaseAsset(url: string): Promise<Buffer> {
-    const response = await fetch(url, { headers: profile.downloadAssetHeaders(account.tokenOrNone()) })
+    const response = await fetch(url, {
+      headers: profile.downloadAssetHeaders(account.tokenOrNone()),
+      signal: AbortSignal.timeout(PACKAGE_FETCH_TIMEOUT_MS),
+    })
     if (!response.ok) throw new Error(`${profile.label} download asset: ${response.status}`)
 
     return Buffer.from(await response.arrayBuffer())

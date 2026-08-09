@@ -31,6 +31,29 @@ function emittedIps(): string[] {
   return vi.mocked(emitDiscovered).mock.calls.map((call) => (call[1] as { ip: string }).ip)
 }
 
+// The record a real Snapmaker U1 answers with, serial and account replaced. This scanner is the one
+// that runs on Windows and Linux (the dns-sd one is macOS only), so a key it cannot read is a printer
+// that never gets its adapter picked for it off a Mac.
+function u1TxtRecord(): { answers: MdnsRecord[]; additionals: MdnsRecord[] } {
+  const txt = ['version=1.5.2', 'machine_type=Snapmaker U1', 'device_name=unU1', 'region=int']
+
+  return {
+    answers: [{ type: 'TXT', name: INSTANCE, data: txt.map((pair) => Buffer.from(pair)), ttl: 120 }],
+    additionals: [{ type: 'A', name: HOST, data: '192.0.2.108', ttl: 120 }],
+  }
+}
+
+describe('a Windows or Linux scan names the printer it found', () => {
+  beforeEach(() => vi.mocked(emitDiscovered).mockClear())
+
+  // The adapter is chosen from this model string by guessAdapter, covered in printerDiscovery.test.ts.
+  it('reports the Snapmaker U1 by name, not as an anonymous network device', () => {
+    handleResponse(makeContext(), u1TxtRecord())
+    const found = vi.mocked(emitDiscovered).mock.calls[0][1] as { model: string }
+    expect(found.model).toBe('Snapmaker U1')
+  })
+})
+
 describe('raw mDNS scanner re-emits a printer that changed IP', () => {
   beforeEach(() => vi.mocked(emitDiscovered).mockClear())
 

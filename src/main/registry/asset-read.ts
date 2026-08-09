@@ -14,6 +14,7 @@
 import { RegistryFetchError } from './model'
 import type { SourceFailureReason } from './model'
 import { httpGet, httpReason } from './resolve/request'
+import { PACKAGE_FETCH_TIMEOUT_MS } from '../net/fetch-deadlines'
 import { connectedToAGitHost } from './resolve/anonymous-avenues'
 import { activeConnector } from '../git-host'
 import type { AssetStat } from '../git-host/connector'
@@ -49,11 +50,23 @@ function asAssetRead(text: string): AssetRead {
   return text.trim().length === 0 ? { text: null, problem: 'empty' } : { text, problem: null }
 }
 
-async function anonymousAssetBytes(url: string): Promise<Buffer | RegistryFetchError> {
-  const answered = await httpGet(url, ASSET_BYTES).catch((error: RegistryFetchError) => error)
+// The deadline covers the body as well as the wait for an answer, so a download that runs out of time
+// fails HERE, long after the response arrived and with a rejection this module never mapped. It escaped
+// the install as a raw `TimeoutError: The operation was aborted due to timeout` and the wording below
+// was never reached, leaving the person installing a plugin with no reason and nothing to act on.
+function assetBody(answered: Response): Promise<Buffer | RegistryFetchError> {
+  return answered
+    .arrayBuffer()
+    .then((body) => Buffer.from(body))
+    .catch((error: Error) => new RegistryFetchError('network', error.message))
+}
+
+async function anonymousAssetBytes(url: string, timeoutMs?: number): Promise<Buffer | RegistryFetchError> {
+  const answered = await httpGet(url, ASSET_BYTES, timeoutMs).catch((error: RegistryFetchError) => error)
   if (answered instanceof RegistryFetchError) return answered
   if (!answered.ok) return new RegistryFetchError(httpReason(answered), `asset ${answered.status}`)
-  const bytes = Buffer.from(await answered.arrayBuffer())
+  const bytes = await assetBody(answered)
+  if (bytes instanceof RegistryFetchError) return bytes
 
   return bytes.length === 0 ? new RegistryFetchError('empty', 'the file came back with nothing in it') : bytes
 }
@@ -111,7 +124,7 @@ const NO_PACKAGE: Record<AssetProblem, string> = {
 // account; the account is tried only when the public route is dead and there is one to try, which is
 // what reaches a plugin whose repo is private.
 export async function readReleaseAsset(url: string): Promise<Buffer> {
-  const anonymous = await anonymousAssetBytes(url)
+  const anonymous = await anonymousAssetBytes(url, PACKAGE_FETCH_TIMEOUT_MS)
   if (!(anonymous instanceof RegistryFetchError)) return anonymous
   const authorized = (await connectedToAGitHost()) ? await authorizedAssetBytes(url) : null
   if (authorized !== null) return authorized

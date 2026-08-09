@@ -6,6 +6,7 @@ vi.mock('./keychain', () => ({ load: vi.fn(() => 'TKN'), save: vi.fn(), clear: v
 
 import { makeRestHost, type RestHostProfile, type JsonObject } from './rest-host'
 import { load } from './keychain'
+import { PACKAGE_FETCH_TIMEOUT_MS } from '../net/fetch-deadlines'
 import type { AssetInfo } from './connector'
 
 function fakeProfile(overrides: Partial<RestHostProfile> = {}): RestHostProfile {
@@ -100,5 +101,22 @@ describe('someone with no account reads what is published', () => {
     const bytes = await makeRestHost(tokenOptional).downloadReleaseAsset('https://dl.fake.test/plugin.b3')
     expect([...bytes]).toEqual([0x50, 0x4b])
     expect(fetchMock.mock.calls[0][1].headers).toEqual({})
+  })
+
+  // A download that stalls used to hang here forever, because this route asked for no deadline at all
+  // while the public route asked for the package one. Whichever route a person is on, a stall ends.
+  it('gives up on a stalled download instead of hanging forever', async () => {
+    const deadlinesAsked: number[] = []
+    const realTimeout = AbortSignal.timeout.bind(AbortSignal)
+    vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms: number) => {
+      deadlinesAsked.push(ms)
+
+      return realTimeout(ms)
+    })
+    fetchMock.mockResolvedValue({ ok: true, status: 200, arrayBuffer: async () => new Uint8Array([0x50]).buffer } as unknown as Response)
+    await makeRestHost(tokenOptional).downloadReleaseAsset('https://dl.fake.test/plugin.b3')
+    vi.mocked(AbortSignal.timeout).mockRestore()
+    expect(deadlinesAsked).toEqual([PACKAGE_FETCH_TIMEOUT_MS])
+    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
   })
 })

@@ -130,6 +130,70 @@ describe('a visitor installs a plugin', () => {
   })
 })
 
+// A user could not install Tailscale at all: the download was given the eight seconds written for
+// fetching a plugin list, and the package is 34MB. The abort landed mid-download, where nothing mapped
+// it, so what reached them was 'TimeoutError: The operation was aborted due to timeout' with no log and
+// no reason. Retry could not help either, since every attempt got the same deadline. These pin both
+// halves: a package gets an allowance a slow connection can finish in, and a download that does run out
+// of time still says something the person can act on.
+const BIGGEST_PUBLISHED_PACKAGE_BYTES = 34_181_931
+const SLOW_LINK_BYTES_PER_SEC = 250_000
+const SLOW_LINK_NEEDS_MS = (BIGGEST_PUBLISHED_PACKAGE_BYTES / SLOW_LINK_BYTES_PER_SEC) * 1000
+
+// The signal a request was given does not carry its own duration, so the ask is what gets recorded.
+function recordDeadlinesAsked(): number[] {
+  const asked: number[] = []
+  const realTimeout = AbortSignal.timeout.bind(AbortSignal)
+  vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms: number) => {
+    asked.push(ms)
+
+    return realTimeout(ms)
+  })
+
+  return asked
+}
+
+// Headers that arrived followed by a body that ran out of time: what an abort part-way through a big
+// download actually looks like, which a plain rejected fetch does not reproduce.
+function serveHeadersThenTimeout(): void {
+  const abortedMidBody = new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+  vi.stubGlobal('fetch', () =>
+    Promise.resolve({ ok: true, status: 200, headers: new Headers(), arrayBuffer: () => Promise.reject(abortedMidBody) }),
+  )
+}
+
+describe('a plugin package downloads on a slow connection', () => {
+  beforeEach(anonymousVisitor)
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('gives the biggest published package long enough to arrive on a slow link', async () => {
+    const deadlinesAsked = recordDeadlinesAsked()
+    serveAsset(new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), { status: 200 }))
+    await readReleaseAsset(DOC_URL)
+    expect(Math.min(...deadlinesAsked)).toBeGreaterThanOrEqual(SLOW_LINK_NEEDS_MS)
+  })
+
+  it('keeps the short deadline for reading the notes published with a release', async () => {
+    const deadlinesAsked = recordDeadlinesAsked()
+    serveAsset(new Response(RELEASED_NOTES, { status: 200 }))
+    await readReleaseDoc(DOC_URL)
+    expect(Math.min(...deadlinesAsked)).toBeLessThan(SLOW_LINK_NEEDS_MS)
+  })
+
+  it('blames the connection when the download runs out of time part-way through', async () => {
+    serveHeadersThenTimeout()
+    await expect(readReleaseAsset(DOC_URL)).rejects.toThrow(/could not be reached/)
+  })
+
+  it('never leaks the raw timeout wording to someone installing a plugin', async () => {
+    serveHeadersThenTimeout()
+    await expect(readReleaseAsset(DOC_URL)).rejects.not.toThrow(/aborted due to timeout/)
+  })
+})
+
 describe('readAssetStat', () => {
   it('costs a source row its two grey labels rather than rejecting', async () => {
     mocks.assetInfo.mockRejectedValue(new Error('Not connected to GitHub'))

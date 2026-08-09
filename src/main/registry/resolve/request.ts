@@ -5,11 +5,10 @@
 // the same whichever one produced it and a signature is fetched the same way from either.
 import { RegistryFetchError } from '../model'
 import type { SourceFailureReason } from '../model'
+import { LIST_FETCH_TIMEOUT_MS } from '../../net/fetch-deadlines'
 
-const FETCH_TIMEOUT_MS = 8000
-
-export function httpGet(url: string, headers: Record<string, string>): Promise<Response> {
-  return fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }).catch(networkError)
+export function httpGet(url: string, headers: Record<string, string>, timeoutMs: number = LIST_FETCH_TIMEOUT_MS): Promise<Response> {
+  return fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) }).catch(networkError)
 }
 
 function networkError(error: Error): never {
@@ -57,7 +56,7 @@ export function connectorFailure(error: Error): never {
 // A signature's absence is ordinary (most lists are unsigned) and never fails the fetch, so every
 // failure path here collapses to null.
 export async function fetchSignatureAt(signatureUrl: string, headers: Record<string, string> = {}): Promise<string | null> {
-  const response = await fetch(signatureUrl, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }).catch(() => null)
+  const response = await fetch(signatureUrl, { headers, signal: AbortSignal.timeout(LIST_FETCH_TIMEOUT_MS) }).catch(() => null)
   if (!response?.ok) return null
 
   return response.text().catch(() => null)

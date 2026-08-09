@@ -3,6 +3,7 @@
 import type { BrowserWindow } from 'electron'
 import type { MdnsRecord, SrvData } from './types'
 import { emitDiscovered } from './emit'
+import { modelFromTxt, vendorFromTxt } from './identity'
 
 var mdns4: MdnsInstance | null = null
 var mdns6: MdnsInstance | null = null
@@ -62,8 +63,8 @@ function tryEmit(ctx: RawScanContext, instance: string): void {
     id: `mdns-${instance}`,
     host: srvRecord.target,
     ip,
-    model: txt['model'] ?? txt['product'] ?? txt['usb_MDL'] ?? 'Network device',
-    vendor: txt['vendor'] ?? txt['mfg'] ?? txt['usb_MFG'] ?? 'Unknown',
+    model: modelFromTxt(txt),
+    vendor: vendorFromTxt(txt),
     service: ctx.serviceOfInst.get(instance) ?? instance.replace(/^[^.]+\./, ''),
   })
 }

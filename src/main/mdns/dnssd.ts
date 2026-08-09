@@ -5,6 +5,7 @@ import { platform } from 'os'
 import { lookup } from 'dns'
 import type { BrowserWindow } from 'electron'
 import { emitDiscovered } from './emit'
+import { modelFromTxt, vendorFromTxt } from './identity'
 
 interface DnsSdContext {
   win: BrowserWindow
@@ -30,9 +31,23 @@ function killAll(ctx: DnsSdContext): void {
   })
 }
 
+// dns-sd prints the whole TXT record on one line as `key=value key=value`, with any space inside a
+// value backslash-escaped. Parsed into the same lower-cased key/value shape the raw scanner builds, so
+// both scanners read a device's model through one list of keys instead of two that can drift apart.
+export function parseDnsSdTxt(line: string): Record<string, string> {
+  const entries = line
+    .trim()
+    .split(/(?<!\\) +/)
+    .map((pair) => pair.split('='))
+    .filter((parts) => parts.length >= 2 && parts[0].length > 0)
+    .map((parts) => [parts[0].toLowerCase(), parts.slice(1).join('=').replace(/\\ /g, ' ')])
+
+  return Object.fromEntries(entries)
+}
+
 function onResolveData(
   state: ResolveState,
-  emit: (ip: string, model: string) => void,
+  emit: (ip: string, txt: Record<string, string>) => void,
   data: Buffer
 ): void {
   state.lineBuffer += data.toString()
@@ -45,12 +60,10 @@ function onResolveData(
 
       return
     }
-    if (/^\s+\w+=/.test(line) && state.foundHost) {
-      const ipMatch = line.match(/\bip=(\d+\.\d+\.\d+\.\d+)/)
-      const modelMatch = line.match(/machine_type=((?:\\ |[^ ])+)/)
-      const model = modelMatch?.[1].replace(/\\ /g, ' ') ?? ''
-      if (ipMatch) emit(ipMatch[1], model)
-    }
+    if (!/^\s+\w+=/.test(line) || !state.foundHost) return
+    const txt = parseDnsSdTxt(line)
+    const advertisedIp = (txt['ip'] ?? '').match(/^\d+\.\d+\.\d+\.\d+$/)
+    if (advertisedIp) emit(advertisedIp[0], txt)
   })
 }
 
@@ -63,15 +76,15 @@ function resolveInstance(ctx: DnsSdContext, instanceName: string, svcType: strin
   const lookupProcess = spawn('dns-sd', ['-L', instanceName, svcType, 'local'])
   ctx.runningProcesses.push(lookupProcess)
 
-  function emit(ip: string, model: string) {
+  function emit(ip: string, txt: Record<string, string>) {
     if (ctx.emitted.has(key)) return
     ctx.emitted.add(key)
     emitDiscovered(ctx.win, {
       id: `mdns-${instanceName}.${svcType}.local`,
       host: state.foundHost || instanceName,
       ip,
-      model: model || 'Network device',
-      vendor: 'Unknown',
+      model: modelFromTxt(txt),
+      vendor: vendorFromTxt(txt),
       service: svcType,
     })
     setTimeout(() => lookupProcess.kill(), 100)
@@ -80,7 +93,7 @@ function resolveInstance(ctx: DnsSdContext, instanceName: string, svcType: strin
   function onClose() {
     if (ctx.emitted.has(key) || !state.foundHost) return
     lookup(state.foundHost, (err, address) => {
-      if (!err && address) emit(address, '')
+      if (!err && address) emit(address, {})
     })
   }
 
