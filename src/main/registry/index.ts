@@ -4,7 +4,6 @@
 // official remote list, and the user's sideloaded files), then resolve them into the catalog the
 // renderer shows plus the truthful source list for the Repositories pane. The resolution subsystem
 // (graph walk + fetch transports + merge) lives in resolve/; this file owns "which sources, then load".
-import { is } from '@electron-toolkit/utils'
 import { join } from 'path'
 import { resolveCatalog } from './resolve'
 import { DEFAULT_LIMITS } from './model'
@@ -14,19 +13,12 @@ import { normalizeRegistryUrl } from './resolve/url'
 import { buildSources } from './resolve/sources'
 import type { ConfiguredSource, SourceRow } from './resolve/sources'
 import { fetchGitHostRegistry } from './resolve/fetch'
-import { devSourcePath } from './dev-sources'
+import { bundledRegistryDir } from './bundled-dir'
 import { loadSettings } from '../settings'
 import { stampListingRefreshed } from './listing-freshness'
 import { userLocalSourceUrl, userLocalIndexExists } from './local'
 
 export type { CatalogResult } from './model'
-
-function bundledRegistryDir(): string {
-  const devOverride = devSourcePath('dist/plugins')
-  if (devOverride) return devOverride
-
-  return is.dev ? join(__dirname, '../../dist/plugins') : join(process.resourcesPath, 'plugins')
-}
 
 function bundledRegistryRef(): RegistryRef {
   return { url: join(bundledRegistryDir(), 'index.json'), trust: 'project', locked: true }

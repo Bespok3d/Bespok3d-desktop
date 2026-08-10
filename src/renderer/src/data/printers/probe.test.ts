@@ -20,6 +20,32 @@ async function statusAfterPing(printer: Printer, answer: Record<string, unknown>
   return seen[0].status
 }
 
+// The store reads what is on the printer off the printer in memory, and only a ping refreshes it.
+// Dropped here, the daemon and the jinni were on the printer and the store never knew: both cards
+// offered to install what was already running, and neither ever offered the update the tile announced.
+describe('a ping carries what the printer runs of bespok3d itself', () => {
+  it('takes the daemon and jinni versions from the answer', async () => {
+    var seen: Printer[] = [makePrinter()]
+    stubDaemonAnswer({
+      isManaged: true, reach: 'managed', sshOpen: true,
+      machineryVersions: { 'bespok3d-daemon': '0.12.23', 'bespok3d-jinni-snapmaker-u1': '0.1.10' },
+    })
+
+    await pingAndUpdate(seen[0], (update) => { seen = update(seen) })
+
+    expect(seen[0].machineryVersions).toEqual({ 'bespok3d-daemon': '0.12.23', 'bespok3d-jinni-snapmaker-u1': '0.1.10' })
+  })
+
+  it('leaves what it knows alone when a daemon too old to report them answers', async () => {
+    var seen: Printer[] = [makePrinter({ machineryVersions: { 'bespok3d-daemon': '0.12.22' } })]
+    stubDaemonAnswer({ isManaged: true, reach: 'managed', sshOpen: true })
+
+    await pingAndUpdate(seen[0], (update) => { seen = update(seen) })
+
+    expect(seen[0].machineryVersions).toEqual({ 'bespok3d-daemon': '0.12.22' })
+  })
+})
+
 describe('a ping never puts a switched-off printer back to looking healthy', () => {
   it('shows the printer as deactivated while the printer itself says bespok3d is switched off', async () => {
     const status = await statusAfterPing(makePrinter(), { isManaged: true, reach: 'managed', sshOpen: true, switchedOff: true })

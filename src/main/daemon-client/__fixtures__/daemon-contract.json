@@ -135,6 +135,7 @@
     },
     "klipper_version": "0.12.0",
     "jinni_version": "0.1.1",
+    "min_jinni_version": "0.1.10",
     "capability_flags": [
       "overlay",
       "managed-service"

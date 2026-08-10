@@ -36,6 +36,10 @@ export interface PrinterRecord extends ConfigTruthRecords {
   customSshCredentials?: boolean
   installedIds: string[]
   installedVersions?: Record<string, string>
+  // What the printer's own machinery is running, keyed by package name: the daemon, and the jinni of
+  // the adapter this printer uses. Kept apart from `installedVersions` because the machinery is not in
+  // the plugin tree the daemon reports and must never be treated as a plugin that can be removed.
+  machineryVersions?: Record<string, string>
   // Provenance: the source registry url each installed plugin was installed from, keyed by plugin
   // id. Set app-side at install time (the daemon only knows id+version, not origin), so the detail
   // view can show "installed from X" and offer switching to another source's copy.

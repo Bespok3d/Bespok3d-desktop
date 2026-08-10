@@ -24,21 +24,23 @@ export function useLocalRemove(pluginId: string, onDone: () => void) {
   return { context, request, confirm, cancel: () => setContext(null) }
 }
 
-function DaemonGate({ plugin, daemonVersion, onConfirm, onCancel }: {
-  plugin: Plugin; daemonVersion?: string; onConfirm: () => void; onCancel: () => void
+// The printer declares a daemon floor this plugin needs, and would not say which daemon it is running.
+// That is a question the app could not ask, not a bad pair, so it warns and lets the user decide. A pair
+// the app CAN judge never reaches here: the Install button is dark and says both versions instead.
+function DaemonVersionUnknownGate({ plugin, onConfirm, onCancel }: {
+  plugin: Plugin; onConfirm: () => void; onCancel: () => void
 }) {
   const { t } = useI18n()
 
   return (
     <ConfirmActionDialog
-      title={t('store.daemon_too_old.title')}
-      summary={t('store.daemon_too_old.summary', {
+      title={t('store.daemon_unknown.title')}
+      summary={t('store.daemon_unknown.summary', {
         plugin: plugin.title,
         required: plugin.minDaemonVersion ?? '',
-        current: daemonVersion ?? '-',
       })}
-      detail={t('store.daemon_too_old.detail')}
-      confirmLabel={t('store.daemon_too_old.confirm')}
+      detail={t('store.daemon_unknown.detail', { required: plugin.minDaemonVersion ?? '' })}
+      confirmLabel={t('store.daemon_unknown.confirm')}
       danger
       onConfirm={onConfirm}
       onCancel={onCancel}
@@ -48,8 +50,8 @@ function DaemonGate({ plugin, daemonVersion, onConfirm, onCancel }: {
 
 // The modal/dialog layer that sits over the panel: a hard install error, the daemon-too-old gate, the
 // cascade-remove confirm, and the sideloaded-package removal dialog.
-export function PanelGates({ plugin, printer, ops, daemonVersion, dependents, actions, localRemove, onClose }: {
-  plugin: Plugin; printer?: Printer | null; ops: UsePluginOpsResult; daemonVersion?: string; dependents: string[]
+export function PanelGates({ plugin, printer, ops, dependents, actions, localRemove, onClose }: {
+  plugin: Plugin; printer?: Printer | null; ops: UsePluginOpsResult; dependents: string[]
   actions: ReturnType<typeof usePanelActions>; localRemove: ReturnType<typeof useLocalRemove>; onClose: () => void
 }) {
   const { t } = useI18n()
@@ -60,7 +62,7 @@ export function PanelGates({ plugin, printer, ops, daemonVersion, dependents, ac
         <InstallErrorModal plugin={plugin} printer={printer} kind={ops.errorKind} errorMsg={ops.errorMsg} onRetry={ops.retry} onClose={onClose} />
       )}
       {actions.showDaemonGate && (
-        <DaemonGate plugin={plugin} daemonVersion={daemonVersion} onConfirm={actions.confirmDaemonGate} onCancel={() => actions.setShowDaemonGate(false)} />
+        <DaemonVersionUnknownGate plugin={plugin} onConfirm={actions.confirmDaemonGate} onCancel={() => actions.setShowDaemonGate(false)} />
       )}
       {actions.showCascadeGate && (
         <ConfirmActionDialog

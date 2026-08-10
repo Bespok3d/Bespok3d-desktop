@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin, PluginSource, ReleaseChannel } from '../types'
-import { isNewerVersion } from '../../utils/version'
+import { isNewerVersion } from '@bespok3d/contract'
 
 // Most-stable to least-stable. A user's chosen channel is a ceiling, not an exact pick: they accept
 // builds at this rank or stabler, never riskier. So a plugin that only ships `stable` is still

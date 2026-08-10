@@ -317,7 +317,7 @@ as you touch the file.
 ## Hooks
 
 - `useAdapterIcons` (hook) - [hooks/adapters.ts](../src/renderer/src/hooks/adapters.ts) - The adapter-declared printer icons, keyed by adapter id, for the header dropdown. Loaded once: the
-- `useAdapterJinniVersions` (hook) - [hooks/adapters.ts](../src/renderer/src/hooks/adapters.ts) - The adapter-declared jinni (device-side) versions, keyed by adapter id, so a banner can compare the
+- `useAdapterJinniVersions` (hook) - [hooks/adapters.ts](../src/renderer/src/hooks/adapters.ts) - The jinni (device-side) versions this build would install, keyed by adapter id, so a banner can
 - `useDisplayPrefs` (hook) - [hooks/displayPrefs.ts](../src/renderer/src/hooks/displayPrefs.ts) - The shell's display preferences, backed by the main settings store so they survive a reload (theme,
 - `useEnrollment` (hook) - [hooks/enrollment.ts](../src/renderer/src/hooks/enrollment.ts)
 - `useGatedInstall` (hook) - [hooks/installGate.ts](../src/renderer/src/hooks/installGate.ts)

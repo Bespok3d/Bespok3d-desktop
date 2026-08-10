@@ -5,11 +5,10 @@
   "main": "./out/main/index.js",
   "author": "unlucio",
   "scripts": {
-    "predev": "sh ./scripts/name-dev-electron-bundle.sh; node ./scripts/generate-daemon-version.mjs && sh ./scripts/pack-plugins.sh || true",
+    "predev": "sh ./scripts/name-dev-electron-bundle.sh; sh ./scripts/pack-plugins.sh || true",
     "dev": "electron-vite dev",
-    "prebuild": "node ./scripts/generate-daemon-version.mjs && sh ./scripts/pack-plugins.sh",
-    "pretest": "node ./scripts/generate-daemon-version.mjs",
-    "build": "electron-vite build",
+    "prebuild": "sh ./scripts/pack-plugins.sh",
+        "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -b",
     "typecheck:node": "tsc -b tsconfig.node.json",
@@ -90,43 +89,6 @@
           "*.b3",
           "index.json",
           "index.json.sig"
-        ]
-      },
-      {
-        "from": "../daemon",
-        "to": "daemon",
-        "filter": [
-          "**/*.py",
-          "**/*.whl",
-          "S99bespok3d",
-          "s10bespok3d-daemon",
-          "!__pycache__",
-          "!**/__pycache__/**",
-          "!tests/**",
-          "!.venv/**",
-          "!.mypy_cache/**",
-          "!.pytest_cache/**",
-          "!.ruff_cache/**"
-        ]
-      },
-      {
-        "from": "../adapters/klipper-jinni/jinni",
-        "to": "adapters/klipper-jinni/jinni",
-        "filter": [
-          "**/*.py",
-          "!__pycache__",
-          "!**/__pycache__/**",
-          "!tests/**"
-        ]
-      },
-      {
-        "from": "../adapters/snapmaker-u1/jinni",
-        "to": "adapters/snapmaker-u1/jinni",
-        "filter": [
-          "**/*",
-          "!__pycache__",
-          "!**/__pycache__/**",
-          "!tests/**"
         ]
       }
     ],

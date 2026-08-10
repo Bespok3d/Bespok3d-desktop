@@ -17,9 +17,6 @@ release/
 # Ladle component-catalog build output (npm run catalog:build)
 .ladle/build/
 
-# Generated from the daemon's version.py by scripts/generate-daemon-version.mjs (single source of truth)
-src/main/daemon-client/version.ts
-
 # Test coverage reports
 coverage/
 

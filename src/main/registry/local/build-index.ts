@@ -71,7 +71,7 @@ function buildLocalEntry(manifest: StoredManifest, providers: Record<string, str
     doc_url: `${manifest.name}/doc/README.md`,
     download_url: `${manifest.name}-${manifest.version}.b3`,
   }
-  copyIfPresent(entry, manifest, ['icon', 'min_daemon_version', 'homepage', 'macros', 'config', 'author', 'sw_version'])
+  copyIfPresent(entry, manifest, ['icon', 'min_daemon_version', 'min_jinni_version', 'homepage', 'macros', 'config', 'author', 'sw_version'])
   if (manifest.changelog) entry.changelog_url = `${manifest.name}/${manifest.changelog as string}`
   const endpoints = (manifest.endpoints as unknown[]) ?? []
   if (endpoints.length > 0) entry.endpoints = endpoints

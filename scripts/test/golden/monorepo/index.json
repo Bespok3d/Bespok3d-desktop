@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "Bespok3d Official",
   "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
-  "updated": "2026-08-04",
+  "updated": "2026-08-10",
   "plugins": [
     {
       "name": "afc-lite",
@@ -60,6 +60,55 @@
       "attributions": "# Attributions - afc-lite\n\n**Plugin author:** paxx12 (Extended Firmware overlay `31-feature-afc-lite`) and Bespok3d, extended from that overlay\n\nKlipper support for an AFC filament changer.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Extended Firmware overlay `31-feature-afc-lite` | paxx12 | GPL-3.0 | no | yes |\n\nThe Klipper extras in this package come from the Extended Firmware overlay `31-feature-afc-lite`\n(paxx12), GPL-3.0. `AFC_unit.py` ships unchanged. `AFC.py` and `AFC_lane.py` are that overlay's\nfiles extended here; about half of what this plugin ships is still that overlay's code.\n",
       "license_url": "https://github.com/Bespok3d/u1-afc-lite/blob/dev/afc-lite/doc/LICENSE",
       "changelog_url": "afc-lite/doc/CHANGELOG.md"
+    },
+    {
+      "name": "bespok3d-daemon",
+      "title": "Bespok3d daemon",
+      "version": "0.12.23",
+      "description": "The on-printer daemon for the Bespok3d plugin manager: a small FastAPI service that installs, updates, and removes plugins, reports printer capabilities, refuses any operation mid-print, and self-heals a plugin that breaks a service so the printer is never left unusable. It is plugin zero: the adapter bootstraps it over SSH at enrollment (cert-pinned HTTPS, bearer-token auth), not through the normal plugin install pipeline, so the install block below is intentionally empty. This package is the publishable, versioned artifact the app reads to know when a newer daemon is available.",
+      "tagline": "The on-printer service that installs plugins and keeps the printer safe.",
+      "category": "system",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": false,
+      "published_at": "2026-06-14",
+      "updated_at": "2026-06-14",
+      "requires": {
+        "capabilities": []
+      },
+      "provides": [
+        "daemon"
+      ],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "bespok3d-daemon/doc/README.md",
+      "download_url": "bespok3d-daemon-0.12.23.b3",
+      "min_jinni_version": "0.1.10",
+      "changelog_url": "bespok3d-daemon/doc/CHANGELOG.md"
+    },
+    {
+      "name": "bespok3d-jinni-snapmaker-u1",
+      "title": "Snapmaker U1 jinni",
+      "version": "0.1.10",
+      "description": "The Snapmaker U1's jinni: the printer-side process that reads this device's board, service and module facts and actuates the daemon's install operations on it. Bundles the shared klipper jinni runtime it extends, so a printer needs only this one package. It is not independently startable: the daemon owns its lifecycle and picks up a new jinni on the restart its own install op already performs.",
+      "tagline": "The printer-side process that gives the daemon Snapmaker U1 device knowledge.",
+      "category": "system",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-08-10",
+      "updated_at": "2026-08-10",
+      "requires": {
+        "capabilities": [
+          "snapmaker-u1"
+        ]
+      },
+      "provides": [],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "bespok3d-jinni-snapmaker-u1/doc/README.md",
+      "download_url": "bespok3d-jinni-snapmaker-u1-0.1.10.b3",
+      "min_daemon_version": "0.12.22"
     },
     {
       "name": "camera-hw-accel",

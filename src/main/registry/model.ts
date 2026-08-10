@@ -86,6 +86,10 @@ export interface MergedEntry extends IndexEntry {
   // host of those bytes could write. The store shows this one.
   signer: string | null
   registry_url: string
+  // True when this entry is the daemon or an adapter's jinni: the printer's own machinery, which the
+  // store may update but never remove. Stamped by main at the renderer boundary (compat/system-packages)
+  // from what this build carries, and overwritten on every entry, so a list cannot claim it.
+  system_package?: boolean
   // Every source that offers this plugin name, winner-first. Set only on the winner entry (the
   // one shown in the grid); the entries inside carry no further nesting. Drives the detail-view
   // source picker so a developer can see and switch between, e.g., a local build and the

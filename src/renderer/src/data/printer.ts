@@ -36,6 +36,9 @@ export interface Printer extends ConfigTruthRecords {
   installedIds: string[]
   customSshCredentials?: boolean
   installedVersions?: Record<string, string>
+  // The versions of the printer's machinery (the daemon, and this printer's adapter jinni), keyed by
+  // package name. Main resolves the names; the renderer only reads the map.
+  machineryVersions?: Record<string, string>
   installedSources?: Record<string, string>
   // The release channel each installed plugin came from, keyed by plugin id; drives the installed
   // channel badge on the card and channel-aware update detection.

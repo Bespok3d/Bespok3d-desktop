@@ -1,17 +1,25 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { execFileSync } from 'child_process'
-import { readdirSync, statSync } from 'fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 import { dirname, join, resolve } from 'path'
 import { Client } from 'ssh2'
 import { createServer } from 'net'
+import { DAEMON_PACKAGE, ADAPTER_JINNI_PACKAGE } from '@adapters/snapmaker-u1/client/packages'
 import type { Socket } from 'net'
 import { connect, shellQuote } from '../../src/main/ssh'
 import type { SshSession } from '../../src/main/ssh'
+import { openBundledPackage } from '../../src/main/store/bundled-package'
 import { loadFixture } from '../../src/main/testkit/fixture'
 import type { ResolvedFixture } from '../../src/main/testkit/fixture'
 
 const DAEMON_PORT = 4269
+// Where the device's starting-state daemon runs from, and the python it runs on. The app's own deploy
+// installs to DAEMON_BASE under the workspace instead, which is what keeps the update and repair paths
+// honest: those tests can only go green by deploying, never by finding this copy.
+const DEVICE_DAEMON_DIR = '/daemon'
+const DEVICE_VENV = '/opt/bespok3d-venv'
 
 // The generic fake-device harness: start the base container, drive it with the app's REAL ssh transport,
 // apply an adapter's declared firmware skeleton, tear down. Nothing here knows any specific device; the
@@ -97,13 +105,6 @@ export function seedDeviceFiles(containerId: string, fixture: ResolvedFixture): 
   execFileSync('docker', ['cp', `${fixture.seedDir}/.`, `${containerId}:/`])
 }
 
-// Seed the daemon venv from the image's baked one into the adapter-declared venv path, so deploy-daemon
-// skips the slow on-device PyPI build. Generic: the path comes from the fixture, nothing U1-specific.
-export async function seedDaemonVenv(ssh: SshSession, fixture: ResolvedFixture): Promise<void> {
-  if (!fixture.daemonVenvDir) return
-  await ssh.exec(`mkdir -p ${shellQuote(dirname(fixture.daemonVenvDir))} && cp -a /opt/bespok3d-venv ${shellQuote(fixture.daemonVenvDir)}`)
-}
-
 // Block the current thread without spawning a process, so the sync docker-run retry can back off.
 function sleepSync(milliseconds: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds)
@@ -132,37 +133,31 @@ export function startDaemonDevice(sshPort: number): string {
   return runDockerDevice(args, 10)
 }
 
-export function daemonSourceDir(): string {
-  return resolve(process.cwd(), '../daemon')
+// Write one package's payload into a staging directory, exactly as the payload declares it. The bytes
+// come through the app's verified reader, so a package whose signature does not check out stops the
+// suite here rather than being copied into the container.
+async function stagePackagePayload(packageName: string, stagingDir: string): Promise<void> {
+  const bundled = await openBundledPackage(packageName)
+  bundled.payloadPaths.forEach((payloadPath) => {
+    const stagedPath = join(stagingDir, payloadPath)
+    mkdirSync(dirname(stagedPath), { recursive: true })
+    writeFileSync(stagedPath, bundled.payloadBytes(payloadPath))
+  })
 }
 
-export function copyDaemonSource(containerId: string): void {
-  execFileSync('docker', ['cp', `${daemonSourceDir()}/.`, `${containerId}:/daemon`])
-}
-
-// Deploy the adapter's daemon-side half (its jinni) next to the daemon source, so get_jinni() loads
-// the real `bespok3d_jinni` instead of the generic fallback. Without this the daemon runs on
-// GenericJinni (core paths only); ops that need the device's klipper paths (deactivate/teardown read
-// PRINTER_CFG/MOONRAKER_CFG) would KeyError into a 500. It copies the jinni's TOP-LEVEL module files
-// (bespok3d_jinni.py + its co-located paths.json + shell templates), skipping the tests/__pycache__
-// subdirs - faithful for an adapter whose jinni is flat files (the U1's is); an adapter shipping a
-// nested jinni package would need recursion here, matching the client's jinniFiles walk.
-export function deployAdapterJinni(containerId: string, adapterId: string): void {
-  deployKlipperJinniRuntime(containerId)
-  const jinniDir = resolve(process.cwd(), '../adapters', adapterId, 'jinni')
-  readdirSync(jinniDir)
-    .filter((entry) => statSync(join(jinniDir, entry)).isFile())
-    .forEach((file) => execFileSync('docker', ['cp', `${jinniDir}/${file}`, `${containerId}:/daemon/${file}`]))
-}
-
-// The other half of the ADR-0037 split: the SHARED klipper jinni runtime, which the adapter's jinni
-// imports and which the daemon spawns as `python -m jinni`. Enrollment places it at DAEMON_BASE/jinni
-// (adapters/snapmaker-u1/client/jinni-deploy.ts uploadKlipperJinni); here the daemon root is /daemon,
-// so it lands at /daemon/jinni and both resolve. Without it daemon startup dies on "No module named
-// jinni" and every in-vitro suite fails in prepare().
-function deployKlipperJinniRuntime(containerId: string): void {
-  const runtimeDir = resolve(process.cwd(), '../adapters/klipper-jinni/jinni')
-  execFileSync('docker', ['cp', runtimeDir, `${containerId}:/daemon/jinni`])
+// The device's starting-state runtime, laid down the way a user's machine lays it down: out of the two
+// signed packages this build ships (the daemon and the adapter's jinni, which carries the shared
+// klipper runtime under jinni/), never out of a source tree that only exists in a checkout. The venv is
+// built from the wheels the daemon package carries, offline, with pip's index and resolver switched
+// off, so the image needs no network and a missing wheel fails here instead of on a printer.
+export async function installDaemonFromPackages(containerId: string): Promise<void> {
+  const stagingDir = mkdtempSync(join(tmpdir(), 'invitro-daemon-'))
+  await stagePackagePayload(DAEMON_PACKAGE, stagingDir)
+  await stagePackagePayload(ADAPTER_JINNI_PACKAGE, stagingDir)
+  execFileSync('docker', ['exec', containerId, 'mkdir', '-p', DEVICE_DAEMON_DIR])
+  execFileSync('docker', ['cp', `${stagingDir}/.`, `${containerId}:${DEVICE_DAEMON_DIR}`])
+  execFileSync('docker', ['exec', containerId, 'sh', '-c',
+    `python3 -m venv ${DEVICE_VENV} && ${DEVICE_VENV}/bin/pip install --no-index --no-deps ${DEVICE_DAEMON_DIR}/wheels/*.whl`])
 }
 
 const DAEMON_TOKEN = 'invitrotoken0123456789abcdef0123'
@@ -197,7 +192,7 @@ const DAEMON_PID_FILE = '/tmp/daemon.pid'
 // process and the pidfile holds the real daemon PID.
 export function startDaemonProcess(containerId: string): void {
   const command =
-    `cd /daemon && BESPOK3D_DATA_ROOT=${WORKSPACE} /opt/bespok3d-venv/bin/python daemon.py > /tmp/daemon.log 2>&1 & ` +
+    `cd ${DEVICE_DAEMON_DIR} && BESPOK3D_DATA_ROOT=${WORKSPACE} ${DEVICE_VENV}/bin/python daemon.py > /tmp/daemon.log 2>&1 & ` +
     `echo $! > ${DAEMON_PID_FILE}; wait`
   execFileSync('docker', ['exec', '-d', containerId, 'sh', '-c', command])
 }

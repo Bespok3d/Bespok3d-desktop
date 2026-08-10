@@ -28,6 +28,16 @@ export interface BatchUninstall {
   confirmCascade: () => void
 }
 
+// The daemon and the adapter's jinni arrive as packages and read as installed like anything else, but
+// removing either one strands an enrolled printer, so neither can ever be picked into a removal set.
+// The card's own Uninstall button is already withheld from them; this is the same rule for the
+// select-several-and-remove flow, which reaches every card in the grid rather than one panel.
+function removableIds(plugins: readonly Plugin[], installedIds: readonly string[]): string[] {
+  const systemIds = plugins.filter((plugin) => plugin.systemPackage === true).map((plugin) => plugin.id)
+
+  return installedIds.filter((installedId) => !systemIds.includes(installedId))
+}
+
 // The multi-select-and-uninstall flow as one hook, the removal twin of useBatchInstall (both share the
 // useSelectMode pick state; the action differs). On "Uninstall selected" it either opens the cascade
 // confirm (a pick still has installed dependents outside the selection) or removes the set directly.
@@ -51,7 +61,7 @@ export function useBatchUninstall(deps: BatchUninstallDeps): BatchUninstall {
   }
 
   return {
-    active: select.active, selectedIds: select.selectedIds, uninstallableIds: deps.installedIds, cascadeIds,
+    active: select.active, selectedIds: select.selectedIds, uninstallableIds: removableIds(deps.plugins, deps.installedIds), cascadeIds,
     enter: select.enter, exit: select.exit, toggle: select.toggle, clear: select.clear,
     begin, cancelCascade: () => setCascadeIds(null), confirmCascade: () => run(true),
   }

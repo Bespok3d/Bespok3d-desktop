@@ -41,6 +41,14 @@ describe('updatablePlugins', () => {
   it('ignores plugins that are not installed', () => {
     expect(updatablePlugins([plugin({ id: 'spoolman', version: '2.0.0' })], onPrinter({}))).toEqual([])
   })
+
+  // Updating the daemon restarts the service the rest of the batch is talking to, so a batch carrying
+  // it strands every plugin behind it. The daemon card still offers its own update, one at a time.
+  it('leaves the printer machinery out of the batch even when it has an update', () => {
+    const plugins = [plugin({ id: 'bespok3d-daemon', version: '0.13.0', systemPackage: true }), plugin({ id: 'spoolman', version: '2.0.0' })]
+    const updatable = updatablePlugins(plugins, onPrinter({ 'bespok3d-daemon': '0.12.23', spoolman: '1.0.0' }))
+    expect(updatable.map((entry) => entry.id)).toEqual(['spoolman'])
+  })
 })
 
 // The confusing install: two plugins were running from the dev bundle, both were offered an update,

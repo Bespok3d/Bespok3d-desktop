@@ -26,6 +26,19 @@ describe('installBlockReason', () => {
     expect(block?.detail).toContain('store.blocked_action.display')
   })
 
+  it('dims install when the daemon this printer reports is older than the plugin declares, naming both versions', () => {
+    const block = installBlockReason(t, { ...READY, daemonFloorUnmet: { required: '0.12.22', running: '0.12.19' } })
+    expect(block?.brief).toContain('store.block.daemon_too_old.brief')
+    expect(block?.brief).toContain('0.12.22')
+    expect(block?.brief).toContain('0.12.19')
+    expect(block?.detail).toContain('store.block.daemon_too_old.detail')
+  })
+
+  it('ranks a conflict below an unmet daemon floor, since no conflict can be fixed on a daemon that refuses the plugin', () => {
+    const block = installBlockReason(t, { ...READY, conflicts: ['spoolman'], daemonFloorUnmet: { required: '0.12.22', running: '0.12.19' } })
+    expect(block?.brief).toContain('store.block.daemon_too_old.brief')
+  })
+
   it('reports a missing printer when none is selected', () => {
     expect(installBlockReason(t, { ...READY, printerId: undefined })?.brief).toBe('store.block.no_printer.brief')
   })

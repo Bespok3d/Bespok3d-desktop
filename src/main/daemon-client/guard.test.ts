@@ -34,6 +34,24 @@ describe('daemonGuardMessage', () => {
     expect(message).toContain(offending)
   })
 
+  // The daemon relays which half is behind as a token and never as prose, so the sentence the user
+  // reads has to be built here or he is shown a raw JSON body for a printer he can actually fix.
+  it('names the half to update when the printer\'s two halves do not fit together', () => {
+    const error = new DaemonHttpError(409, { error: 'incompatible_pair', side: 'jinni', required: '0.1.7', running: '0.1.5' }, 'daemon 409')
+    const message = daemonGuardMessage(error)
+
+    expect(message).toContain('adapter (jinni)')
+    expect(message).toContain('0.1.5')
+    expect(message).toContain('0.1.7')
+    expect(message).toContain('Nothing was installed')
+  })
+
+  it('names a side it has never heard of rather than showing a blank instruction', () => {
+    const error = new DaemonHttpError(409, { error: 'incompatible_pair', side: 'toolhead-firmware', required: '2.0', running: '1.0' }, 'daemon 409')
+
+    expect(daemonGuardMessage(error)).toContain('toolhead-firmware')
+  })
+
   it('returns null for a non-daemon error so it propagates', () => {
     expect(daemonGuardMessage(new Error('socket hang up'))).toBeNull()
   })

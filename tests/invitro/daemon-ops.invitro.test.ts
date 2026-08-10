@@ -7,10 +7,11 @@ import { runUpdateDaemon, runRepair } from '../../src/main/ops/daemon-ops'
 import { savePrinter, loadPrinters, updatePrinter } from '../../src/main/printers'
 import type { PrinterRecord } from '../../src/main/printers'
 import type { EnrollProgressEvent } from '../../src/main/enrollment'
-import { fetchCapabilities, fetchDaemonStatus, installPlugin, uninstallPlugin, EXPECTED_DAEMON_VERSION } from '../../src/main/daemon-client/client'
+import { fetchCapabilities, fetchDaemonStatus, installPlugin, uninstallPlugin } from '../../src/main/daemon-client/client'
+import { expectedDaemonVersion } from '../../src/main/daemon-client/expected-version'
 import { DaemonHttpError } from '../../src/main/daemon-client/transport'
 import { daemonNeedsUpdate } from '../../src/main/daemon-client/status'
-import { makeDeviceTarget, DEVICE_AUTOSTART } from './device-target'
+import { makeDeviceTarget, DEVICE_AUTOSTART, DEVICE_VENV_PYTHON } from './device-target'
 import type { DeviceTarget } from './device-target'
 import { FIXTURE_PLUGIN_ID, fixturePluginVars, untamperedPackage, packageWithTamperedPayload } from './tampered-package'
 
@@ -18,7 +19,7 @@ import { FIXTURE_PLUGIN_ID, fixturePluginVars, untamperedPackage, packageWithTam
 // live daemon: update, repair, and the repair refusal after a firmware OTA resets the write layer.
 // These call the SAME functions the IPC handlers call, so the app's real path is what is under test,
 // never a fixture deploy: prepare() plants an OLD daemon, and the only thing that can put
-// EXPECTED_DAEMON_VERSION on the device afterwards is the app doing its job.
+// expectedDaemonVersion() on the device afterwards is the app doing its job.
 // Run: npx vitest run --config vitest.invitro.config.ts daemon-ops
 const PORT = 2237
 const PRINTER_ID = 'invitro-daemon-ops'
@@ -121,11 +122,15 @@ describe('the app daemon maintenance ops against a live daemon', () => {
     await runDaemonOp(runUpdateDaemon, win)
 
     expect(doneStepIds(send)).toEqual(['deploy-daemon', 'start-daemon', 'verify-daemon'])
-    expect((await fetchDaemonStatus(record())).version).toBe(EXPECTED_DAEMON_VERSION)
+    expect((await fetchDaemonStatus(record())).version).toBe(expectedDaemonVersion())
     // The daemon answering is the one the app deployed: the autostart script the deploy installed
     // reports the process it started as running.
     expect((await target().session().exec(`${DEVICE_AUTOSTART} status`)).trim()).toBe('running')
-    expect(storedRecord().daemonVersion).toBe(EXPECTED_DAEMON_VERSION)
+    // The python the daemon runs on was built here, on this device, out of the wheels the package
+    // carries, with no network: nothing seeds it beforehand, so a printer that can only reach port 22
+    // still ends up with a working runtime.
+    expect((await target().session().exec(`${DEVICE_VENV_PYTHON} -c 'import fastapi, uvicorn, multipart; print("ok")'`)).trim()).toBe('ok')
+    expect(storedRecord().daemonVersion).toBe(expectedDaemonVersion())
     expect(storedRecord().daemonUpdateAvailable).toBe(false)
     expect(storedRecord().daemonUpdatedAt).toBeTruthy()
   }, OP_TIMEOUT_MS)
@@ -147,9 +152,9 @@ describe('the app daemon maintenance ops against a live daemon', () => {
     // regression would silently take out. WHICH issues it lists depends on the tooling the device has,
     // so asserting a particular verdict would be asserting the harness.
     expect(reportedHints(send).some((hint) => hint.startsWith('Diagnosis:'))).toBe(true)
-    expect((await fetchDaemonStatus(record())).version).toBe(EXPECTED_DAEMON_VERSION)
+    expect((await fetchDaemonStatus(record())).version).toBe(expectedDaemonVersion())
     expect(storedRecord().status).toBe('managed')
-    expect(storedRecord().daemonVersion).toBe(EXPECTED_DAEMON_VERSION)
+    expect(storedRecord().daemonVersion).toBe(expectedDaemonVersion())
     expect(storedRecord().daemonUpdateAvailable).toBe(false)
   }, OP_TIMEOUT_MS)
 

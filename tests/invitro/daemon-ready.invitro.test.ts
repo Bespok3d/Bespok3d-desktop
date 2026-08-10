@@ -8,7 +8,7 @@ import type { SshSession } from '../../src/main/ssh'
 import { fetchCapabilities, fetchDaemonStatus } from '../../src/main/daemon-client/client'
 import type { PrinterRecord } from '../../src/main/printers'
 import {
-  adapterFixture, startDaemonDevice, stopContainer, waitForSsh, copyDaemonSource,
+  adapterFixture, startDaemonDevice, stopContainer, waitForSsh, installDaemonFromPackages,
   provisionDaemon, startDaemonProcess, daemonLog,
 } from './fake-device'
 
@@ -51,7 +51,7 @@ beforeAll(async () => {
   const ssh = harness.ssh
   const createWorkspace = getAdapter('snapmaker-u1')?.enrollSteps.find((step) => step.id === 'create-workspace')
   await createWorkspace!.run(ssh, enrollContext())
-  copyDaemonSource(harness.container)
+  await installDaemonFromPackages(harness.container)
   const provisioned = await provisionDaemon(ssh)
   harness.cert = provisioned.cert
   harness.token = provisioned.token

@@ -3,7 +3,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { subscribe } from './subscribe'
-import { EXPECTED_DAEMON_VERSION } from '../main/daemon-client/version'
 import type { B3dRoute } from '../main/protocol/url'
 import { settingsApi } from './settings'
 import { appUpdateApi } from './app-update'
@@ -25,7 +24,9 @@ const b3dAPI = {
   // Set B3D_DEV_FEATURES=1 to reveal the parts a release build hides (Create, Keys, Labs) in a
   // packaged app. A dev run shows them anyway (utils/unreleased-features.ts).
   unreleasedFeaturesForced: process.env.B3D_DEV_FEATURES === '1',
-  daemonExpectedVersion: EXPECTED_DAEMON_VERSION,
+  // Read from main: only main knows where this build keeps the daemon package it ships, and that
+  // lookup needs electron's app paths, which preload must not pull in.
+  daemonExpectedVersion: ipcRenderer.sendSync('daemon:expected-version') as string,
   openUrl: (url: string): Promise<void> => ipcRenderer.invoke('shell:openUrl', url),
   // The menu "About" item (macOS app menu / Help menu elsewhere) opens our Settings > About pane.
   onOpenAbout: (callback: () => void): (() => void) => subscribe('app:open-about', callback),

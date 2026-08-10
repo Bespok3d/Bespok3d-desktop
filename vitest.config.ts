@@ -36,6 +36,10 @@ export default defineConfig({
         // split), which lives beside Bespok3d, not under it.
         allow: [resolve(__dirname, '..')],
       },
+      // @electron-toolkit/utils reads electron's own exports at import time. Left external it loads
+      // natively, outside the module graph, where a test's electron mock never reaches it and the
+      // import throws before a single test runs.
+      deps: { inline: ['@electron-toolkit/utils'] },
     },
   },
 })

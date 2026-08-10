@@ -3,11 +3,12 @@
 import type { Plugin, PluginSource, ReleaseChannel } from '../../../data/types'
 import type { TFunction } from '../../../i18n'
 import type { PortProblem } from '../../../data/ports'
+import { daemonMeetsFloor, reportedVersionOrNull } from '@bespok3d/contract'
 import { configAddressError } from '../../../data/address'
 import { effectiveVariant } from '../../../data/channels'
 import { isInstalledVariant } from './tabs/sources'
 import { configComplete, missingRequiredFields } from '../config/config-form'
-import { installBlockReason, type InstallBlock } from './install-gate'
+import { installBlockReason, type InstallBlock, type UnmetDaemonFloor } from './install-gate'
 
 // An orphan is installed on the printer but offered by no catalog source (its sideloaded .b3 was
 // removed while kept on the printer, with no bundled/online alternative): only uninstall remains.
@@ -66,16 +67,34 @@ export function pluginAsPickedVersion(plugin: Plugin, picked: PluginSource | und
 export function installGate(t: TFunction, plugin: Plugin, state: {
   multiVars: Record<string, string>; printerId?: string
   conflicts: string[]; portProblem: PortProblem | null; printActive: boolean; blockedActions: string[]
+  daemonFloorUnmet?: UnmetDaemonFloor | null
 }): { block: InstallBlock | null; canInstall: boolean } {
   const multiFields = plugin.config
   const configReady = multiFields ? configComplete(multiFields, state.multiVars) : true
   const missingFields = multiFields ? missingRequiredFields(multiFields, state.multiVars) : []
   const addressError = multiFields ? configAddressError(multiFields, state.multiVars) : null
   const canInstall = !!state.printerId && configReady && state.conflicts.length === 0
-    && !state.portProblem && !addressError && !state.printActive
+    && !state.portProblem && !addressError && !state.printActive && !state.daemonFloorUnmet
   const block = installBlockReason(t, { ...state, configReady, missingFields, addressError })
 
   return { block, canInstall }
+}
+
+// Which of the two answers the compatibility floor gives this plugin on this printer.
+//
+// A daemon version the printer actually reported, falling short of the floor the plugin declares, dims
+// the Install button and says why: the install path refuses that pair anyway, and a button that can
+// only fail is worse than no button. A floor with no version to check it against is a question the app
+// could not ask rather than a bad pair, so that one warns and still lets the user go ahead. This is the
+// same rule the install path applies, read from the same `daemonMeetsFloor`, so the card can never
+// offer what the install would refuse.
+export function daemonFloorVerdict(plugin: Plugin, daemonVersion?: string): { floorUnmet: UnmetDaemonFloor | null; versionUnknown: boolean } {
+  const required = plugin.minDaemonVersion
+  const running = reportedVersionOrNull(daemonVersion)
+  if (!required) return { floorUnmet: null, versionUnknown: false }
+  if (!running) return { floorUnmet: null, versionUnknown: true }
+
+  return { floorUnmet: daemonMeetsFloor(running, required) ? null : { required, running }, versionUnknown: false }
 }
 
 // A plugin that released its notes with the version being offered has notes to show even when this app

@@ -90,6 +90,9 @@ export interface Plugin {
   deps: string[]
   conflicts: string[]
   printerSpecific?: boolean
+  // The printer's own machinery (the daemon, an adapter's jinni) rather than something a user added.
+  // The store offers it an update and never a removal: peeling it off strands an enrolled printer.
+  systemPackage?: boolean
   endpoints?: PluginEndpoint[]
   config?: PluginConfigField[]
   minDaemonVersion?: string
@@ -150,6 +153,9 @@ export interface IndexEntry {
   attributions?: string
   icon?: string
   min_daemon_version?: string
+  // True for the daemon and for an adapter's jinni. Stamped by main from what this build carries
+  // (never read from a published list), because only main knows both package names.
+  system_package?: boolean
   homepage?: string
   macros?: PluginMacro[]
   config?: IndexConfigField[]

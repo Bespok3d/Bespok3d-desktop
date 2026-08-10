@@ -49,7 +49,7 @@ export function registerStoreHandlers(getMainWindow: () => BrowserWindow): void 
   ipcMain.handle('store:capabilities', async (_ev, printerId: string) => {
     const record = getManagedRecord(printerId)
     const caps = await fetchCapabilities(record)
-    const parsed = parseCaps(caps, record.ip)
+    const parsed = parseCaps(caps, record)
     updatePrinter(printerId, parsed)
 
     return { ...caps, installed: parsed.installedVersions, endpoints: parsed.endpoints }
@@ -71,7 +71,7 @@ export function registerStoreHandlers(getMainWindow: () => BrowserWindow): void 
     sendProgress(win, printerId, pluginId, 'Updating config on printer…')
     const log: InstallLog = await reconfigurePlugin(record, pluginId, vars)
     sendProgress(win, printerId, pluginId, 'Refreshing…')
-    const parsed = parseCaps(await fetchCapabilities(record), record.ip)
+    const parsed = parseCaps(await fetchCapabilities(record), record)
     updatePrinter(printerId, (current) => ({ ...parsed, ...recordAppliedVars(current, pluginId, vars, new Date().toISOString()) }))
 
     return { installedIds: parsed.installedIds, log }

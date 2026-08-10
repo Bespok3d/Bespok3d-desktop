@@ -41,7 +41,8 @@ import { join, relative } from 'node:path'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildIndex, canonicalSourcePerId, firstSourcePerName } from '../app-bundle.mjs'
+import { buildBundle, buildIndex, canonicalSourcePerId, firstSourcePerName } from '../app-bundle.mjs'
+import { SIGNING_KEY_VAR } from '../bundle-signing.mjs'
 import {
   GOLDEN_DIR,
   PLUGIN_SOURCES_DIR,
@@ -55,7 +56,14 @@ import {
   readGoldenIndexText,
   withoutDevBuildTags,
 } from '../monorepo-golden.mjs'
-import { APP_REPO_DIR, WORKSPACE_DIR, builderCore, ensureBuilderBuilt, makeScratchOutputDir } from './builder-checkout.mjs'
+import {
+  APP_REPO_DIR,
+  WORKSPACE_DIR,
+  builderCore,
+  builderDependency,
+  ensureBuilderBuilt,
+  makeScratchOutputDir,
+} from './builder-checkout.mjs'
 
 // A checkout of this repo ALONE has no plugin repos beside it, so the rails that build a real bundle
 // have nothing to build one from. That is a supported checkout (the contributor who cloned only the
@@ -230,6 +238,106 @@ test('the golden describes the plugin set its own fixture names', () => {
 
   assert.deepEqual([...new Set(described)].sort(), [...goldenDevCuration().bundle].sort(), STALE_GOLDEN_MESSAGE)
 })
+
+// The golden rails above need the sibling plugins/ tree and stand down without it, so a bare app-only
+// checkout has nothing guarding the one pair of packages enrollment cannot run without. This needs only
+// the daemon and adapters siblings staged (not the plugins/ tree), builds the release channel alone (2
+// packages, no plugin sources), and fails the moment either drops out of bundle.json or discovery stops
+// finding its staged source: the two ways "the bundled set loses a package" happens in practice.
+const DAEMON_PACKAGE_DIR = join(WORKSPACE_DIR, 'daemon', 'dist', 'package')
+const ADAPTERS_PACKAGE_DIR = join(WORKSPACE_DIR, 'adapters', 'dist', 'package')
+const NEEDS_STAGED_SYSTEM_PACKAGES =
+  existsSync(DAEMON_PACKAGE_DIR) && existsSync(ADAPTERS_PACKAGE_DIR)
+    ? {}
+    : { skip: 'daemon/adapters not staged; run scripts/pack-plugins.sh first' }
+
+test(
+  'the release bundle always carries the packages enrollment depends on',
+  { timeout: 120_000, ...NEEDS_STAGED_SYSTEM_PACKAGES },
+  async () => {
+    const bundleList = JSON.parse(readFileSync(join(APP_REPO_DIR, 'scripts', 'bundle.json'), 'utf8')).bundle
+    assert.deepEqual([...bundleList].sort(), ['bespok3d-daemon', 'bespok3d-jinni-snapmaker-u1'])
+
+    ensureBuilderBuilt()
+    const openpgp = builderDependency('openpgp')
+    const generated = await openpgp.generateKey({
+      userIDs: [{ name: 'Throwaway Bundle Signer', email: 'signer@example.invalid' }],
+      format: 'object',
+    })
+    const outputDir = makeScratchOutputDir('release-bundle-')
+    const savedKey = process.env[SIGNING_KEY_VAR]
+    process.env[SIGNING_KEY_VAR] = generated.privateKey.armor()
+    try {
+      const { index, packages } = await buildBundle({ sourceRoot: APP_REPO_DIR, outputDir, channel: 'release' })
+      const shippedNames = index.plugins.map((entry) => entry.name)
+
+      assert.ok(shippedNames.includes('bespok3d-daemon'), 'release bundle lost the daemon package enrollment needs')
+      assert.ok(
+        shippedNames.includes('bespok3d-jinni-snapmaker-u1'),
+        'release bundle lost the jinni package enrollment needs',
+      )
+      assert.equal(
+        packages.length,
+        2,
+        `release bundle should pack exactly the daemon and the jinni, got: ${shippedNames.join(', ')}`,
+      )
+    } finally {
+      if (savedKey === undefined) delete process.env[SIGNING_KEY_VAR]
+      else process.env[SIGNING_KEY_VAR] = savedKey
+    }
+  },
+)
+
+// Item 6 acceptance, half one: a release ships what enrollment and the store install directly, so an
+// unsigned package there is a package the app can only ever rate 'unknown', not a warning-worthy state
+// the way a dev build's is. Save/restore the env var around the assertion so this test never depends on
+// (or leaks into) whatever the ambient shell happens to have set.
+test(
+  'a release build refuses to ship an unsigned bundled package',
+  { timeout: 120_000, ...NEEDS_STAGED_SYSTEM_PACKAGES },
+  async () => {
+    ensureBuilderBuilt()
+    const outputDir = makeScratchOutputDir('unsigned-release-')
+    const savedKey = process.env[SIGNING_KEY_VAR]
+    delete process.env[SIGNING_KEY_VAR]
+    try {
+      await assert.rejects(
+        buildBundle({ sourceRoot: APP_REPO_DIR, outputDir, channel: 'release' }),
+        (error) => error.message.includes(SIGNING_KEY_VAR),
+      )
+    } finally {
+      if (savedKey === undefined) delete process.env[SIGNING_KEY_VAR]
+      else process.env[SIGNING_KEY_VAR] = savedKey
+    }
+  },
+)
+
+// Item 6 acceptance, half two: the refusal is release-only, so a keyless local/dev build must keep
+// working. The empty devCuration override skips bundle.dev.json and the sibling plugins/ tree, so this
+// needs only the same staged daemon+adapters packages as the refusal test above.
+test(
+  'a keyless dev build still succeeds',
+  { timeout: 120_000, ...NEEDS_STAGED_SYSTEM_PACKAGES },
+  async () => {
+    ensureBuilderBuilt()
+    const outputDir = makeScratchOutputDir('keyless-dev-')
+    const savedKey = process.env[SIGNING_KEY_VAR]
+    delete process.env[SIGNING_KEY_VAR]
+    try {
+      const { packages } = await buildBundle({
+        sourceRoot: APP_REPO_DIR,
+        outputDir,
+        channel: 'dev',
+        devCuration: { bundle: [], variantDirs: [] },
+      })
+
+      assert.equal(packages.length, 2, 'keyless dev build should still pack the two staged system packages')
+    } finally {
+      if (savedKey === undefined) delete process.env[SIGNING_KEY_VAR]
+      else process.env[SIGNING_KEY_VAR] = savedKey
+    }
+  },
+)
 
 // The other half of the buy-back, and the drift guard the mirror rule demands: the list public key is
 // checked in TWICE (main-index/keys, which the bundled build derives its publisher from, and inside the

@@ -5,7 +5,6 @@ import type { Plugin, Printer, ReleaseChannel, PluginConfigField } from '../../.
 import type { PluginVarsSave, ScopeChoice } from '../../../data/plugin-vars'
 import type { TFunction } from '../../../i18n'
 import { useI18n } from '../../../i18n/context'
-import { isDaemonVersionAtLeast } from '../../../utils/version'
 import { IconClose } from '../../../design-system/icons'
 import { Markdown } from '../../common/content/Markdown'
 import { docAssetsFor } from '../../../data/catalog/shape'
@@ -30,7 +29,7 @@ import { PanelLicence } from './tabs/licence'
 import { PanelFoot } from './foot'
 import { useReleasedDoc } from './released-doc'
 import { PanelGates, useLocalRemove } from './gates'
-import { isOrphan, isSideloaded, isSwitchingVariant, defaultSelectedVariant, installGate, hasReleaseNotes, pluginAsPickedVersion } from './derive'
+import { isOrphan, isSideloaded, isSwitchingVariant, defaultSelectedVariant, installGate, daemonFloorVerdict, hasReleaseNotes, pluginAsPickedVersion } from './derive'
 
 interface PluginPanelProps {
   plugin: Plugin
@@ -221,8 +220,8 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   const missingDeps = resolveMissingDeps(plugins, plugin.id, allInstalledIds ?? [])
   const dependents = installed ? installedDependents(plugins, plugin.id, allInstalledIds ?? []) : []
   const conflicts = installed ? [] : installedConflicts(plugins, plugin.id, allInstalledIds ?? [])
-  const { block, canInstall } = installGate(t, picked, { multiVars, printerId, conflicts, portProblem, printActive: !!printActive, blockedActions: blockedActions ?? [] })
-  const needsNewerDaemon = !!plugin.minDaemonVersion && !isDaemonVersionAtLeast(daemonVersion ?? '0.0.0', plugin.minDaemonVersion)
+  const daemonFloor = daemonFloorVerdict(plugin, daemonVersion)
+  const { block, canInstall } = installGate(t, picked, { multiVars, printerId, conflicts, portProblem, printActive: !!printActive, blockedActions: blockedActions ?? [], daemonFloorUnmet: daemonFloor.floorUnmet })
   // A completed install persists the vars it sent into the preference store (under each field's
   // chosen scope), so the next printer's form starts from what the user actually picked.
   function handleOperationDone(ids: string[], pluginId: string, action: 'install' | 'uninstall', log?: InstallLog) {
@@ -231,7 +230,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   }
   const ops = usePluginOps(handleOperationDone)
   const [runOpen, setRunOpen] = useRunModalState(ops.phase)
-  const actions = usePanelActions({ ops, printerId, pluginId: plugin.id, installVars, missingDeps, dependents, needsNewerDaemon, selectedSource: selectedVariant?.registryUrl, selectedChannel: selectedVariant?.channel, beforeInstall: () => configState.claimFormPort(installVars ?? {}) })
+  const actions = usePanelActions({ ops, printerId, pluginId: plugin.id, installVars, missingDeps, dependents, warnDaemonUnknown: daemonFloor.versionUnknown, selectedSource: selectedVariant?.registryUrl, selectedChannel: selectedVariant?.channel, beforeInstall: () => configState.claimFormPort(installVars ?? {}) })
   const switching = isSwitchingVariant(installed, selectedVariant, installedSource, installedChannel, installedVersion)
   const lastInstallEntry = [...(history ?? [])].reverse().find((historyEntry) => historyEntry.action === 'install')
   // sessionLog is this session's fresh install (drives the one-off "View report" strip on overview);
@@ -275,13 +274,13 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
           />
         </div>
         <PanelFoot
-          ops={ops} installed={installed} hasUpdate={hasUpdate} switching={switching} canInstall={canInstall}
+          ops={ops} installed={installed} systemPackage={plugin.systemPackage === true} hasUpdate={hasUpdate} switching={switching} canInstall={canInstall}
           orphan={isOrphan(plugin)} dependents={dependents} block={block} printActive={!!printActive}
           onInstall={() => nudgeInstall(plugin, activeTab, setTab, actions.requestInstall)} onUninstall={actions.uninstall}
           onConfigure={() => setTab('config')} onClose={onClose}
         />
       </Modal>
-      <PanelGates plugin={plugin} printer={printer} ops={ops} daemonVersion={daemonVersion} dependents={dependents} actions={actions} localRemove={localRemove} onClose={onClose} />
+      <PanelGates plugin={plugin} printer={printer} ops={ops} dependents={dependents} actions={actions} localRemove={localRemove} onClose={onClose} />
       <PanelRunModal ops={ops} open={runOpen} pluginName={plugin.title} printerId={printerId} onClose={() => setRunOpen(false)} />
     </>
   )

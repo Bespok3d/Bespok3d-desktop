@@ -7,6 +7,9 @@ import { statusAfterProbe, type ProbeStatus } from './status'
 
 interface DaemonResult extends DaemonMetadata {
   isManaged: boolean
+  // What the printer runs of bespok3d itself (the daemon, this printer's jinni). Not part of the
+  // plugin list, so nothing else here would know either one is on the printer at all.
+  machineryVersions?: Record<string, string>
   reach?: ConnectionReach
   sshOpen?: boolean
   ip?: string
@@ -31,6 +34,7 @@ function onDaemonResult(printer: Printer, result: DaemonResult, set: SetPrinters
   if (printer.writeLayerIntact !== undefined) patch.writeLayerIntact = undefined
   if (result.installedIds !== undefined) patch.installedIds = result.installedIds
   if (result.installedVersions !== undefined) patch.installedVersions = result.installedVersions
+  if (result.machineryVersions !== undefined) patch.machineryVersions = result.machineryVersions
   if (result.daemonDrift !== undefined) patch.daemonDrift = result.daemonDrift
   if (result.printerProblems !== undefined) patch.printerProblems = result.printerProblems
   if (result.rebootRequired !== undefined) patch.rebootRequired = result.rebootRequired

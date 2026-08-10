@@ -72,6 +72,9 @@ function appVerification() {
     bundle: true,
     format: 'esm',
     platform: 'node',
+    // The same alias electron-vite compiles the app with, so the shared contract package resolves to
+    // the source the app actually ships rather than failing to resolve here.
+    alias: { '@bespok3d/contract': join(APP_REPO_DIR, '..', 'lib_bespok3d', 'ts', 'contract', 'index.ts') },
     external: ['openpgp', 'adm-zip', 'electron'],
     outfile: bundlePath,
   })

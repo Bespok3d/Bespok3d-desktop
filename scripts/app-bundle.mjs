@@ -189,7 +189,7 @@ function buildIndexEntry(manifest, providers, buildTags) {
     doc_url: `${manifest.name}/doc/README.md`,
     download_url: `${manifest.name}-${manifest.version}.b3`,
   }
-  copyIfPresent(entry, manifest, ['icon', 'min_daemon_version', 'homepage', 'macros', 'config', 'author', 'sw_version', 'attributions'])
+  copyIfPresent(entry, manifest, ['icon', 'min_daemon_version', 'min_jinni_version', 'homepage', 'macros', 'config', 'author', 'sw_version', 'attributions'])
   applyLicenseUrl(entry, manifest)
   const log = logSource(manifest)
   if (log) entry.log = log
@@ -287,13 +287,21 @@ function outranksClaim(holder, contender) {
   return basename(holder.dir) !== holder.name && basename(contender.dir) === contender.name
 }
 
-// Plugin sources discovered under the sibling `plugins/` tree. The display `name` is the manifest
-// .name (the index entry and the staged-doc dir both key on it), independent of the directory layout.
-// A dir listed in bundle.dev.json variantDirs is NEVER an id source, in release mode too: its manifest
-// shares its id with the online atom, and a variant is a channel of that id rather than a claim on it.
-// Variants enter only by explicit path, via variantSources.
+// Plugin sources discovered under the sibling `plugins/` tree, plus the daemon's and jinni's staged
+// output (`daemon/dist/package`, `adapters/dist/package`). Both repo roots carry a manifest.json of
+// their own, so pointing discovery there directly would pack the whole repo as the payload; the
+// staging scripts (run by pack-plugins.sh before this runs) produce a clean plugin-shaped dir instead.
+// The display `name` is the manifest .name (the index entry and the staged-doc dir both key on it),
+// independent of the directory layout. A dir listed in bundle.dev.json variantDirs is NEVER an id
+// source, in release mode too: its manifest shares its id with the online atom, and a variant is a
+// channel of that id rather than a claim on it. Variants enter only by explicit path, via
+// variantSources.
 async function pluginSources(readFile, readdir, join, repoDir, variantDirPaths) {
-  const roots = [join(repoDir, '..', 'plugins')]
+  const roots = [
+    join(repoDir, '..', 'plugins'),
+    join(repoDir, '..', 'daemon', 'dist', 'package'),
+    join(repoDir, '..', 'adapters', 'dist', 'package'),
+  ]
   const dirLists = await Promise.all(roots.map((root) => findManifestDirs(readdir, join, root, DISCOVERY_MAX_DEPTH)))
   const found = await Promise.all(
     dirLists.flat().filter((dir) => !variantDirPaths.has(dir)).map(async (dir) => {
@@ -413,6 +421,21 @@ function packBakedSource(builder, source, outputDir, version) {
   return builder.packIfChanged(source.manifest, source.dir, outputDir, version)
 }
 
+// A release build ships what enrollment and the store install directly, so an unsigned package inside
+// one is not a warning-worthy state the way a dev build's is (bundle-signing.mjs peels a stale
+// signature there on purpose): it is a package the app can only ever rate 'unknown', shipped from the
+// one place that claims to be the real release. Refuse before packing rather than warn after signing.
+// Channel 'dev' is exempt on purpose, so a keyless local build keeps working.
+function assertSignedForRelease(channel, signingKey, sources) {
+  if (channel !== 'release' || signingKey) return
+  const packable = sources.filter((source) => !isCollection(source.manifest))
+  if (packable.length === 0) return
+
+  throw new Error(
+    `${SIGNING_KEY_VAR} is required to build channel 'release' with ${packable.length} bundled package(s); an unsigned release would ship package(s) the app can only ever rate 'unknown'. Set ${SIGNING_KEY_VAR}, or build with --channel dev for local development.`,
+  )
+}
+
 // The full monorepo bundle build: discover the release + (channel === 'dev' ? dev : nothing) bundled
 // ids plus their dev-only channel variants, pack each into a .b3, assemble the "Bespok3d Official"
 // index over the dev build-tags, stage each plugin's doc tree beside the index, and write index.json.
@@ -449,11 +472,12 @@ export async function buildBundle(request) {
   }
   const variants = await variantSourcesIn(readFile, stat, join, pluginsRoot, variantRelDirs)
   const sources = [...idSources, ...variants]
+  const signingKey = process.env[SIGNING_KEY_VAR]
+  assertSignedForRelease(channel, signingKey, sources)
 
   const ownScriptDir = dirname(fileURLToPath(import.meta.url))
   await mkdir(outputDir, { recursive: true })
   const builder = await importBuilderCore(ownScriptDir, path, url)
-  const signingKey = process.env[SIGNING_KEY_VAR]
   const packages = packSources(builder, sources, outputDir)
 
   // The publisher is resolved BEFORE anything is stamped or signed, and the same value reaches all three

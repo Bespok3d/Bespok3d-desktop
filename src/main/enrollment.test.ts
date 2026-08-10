@@ -7,7 +7,7 @@ import type { EnrollStep } from './adapter-loader'
 
 vi.mock('./ssh', () => ({ connect: vi.fn(), createPersistentSession: vi.fn() }))
 vi.mock('./adapter-loader', () => ({ getAdapter: vi.fn() }))
-vi.mock('./printers', () => ({ updatePrinter: vi.fn() }))
+vi.mock('./printers', () => ({ updatePrinter: vi.fn(), loadPrinters: vi.fn(() => []) }))
 vi.mock('./analytics', () => ({ reportEvent: vi.fn() }))
 vi.mock('./analytics/errors', () => ({ reportErrorEvent: vi.fn() }))
 vi.mock('./keys', () => ({ listKeys: vi.fn().mockReturnValue([]) }))
@@ -46,7 +46,8 @@ function mockStep(id: string, runImpl = vi.fn().mockResolvedValue(undefined)): E
 
 function mockAdapter(steps: EnrollStep[]) {
   return {
-    id: 'test', title: 'Test', vendor: 'Test', version: '1.0.0', jinniVersion: '0.1.6', description: '',
+    id: 'test', title: 'Test', vendor: 'Test', version: '1.0.0', jinniVersion: '0.1.6',
+    jinniPackage: 'bespok3d-jinni-test', description: '',
     defaults: { sshUser: 'root', sshPort: 22, sshPasswordHint: '', runtimeUser: 'user' },
     envVars: [], enrollSteps: steps, verifyEnrolled: vi.fn().mockResolvedValue(true),
   }

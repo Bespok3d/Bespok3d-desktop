@@ -1,4 +1,5 @@
 {
   "_comment": "RELEASE bundling. Canonical behaviour is FULLY ONLINE: every plugin is served from the online registry (main-index) and a release ships no bundled catalog, so `bundle` is empty. Ids placed here are packed into the bundled index of RELEASE builds too (offline/pre-installed). For dev-only bundles (local testing, never shipped) use bundle.dev.json. Read by scripts/app-bundle.mjs and scripts/pack-plugins.sh.",
-  "bundle": []
+  "_bundleException": "bespok3d-daemon and bespok3d-jinni-snapmaker-u1 are the one exception to fully-online: enrollment runs against a printer whose only reachable transport may be SSH, from a computer that may itself be offline, so the daemon has to be on disk before any network exists. The bundled copy is the floor a fresh enroll installs from; the index copy is the update path afterward. Nothing else belongs in this list on the same reasoning: everything else can wait for a network.",
+  "bundle": ["bespok3d-daemon", "bespok3d-jinni-snapmaker-u1"]
 }

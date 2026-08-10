@@ -24,7 +24,7 @@ export async function runStoreUninstall(
     throw message ? new Error(message) : error
   }
   sendProgress(win, printerId, pluginId, 'Refreshing installed list…')
-  const parsed = parseCaps(await fetchCapabilities(record, DAEMON_QUERY_TIMEOUT_MS), record.ip)
+  const parsed = parseCaps(await fetchCapabilities(record, DAEMON_QUERY_TIMEOUT_MS), record)
   updatePrinter(printerId, (current) => ({ ...parsed, ...retainRemovalProvenance(current, parsed.installedIds) }))
 
   return parsed.installedIds
@@ -39,7 +39,7 @@ export async function runStoreUninstallBatch(printerId: string, pluginIds: strin
     const message = daemonGuardMessage(error)
     throw message ? new Error(message) : error
   })
-  const parsed = parseCaps(await fetchCapabilities(record, DAEMON_QUERY_TIMEOUT_MS), record.ip)
+  const parsed = parseCaps(await fetchCapabilities(record, DAEMON_QUERY_TIMEOUT_MS), record)
   updatePrinter(printerId, (current) => ({ ...parsed, ...retainRemovalProvenance(current, parsed.installedIds) }))
 
   return result

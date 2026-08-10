@@ -115,7 +115,9 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
   const cardCtx: StoreCardContext = { installedIds, installedVersions, installedSources, installedChannels: printer?.installedChannels ?? {}, deactivatedIds, ceilingFor, disabledChannels, selection }
   const { updatableCount, updateBlock, updateAll } = useUpdateAll({ printerId: managedId, plugins: catalogPlugins, installedIds, installedVersions, installedSources, savedVars: savedPluginVars ?? {}, ceilingFor, disabledChannels, printActive, blockedActions, onUpdateAll })
 
-  useFocusPanel(focusPluginId, catalogPlugins, setPanelPlugin, onFocusHandled)
+  // A b3d:// link or a dropped file names a package by id, and only what the store shows may be opened
+  // that way. The daemon and the jinni are not in that set: their update belongs to the printer.
+  useFocusPanel(focusPluginId, displayPlugins, setPanelPlugin, onFocusHandled)
 
   function onSort(key: SortKey) {
     if (key === sortKey) { setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -138,7 +140,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
     <div className="store">
       <Toolbar
         query={query} count={matchingPlugins.length} layout={layout} filtersOpen={filtersOpen} filtersActive={facets.active} sortKey={sortKey} sortDir={sortDir}
-        updatableCount={updatableCount} updatingAll={updatingAll} updateBlock={updateBlock} onUpdateAll={updateAll} selectAvailable={!!managedId} selectActive={selecting} canUninstall={installedIds.length > 0}
+        updatableCount={updatableCount} updatingAll={updatingAll} updateBlock={updateBlock} onUpdateAll={updateAll} selectAvailable={!!managedId} selectActive={selecting} canUninstall={uninstall.uninstallableIds.length > 0}
         onSelectInstall={() => { uninstall.exit(); batch.enter() }} onSelectUninstall={() => { batch.exit(); uninstall.enter() }} onExitSelect={() => { batch.exit(); uninstall.exit() }}
         refreshing={refreshing} onRefresh={handleRefresh} onQuery={setQuery} onLayout={setLayout} onToggleFilters={() => setFiltersOpen(!filtersOpen)} onSort={onSort}
       />

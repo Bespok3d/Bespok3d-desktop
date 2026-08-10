@@ -16,14 +16,15 @@ export function useAdapterIcons(): Record<string, string> {
   return icons
 }
 
-// The adapter-declared jinni (device-side) versions, keyed by adapter id, so a banner can compare the
-// version a printer reports against the one this build ships. Loaded once: the adapter set is static
-// for a build. The value is single-sourced in the adapter, so there is no app-side constant.
+// The jinni (device-side) versions this build would install, keyed by adapter id, so a banner can
+// compare the version a printer reports against the one it can actually put there. Loaded once: the
+// adapter set is static for a build. An adapter whose jinni this build does not ship is left out, so
+// no banner can offer an update with no bytes behind it.
 export function useAdapterJinniVersions(): Record<string, string> {
   const [versions, setVersions] = useState<Record<string, string>>({})
   function loadAdapterJinniVersions() {
     window.b3d.printers.adaptersList().then((adapters) => {
-      setVersions(Object.fromEntries(adapters.map((adapter) => [adapter.id, adapter.jinniVersion])))
+      setVersions(Object.fromEntries(adapters.filter((adapter) => adapter.jinniVersion).map((adapter) => [adapter.id, adapter.jinniVersion as string])))
     })
   }
   useEffect(loadAdapterJinniVersions, [])

@@ -11,7 +11,7 @@
 // a signed package that does not enumerate its own payload, a manifest naming a different plugin, or a
 // version below what the index carries are all hard refusals in every mode, with no override.
 import AdmZip from 'adm-zip'
-import { compareSemanticVersions } from '../app-update/version'
+import { compareSemanticVersions } from '@bespok3d/contract'
 import type { MergedEntry, PackageTrust } from '../registry/model'
 import { parseManifest } from '../registry/local/b3-manifest'
 import type { StoredManifest } from '../registry/local/b3-manifest'

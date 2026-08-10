@@ -23,6 +23,18 @@ type Send = (event: PrintStateEvent) => void
 
 const pool = createFeedPool()
 
+// The last set each watched printer reported, so an operation that must not run mid-print can ask what
+// the app already knows instead of opening a second connection to a busy printer. A printer nobody is
+// watching has no entry at all, and that absence means "the app cannot know", never "not printing".
+const lastReportedByPrinter = new Map<string, string[]>()
+
+// What this printer last said it will not accept, or null when the app was never told. Callers must
+// treat null as unknown: refusing an operation over a question the app never asked would take a
+// working printer away from its owner.
+export function reportedBlockedActions(printerId: string): string[] | null {
+  return lastReportedByPrinter.get(printerId) ?? null
+}
+
 function feedUrl(record: PrinterRecord, port: number): string | null {
   if (!record.daemonToken) return null
 
@@ -45,17 +57,24 @@ export function watchPrintState(printerId: string, send: Send): void {
     endpoint: feedUrl,
     onMessage: (data) => {
       const blockedActions = parseEvent(data)
-      if (blockedActions) send({ printerId, blockedActions, at: Date.now() })
+      if (!blockedActions) return
+      lastReportedByPrinter.set(printerId, blockedActions)
+      send({ printerId, blockedActions, at: Date.now() })
     },
     // Degrade safe: while the feed is down the button unlocks; the daemon still blocks the op live.
-    onDisconnect: () => send({ printerId, blockedActions: [], at: Date.now() }),
+    onDisconnect: () => {
+      lastReportedByPrinter.delete(printerId)
+      send({ printerId, blockedActions: [], at: Date.now() })
+    },
   })
 }
 
 export function unwatchPrintState(printerId: string): void {
+  lastReportedByPrinter.delete(printerId)
   pool.unwatch(printerId)
 }
 
 export function closeAllPrintStateWatches(): void {
+  lastReportedByPrinter.clear()
   pool.closeAll()
 }

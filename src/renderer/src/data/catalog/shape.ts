@@ -166,6 +166,7 @@ function entryToPlugin(entry: IndexEntry, labels: Record<string, string>): Plugi
     // this mapper, so absence never propagates past the wire.
     config: entry.config?.map(withExplicitScope),
     minDaemonVersion: entry.min_daemon_version,
+    systemPackage: entry.system_package === true,
     macros: entry.macros,
     log: entry.log,
     sources: (entry.variants ?? [entry]).map((variant) => entryToSource(variant, labels)),

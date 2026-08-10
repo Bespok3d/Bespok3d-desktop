@@ -21,6 +21,8 @@ import {
 import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, pingPrinter, checkSshOpen, probeService, probeServiceUrl, resolveLiveAddress } from './printers'
 import type { PublicPrinterRecord } from './printers'
 import { setAddressResolver } from './daemon-client/client'
+import { shippedJinniVersion } from './compat/jinni-baseline'
+import { expectedDaemonVersion } from './daemon-client/expected-version'
 import { watchPrintState, unwatchPrintState } from './daemon-client/feeds/print-state'
 import { startMdnsScan, stopMdnsScan } from './mdns'
 import { activeConnector, readSettings, writeSettings } from './git-host'
@@ -39,6 +41,8 @@ import { buildSession } from './dev-tools/patch-engine'
 import { applyPatch } from './dev-tools/patch-apply'
 import type { ApplyRequest } from './dev-tools/types'
 import { loadCatalog } from './registry'
+import type { Catalog } from './registry'
+import { markSystemPackages } from './compat/system-packages'
 import { offerListingRefresh } from './registry/listing-freshness'
 import { refreshListing } from './registry/listing-refresh'
 import { readAssetStat, readReleaseDoc } from './registry/asset-read'
@@ -59,7 +63,7 @@ function serializeAdapter(def: ReturnType<typeof getAdapter>): AdapterInfo | nul
   if (!def) return null
 
   return {
-    id: def.id, title: def.title, vendor: def.vendor, version: def.version, jinniVersion: def.jinniVersion,
+    id: def.id, title: def.title, vendor: def.vendor, version: def.version, jinniVersion: shippedJinniVersion(def),
     description: def.description, icon: def.icon, defaults: def.defaults, envVars: def.envVars,
     enrollSteps: def.enrollSteps.map((step) => ({ id: step.id, label: step.label, detail: step.detail })),
   }
@@ -148,12 +152,18 @@ function registerGitHostHandlers(): void {
   ipcMain.handle('git-host:listReleases', (_ev, owner: string, repo: string) => activeConnector().listReleases({ owner, repo }))
 }
 
+// The ONE catalog the renderer is ever handed: every path that returns it comes through here, so the
+// daemon and jinni entries cannot be marked on one route and left plain on another.
+async function catalogForRenderer(): Promise<Catalog> {
+  return markSystemPackages(await loadCatalog(), listAdapters())
+}
+
 function registerRegistryHandlers(): void {
-  ipcMain.handle('registry:catalog', () => loadCatalog())
+  ipcMain.handle('registry:catalog', () => catalogForRenderer())
   ipcMain.handle('registry:setSourceEnabled', (_event, url: string, enabled: boolean) => {
     setSourceEnabled(url, enabled)
 
-    return loadCatalog()
+    return catalogForRenderer()
   })
   ipcMain.handle('registry:setChannelEnabled', (_event, channel: ReleaseChannel, enabled: boolean) =>
     setChannelEnabled(channel, enabled),
@@ -238,6 +248,10 @@ export function registerIpc(getMainWindow: () => BrowserWindow): void {
   // Teach the daemon transport how to find a printer that moved, so a flip-flopping DHCP lease never
   // fails a daemon call: it re-resolves the live address and retries. Wired once at startup.
   setAddressResolver(resolveLiveAddress)
+  // Synchronous because the preload script publishes this on the api object it builds at load, before
+  // any renderer code can await anything. Only main knows where this build keeps the packages it
+  // ships, so preload cannot read the version itself.
+  ipcMain.on('daemon:expected-version', (event) => { event.returnValue = expectedDaemonVersion() })
   ipcMain.handle('shell:openUrl', (_ev, url: string) => shell.openExternal(url))
   ipcMain.handle('mdns:start', () => startMdnsScan(getMainWindow()))
   ipcMain.handle('mdns:stop', () => stopMdnsScan())

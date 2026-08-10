@@ -4,7 +4,9 @@ import { describe, it, expect, vi } from 'vitest'
 
 // printer-ops imports the U1 adapter client (electron-bound) at module load; stub the heavy edges so the
 // pure command builder can be imported in isolation.
-vi.mock('electron', () => ({ ipcMain: { handle: vi.fn() } }))
+// `app` is here because the adapter this file pulls in reaches the bundled packages, and the code
+// that finds them asks electron whether this is a packaged build.
+vi.mock('electron', () => ({ ipcMain: { handle: vi.fn() }, app: { isPackaged: false } }))
 vi.mock('@adapters/snapmaker-u1/client/snapmaker-u1', () => ({ patchS90lmd: (text: string) => text }))
 
 import { bespok3dRemovalCommand } from './printer-ops'

@@ -29,8 +29,8 @@ function BlockNote({ block, onConfigure }: { block: InstallBlock; onConfigure: (
   )
 }
 
-export function PanelFoot({ ops, installed, hasUpdate, switching, canInstall, orphan, dependents, block, printActive, onInstall, onUninstall, onConfigure, onClose }: {
-  ops: UsePluginOpsResult; installed: boolean; hasUpdate: boolean; switching: boolean; canInstall: boolean; orphan: boolean
+export function PanelFoot({ ops, installed, systemPackage, hasUpdate, switching, canInstall, orphan, dependents, block, printActive, onInstall, onUninstall, onConfigure, onClose }: {
+  ops: UsePluginOpsResult; installed: boolean; systemPackage: boolean; hasUpdate: boolean; switching: boolean; canInstall: boolean; orphan: boolean
   dependents: string[]; block: InstallBlock | null; printActive: boolean
   onInstall: () => void; onUninstall: () => void; onConfigure: () => void; onClose: () => void
 }) {
@@ -51,11 +51,16 @@ export function PanelFoot({ ops, installed, hasUpdate, switching, canInstall, or
         <span className="panel-foot-note">{t('store.removes_dependents', { deps: dependents.join(', ') })}</span>
       )}
       <Button variant="outline" onClick={onClose}>{t('btn.close')}</Button>
+      {/* One rule for what is on the printer, the same one the grid card reads, so the two can never
+          disagree about the same package. The daemon and the jinni differ only in never offering to
+          remove them: an enrolled printer with its daemon peeled off cannot be managed at all. */}
       {installed ? (
         <>
-          <Button variant="danger" disabled={printActive} onClick={onUninstall}>
-            {t('btn.uninstall')}
-          </Button>
+          {!systemPackage && (
+            <Button variant="danger" disabled={printActive} onClick={onUninstall}>
+              {t('btn.uninstall')}
+            </Button>
+          )}
           {!orphan && (
             <Button variant="primary" disabled={!canInstall} onClick={onInstall}>
               {installLabel(t, switching, hasUpdate)}

@@ -9,8 +9,8 @@ import type { PrinterRecord } from '../../src/main/printers'
 import type { ResolvedFixture } from '../../src/main/testkit/fixture'
 import { fetchDaemonStatus } from '../../src/main/daemon-client/client'
 import {
-  adapterFixture, startDaemonDevice, stopContainer, waitForSsh, copyDaemonSource, deployAdapterJinni,
-  applySkeleton, seedDeviceFiles, seedDaemonVenv, provisionDaemon, startDaemonProcess, stopDaemonProcess,
+  adapterFixture, startDaemonDevice, stopContainer, waitForSsh, installDaemonFromPackages,
+  applySkeleton, seedDeviceFiles, provisionDaemon, startDaemonProcess, stopDaemonProcess,
   daemonLog,
 } from './fake-device'
 
@@ -44,6 +44,8 @@ export interface DeviceTarget {
 const DEVICE_WORKSPACE = '/userdata/bespok3d'
 export const DEVICE_AUTOSTART = `${DEVICE_WORKSPACE}/etc/init.d/autostart/s10bespok3d-daemon`
 const DEVICE_VERSION_FILE = `${DEVICE_WORKSPACE}/var/lib/daemon/version.py`
+// The python the app's own deploy builds on the device, from the wheels the daemon package carries.
+export const DEVICE_VENV_PYTHON = `${DEVICE_WORKSPACE}/venv/bin/python`
 
 function delay(ms: number): Promise<void> {
   return new Promise((done) => setTimeout(done, ms))
@@ -86,16 +88,12 @@ class DockerDevice implements DeviceTarget {
     seedDeviceFiles(this.container, this.fixture)
     const createWorkspace = getAdapter('snapmaker-u1')?.enrollSteps.find((step) => step.id === 'create-workspace')
     await createWorkspace!.run(this.ssh, this.enrollContext())
-    // Seed the adapter-declared venv from the image's baked one. A suite that drives the app's REAL
-    // deploy-daemon step reaches ensureVenv/installVenvDeps, which would otherwise build a venv and pull
-    // fastapi from PyPI inside the container. Both are guarded by an existence check, so a seeded venv
-    // makes them no-ops; the deploy step itself still runs for real.
-    await seedDaemonVenv(this.ssh, this.fixture)
-    copyDaemonSource(this.container)
-    // Deploy the adapter's real jinni (as enrollment does) so the daemon runs on the device's actual
-    // paths, not GenericJinni. Without it ops that read PRINTER_CFG/MOONRAKER_CFG (deactivate/teardown)
-    // KeyError into a 500. The real U1 already has its jinni from enrollment, so this is Docker-only.
-    deployAdapterJinni(this.container, 'snapmaker-u1')
+    // Lay the device's starting-state daemon down from the signed packages, including its real jinni
+    // (without it the daemon falls back to GenericJinni and every op that reads PRINTER_CFG or
+    // MOONRAKER_CFG KeyErrors into a 500). No venv is seeded under the workspace on purpose: a suite
+    // that drives the app's REAL deploy-daemon step therefore runs ensureVenv and the offline wheel
+    // install for real, on this device, instead of finding a ready-made venv and skipping them.
+    await installDaemonFromPackages(this.container)
     const provisioned = await provisionDaemon(this.ssh)
     this.cert = provisioned.cert
     this.token = provisioned.token

@@ -12,7 +12,7 @@
 //
 // A downgrade is never applied. A repo whose latest release is behind the list (a list pinned forward,
 // a release deleted) leaves the entry alone rather than walking the store backwards.
-import { compareSemanticVersions } from '../../app-update/version'
+import { compareSemanticVersions } from '@bespok3d/contract'
 import type { MergedEntry } from '../model'
 import { publishingRepoOf } from './publishing-repo'
 import { cachedRelease, fetchLatestRelease } from './latest-release'

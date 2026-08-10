@@ -1,6 +1,8 @@
 {
   "_comment": "The plugin set the monorepo golden describes. Owned HERE, never read from scripts/bundle.dev.json: that file is a developer scratch list for their own dev build, and editing it must never turn this rail red. Change this list only to add or drop a plugin from what the golden claims, and run `npm run golden:refresh` in the same change.",
   "bundle": [
+    "bespok3d-daemon",
+    "bespok3d-jinni-snapmaker-u1",
     "afc-lite",
     "spoolman",
     "u1-gcode-colors",

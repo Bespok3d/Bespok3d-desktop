@@ -3,8 +3,10 @@
 # can run the REAL daemon in-container and reach it with the app's real client. Each adapter's
 # testkit/fixture.json parameterizes the firmware skeleton at run time, so one image serves every
 # adapter. NOT a real printer: no overlayfs / rcS / wifi / compositor; the logical-coherence substrate.
-# Bookworm ships Python 3.11, the bespok3d daemon target.
-FROM debian:bookworm-slim
+# Bookworm ships Python 3.11, the bespok3d daemon target. The architecture is pinned to the printer's
+# (aarch64) because the daemon package carries the printer's own compiled wheels: an image on another
+# architecture could not install them, and the offline install is the thing under test.
+FROM --platform=linux/arm64 debian:bookworm-slim
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssh-server python3 python3-venv openssl ca-certificates \
@@ -15,11 +17,9 @@ RUN apt-get update \
     && echo 'root:test-root' | chpasswd \
     && useradd -m lava
 
-# Bake the daemon runtime so the real daemon can start in-vitro (deps match the sibling daemon/requirements.txt).
-RUN python3 -m venv /opt/bespok3d-venv \
-    && /opt/bespok3d-venv/bin/pip install --no-cache-dir \
-       'fastapi>=0.115' 'uvicorn[standard]>=0.32' 'httpx>=0.27' 'cryptography>=42.0' \
-       'pgpy>=0.6.0' 'python-multipart>=0.0.9'
+# No daemon runtime is baked here. The suite installs it from the daemon's own signed package, offline,
+# out of the wheels that package carries, which is how a printer gets it. An image that pulled the deps
+# from the network would hide a missing or wrong wheel until it reached a real printer.
 
 EXPOSE 22 4269
 CMD ["/usr/sbin/sshd", "-D", "-e"]

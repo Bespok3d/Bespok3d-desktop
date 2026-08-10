@@ -53,6 +53,13 @@ eslint_files() {
     ( cd "$APP_DIR" && ./node_modules/.bin/eslint "$@" )
 }
 
+# electron-vite reads its config from the working directory. The bundler is invoked directly, not
+# through `npm run build`, whose prebuild hook repacks every plugin and is not this check's business.
+# shellcheck disable=SC2329  # run_check invokes this by name, which shellcheck cannot follow.
+app_builds() {
+    ( cd "$APP_DIR" && ./node_modules/.bin/electron-vite build )
+}
+
 # ── Smart-scope detection (which blocks changed vs HEAD) ──────────────────────
 # Block gating is the headline speedup: a scripts-only edit skips the whole app block (and vice versa).
 # Within a block we additionally scope the file-scopable checks (vitest --changed, eslint on changed
@@ -128,6 +135,11 @@ if [ "$RUN_TS" -eq 1 ]; then
     # cache (tsconfig.{node,web}.json); knip simply runs.
     run_check "tsc"                   npm --prefix "$APP_DIR" run typecheck
     run_check "dead-code (knip)"      npm --prefix "$APP_DIR" run knip
+    # tsc reads imports through tsconfig paths; the three bundles resolve them through their own vite
+    # aliases. An import can therefore typecheck and still be unresolvable at build time, which is a
+    # green gate on an app that will not start. Only the build itself catches that, so the build is
+    # part of the gate.
+    run_check "app builds"            app_builds
 else
     echo "  skipped (no app-source changes; ./scripts/check.sh full runs it)"
 fi

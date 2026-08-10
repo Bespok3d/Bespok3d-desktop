@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ReleaseInfo } from '../git-host/connector'
 import type { UpdateProblem } from './problem'
-import { isReleaseNewer, compareSemanticVersions } from './version'
+import { isReleaseNewer, compareSemanticVersions } from '@bespok3d/contract'
 
 // Pure mapping from an update source (electron-updater on Windows/Linux, a GitHub release on
 // macOS) to the single payload the renderer modal consumes. The action discriminates the two

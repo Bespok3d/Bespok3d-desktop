@@ -5,10 +5,9 @@ import type { ElectronApplication, Page } from '@playwright/test'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { packagedBinary, appEnv, rendererWindow } from './app-launch'
+import { packagedBinary, appEnv, rendererWindow, bundledDaemonVersion } from './app-launch'
 import { startStubDaemon } from './stub-daemon'
 import type { StubDaemon } from './stub-daemon'
-import { EXPECTED_DAEMON_VERSION } from '../src/main/daemon-client/version'
 
 // Real-layout + real-stacking canaries for the header printer-selection dropdown, driven against the REAL
 // packaged app via Playwright-electron. The jsdom cage (PrinterDropdown.test.tsx) already covers the
@@ -41,7 +40,7 @@ function seedPrinters(userData: string, daemon: StubDaemon): void {
   const records = [
     {
       id: 'alpha-u1', nick: 'Alpha', host: 'alpha.local', ip: '192.168.7.51',
-      daemonVersion: EXPECTED_DAEMON_VERSION,
+      daemonVersion: bundledDaemonVersion(),
       endpoints: [{ label: 'Fluidd', url: 'http://192.168.7.51/' }], ...base,
     },
     {

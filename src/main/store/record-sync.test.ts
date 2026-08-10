@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, vi } from 'vitest'
 
-vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn(), EXPECTED_DAEMON_VERSION: '0.0.0' }))
+vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn() }))
 
 import { capsAfterInstall, retainForInstalled, retainRemovalProvenance, recordAppliedVars } from './record-sync'
 import { fetchCapabilities } from '../daemon-client/client'

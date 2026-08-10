@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import { makePlugin, makeSource } from '../../../test/fixtures'
 import type { PluginConfigField } from '../../../data/types'
-import { pluginAsPickedVersion } from './derive'
+import { daemonFloorVerdict, pluginAsPickedVersion } from './derive'
 
 const LISTED_FIELD: PluginConfigField = { key: 'port', label: 'Port', type: 'number', scope: 'printer' }
 const EXPERIMENTAL_FIELD: PluginConfigField = { key: 'exposure', label: 'Exposure', type: 'text', scope: 'printer' }
@@ -37,5 +37,32 @@ describe('the settings the picked version offers', () => {
     const plugin = makePlugin({ config: [LISTED_FIELD] })
 
     expect(pluginAsPickedVersion(plugin, undefined)).toBe(plugin)
+  })
+})
+
+// The card and the install path must give the same answer: a card that offers a package the install
+// then refuses is worse than either answer on its own.
+describe('the compatibility verdict the card shows', () => {
+  it('blocks with both versions when the printer reports a daemon below the floor', () => {
+    const plugin = { ...makePlugin({ id: 'spoolman' }), minDaemonVersion: '0.12.22' }
+
+    expect(daemonFloorVerdict(plugin, '0.12.19')).toEqual({ floorUnmet: { required: '0.12.22', running: '0.12.19' }, versionUnknown: false })
+  })
+
+  it('lets a printer at the floor through', () => {
+    const plugin = { ...makePlugin({ id: 'spoolman' }), minDaemonVersion: '0.12.22' }
+
+    expect(daemonFloorVerdict(plugin, '0.12.22')).toEqual({ floorUnmet: null, versionUnknown: false })
+  })
+
+  it('warns rather than blocks when the printer never said what it runs', () => {
+    const plugin = { ...makePlugin({ id: 'spoolman' }), minDaemonVersion: '0.12.22' }
+
+    expect(daemonFloorVerdict(plugin, undefined)).toEqual({ floorUnmet: null, versionUnknown: true })
+    expect(daemonFloorVerdict(plugin, '0.0.0')).toEqual({ floorUnmet: null, versionUnknown: true })
+  })
+
+  it('asks nothing of a plugin that declares no floor', () => {
+    expect(daemonFloorVerdict(makePlugin({ id: 'idle-timeout' }), undefined)).toEqual({ floorUnmet: null, versionUnknown: false })
   })
 })

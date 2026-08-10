@@ -11,7 +11,7 @@ export interface PanelActionInputs {
   installVars?: Record<string, string>
   missingDeps: string[]
   dependents: string[]
-  needsNewerDaemon: boolean
+  warnDaemonUnknown: boolean
   selectedSource?: string
   selectedChannel?: ReleaseChannel
   // Runs before the install goes out: the port this install claims is taken off whoever holds it.
@@ -19,7 +19,7 @@ export interface PanelActionInputs {
 }
 
 export function usePanelActions(input: PanelActionInputs) {
-  const { ops, printerId, pluginId, installVars, missingDeps, dependents, needsNewerDaemon, selectedSource, selectedChannel, beforeInstall } = input
+  const { ops, printerId, pluginId, installVars, missingDeps, dependents, warnDaemonUnknown, selectedSource, selectedChannel, beforeInstall } = input
   const [showDaemonGate, setShowDaemonGate] = useState(false)
   const [showCascadeGate, setShowCascadeGate] = useState(false)
   // Moving the other web UI off the claimed port is a courtesy to that UI, not the thing the user
@@ -31,7 +31,7 @@ export function usePanelActions(input: PanelActionInputs) {
     ops.install(printerId, pluginId, installVars, missingDeps, selectedSource, selectedChannel)
   }
   function requestInstall() {
-    if (needsNewerDaemon) { setShowDaemonGate(true);
+    if (warnDaemonUnknown) { setShowDaemonGate(true);
 
  return }
     startInstall()

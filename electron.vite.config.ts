@@ -27,7 +27,16 @@ export default defineConfig({
       },
     },
   },
-  preload: {},
+  // The preload bundle reaches into `src/main/app-update/view.ts` for the update strategy it shows the
+  // renderer, and that module reads the shared version comparator. Every bundle that can reach a shared
+  // import needs the alias, not just the two that own the code.
+  preload: {
+    resolve: {
+      alias: {
+        '@bespok3d/contract': resolve(__dirname, '../lib_bespok3d/ts/contract/index.ts'),
+      },
+    },
+  },
   renderer: {
     define: { __APP_VERSION__: JSON.stringify(version) },
     root: resolve(__dirname, 'src/renderer'),

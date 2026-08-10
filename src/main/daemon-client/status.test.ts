@@ -4,8 +4,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('./client', () => ({
   fetchDaemonStatus: vi.fn(), fetchCapabilities: vi.fn(), fetchSelfCheck: vi.fn(),
-  EXPECTED_DAEMON_VERSION: '0.12.12-dev',
 }))
+vi.mock('./expected-version', () => ({ expectedDaemonVersion: () => '0.12.12-dev' }))
 vi.mock('../printers', () => ({
   loadPrinters: vi.fn().mockReturnValue([]), updatePrinter: vi.fn(), checkDaemon: vi.fn(),
   checkMoonraker: vi.fn(), checkSshOpen: vi.fn(), resolveLiveAddress: vi.fn().mockResolvedValue('10.0.0.5'),
@@ -77,7 +77,7 @@ describe('parseCaps', () => {
       endpoints: [{ label: 'Fluidd', url: 'https://{host}/' }],
       firmware_version: '1.4.0.246', jinni_version: '0.1.1', capability_flags: ['overlay'], interface_extras: ['lmd-control'],
     } as never
-    const parsed = parseCaps(caps, '10.0.0.5')
+    const parsed = parseCaps(caps, { ip: '10.0.0.5' })
     expect(parsed.installedIds).toEqual(['spoolman'])
     expect(parsed.installedVersions).toEqual({ spoolman: '0.1.8' })
     expect(parsed.endpoints).toEqual([{ label: 'Fluidd', url: 'https://10.0.0.5/' }])
@@ -85,8 +85,22 @@ describe('parseCaps', () => {
     expect(parsed.jinniVersion).toBe('0.1.1')
   })
 
+  // The daemon is on the printer but is not in the plugin list it reports, so without this the store
+  // has no version for it and its card offers to install the daemon that is answering the request.
+  it('carries the running daemon version as machinery, keyed by its package name', () => {
+    const parsed = parseCaps({ installed: {}, adapter: 'snapmaker-u1' } as never, { ip: '10.0.0.5', daemonVersion: '0.12.23' })
+
+    expect(parsed.machineryVersions).toEqual({ 'bespok3d-daemon': '0.12.23' })
+  })
+
+  it('reports no machinery version for a printer whose daemon version is not known yet', () => {
+    const parsed = parseCaps({ installed: {}, adapter: 'snapmaker-u1' } as never, { ip: '10.0.0.5' })
+
+    expect(parsed.machineryVersions).toEqual({})
+  })
+
   it('tolerates a legacy installed list (no versions) by mapping ids to empty strings', () => {
-    const parsed = parseCaps({ installed: ['spoolman', 'rfid-ntag'] } as never, '10.0.0.5')
+    const parsed = parseCaps({ installed: ['spoolman', 'rfid-ntag'] } as never, { ip: '10.0.0.5' })
     expect(parsed.installedIds).toEqual(['spoolman', 'rfid-ntag'])
     expect(parsed.installedVersions).toEqual({ spoolman: '', 'rfid-ntag': '' })
   })
@@ -129,6 +143,13 @@ describe('verifyDaemonVersion', () => {
 
   it('resolves when the printer reports the bundled version', async () => {
     vi.mocked(fetchDaemonStatus).mockResolvedValueOnce({ ok: true, version: '0.12.12-dev' })
+    await expect(verifyDaemonVersion(anyRecord, 1)).resolves.toBeUndefined()
+  })
+
+  // A printer can legitimately run a daemon newer than the one this app bundles: another machine on a
+  // newer app updated it. That is not a failed deploy, so it must not be reported as one.
+  it('resolves when the printer reports a daemon newer than the bundled one', async () => {
+    vi.mocked(fetchDaemonStatus).mockResolvedValueOnce({ ok: true, version: '0.13.4' })
     await expect(verifyDaemonVersion(anyRecord, 1)).resolves.toBeUndefined()
   })
 
@@ -201,6 +222,18 @@ describe('checkDaemonRecord (connection ladder)', () => {
     expect(result.reach).toBe('managed')
     expect(result.daemonVersion).toBe('0.12.12-dev')
     expect(result.daemonUpdateAvailable).toBe(false)
+  })
+
+  // The daemon is not in the plugin tree it reports, so this answer is the only way the store learns
+  // it is on the printer at all. Saved to the record and left out of the answer, it reached the store
+  // on the next app start only, and until then the daemon card offered to install what was running.
+  it('carries what the printer runs of bespok3d itself, not only its plugin list', async () => {
+    mockManagedRecord()
+    mockDaemonAnswers('0.12.23')
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.machineryVersions).toEqual({ 'bespok3d-daemon': '0.12.23' })
   })
 })
 

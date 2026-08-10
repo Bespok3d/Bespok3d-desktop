@@ -13,6 +13,14 @@ export interface InstallBlock {
   action?: 'configure'
 }
 
+// The two versions in play when this printer's daemon is older than the plugin demands. Present only
+// when both numbers are known: a daemon that did not report its version is not a refusal, it is a
+// question the app could not ask, and the panel warns about that instead of blocking on it.
+export interface UnmetDaemonFloor {
+  required: string
+  running: string
+}
+
 export interface InstallBlockInput {
   printerId?: string
   configReady: boolean
@@ -22,6 +30,7 @@ export interface InstallBlockInput {
   conflicts: string[]
   printActive: boolean
   blockedActions: string[]
+  daemonFloorUnmet?: UnmetDaemonFloor | null
 }
 
 export function installBlockReason(t: TFunction, input: InstallBlockInput): InstallBlock | null {
@@ -32,6 +41,11 @@ export function installBlockReason(t: TFunction, input: InstallBlockInput): Inst
   }
   if (!input.printerId) {
     return { brief: t('store.block.no_printer.brief'), detail: t('store.block.no_printer.detail') }
+  }
+  if (input.daemonFloorUnmet) {
+    const versions = { ...input.daemonFloorUnmet }
+
+    return { brief: t('store.block.daemon_too_old.brief', versions), detail: t('store.block.daemon_too_old.detail', versions) }
   }
   if (input.conflicts.length > 0) {
     const plugins = input.conflicts.join(', ')

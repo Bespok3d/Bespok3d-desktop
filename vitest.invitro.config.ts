@@ -25,8 +25,15 @@ export default defineConfig({
     sequence: { shuffle: false },
     testTimeout: 60000,
     hookTimeout: 60000,
+    // The suite reads the packages this build ships, so it needs the same pointer at the built
+    // catalog a developer's app runs with: without it the bundled dir resolves relative to whichever
+    // source file asked, which is not where dist/plugins lives.
+    env: { B3D_DEV_SOURCES: __dirname },
     server: {
       fs: { allow: [resolve(__dirname, '..')] },
+      // @electron-toolkit/utils reads electron's app at import time. Left external it loads outside
+      // the module graph, where the electron stub above does not reach it, and the import throws.
+      deps: { inline: ['@electron-toolkit/utils'] },
     },
   },
 })

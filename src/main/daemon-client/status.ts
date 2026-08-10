@@ -3,12 +3,22 @@
 import { updatePrinter, loadPrinters, checkDaemon, checkSshOpen, checkMoonraker, gradeReach, resolveLiveAddress, knownAddresses } from '../printers'
 import type { ConnectionReach, PrinterRecord, DriftReport } from '../printers'
 import { macForIp } from '../mdns/arp'
-import { fetchCapabilities, fetchDaemonStatus, fetchSelfCheck, EXPECTED_DAEMON_VERSION } from './client'
-import { isReleaseNewer } from '../app-update/version'
+import { fetchCapabilities, fetchDaemonStatus, fetchSelfCheck } from './client'
+import { expectedDaemonVersion } from './expected-version'
+import { runningMachineryVersions } from '../compat/system-packages'
+import { listAdapters } from '../adapter-loader'
+import { isReleaseNewer, isDaemonVersionAtLeast, reportedVersionOrNull } from '@bespok3d/contract'
 import type { CapabilitiesResult, DaemonMetadata, PrinterProblem } from '@bespok3d/contract'
 import type { SelfCheckResult } from './client'
 
-export interface CheckDaemonResult extends DaemonMetadata {
+// The daemon and the adapter jinni arrive with enrollment and live outside the plugin tree, so the
+// printer never lists them among the plugins it reports. Their running versions are worked out here,
+// which is why they hang off the app's own answer rather than off the daemon's contract shape.
+export interface DaemonAnswer extends DaemonMetadata {
+  machineryVersions?: Record<string, string>
+}
+
+export interface CheckDaemonResult extends DaemonAnswer {
   isManaged: boolean
   reach: ConnectionReach
   sshOpen: boolean
@@ -32,16 +42,25 @@ export function dedupeEndpoints(endpoints: Array<{ label: string; url: string }>
   return [...byUrl.values()]
 }
 
-export function parseCaps(caps: CapabilitiesResult, ip: string) {
+// The printer this answer came from, as much of it as reading the answer needs: the address the
+// endpoints are rewritten to, and the daemon version, which `/capabilities` does not carry.
+export interface CapabilitiesHost {
+  ip: string
+  daemonVersion?: string
+}
+
+export function parseCaps(caps: CapabilitiesResult, printer: CapabilitiesHost) {
   const rawInstalled = caps.installed as unknown
   const installedVersions: Record<string, string> = Array.isArray(rawInstalled)
     ? Object.fromEntries((rawInstalled as string[]).map((id) => [id, '']))
     : (rawInstalled as Record<string, string>)
-  const reachableEndpoints = (caps.endpoints ?? []).map((endpoint) => ({ ...endpoint, url: endpoint.url.replace('{host}', ip) }))
+  const reachableEndpoints = (caps.endpoints ?? []).map((endpoint) => ({ ...endpoint, url: endpoint.url.replace('{host}', printer.ip) }))
+  const machinery = { adapter: caps.adapter, daemonVersion: printer.daemonVersion, jinniVersion: caps.jinni_version }
 
   return {
     installedIds: Object.keys(installedVersions),
     installedVersions,
+    machineryVersions: runningMachineryVersions(machinery, listAdapters()),
     endpoints: dedupeEndpoints(reachableEndpoints),
     firmwareVersion: caps.firmware_version ?? 'unknown',
     jinniVersion: caps.jinni_version ?? 'unknown',
@@ -106,16 +125,26 @@ export function recordOrThrow(printerId: string): PrinterRecord {
 export function daemonNeedsUpdate(deviceVersion: string | undefined): boolean {
   if (!deviceVersion) return true
 
-  return isReleaseNewer(deviceVersion, EXPECTED_DAEMON_VERSION)
+  return isReleaseNewer(deviceVersion, expectedDaemonVersion())
 }
 
-// After (re)deploying the bundled daemon, the printer MUST come back reporting that exact version.
+// Whether the printer came back on a daemon at least as new as the one this build ships. The
+// compatibility contract is floors and no ceilings, so a printer already on a NEWER daemon than the
+// bundle is a good pair and must not be called a failed deploy. A version the printer will not state
+// is not a pass: after a deploy the app can and must know the number.
+function daemonReachesBundled(actualVersion: string | undefined): boolean {
+  const reported = reportedVersionOrNull(actualVersion)
+
+  return reported !== null && isDaemonVersionAtLeast(reported, expectedDaemonVersion())
+}
+
+// After (re)deploying the bundled daemon, the printer MUST come back on that version or newer.
 // Without this a stale or failed deploy reports success and the update signal clears even though the
 // printer never got the new daemon. Throwing here keeps the op honest (no false "up to date").
 export function assertDaemonVersion(actualVersion: string | undefined): void {
-  if (actualVersion === EXPECTED_DAEMON_VERSION) return
+  if (daemonReachesBundled(actualVersion)) return
   throw new Error(
-    `Daemon reports ${actualVersion || 'unknown'} after the update, expected ${EXPECTED_DAEMON_VERSION}. ` +
+    `Daemon reports ${actualVersion || 'unknown'} after the update, expected ${expectedDaemonVersion()} or newer. ` +
     `The new daemon did not take: it may not have restarted, or the app bundled an out-of-date ` +
     `daemon. The printer was left on its previous daemon.`,
   )
@@ -128,7 +157,7 @@ export async function verifyDaemonVersion(record: PrinterRecord, attemptsLeft: n
   const version = await fetchDaemonStatus(record, VERIFY_REQUEST_TIMEOUT_MS)
     .then((status) => status.version)
     .catch(() => undefined)
-  if (version === EXPECTED_DAEMON_VERSION) return
+  if (daemonReachesBundled(version)) return
   if (attemptsLeft <= 1) return assertDaemonVersion(version)
   await new Promise<void>((resolve) => setTimeout(resolve, VERIFY_RETRY_DELAY_MS))
 
@@ -138,7 +167,7 @@ export async function verifyDaemonVersion(record: PrinterRecord, attemptsLeft: n
 // "managed" requires the daemon to actually ANSWER, not just hold port 4269 open: a wedged daemon
 // that accepts the TCP connect but never serves HTTP is not healthy. Returns null (not managed) when
 // the daemon is absent or unresponsive, so the caller falls through to the web/SSH ladder rungs.
-async function daemonMetadata(record: PrinterRecord): Promise<DaemonMetadata | null> {
+async function daemonMetadata(record: PrinterRecord): Promise<DaemonAnswer | null> {
   if (!record.daemonToken || !record.daemonCert) return null
   if (!(await checkDaemon(record.ip))) return null
   try {
@@ -153,7 +182,10 @@ async function daemonMetadata(record: PrinterRecord): Promise<DaemonMetadata | n
       fetchSelfCheck(record, DAEMON_QUERY_TIMEOUT_MS).catch(() => null),
     ])
     const daemonUpdateAvailable = daemonNeedsUpdate(status.version)
-    const parsed = parseCaps(caps, record.ip)
+    // The version this probe just read, not the one on the record: after a daemon update the record
+    // still holds the old number until this same write lands, and the store would show it for a whole
+    // ping cycle as an update the printer has already taken.
+    const parsed = parseCaps(caps, { ip: record.ip, daemonVersion: status.version })
     // A daemon too old to know about power cycles omits the key entirely, and that reads as "nothing
     // to reboot for", never as "unknown": an old daemon must not make the app nag for a power cycle.
     const health = selfCheck ? {
@@ -176,6 +208,9 @@ async function daemonMetadata(record: PrinterRecord): Promise<DaemonMetadata | n
       daemonUpdateAvailable,
       installedIds: parsed.installedIds,
       installedVersions: parsed.installedVersions,
+      // Written to the record alone, this reaches the store only on the next app start, which is what
+      // left the daemon card offering to install what the printer was already running all session.
+      machineryVersions: parsed.machineryVersions,
       ...health,
       switchedOff: selfCheck?.switched_off === true,
       jinniVersion: parsed.jinniVersion,

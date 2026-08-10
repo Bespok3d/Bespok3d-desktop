@@ -6,10 +6,9 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import AdmZip from 'adm-zip'
-import { packagedBinary, appEnv, rendererWindow } from './app-launch'
+import { packagedBinary, appEnv, rendererWindow, bundledDaemonVersion } from './app-launch'
 import { startStubDaemon } from './stub-daemon'
 import type { StubDaemon } from './stub-daemon'
-import { EXPECTED_DAEMON_VERSION } from '../src/main/daemon-client/version'
 import { buildLocalIndex } from '../src/main/registry/local/build-index'
 import type { StoredManifest } from '../src/main/registry/local/b3-manifest'
 
@@ -40,7 +39,7 @@ function seedManagedPrinter(userData: string, daemon: StubDaemon): void {
   const record = {
     id: 'demo-u1', nick: 'Workshop U1', model: 'Snapmaker U1', adapter: 'snapmaker-u1',
     host: 'demo-u1.local', ip: '127.0.0.1', status: 'managed', installedIds: [],
-    daemonVersion: EXPECTED_DAEMON_VERSION, daemonCert: daemon.cert, daemonToken: daemon.token,
+    daemonVersion: bundledDaemonVersion(), daemonCert: daemon.cert, daemonToken: daemon.token,
   }
   writeFileSync(join(printersDir, 'demo-u1.json'), JSON.stringify(record, null, 2), 'utf-8')
 }
@@ -69,7 +68,7 @@ test.describe('refused install: a package whose signature fails verification', (
   test.beforeAll(async () => {
     test.setTimeout(60_000)
     const userData = mkdtempSync(join(tmpdir(), 'b3-refused-'))
-    daemon = await startStubDaemon(EXPECTED_DAEMON_VERSION)
+    daemon = await startStubDaemon(bundledDaemonVersion())
     seedManagedPrinter(userData, daemon)
     seedSideloadedRefusal(userData)
     app = await electron.launch({ executablePath: packagedBinary(), args: [`--user-data-dir=${userData}`], env: appEnv() })

@@ -8,13 +8,14 @@ import { parseCaps } from '../daemon-client/status'
 // briefly unreachable: the install already succeeded, so the plugin IS present at the known version.
 export async function capsOrFallback(record: PrinterRecord, extraVersions: Record<string, string>): Promise<ReturnType<typeof parseCaps>> {
   try {
-    return parseCaps(await fetchCapabilities(record), record.ip)
+    return parseCaps(await fetchCapabilities(record), record)
   } catch {
     const installedVersions = { ...record.installedVersions, ...extraVersions }
 
     return {
       installedIds: Object.keys(installedVersions),
       installedVersions,
+      machineryVersions: record.machineryVersions ?? {},
       endpoints: record.endpoints ?? [],
       firmwareVersion: record.firmwareVersion ?? 'unknown',
       jinniVersion: record.jinniVersion ?? 'unknown',

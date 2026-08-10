@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Printer } from '../types'
-import { isNewerVersion } from '../../utils/version'
+import { isNewerVersion } from '@bespok3d/contract'
 
 // The deployed jinni is older than the one this app build ships (the jinni versions independently of
 // the daemon). Only a STRICTLY NEWER bundled jinni counts as lagging: a device on the same or a newer

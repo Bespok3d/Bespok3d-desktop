@@ -196,7 +196,7 @@ describe('in-vitro plugin lifecycle (real daemon-client over the wire)', () => {
 
   // deactivate + teardown run LAST: deactivate writes the global deactivated marker, teardown removes
   // every installed plugin. Both need the device's klipper config paths (PRINTER_CFG/MOONRAKER_CFG),
-  // which is why the harness deploys the real adapter jinni (deployAdapterJinni) instead of the generic
+  // which is why the harness lays the real adapter jinni down from its package instead of the generic
   // fallback that lacks them. They share /oem/printer_data/config/moonraker.conf (each rewrites it as
   // its own setup, last-writer-wins); the --rm container is dropped in afterAll, so the file need not
   // be restored. Ordering matters (a test after these would see a stripped include / global marker /

@@ -10,7 +10,15 @@ import type { SshSession } from '../ssh'
 import { runSshOp } from './op-runner'
 import { waitForDaemon, tailDaemonLog } from './daemon-log'
 import { recordOrThrow, verifyDaemonVersion } from '../daemon-client/status'
-import { EXPECTED_DAEMON_VERSION } from '../daemon-client/client'
+import { expectedDaemonVersion } from '../daemon-client/expected-version'
+import { assertNotADaemonDowngrade, assertPairLandedTogether, assertPrinterNotPrinting } from '../compat'
+
+// Asked before a single byte moves, so a refused op never touches the printer at all: it is not
+// printing, and this app is not about to put it back onto an older daemon than it is running.
+async function assertSafeToMoveDaemon(record: PrinterRecord): Promise<void> {
+  assertPrinterNotPrinting(record.id)
+  await assertNotADaemonDowngrade(record)
+}
 
 function repairContext(record: PrinterRecord, ip: string, credentials: SshCredentials, runtimeUser: string): EnrollContext {
   return {
@@ -92,6 +100,7 @@ export async function checkWriteLayer(printerId: string): Promise<boolean | null
 
 export async function runRepair(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
   const { record, adapter, ctx } = daemonOpContext(printerId, ip, { user, password, port })
+  await assertSafeToMoveDaemon(record)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'check-write-layer', label: 'Checking the write layer', detail: 'A firmware update resets the printer overlay; when that happens a daemon repair would not survive a reboot, so the printer needs full recovery instead', run: async () => { await guardWriteLayer(adapter, ssh) } },
     { id: 'diagnose', label: 'Diagnosing the daemon', detail: 'Checks for a stale demon directory, a wrong autostart path, a missing daemon, or an occupied port', run: async (progress) => { progress((await diagnoseDaemon(ssh)).trim()) } },
@@ -99,27 +108,34 @@ export async function runRepair(win: BrowserWindow, printerId: string, ip: strin
     { id: 'start-daemon', label: 'Starting the daemon', detail: 'Deploys the corrected autostart script, frees port 4269, and starts the daemon', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
-  updatePrinter(printerId, { status: 'managed', daemonVersion: EXPECTED_DAEMON_VERSION, daemonUpdateAvailable: false })
+  await assertPairLandedTogether(record)
+  updatePrinter(printerId, { status: 'managed', daemonVersion: expectedDaemonVersion(), daemonUpdateAvailable: false })
 }
 
 export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
   const { record, adapter, ctx } = daemonOpContext(printerId, ip, { user, password, port })
+  await assertSafeToMoveDaemon(record)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'deploy-daemon', label: 'Uploading fresh daemon code', detail: 'Uploads the latest daemon source and adapter jinni; the cert and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-daemon', ssh, { ...ctx, onProgress: progress }) },
     { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Deploys the autostart script, frees port 4269, and restarts the daemon', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
+  await assertPairLandedTogether(record)
   // deploy-daemon redeploys the jinni too, so record both at the bundled version: the jinni-update
   // banner must not flash between this save and the next capabilities ping.
-  updatePrinter(printerId, { status: 'managed', daemonVersion: EXPECTED_DAEMON_VERSION, daemonUpdateAvailable: false, daemonUpdatedAt: new Date().toISOString(), jinniVersion: adapter.jinniVersion })
+  updatePrinter(printerId, { status: 'managed', daemonVersion: expectedDaemonVersion(), daemonUpdateAvailable: false, daemonUpdatedAt: new Date().toISOString(), jinniVersion: adapter.jinniVersion })
 }
 
 export async function runUpdateJinni(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
-  const { adapter, ctx } = daemonOpContext(printerId, ip, { user, password, port })
+  const { record, adapter, ctx } = daemonOpContext(printerId, ip, { user, password, port })
+  // A jinni move restarts the daemon too, so it waits for the print; it deploys no daemon, so there
+  // is no daemon version to be put backwards here.
+  assertPrinterNotPrinting(printerId)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'deploy-jinni', label: 'Updating the adapter jinni', detail: 'Re-uploads only the device-side adapter; the daemon source, cert, and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-jinni', ssh, { ...ctx, onProgress: progress }) },
     { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Restarts the daemon so it loads the updated jinni', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => tailDaemonLog(ssh)) },
   ])
+  await assertPairLandedTogether(record)
   updatePrinter(printerId, { status: 'managed', jinniVersion: adapter.jinniVersion })
 }

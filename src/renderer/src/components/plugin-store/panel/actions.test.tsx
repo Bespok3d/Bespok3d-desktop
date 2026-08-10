@@ -13,7 +13,7 @@ function panelActions(install: () => void, beforeInstall?: () => Promise<void>) 
     pluginId: 'demo',
     missingDeps: [],
     dependents: [],
-    needsNewerDaemon: false,
+    warnDaemonUnknown: false,
     beforeInstall,
   }))
 }

@@ -12,7 +12,7 @@
 import type { AssetInfo, ReleaseInfo } from '../git-host/connector'
 import type { UpdateProblem } from './problem'
 import { releaseNotesFromHtml } from './release-notes-html'
-import { parseSemanticVersion } from './version'
+import { parseSemanticVersion } from '@bespok3d/contract'
 
 export interface PublicRepo {
   owner: string

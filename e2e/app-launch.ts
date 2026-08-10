@@ -3,11 +3,18 @@
 import type { ElectronApplication, Page } from '@playwright/test'
 import { readdirSync, existsSync } from 'fs'
 import { join } from 'path'
+import { daemonVersionInRegistry } from '../src/main/daemon-client/version'
 
 // Shared launch helpers for the screenshot/E2E specs: locate the packaged app, strip the sandbox's
 // forced ELECTRON_RUN_AS_NODE, grab the renderer window, and shoot a plain-artifact screenshot.
 export const RELEASE_DIR = join(__dirname, '../dist/release')
 export const SHOTS_DIR = join(__dirname, '../../screenshots')
+
+// The daemon version the app under test will name. Read from the same packed catalogue the packaged
+// build ships, so a spec can never assert a version this build does not carry.
+export function bundledDaemonVersion(): string {
+  return daemonVersionInRegistry(join(__dirname, '../dist/plugins'))
+}
 
 // arm64 is what the tests exercise because arm64 is the supported target: Apple is winding Rosetta
 // down, and the x64 build only exists so people on older Macs still have something to run. Testing

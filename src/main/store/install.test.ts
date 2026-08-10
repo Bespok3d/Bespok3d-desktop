@@ -20,7 +20,7 @@ vi.mock('./record-sync', async (importOriginal) => ({
   capsAfterInstall: vi.fn(),
   recordAppliedVars: () => ({}),
 }))
-vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn(), installPlugin: vi.fn() }))
+vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn(), installPlugin: vi.fn(), fetchDaemonStatus: vi.fn() }))
 vi.mock('../daemon-client/status', () => ({ getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }) }))
 vi.mock('../daemon-client/feeds/install-progress', () => ({ watchInstallProgress: vi.fn(), installPhaseMessage: (phase: string) => phase }))
 vi.mock('../daemon-client/guard', () => ({ daemonGuardMessage: vi.fn() }))
@@ -34,7 +34,7 @@ import { updatePrinter } from '../printers'
 import { loadCatalog } from '../registry'
 import { findCatalogVariant, resolveArchiveBytes, discardCachedArchive } from './catalog-archive'
 import { capsAfterInstall } from './record-sync'
-import { fetchCapabilities, installPlugin } from '../daemon-client/client'
+import { fetchCapabilities, installPlugin, fetchDaemonStatus } from '../daemon-client/client'
 import { getManagedRecord } from '../daemon-client/status'
 import { watchInstallProgress } from '../daemon-client/feeds/install-progress'
 import { daemonGuardMessage } from '../daemon-client/guard'
@@ -253,6 +253,41 @@ describe('dependency package verification', () => {
   })
 })
 
+// Two packages that both place a directory of the same name land on the same tree, and the second one
+// to arrive replaces what the first one put there: the printer ends up running part of each, with every
+// version floor satisfied. The clash is in the packages, so it is caught while both are still files on
+// this machine and neither is sent.
+function packageDeploying(manifest: Record<string, unknown>, deployedPaths: readonly string[]): Buffer {
+  const archive = new AdmZip()
+  archive.addFile('manifest.json', Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8'))
+  deployedPaths.forEach((deployedPath) => archive.addFile(`files/${deployedPath}`, Buffer.from('# obviously fake payload\n', 'utf8')))
+
+  return archive.toBuffer()
+}
+
+describe('packages that would write over each other', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('refuses the install when a plugin and its dependency deploy the same entry, before either is sent', async () => {
+    const contested = ['idle-timeout/main.cfg']
+    stubADependencyResolvingTo(
+      packageDeploying({ ...HONEST_MANIFEST, name: DEP_ID }, contested),
+      packageDeploying(HONEST_MANIFEST, contested),
+    )
+    await expect(installWithDependency()).rejects.toThrow(/both install idle-timeout/)
+    expect(installPlugin).not.toHaveBeenCalled()
+  })
+
+  it('installs both when they deploy entries of their own', async () => {
+    stubADependencyResolvingTo(
+      packageDeploying({ ...HONEST_MANIFEST, name: DEP_ID }, ['print-prefs-core/main.cfg']),
+      packageDeploying(HONEST_MANIFEST, ['idle-timeout/main.cfg']),
+    )
+    await installWithDependency()
+    expect(vi.mocked(installPlugin).mock.calls.map((call) => call[2])).toEqual([DEP_ID, 'idle-timeout'])
+  })
+})
+
 // A plugin that did not install leaves its attempt on the printer record whether the user installed it
 // on its own or inside a batch, and its downloaded package is thrown away so retrying fetches the file
 // again rather than being handed back the copy that was just refused.
@@ -353,5 +388,143 @@ describe('what a single install counts', () => {
     await install()
 
     expect(vi.mocked(reportErrorEvent)).not.toHaveBeenCalled()
+  })
+})
+
+// The floor used to be checked in the store card's button and nowhere else, so every install that does
+// not come from a click on that card walked past it: a recovery after a firmware update, a bundled
+// first install, a sideloaded .b3, and a dependency the owner never chose. These call installGuarded
+// directly, which is exactly what those paths do, and no card is involved anywhere in them.
+function stubEntryDemanding(floor: string, reportedDaemon: string): void {
+  stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+  vi.mocked(findCatalogVariant).mockReturnValue({ ...LISTED_ENTRY, min_daemon_version: floor })
+  vi.mocked(fetchDaemonStatus).mockResolvedValue({ version: reportedDaemon } as never)
+}
+
+const DAEMON_MANIFEST = {
+  name: 'bespok3d-daemon',
+  version: '0.12.23',
+  install: { config: { 'main.cfg': 'config/main.cfg' } },
+  files: [{ path: 'config/main.cfg', sha256: 'f'.repeat(64) }],
+}
+
+// The daemon's own store card sends its Update through this path, so the daemon arrives here as an
+// ordinary package and is weighed like one. What makes it different is the direction of the question:
+// the daemon is the package that declares which support package it will drive.
+function stubADaemonDemandingSupportPackage(jinniFloor: string, reportedJinni: string): void {
+  stubTheHappyPathAround(packageWith(DAEMON_MANIFEST))
+  vi.mocked(findCatalogVariant).mockReturnValue({
+    ...LISTED_ENTRY,
+    name: 'bespok3d-daemon',
+    version: '0.12.23',
+    min_jinni_version: jinniFloor,
+  })
+  vi.mocked(fetchDaemonStatus).mockResolvedValue({ version: '0.12.19' } as never)
+  vi.mocked(fetchCapabilities).mockResolvedValue({ jinni_version: reportedJinni } as never)
+  vi.mocked(capsAfterInstall).mockResolvedValue({ installedIds: ['bespok3d-daemon'] } as never)
+}
+
+function installTheDaemon(): Promise<unknown> {
+  return installGuarded({} as BrowserWindow, 'printer-1', 'bespok3d-daemon')
+}
+
+describe('the compatibility floor on the install path itself', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('refuses a package the daemon on this printer is too old for, with no card in sight', async () => {
+    stubEntryDemanding('0.12.22', '0.12.19')
+
+    await expect(install()).rejects.toThrow(/0\.12\.22/)
+    expect(vi.mocked(installPlugin)).not.toHaveBeenCalled()
+  })
+
+  it('names the side to update and the version to reach it', async () => {
+    stubEntryDemanding('0.12.22', '0.12.19')
+    const refusal = await install().catch((error: Error) => error.message)
+
+    expect(refusal).toContain('idle-timeout')
+    expect(refusal).toContain('0.12.22')
+    expect(refusal).toContain('0.12.19')
+    expect(refusal).toContain('Update the daemon on this printer')
+  })
+
+  it('refuses a dependency the owner never chose and never saw a card for', async () => {
+    stubADependencyResolvingTo(packageWith({ ...HONEST_MANIFEST, name: DEP_ID }), packageWith(HONEST_MANIFEST))
+    vi.mocked(findCatalogVariant).mockImplementation((_catalog, pluginId) => ({
+      ...LISTED_ENTRY,
+      name: pluginId,
+      ...(pluginId === DEP_ID ? { min_daemon_version: '0.12.22' } : {}),
+    }))
+    vi.mocked(fetchDaemonStatus).mockResolvedValue({ version: '0.12.19' } as never)
+
+    await expect(installWithDependency()).rejects.toThrow(/0\.12\.22/)
+    expect(vi.mocked(installPlugin)).not.toHaveBeenCalled()
+  })
+
+  // The plugin is the one refused, and its dependency is fine on its own. Installing the dependency
+  // anyway leaves the owner things he never chose, for a plugin he did not get.
+  it('leaves nothing behind when the plugin is refused but its dependency would have installed', async () => {
+    stubADependencyResolvingTo(packageWith({ ...HONEST_MANIFEST, name: DEP_ID }), packageWith(HONEST_MANIFEST))
+    vi.mocked(findCatalogVariant).mockImplementation((_catalog, pluginId) => ({
+      ...LISTED_ENTRY,
+      name: pluginId,
+      ...(pluginId === DEP_ID ? {} : { min_daemon_version: '0.12.22' }),
+    }))
+    vi.mocked(fetchDaemonStatus).mockResolvedValue({ version: '0.12.19' } as never)
+
+    await expect(installWithDependency()).rejects.toThrow(/0\.12\.22/)
+    expect(vi.mocked(installPlugin)).not.toHaveBeenCalled()
+  })
+
+})
+
+// The pair only used to be asked in one direction: is this printer's daemon new enough for the
+// package? Nothing asked the reverse, so the daemon's own Update button could hand a printer a daemon
+// that then refuses to be driven by the support package already on it, leaving the printer enrolled
+// and unmanageable with no way back through the app.
+describe('the support-package floor a daemon declares', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('refuses a daemon the support package on this printer is too old to be driven by', async () => {
+    stubADaemonDemandingSupportPackage('0.1.10', '0.1.9')
+    const refusal = await installTheDaemon().catch((error: Error) => error.message)
+
+    expect(refusal).toContain('0.1.10')
+    expect(refusal).toContain('0.1.9')
+    expect(refusal).toContain('Update the printer support package')
+    expect(vi.mocked(installPlugin)).not.toHaveBeenCalled()
+  })
+})
+
+describe('the compatibility floor lets everything else through', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('installs when the printer reports a daemon at the floor', async () => {
+    stubEntryDemanding('0.12.22', '0.12.23')
+    await install()
+
+    expect(vi.mocked(installPlugin)).toHaveBeenCalledTimes(1)
+  })
+
+  it('installs when the printer will not say what daemon it is running', async () => {
+    stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(findCatalogVariant).mockReturnValue({ ...LISTED_ENTRY, min_daemon_version: '0.12.22' })
+    vi.mocked(fetchDaemonStatus).mockRejectedValue(new Error('daemon restarting'))
+    await install()
+
+    expect(vi.mocked(installPlugin)).toHaveBeenCalledTimes(1)
+  })
+
+  it('installs a daemon when the support package on this printer meets its floor', async () => {
+    stubADaemonDemandingSupportPackage('0.1.10', '0.1.11')
+    await installTheDaemon()
+
+    expect(vi.mocked(installPlugin)).toHaveBeenCalledTimes(1)
   })
 })

@@ -7,7 +7,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { packagedBinary, appEnv, rendererWindow, shoot } from './app-launch'
 import { clickUntilGone, clickUntilVisible } from './click-through'
-import { startContainer, stopContainer, waitForSsh, applySkeleton, seedDeviceFiles, seedDaemonVenv, adapterFixture, forwardDaemonPort } from '../tests/invitro/fake-device'
+import { startContainer, stopContainer, waitForSsh, applySkeleton, seedDeviceFiles, adapterFixture, forwardDaemonPort } from '../tests/invitro/fake-device'
 
 // Full onboarding through the REAL app against the in-vitro Docker device: discovery is skipped (the
 // printer is seeded as online), then the app runs the real adapter enroll steps over real SSH and
@@ -84,7 +84,6 @@ test('captures onboarding through to managed', async () => {
     const ssh = await waitForSsh(fixture, HOST_SSH_PORT)
     await applySkeleton(ssh, fixture)
     seedDeviceFiles(container, fixture)
-    await seedDaemonVenv(ssh, fixture)
     ssh.close()
 
     seedOnlinePrinter(userData)

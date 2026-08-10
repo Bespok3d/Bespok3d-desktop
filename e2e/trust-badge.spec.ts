@@ -5,8 +5,7 @@ import type { ElectronApplication, Page } from '@playwright/test'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { packagedBinary, appEnv, rendererWindow } from './app-launch'
-import { EXPECTED_DAEMON_VERSION } from '../src/main/daemon-client/version'
+import { packagedBinary, appEnv, rendererWindow, bundledDaemonVersion } from './app-launch'
 import { buildLocalIndex } from '../src/main/registry/local/build-index'
 import type { StoredManifest } from '../src/main/registry/local/b3-manifest'
 
@@ -30,7 +29,7 @@ function seedManagedPrinter(userData: string): void {
   const record = {
     id: 'demo-u1', nick: 'Workshop U1', model: 'Snapmaker U1', adapter: 'snapmaker-u1',
     host: 'workshop-u1.local', ip: '192.168.1.50', status: 'managed', installedIds: [],
-    daemonVersion: EXPECTED_DAEMON_VERSION,
+    daemonVersion: bundledDaemonVersion(),
   }
   writeFileSync(join(printersDir, 'demo-u1.json'), JSON.stringify(record, null, 2), 'utf-8')
 }

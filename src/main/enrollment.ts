@@ -10,6 +10,7 @@ import type { SshCredentials, EnrollContext, EnrollStep } from './adapter-loader
 import { listKeys } from './keys'
 import { loadSettings, clientId } from './settings'
 import { updatePrinter } from './printers'
+import { assertKnownPrinterNotDowngraded } from './compat'
 import { reportEvent } from './analytics'
 import { reportErrorEvent } from './analytics/errors'
 
@@ -210,6 +211,10 @@ export async function enrollPrinter(
 ): Promise<void> {
   const adapter = getAdapter(adapterId)
   if (!adapter) throw new Error(`Unknown adapter: ${adapterId}`)
+  // Recovery after a firmware update runs this same path against a printer that is already managed and
+  // may be running a newer daemon than this app ships. A printer with no record, or one that answers
+  // nothing, is a first enrollment and passes straight through.
+  await assertKnownPrinterNotDowngraded(printerId)
 
   const steps = adapter.enrollSteps
   const startIndex = retryFromStepId

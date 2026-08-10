@@ -14,9 +14,15 @@ function fakeHandle(channel: string, listener: IpcListener): void {
   registeredHandlers.set(channel, listener)
 }
 
+const syncChannels = new Map<string, IpcListener>()
+
+function fakeOn(channel: string, listener: IpcListener): void {
+  syncChannels.set(channel, listener)
+}
+
 const hoisted = vi.hoisted(() => ({ userDataDir: '' }))
 vi.mock('electron', () => ({
-  ipcMain: { handle: fakeHandle },
+  ipcMain: { handle: fakeHandle, on: fakeOn },
   shell: { openExternal: vi.fn() },
   app: { getPath: () => hoisted.userDataDir },
 }))
@@ -32,6 +38,7 @@ vi.mock('./printers', () => ({
   savePrinter: vi.fn(), updatePrinter: vi.fn(), loadPrinters: vi.fn().mockReturnValue([]), removePrinter: vi.fn(),
   pingPrinter: vi.fn(), checkDaemon: vi.fn(), checkSshOpen: vi.fn(), resolveLiveAddress: vi.fn(),
 }))
+vi.mock('./daemon-client/expected-version', () => ({ expectedDaemonVersion: () => '0.0.0' }))
 vi.mock('./mdns', () => ({ startMdnsScan: vi.fn(), stopMdnsScan: vi.fn() }))
 vi.mock('./git-host', () => ({ activeConnector: vi.fn(), readSettings: vi.fn(), writeSettings: vi.fn() }))
 // Exhaustive mock: every daemon-client export reachable through ipc's handler chain (store + access).
@@ -43,7 +50,6 @@ vi.mock('./daemon-client/client', () => ({
   reconfigurePlugin: vi.fn(), recoverPackages: vi.fn(), updateBatchPackages: vi.fn(),
   deactivateAll: vi.fn(), teardownDaemon: vi.fn(), setAddressResolver: vi.fn(),
   requestAccess: vi.fn(), fetchAccessClients: vi.fn(), grantAccess: vi.fn(), revokeAccess: vi.fn(), isAccessGranted: vi.fn(),
-  EXPECTED_DAEMON_VERSION: '0.0.0',
 }))
 vi.mock('./settings', () => ({
   loadSettings: vi.fn().mockReturnValue({ pgpEnabled: false, clientId: 'c' }),

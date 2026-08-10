@@ -3,7 +3,6 @@
 import { vi } from 'vitest'
 import type { DiscoveredPrinterRecord } from '../env'
 import type { AddLocalResult, ReleaseChannel } from '../data/types'
-import { EXPECTED_DAEMON_VERSION } from '../../../main/daemon-client/version'
 import type { BatchProgressEvent, UploadProgressEvent } from '../../../main/daemon-client/feeds/install-progress'
 import { makeCapabilities, makeCatalog, makeInstallLog, makeAdapterInfo, makeKey } from './fixtures'
 
@@ -255,7 +254,7 @@ export interface B3dHarness {
 export function makeB3dMock(overrides: B3dOverrides = {}): B3dHarness {
   var channels = makeChannels()
   var b3d: B3d = {
-    platform: 'darwin', arch: 'arm64', daemonExpectedVersion: EXPECTED_DAEMON_VERSION,
+    platform: 'darwin', arch: 'arm64', daemonExpectedVersion: '0.12.23',
     unreleasedFeaturesForced: false,
     openUrl: voidFn(), onOpenAbout: sub(channels.openAbout), onB3dOpen: () => () => {},
     settings: mockSettings(overrides.settings), appUpdate: mockAppUpdate(channels, overrides.appUpdate),

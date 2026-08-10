@@ -7,8 +7,13 @@ import { hasUpdate, updateVariant } from '../../data/channels/updates'
 
 // Plugins with a newer build waiting on the source their installed copy came from (a real update). An
 // installed version ahead of what that source offers is NOT an update (no downgrade prompts).
+//
+// The printer's machinery is left out of the SET even when it has one: updating the daemon restarts the
+// service the rest of the batch is talking to, so a batch carrying it would strand every plugin behind
+// it, and the printer's own tile already announces that update. Its store card still offers it, one at
+// a time, which is the only safe way to take it.
 export function updatablePlugins(plugins: Plugin[], installed: InstalledOnPrinter): Plugin[] {
-  return plugins.filter((plugin) => hasUpdate(plugin, installed))
+  return plugins.filter((plugin) => plugin.systemPackage !== true && hasUpdate(plugin, installed))
 }
 
 // The config values an install/update should carry: each declared field's saved value or its default,

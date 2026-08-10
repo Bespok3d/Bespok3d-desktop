@@ -42,13 +42,35 @@ B3_BUILDER_DIR="$(cd "$REPO_DIR/../b3-builder" && pwd)"
 SIBLING_PLUGINS_DIR="$(cd "$REPO_DIR/.." && pwd)/plugins"
 PLUGIN_MAP=""
 
+# The daemon and the jinni bundle like any other plugin (see bundle.json), but each repo root carries
+# its own manifest.json, so discovery must be pointed at the STAGED output, never the repo root: the
+# root would package the whole repo, tests and all. stage_bundled_packages runs each repo's own
+# stage-package.sh first (skipped when the sibling repo is absent, e.g. a bare checkout).
+DAEMON_STAGE_SCRIPT="$REPO_DIR/../daemon/scripts/stage-package.sh"
+ADAPTERS_STAGE_SCRIPT="$REPO_DIR/../adapters/scripts/stage-package.sh"
+DAEMON_PACKAGE_DIR="$REPO_DIR/../daemon/dist/package"
+ADAPTERS_PACKAGE_DIR="$REPO_DIR/../adapters/dist/package"
+
+stage_bundled_packages() {
+  if [ -f "$DAEMON_STAGE_SCRIPT" ]; then
+    sh "$DAEMON_STAGE_SCRIPT" || { echo "ERROR: daemon stage-package.sh failed." >&2; exit 1; }
+  fi
+  if [ -f "$ADAPTERS_STAGE_SCRIPT" ]; then
+    sh "$ADAPTERS_STAGE_SCRIPT" || { echo "ERROR: adapters stage-package.sh failed." >&2; exit 1; }
+  fi
+}
+
 # All plugin source dirs (each holds a manifest.json). The files/ and doc/ exclusions keep a plugin
 # payload's own manifest.json (e.g. remote-screen's PWA web-app manifest under files/html/) from
-# being mistaken for a plugin manifest.
+# being mistaken for a plugin manifest. The staged daemon/jinni dirs need no such exclusion (their
+# own path already contains "dist", which is why they get a separate find call rather than sharing
+# the plugins/ tree's exclusion list).
 discover_plugin_dirs() {
   find "$SIBLING_PLUGINS_DIR" -name manifest.json -type f \
     ! -path '*/files/*' ! -path '*/doc/*' \
     ! -path '*/dist/*' ! -path '*/node_modules/*' ! -path '*/.git/*' 2>/dev/null \
+    | while read -r manifest; do dirname "$manifest"; done
+  find "$DAEMON_PACKAGE_DIR" "$ADAPTERS_PACKAGE_DIR" -name manifest.json -type f 2>/dev/null \
     | while read -r manifest; do dirname "$manifest"; done
 }
 
@@ -249,6 +271,7 @@ build_core() {
 }
 
 check_deps
+stage_bundled_packages
 build_plugin_map
 
 if [ $# -gt 0 ] && [ "$1" != "all" ]; then

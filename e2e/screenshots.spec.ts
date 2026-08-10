@@ -6,8 +6,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { _electron as electron } from '@playwright/test'
-import { packagedBinary, appEnv, rendererWindow, shoot, SHOTS_DIR } from './app-launch'
-import { EXPECTED_DAEMON_VERSION } from '../src/main/daemon-client/version'
+import { packagedBinary, appEnv, rendererWindow, shoot, SHOTS_DIR, bundledDaemonVersion } from './app-launch'
 
 // Plain-artifact screenshots of the real packaged app (no pixel-baseline comparison, so no
 // cross-platform flake). Output goes to repo-root/screenshots for review and for the wiki. Run via
@@ -34,7 +33,7 @@ function seedManagedPrinter(userData: string): void {
   const record = {
     id: 'demo-u1', nick: 'Workshop U1', model: 'Snapmaker U1', adapter: 'snapmaker-u1',
     host: 'workshop-u1.local', ip: '192.168.1.50', status: 'managed', installedIds: [],
-    daemonVersion: EXPECTED_DAEMON_VERSION,
+    daemonVersion: bundledDaemonVersion(),
   }
   writeFileSync(join(printersDir, 'demo-u1.json'), JSON.stringify(record, null, 2), 'utf-8')
 }

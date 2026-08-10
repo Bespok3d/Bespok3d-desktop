@@ -8,6 +8,13 @@ import type { SshSession } from '../ssh'
 export { connect, shellQuote } from '../ssh'
 export type { SshSession } from '../ssh'
 export { devSourcePath, devSourcesRoot } from '../registry/dev-sources'
+// An adapter installs the daemon and its own jinni out of the packages this build ships with, and it
+// checks them with the app's ONE verifier. There is no second verifier on the adapter side:
+// a package an adapter puts on a printer passes exactly the check a package from the store passes.
+export { verifiedPackageTrust } from '../store/verify-package'
+export { PackageRefusedError } from '../store/package-refused'
+export { openBundledPackage, unverifiedBundledPayload } from '../store/bundled-package'
+export type { BundledPackage } from '../store/bundled-package'
 
 export interface SshCredentials {
   user: string
@@ -44,9 +51,10 @@ export interface AdapterInfo {
   title: string
   vendor: string
   version: string
-  // The adapter's device-side (jinni) version, single-sourced in the adapter (jinni/version.json) and
-  // derived by the app, so there is no app-side constant for the two halves to drift apart.
-  jinniVersion: string
+  // The device-side (jinni) version this build would install for the adapter, resolved from the
+  // catalogue the build packs. Absent when the build ships no jinni package for it, which is the
+  // honest answer: there is then no version to offer.
+  jinniVersion?: string
   description: string
   icon?: string
   defaults: AdapterDefaults
@@ -84,6 +92,9 @@ export interface AdapterDefinition {
   // The adapter's device-side (jinni) version, single-sourced in the adapter (jinni/version.json).
   // Required, so registering an adapter without it fails tsc, gate-enforcing the single source.
   jinniVersion: string
+  // The package name the jinni ships as, so the app can look up the version it would actually
+  // install rather than the one a working copy happens to declare.
+  jinniPackage: string
   description: string
   // Optional data-URL avatar (PNG/SVG/etc.) shown for every printer on this adapter, unless the user
   // sets their own picture. Travels to the renderer through serializeAdapter; must be a data: URL to
