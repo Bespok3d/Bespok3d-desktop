@@ -3,6 +3,7 @@
 import type { Plugin } from '../../../../data/types'
 import { useI18n } from '../../../../i18n/context'
 import { Explainer } from '../../../common/content/Explainer'
+import { Markdown } from '../../../common/content/Markdown'
 import { isOrphan } from '../derive'
 
 export function PanelBody({ plugin, missingDeps, installed }: { plugin: Plugin; missingDeps: string[]; installed: boolean }) {
@@ -16,7 +17,7 @@ export function PanelBody({ plugin, missingDeps, installed }: { plugin: Plugin; 
       {plugin.description && (
         <div>
           <h3>{t('store.about')}</h3>
-          <p>{plugin.description}</p>
+          <Markdown source={plugin.description} />
         </div>
       )}
       {plugin.deps.length > 0 && (
