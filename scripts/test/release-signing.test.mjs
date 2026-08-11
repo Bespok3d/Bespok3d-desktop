@@ -42,3 +42,38 @@ test('the Windows build runs without the Apple signing key in its environment', 
 test('no owner name is recorded for the Windows updater to demand', () => {
   assert.equal(packageManifest.build.win.verifyUpdateCodeSignature, false)
 })
+
+// The packer reads REGISTRY_SIGNING_KEY and nothing else, and refuses a release build that has no
+// key in reach. A workstation holds that key under a namespaced name, so a release started there
+// used to fail mid-build until the two variables were copied together by hand.
+function releaseRunWith(overrides) {
+  const environment = { ...process.env, ...overrides }
+  Object.keys(overrides)
+    .filter((name) => overrides[name] === undefined)
+    .forEach((name) => delete environment[name])
+  const attempt = spawnSync('bash', [RELEASE_SCRIPT, '--dry-run'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    env: environment,
+  })
+
+  return `${attempt.stdout}\n${attempt.stderr}`
+}
+
+test('the workstation key is taken under the name the packer reads', () => {
+  const printed = releaseRunWith({
+    REGISTRY_SIGNING_KEY: undefined,
+    BESPOK3D_REGISTRY_SIGNING_KEY: 'not-a-real-key',
+  })
+
+  assert.match(printed, /Signing with BESPOK3D_REGISTRY_SIGNING_KEY/)
+})
+
+test('a key already under the name the packer reads is left alone', () => {
+  const printed = releaseRunWith({
+    REGISTRY_SIGNING_KEY: 'not-a-real-key',
+    BESPOK3D_REGISTRY_SIGNING_KEY: 'not-a-real-key-either',
+  })
+
+  assert.doesNotMatch(printed, /Signing with BESPOK3D_REGISTRY_SIGNING_KEY/)
+})

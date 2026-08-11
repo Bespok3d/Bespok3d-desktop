@@ -107,11 +107,28 @@ fs.writeFileSync('$PKG', JSON.stringify(pkg, null, 2) + '\n');
   echo "$next"
 }
 
+# The packer signs the bundled packages with REGISTRY_SIGNING_KEY, the name every repo's CI secret
+# carries and the only name it reads. A workstation namespaces its keys the way the publish token
+# above is namespaced, so take that one when the CI name is unset: a release build with no key in
+# reach is refused mid-build, and remembering to copy one variable into the other before every
+# release is exactly the step a person forgets. An already-set REGISTRY_SIGNING_KEY wins, so a CI
+# runner is never overridden by whatever a shell profile happens to hold.
+adopt_signing_key() {
+  if [ -n "${REGISTRY_SIGNING_KEY:-}" ] || [ -z "${BESPOK3D_REGISTRY_SIGNING_KEY:-}" ]; then
+    return 0
+  fi
+
+  export REGISTRY_SIGNING_KEY="$BESPOK3D_REGISTRY_SIGNING_KEY"
+  echo "Signing with BESPOK3D_REGISTRY_SIGNING_KEY" >&2
+}
+
 # macOS builds all three (mac + windows + linux) directly; only the macOS .dmg cannot be cross-built,
 # so guard JUST that to a Darwin host. Always builds without uploading (--publish never); uploading is
 # a separate, build-free step (publish_artifacts), so 'publish' never rebuilds.
 build_all() {
   local version="$1"
+
+  adopt_signing_key
 
   if [ "$(uname -s)" = "Darwin" ]; then
     echo ""
