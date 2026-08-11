@@ -229,7 +229,7 @@ textarea {
 .printer-name .nick {
   color: var(--ink);
 }
-.printer-name .model {
+.printer-name .adapter {
   color: var(--ink-3);
   font-weight: var(--weight-regular);
   font-size: var(--text-sm);

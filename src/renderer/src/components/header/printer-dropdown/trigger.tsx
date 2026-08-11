@@ -17,11 +17,11 @@ function printerLiveState(installing: boolean, printing: boolean): { key: string
   return null
 }
 
-// The selected printer's summary inside the closed dropdown trigger: name + model + update badges on
+// The selected printer's summary inside the closed dropdown trigger: name + adapter + update badges on
 // top, ip + installed-count (+ an installing or printing hint) below. The closed state stays terse: the
 // badges flag what is pending; the wordier "X available" detail and per-update actions live in the open
 // rows. The trigger stays on screen while the menu is open, so the hint is there as the user reads it.
-export function PrinterTriggerInfo({ printer, installingCount, adapterJinniVersion }: { printer: Printer; installingCount: number; adapterJinniVersion?: string }) {
+export function PrinterTriggerInfo({ printer, installingCount, adapterTitle, adapterJinniVersion }: { printer: Printer; installingCount: number; adapterTitle?: string; adapterJinniVersion?: string }) {
   const { t } = useI18n()
   const { printActive } = usePrintState(printer)
   const liveState = printerLiveState(installingCount > 0, printActive)
@@ -30,6 +30,7 @@ export function PrinterTriggerInfo({ printer, installingCount, adapterJinniVersi
     <div className="printer-info">
       <PrinterIdentity
         printer={printer}
+        adapterTitle={adapterTitle}
         nameExtra={<TriggerUpdates printer={printer} adapterJinniVersion={adapterJinniVersion} />}
         metaExtra={liveState ? <><span>·</span><span className={liveState.tone}>{t(liveState.key)}</span></> : null}
       />

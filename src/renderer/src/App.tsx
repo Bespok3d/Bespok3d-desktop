@@ -11,7 +11,7 @@ import { LocalDropZone } from './components/LocalDropZone'
 import { Create, ModeBar } from './components/create'
 import { PrinterBanners } from './components/printer-banners'
 import { usePrinterSync, useMdnsDiscovery } from './hooks/printers'
-import { useAdapterIcons, useAdapterJinniVersions } from './hooks/adapters'
+import { useAdapterViews } from './hooks/adapters'
 import { useDisplayPrefs } from './hooks/displayPrefs'
 import { useAppI18n } from './app/locale'
 import { useAppCallbacks } from './app/callbacks'
@@ -44,8 +44,7 @@ function App() {
   useEffect(loadWorkbenchLayout, [])
   const { printers, setPrinters, selectedId, setSelectedId, handleRemovePrinter, handleUpdatePrinterIcon, handleSetCustomSshCredentials } = usePrinterSync()
   const { discovered, setDiscovered } = useMdnsDiscovery(setPrinters)
-  const adapterIcons = useAdapterIcons()
-  const jinniVersions = useAdapterJinniVersions()
+  const { icons: adapterIcons, titles: adapterTitles, jinniVersions } = useAdapterViews()
   const actions = useAppCallbacks(printers, setPrinters, setSelectedId, setDiscovered, handleRemovePrinter)
   const selectedPrinter = printers.find((printer) => printer.id === selectedId) ?? null
   const pluginVars = usePluginVars(printers)
@@ -72,7 +71,7 @@ function App() {
           onOpenPlugin={(id) => { setMode('store'); setFocusPluginId(id) }}
           installedVersions={selectedPrinter?.installedVersions ?? {}}
           installedSources={selectedPrinter?.installedSources ?? {}}
-          printers={printers} selectedId={selectedId} adapterIcons={adapterIcons} adapterJinniVersions={jinniVersions} savedPluginVars={savedPluginVars} onSelect={setSelectedId}
+          printers={printers} selectedId={selectedId} adapterIcons={adapterIcons} adapterTitles={adapterTitles} adapterJinniVersions={jinniVersions} savedPluginVars={savedPluginVars} onSelect={setSelectedId}
           onAddPrinter={actions.openAdd} onUpdateDaemon={actions.handleUpdateDaemon} onUpdateJinni={actions.handleUpdateJinni} onUpdateAll={actions.handleUpdateAll}
           installingCount={0} empty={printers.length === 0}
         />

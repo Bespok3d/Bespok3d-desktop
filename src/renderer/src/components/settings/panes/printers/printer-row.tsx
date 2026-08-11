@@ -12,7 +12,7 @@ import { PrinterForceMenu } from './PrinterForceMenu'
 import type { PrinterForceActions } from './PrinterForceMenu'
 import { PrinterDeployMenu } from './PrinterDeployMenu'
 import type { Printer } from '../../../../data/types'
-import { statusDotClass, updateCallout } from '../../../../data/printers'
+import { statusDotClass, updateCallout, printerAdapter } from '../../../../data/printers'
 import { formatDateTime } from '../../../../utils/datetime'
 import { useI18n } from '../../../../i18n/context'
 import './printers.css'
@@ -55,7 +55,7 @@ function PrinterRowAvatar({ printer, adapters, onUpdatePrinterIcon }: Pick<Print
         defaultIcon={IconPrinter}
         color={printer.iconColor}
         image={printer.iconImage}
-        fallbackImage={adapters.find((adapter) => adapter.id === printer.adapter)?.icon}
+        fallbackImage={printerAdapter(adapters, printer)?.icon}
         features={['color', 'image']}
         minSize={32}
         maxSize={32}
@@ -88,7 +88,7 @@ function PrinterDates({ printer, onViewEnrollmentLog }: { printer: Printer; onVi
 // hidden rather than shown as a non-version.
 function PrinterInfoLines({ printer, adapters, onViewEnrollmentLog }: Pick<PrinterRowProps, 'printer' | 'adapters' | 'onViewEnrollmentLog'>) {
   const { t } = useI18n()
-  const adapterVersion = adapters.find((adapter) => adapter.id === printer.adapter)?.version
+  const adapterVersion = printerAdapter(adapters, printer)?.version
   const jinni = printer.jinniVersion && printer.jinniVersion !== 'unknown' ? printer.jinniVersion : undefined
 
   return (
@@ -143,7 +143,7 @@ function PrinterActionsRow({ printer, adapters, onEnrollPrinter, onRepair, onRec
   const { t } = useI18n()
   const action = printerPrimaryAction(printer)
   const forceActions: PrinterForceActions = { onEnroll: onEnrollPrinter, onRecover, onRepair, onReinstall }
-  const adapterJinni = adapters.find((adapter) => adapter.id === printer.adapter)?.jinniVersion
+  const adapterJinni = printerAdapter(adapters, printer)?.jinniVersion
   const callout = updateCallout(printer, adapterJinni)
   // The Force flows all run an SSH op, so they are pointless on an offline printer that cannot be
   // reached; hide the menu there (the primary action is already hidden for offline).
@@ -178,7 +178,7 @@ export function PrinterRow(props: PrinterRowProps) {
       <div className="printer-row-head">
         <div className="set-row-label">
           {printer.nick}
-          <span className="printer-model-suffix"> · {printer.model}</span>
+          <span className="printer-adapter-suffix"> · {printerAdapter(adapters, printer)?.title ?? printer.adapter}</span>
         </div>
         <Button variant="ghost" size="sm" icon title={t('printers.remove')} onClick={() => onRemovePrinter(printer.id)} className="u-ml-auto">
           <IconTrash size={16} />

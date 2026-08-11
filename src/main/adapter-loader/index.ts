@@ -73,7 +73,10 @@ export interface EnrollContext {
   clientFingerprint?: string
   clientId?: string
   clientLabel?: string
-  onProgress?: (hint: string) => void
+  // What the step is doing right now, and - when the phase running knows its own size - how far
+  // through the step that puts it, as a 0..1 fraction. The fraction is what makes the bar advance
+  // inside one long step; a phase that cannot measure itself sends the hint alone.
+  onProgress?: (hint: string, stepFraction?: number) => void
   overlayWasActive?: boolean
 }
 

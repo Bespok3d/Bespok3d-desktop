@@ -21,7 +21,7 @@
   z-index: 2;
 }
 
-.printer-model-suffix {
+.printer-adapter-suffix {
   font-weight: 400;
   color: var(--ink-3);
   font-size: var(--text-sm);

@@ -32,6 +32,7 @@ export function Header({
   printers,
   selectedId,
   adapterIcons,
+  adapterTitles,
   adapterJinniVersions,
   savedPluginVars,
   onSelect,
@@ -55,6 +56,7 @@ export function Header({
           printers={printers}
           selectedId={selectedId}
           adapterIcons={adapterIcons}
+          adapterTitles={adapterTitles}
           adapterJinniVersions={adapterJinniVersions}
           savedPluginVars={savedPluginVars}
           onSelect={onSelect}

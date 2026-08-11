@@ -1,33 +1,34 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { useState, useEffect } from 'react'
+import { useAsyncResource } from '../components/common/hooks/useAsyncResource'
 
-// The adapter-declared printer icons, keyed by adapter id, for the header dropdown. Loaded once: the
-// adapter set is static for a build, so there is nothing to refresh.
-export function useAdapterIcons(): Record<string, string> {
-  const [icons, setIcons] = useState<Record<string, string>>({})
-  function loadAdapterIcons() {
-    window.b3d.printers.adaptersList().then((adapters) => {
-      setIcons(Object.fromEntries(adapters.filter((adapter) => adapter.icon).map((adapter) => [adapter.id, adapter.icon as string])))
-    })
-  }
-  useEffect(loadAdapterIcons, [])
-
-  return icons
+// The three things a caller holding a printer's adapter id and nothing else needs from the adapter set
+// this build ships: the avatar image, what the adapter calls the printer it drives ("Snapmaker U1"),
+// and the device-side (jinni) version this build would install. Titles are what a printer card shows
+// beside the nickname: the printer's own mDNS model is missing or generic on most networks, while the
+// adapter is chosen at enrollment and is therefore always known.
+export interface AdapterViews {
+  icons: Record<string, string>
+  titles: Record<string, string>
+  jinniVersions: Record<string, string>
 }
 
-// The jinni (device-side) versions this build would install, keyed by adapter id, so a banner can
-// compare the version a printer reports against the one it can actually put there. Loaded once: the
-// adapter set is static for a build. An adapter whose jinni this build does not ship is left out, so
-// no banner can offer an update with no bytes behind it.
-export function useAdapterJinniVersions(): Record<string, string> {
-  const [versions, setVersions] = useState<Record<string, string>>({})
-  function loadAdapterJinniVersions() {
-    window.b3d.printers.adaptersList().then((adapters) => {
-      setVersions(Object.fromEntries(adapters.filter((adapter) => adapter.jinniVersion).map((adapter) => [adapter.id, adapter.jinniVersion as string])))
-    })
-  }
-  useEffect(loadAdapterJinniVersions, [])
+// An adapter that declares nothing for the field is left out, so a missing key reads as "not declared"
+// rather than an empty string.
+function declaredField(adapters: AdapterInfo[], field: 'icon' | 'title' | 'jinniVersion'): Record<string, string> {
+  const declared = adapters.filter((adapter) => adapter[field])
 
-  return versions
+  return Object.fromEntries(declared.map((adapter) => [adapter.id, adapter[field] as string]))
+}
+
+// The adapter set is static for a build, so this reads once and never refreshes.
+export function useAdapterViews(): AdapterViews {
+  const { value } = useAsyncResource(() => window.b3d.printers.adaptersList(), [])
+  const adapters = value ?? []
+
+  return {
+    icons: declaredField(adapters, 'icon'),
+    titles: declaredField(adapters, 'title'),
+    jinniVersions: declaredField(adapters, 'jinniVersion'),
+  }
 }

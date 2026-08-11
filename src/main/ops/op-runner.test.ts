@@ -19,6 +19,14 @@ function step(id: string, run: OpStep['run']): OpStep {
   return { id, label: id, detail: `detail ${id}`, run }
 }
 
+// How far into its step each hint said it was, in the order the renderer received them.
+function hintedFractions(send: ReturnType<typeof fakeWindow>['send']): (number | undefined)[] {
+  return send.mock.calls
+    .map((call) => call[1] as { hint?: string; stepFraction?: number })
+    .filter((event) => event.hint !== undefined)
+    .map((event) => event.stepFraction)
+}
+
 describe('execOpSteps', () => {
   it('runs every step in order and emits a done event per step', async () => {
     const order: string[] = []
@@ -50,6 +58,15 @@ describe('execOpSteps', () => {
     await execOpSteps(win, 'p1', [step('one', async (progress) => progress('halfway'))])
     const hinted = send.mock.calls.find((call) => (call[1] as { hint?: string }).hint === 'halfway')
     expect(hinted).toBeDefined()
+  })
+
+  it('carries the last measured progress forward, so an unmeasured hint never drops the bar back', async () => {
+    const { win, send } = fakeWindow()
+    await execOpSteps(win, 'p1', [step('one', async (progress) => {
+      progress('uploading 60/60', 0.75)
+      progress('installing dependencies…')
+    })])
+    expect(hintedFractions(send)).toEqual([0.75, 0.75])
   })
 })
 

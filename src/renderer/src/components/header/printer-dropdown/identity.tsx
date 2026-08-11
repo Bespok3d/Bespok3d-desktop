@@ -5,16 +5,18 @@ import { useI18n } from '../../../i18n/context'
 import type { Printer } from '../../../data/types'
 
 // The printer's name + meta identity, shared by the closed trigger and each open menu row so the two
-// never drift. `nameExtra` rides the name line (e.g. update badges on the trigger); `metaExtra` rides
-// the meta line (e.g. the installing hint). The row adds its own interfaces/versions lines below this.
-export function PrinterIdentity({ printer, nameExtra, metaExtra }: { printer: Printer; nameExtra?: ReactNode; metaExtra?: ReactNode }) {
+// never drift. Beside the nickname sits the adapter driving the printer, falling back to its bare id
+// when this build ships no adapter by that name. `nameExtra` rides the name line (e.g. update badges on
+// the trigger); `metaExtra` rides the meta line (e.g. the installing hint). The row adds its own
+// interfaces/versions lines below this.
+export function PrinterIdentity({ printer, adapterTitle, nameExtra, metaExtra }: { printer: Printer; adapterTitle?: string; nameExtra?: ReactNode; metaExtra?: ReactNode }) {
   const { t } = useI18n()
 
   return (
     <>
       <div className="printer-name">
         <span className="nick">{printer.nick}</span>
-        <span className="model">· {printer.model}</span>
+        <span className="adapter">· {adapterTitle ?? printer.adapter}</span>
         {nameExtra}
       </div>
       <div className="printer-meta">

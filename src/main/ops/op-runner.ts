@@ -3,13 +3,14 @@
 import type { BrowserWindow } from 'electron'
 import type { EnrollProgressEvent, CompletedStep } from '../enrollment'
 import { connect } from '../ssh'
+import { stepFractionCarry } from '../step-progress'
 import type { SshSession } from '../ssh'
 
 export interface OpStep {
   id: string
   label: string
   detail: string
-  run: (progress: (hint: string) => void) => Promise<void>
+  run: (progress: (hint: string, stepFraction?: number) => void) => Promise<void>
 }
 
 type OpAcc = { failed: boolean; completed: CompletedStep[] }
@@ -33,8 +34,9 @@ function makeOpEvent(
 export async function execOpSteps(win: BrowserWindow, printerId: string, steps: OpStep[]): Promise<void> {
   async function tryRunOpStep(step: OpStep, index: number, completed: CompletedStep[]): Promise<OpAcc> {
     emitOpEvent(win, makeOpEvent(printerId, step, index, steps.length, 'running', completed))
-    function progress(hint: string): void {
-      emitOpEvent(win, { ...makeOpEvent(printerId, step, index, steps.length, 'running', completed), hint })
+    const carry = stepFractionCarry()
+    function progress(hint: string, stepFraction?: number): void {
+      emitOpEvent(win, { ...makeOpEvent(printerId, step, index, steps.length, 'running', completed), hint, stepFraction: carry(stepFraction) })
     }
     try {
       await step.run(progress)

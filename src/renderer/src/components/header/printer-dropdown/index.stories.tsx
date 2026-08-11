@@ -10,6 +10,8 @@ export default { title: 'Header / Printer dropdown' }
 
 const ADAPTER_JINNI = '0.1.6'
 const ADAPTER_JINNI_VERSIONS = { 'snapmaker-u1': ADAPTER_JINNI }
+const ADAPTER_TITLE = 'Snapmaker U1'
+const ADAPTER_TITLES = { 'snapmaker-u1': ADAPTER_TITLE }
 
 const ENDPOINTS = [
   { label: 'Fluidd', url: 'http://192.0.2.108' },
@@ -26,6 +28,7 @@ function Dropdown({ printer }: { printer: Printer }) {
         printers={[printer]}
         selectedId={printer.id}
         adapterIcons={{}}
+        adapterTitles={ADAPTER_TITLES}
         adapterJinniVersions={ADAPTER_JINNI_VERSIONS}
         savedPluginVars={{}}
         onSelect={noop}
@@ -56,6 +59,7 @@ function Row(props: { printer: Printer; selected?: boolean }) {
     <MenuFrame>
       <PrinterMenuItem
         printer={props.printer}
+        adapterTitle={ADAPTER_TITLE}
         adapterJinniVersion={ADAPTER_JINNI}
         isSelected={props.selected ?? false}
         onSelect={noop}

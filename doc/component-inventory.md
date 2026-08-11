@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-278 exported components + hooks across 21 areas.
+277 exported components + hooks across 21 areas.
 
 ## Common primitives
 
@@ -175,7 +175,7 @@ as you touch the file.
 - `PrinterIdentity` (component) - [components/header/printer-dropdown/identity.tsx](../src/renderer/src/components/header/printer-dropdown/identity.tsx) - The printer's name + meta identity, shared by the closed trigger and each open menu row so the two
 - `PrinterMenuActions` (component) - [components/header/printer-dropdown/menu-actions.tsx](../src/renderer/src/components/header/printer-dropdown/menu-actions.tsx) - The dropdown footer: a one-click "Update all" for the selected printer's plugin updates, then
 - `PrinterMenuItem` (component) - [components/header/printer-dropdown/menu-item.tsx](../src/renderer/src/components/header/printer-dropdown/menu-item.tsx) - One printer row: avatar + name/ip/count/interfaces/versions, an up-to-date check when current, the
-- `PrinterTriggerInfo` (component) - [components/header/printer-dropdown/trigger.tsx](../src/renderer/src/components/header/printer-dropdown/trigger.tsx) - The selected printer's summary inside the closed dropdown trigger: name + model + update badges on
+- `PrinterTriggerInfo` (component) - [components/header/printer-dropdown/trigger.tsx](../src/renderer/src/components/header/printer-dropdown/trigger.tsx) - The selected printer's summary inside the closed dropdown trigger: name + adapter + update badges on
 - `TriggerUpdates` (component) - [components/header/printer-dropdown/trigger-updates.tsx](../src/renderer/src/components/header/printer-dropdown/trigger-updates.tsx) - The closed trigger's compact attention badges: an amber daemon badge, a sage adapter (jinni) badge,
 - `usePrinterUpdates` (hook) - [components/header/printer-dropdown/usePrinterUpdates.ts](../src/renderer/src/components/header/printer-dropdown/usePrinterUpdates.ts) - The pending-update counts for a printer (daemon firmware + plugin versions), read off the loaded
 - `useUpdateFlags` (hook) - [components/header/printer-dropdown/usePrinterUpdates.ts](../src/renderer/src/components/header/printer-dropdown/usePrinterUpdates.ts) - The three attention counts a trigger badge or hint shows: daemon + jinni (managed-gated, from
@@ -316,8 +316,7 @@ as you touch the file.
 
 ## Hooks
 
-- `useAdapterIcons` (hook) - [hooks/adapters.ts](../src/renderer/src/hooks/adapters.ts) - The adapter-declared printer icons, keyed by adapter id, for the header dropdown. Loaded once: the
-- `useAdapterJinniVersions` (hook) - [hooks/adapters.ts](../src/renderer/src/hooks/adapters.ts) - The jinni (device-side) versions this build would install, keyed by adapter id, so a banner can
+- `useAdapterViews` (hook) - [hooks/adapters.ts](../src/renderer/src/hooks/adapters.ts) - The adapter set is static for a build, so this reads once and never refreshes.
 - `useDisplayPrefs` (hook) - [hooks/displayPrefs.ts](../src/renderer/src/hooks/displayPrefs.ts) - The shell's display preferences, backed by the main settings store so they survive a reload (theme,
 - `useEnrollment` (hook) - [hooks/enrollment.ts](../src/renderer/src/hooks/enrollment.ts)
 - `useGatedInstall` (hook) - [hooks/installGate.ts](../src/renderer/src/hooks/installGate.ts)

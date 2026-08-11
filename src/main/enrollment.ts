@@ -11,6 +11,7 @@ import { listKeys } from './keys'
 import { loadSettings, clientId } from './settings'
 import { updatePrinter } from './printers'
 import { assertKnownPrinterNotDowngraded } from './compat'
+import { stepFractionCarry } from './step-progress'
 import { reportEvent } from './analytics'
 import { reportErrorEvent } from './analytics/errors'
 
@@ -29,6 +30,8 @@ export interface EnrollProgressEvent {
   error?: string
   errorDetail?: string
   hint?: string
+  // How far through the running step its own work has got, 0..1, when the step can measure that.
+  stepFraction?: number
   stepIndex: number
   totalSteps: number
   completedSteps: CompletedStep[]
@@ -117,8 +120,9 @@ async function runStep(
 ): Promise<StepRunResult> {
   const base = makeBaseEvent(printerId, step, stepIndex, totalSteps)
   emit(win, { ...base, status: 'running', completedSteps: [...completedSoFar] })
-  ctx.onProgress = (hint) =>
-    emit(win, { ...base, status: 'running', hint, completedSteps: [...completedSoFar] })
+  const carry = stepFractionCarry()
+  ctx.onProgress = (hint, stepFraction) =>
+    emit(win, { ...base, status: 'running', hint, stepFraction: carry(stepFraction), completedSteps: [...completedSoFar] })
   try {
     await runWithRetry(step, session, ctx)
   } catch (stepError) {

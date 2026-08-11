@@ -17,6 +17,7 @@ const FLYOUT_CLOSE_GRACE_MS = 200
 interface PrinterMenuItemProps {
   printer: Printer
   adapterIcon?: string
+  adapterTitle?: string
   adapterJinniVersion?: string
   isSelected: boolean
   onSelect: () => void
@@ -78,10 +79,10 @@ function RowVersions({ printer }: { printer: Printer }) {
   )
 }
 
-function RowInfo({ printer }: { printer: Printer }) {
+function RowInfo({ printer, adapterTitle }: { printer: Printer; adapterTitle?: string }) {
   return (
     <div className="printer-info">
-      <PrinterIdentity printer={printer} />
+      <PrinterIdentity printer={printer} adapterTitle={adapterTitle} />
       <RowInterfaces printer={printer} />
       <RowVersions printer={printer} />
     </div>
@@ -91,7 +92,7 @@ function RowInfo({ printer }: { printer: Printer }) {
 // One printer row: avatar + name/ip/count/interfaces/versions, an up-to-date check when current, the
 // hover-revealed endpoints flyout, and an optional update callout. The update strip is a sibling of the
 // selection button (never nested inside it) so the two interactive targets stay separate.
-export function PrinterMenuItem({ printer, adapterIcon, adapterJinniVersion, isSelected, onSelect, onUpdateDaemon, onUpdateJinni }: PrinterMenuItemProps) {
+export function PrinterMenuItem({ printer, adapterIcon, adapterTitle, adapterJinniVersion, isSelected, onSelect, onUpdateDaemon, onUpdateJinni }: PrinterMenuItemProps) {
   const { t } = useI18n()
   const endpoints = useHoverIntent(FLYOUT_CLOSE_GRACE_MS)
   const { pluginUpdates } = usePrinterUpdates(printer)
@@ -108,7 +109,7 @@ export function PrinterMenuItem({ printer, adapterIcon, adapterJinniVersion, isS
             dotClass={statusDotClass(printer)}
             dotTitle={statusLabel(printer, false, t)}
           />
-          <RowInfo printer={printer} />
+          <RowInfo printer={printer} adapterTitle={adapterTitle} />
           {upToDate && <IconCheck size={16} className="u-accent u-shrink-0" />}
         </button>
         {printer.endpoints && printer.endpoints.length > 0 && (

@@ -169,10 +169,13 @@ function EnrollFooter({ phase, stepId, onReset, onRetry, onEscalate }: {
 // A step that is running has started, so the bar shows it half done rather than sitting at nothing.
 // Deactivate and reactivate are three or four long steps, and counting only finished ones left the bar
 // empty and still for the whole first step, which reads as an app that has hung.
-export function progressFill(stepsDone: number, stepsTotal: number, stepRunning: boolean): number {
+// A step that reports how far into itself it is (uploading file 117 of 123) moves the bar by that
+// instead: the half-step guess is only for a step with nothing to count.
+export function progressFill(stepsDone: number, stepsTotal: number, stepRunning: boolean, stepFraction?: number): number {
   if (stepsTotal <= 0) return 0
+  const intoStep = Math.min(1, Math.max(0, stepFraction ?? 0.5))
 
-  return Math.round(((stepsDone + (stepRunning ? 0.5 : 0)) / stepsTotal) * 100)
+  return Math.round(((stepsDone + (stepRunning ? intoStep : 0)) / stepsTotal) * 100)
 }
 
 export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, onEscalate, mode, printerIsRebooting }: EnrollmentProgressProps) {
@@ -193,7 +196,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
 
   const showFailed = phase === 'failed' && !acting
   const currentStepStatus = showFailed ? 'failed' : 'running'
-  const pct = progressFill(event.completedSteps.length, event.totalSteps, !showFailed)
+  const pct = progressFill(event.completedSteps.length, event.totalSteps, !showFailed, event.stepFraction)
   const detail = showFailed && event.errorDetail ? event.errorDetail : event.stepDetail
   const stepLabel = phase === 'failed' && acting ? t('enroll.progress.starting') : event.stepLabel
 
@@ -202,7 +205,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
       <div className="enroll-body">
         <div className="enroll-progress">
           <div className="progress">
-            <div className={showFailed ? 'progress-bar' : 'progress-bar indeterminate'} style={{ width: `${pct}%` }} />
+            <div className={cx('progress-bar', !showFailed && event.stepFraction === undefined && 'indeterminate')} style={{ width: `${pct}%` }} />
           </div>
           {event.stepId === REBOOT_STEP_ID && !showFailed && <RebootCountdown />}
           {event.hint && <div className="enroll-hint">{event.hint}</div>}

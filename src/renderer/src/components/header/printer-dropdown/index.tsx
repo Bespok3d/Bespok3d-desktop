@@ -21,6 +21,7 @@ export interface PrinterDropdownProps {
   printers: Printer[]
   selectedId: string | null
   adapterIcons: Record<string, string>
+  adapterTitles: Record<string, string>
   adapterJinniVersions: Record<string, string>
   savedPluginVars: Record<string, string>
   onSelect: (id: string) => void
@@ -39,6 +40,7 @@ export function PrinterDropdown({
   printers,
   selectedId,
   adapterIcons,
+  adapterTitles,
   adapterJinniVersions,
   savedPluginVars,
   onSelect,
@@ -78,7 +80,7 @@ export function PrinterDropdown({
           dotClass={dotClass}
           dotTitle={statusLabel(selected, isInstalling, t)}
         />
-        <PrinterTriggerInfo printer={selected} installingCount={installingCount} adapterJinniVersion={adapterJinniVersions[selected.adapter]} />
+        <PrinterTriggerInfo printer={selected} installingCount={installingCount} adapterTitle={adapterTitles[selected.adapter]} adapterJinniVersion={adapterJinniVersions[selected.adapter]} />
         <span className="printer-chevron">
           <IconChevron size={18} />
         </span>
@@ -92,6 +94,7 @@ export function PrinterDropdown({
               key={printer.id}
               printer={printer}
               adapterIcon={adapterIcons[printer.adapter]}
+              adapterTitle={adapterTitles[printer.adapter]}
               adapterJinniVersion={adapterJinniVersions[printer.adapter]}
               isSelected={printer.id === selectedId}
               onSelect={() => { onSelect(printer.id); setOpen(false) }}

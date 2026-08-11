@@ -18,7 +18,7 @@ function renderDropdown(fns: { onSelect: ReturnType<typeof vi.fn>; onAddPrinter:
   ]
 
   return setup(
-    <PrinterDropdown printers={printers} selectedId="printer-1" adapterIcons={{}} onSelect={fns.onSelect} onAddPrinter={fns.onAddPrinter} onOpenSettings={fns.onOpenSettings} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={vi.fn()} adapterJinniVersions={{}} savedPluginVars={{}} installingCount={0} />,
+    <PrinterDropdown printers={printers} selectedId="printer-1" adapterIcons={{}} adapterTitles={{}} onSelect={fns.onSelect} onAddPrinter={fns.onAddPrinter} onOpenSettings={fns.onOpenSettings} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={vi.fn()} adapterJinniVersions={{}} savedPluginVars={{}} installingCount={0} />,
     { withCatalog: true, catalog: [] },
   )
 }
@@ -50,15 +50,39 @@ describe('PrinterDropdown', () => {
 
 function renderStatus(selected: Printer) {
   return setup(
-    <PrinterDropdown printers={[selected]} selectedId={selected.id} adapterIcons={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={vi.fn()} adapterJinniVersions={{}} savedPluginVars={{}} installingCount={0} />,
+    <PrinterDropdown printers={[selected]} selectedId={selected.id} adapterIcons={{}} adapterTitles={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={vi.fn()} adapterJinniVersions={{}} savedPluginVars={{}} installingCount={0} />,
     { withCatalog: true, catalog: [] },
   )
 }
 
+describe('PrinterDropdown adapter name', () => {
+  function renderWithTitles(printer: Printer, adapterTitles: Record<string, string>) {
+    return setup(
+      <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={{}} adapterTitles={adapterTitles} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={vi.fn()} adapterJinniVersions={{}} savedPluginVars={{}} installingCount={0} />,
+      { withCatalog: true, catalog: [] },
+    )
+  }
+
+  it('names the adapter beside the nickname, never the stored model', () => {
+    var printer = makePrinter({ nick: 'Alpha', adapter: 'snapmaker-u1', model: 'Unknown' })
+    var { container } = renderWithTitles(printer, { 'snapmaker-u1': 'Snapmaker U1' })
+
+    expect(container.querySelector('.printer-name .adapter')?.textContent).toContain('Snapmaker U1')
+    expect(container.textContent).not.toContain('Unknown')
+  })
+
+  it('falls back to the adapter id when this build ships no adapter by that name', () => {
+    var printer = makePrinter({ nick: 'Alpha', adapter: 'some-other-printer' })
+    var { container } = renderWithTitles(printer, {})
+
+    expect(container.querySelector('.printer-name .adapter')?.textContent).toContain('some-other-printer')
+  })
+})
+
 describe('PrinterDropdown adapter icon', () => {
   function renderWithIcons(printer: Printer, adapterIcons: Record<string, string>) {
     return setup(
-      <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={adapterIcons} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={vi.fn()} adapterJinniVersions={{}} savedPluginVars={{}} installingCount={0} />,
+      <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={adapterIcons} adapterTitles={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={vi.fn()} adapterJinniVersions={{}} savedPluginVars={{}} installingCount={0} />,
       { withCatalog: true, catalog: [] },
     )
   }
@@ -116,7 +140,7 @@ interface UpdateFns {
 
 function renderRow(printer: Printer, adapterJinniVersions: Record<string, string>, fns: UpdateFns) {
   return setup(
-    <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={{}} adapterJinniVersions={adapterJinniVersions} savedPluginVars={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={fns.onUpdateDaemon} onUpdateJinni={fns.onUpdateJinni} onUpdateAll={vi.fn()} installingCount={0} />,
+    <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={{}} adapterTitles={{}} adapterJinniVersions={adapterJinniVersions} savedPluginVars={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={fns.onUpdateDaemon} onUpdateJinni={fns.onUpdateJinni} onUpdateAll={vi.fn()} installingCount={0} />,
     { withCatalog: true, catalog: [] },
   )
 }
@@ -185,7 +209,7 @@ describe('PrinterDropdown footer (update all plugins)', () => {
     var onUpdateAll = vi.fn()
     var printer = makePrinter({ status: 'managed', installedIds: ['demo'], installedVersions: { demo: '1.0.0' } })
     var { user, container } = setup(
-      <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={{}} adapterJinniVersions={{}} savedPluginVars={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={onUpdateAll} installingCount={0} />,
+      <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={{}} adapterTitles={{}} adapterJinniVersions={{}} savedPluginVars={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={onUpdateAll} installingCount={0} />,
       { withCatalog: true, catalog: [makeIndexEntry({ name: 'demo', version: '2.0.0' })] },
     )
     await user.click(container.querySelector('.printer-trigger') as HTMLElement)
@@ -203,7 +227,7 @@ function renderInstalled(catalog: ReturnType<typeof makeIndexEntry>[], onUpdateA
   var printer = makePrinter({ status: 'managed', installedIds: ['demo'], installedVersions: { demo: '0.1.3' } })
 
   return setup(
-    <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={{}} adapterJinniVersions={{}} savedPluginVars={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={onUpdateAll} installingCount={0} />,
+    <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={{}} adapterTitles={{}} adapterJinniVersions={{}} savedPluginVars={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={onUpdateAll} installingCount={0} />,
     { withCatalog: true, catalog },
   )
 }
@@ -215,7 +239,7 @@ function renderPrinting(catalog: ReturnType<typeof makeIndexEntry>[] = [], onUpd
   var printer = makePrinter({ id: 'printer-1', nick: 'Alpha', status: 'managed', installedIds: ['demo'], installedVersions: { demo: '1.0.0' } })
 
   return setup(
-    <PrinterDropdown printers={[printer]} selectedId="printer-1" adapterIcons={{}} adapterJinniVersions={{}} savedPluginVars={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={onUpdateAll} installingCount={0} />,
+    <PrinterDropdown printers={[printer]} selectedId="printer-1" adapterIcons={{}} adapterTitles={{}} adapterJinniVersions={{}} savedPluginVars={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={onUpdateAll} installingCount={0} />,
     { withCatalog: true, catalog },
   )
 }

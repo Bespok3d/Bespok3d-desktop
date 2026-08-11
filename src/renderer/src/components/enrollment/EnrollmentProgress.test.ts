@@ -42,4 +42,16 @@ describe('progressFill', () => {
   it('reads a step-less op as no progress rather than dividing by nothing', () => {
     expect(progressFill(0, 0, true)).toBe(0)
   })
+
+  // A step uploading 123 files knows how far through it is, so the bar moves with the count beside it
+  // instead of sitting on the half-step guess until the step ends.
+  it('moves inside a running step by how far through that step is', () => {
+    expect(progressFill(1, 4, true, 0.1)).toBe(28)
+    expect(progressFill(1, 4, true, 0.9)).toBe(48)
+  })
+
+  it('never lets a step report past its own share of the bar', () => {
+    expect(progressFill(1, 4, true, 3)).toBe(50)
+    expect(progressFill(1, 4, true, -1)).toBe(25)
+  })
 })
