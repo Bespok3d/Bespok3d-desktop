@@ -89,7 +89,7 @@ export async function teardownDaemon(record: PrinterRecord): Promise<void> {
 function parseRecoverResult(text: string): RecoverResult {
   const raw = JSON.parse(text) as {
     ok: boolean
-    results: Array<{ plugin_id: string; ok: boolean; skipped: boolean; reason: string; log: InstallLogPhase[]; auto_deactivated?: string | null; fix_detail?: string }>
+    results: Array<{ plugin_id: string; ok: boolean; skipped: boolean; reason: string; log: InstallLogPhase[]; auto_deactivated?: string | null; fix_detail?: string; changed_files?: string[] }>
   }
 
   return {
@@ -102,6 +102,7 @@ function parseRecoverResult(text: string): RecoverResult {
       log: item.log ?? [],
       autoDeactivated: item.auto_deactivated ?? undefined,
       fixDetail: item.fix_detail ?? undefined,
+      changedFiles: item.changed_files ?? [],
     })),
   }
 }

@@ -15,14 +15,26 @@ function send(win: BrowserWindow, printerId: string, event: BatchProgressEvent):
   if (!win.isDestroyed()) win.webContents.send('store:batchProgress', { printerId, event })
 }
 
-// Announce the ordered plan, then mirror the daemon's live install feed to the renderer as the batch
-// runs, resolving with the close fn to call once it settles. The renderer ticks each plugin from these
-// events; an old daemon with no feed just never sends past the plan (the install still completes).
-export async function streamBatchProgress(win: BrowserWindow, printerId: string, record: ProgressTarget, orderedIds: string[]): Promise<() => void> {
-  send(win, printerId, { type: 'plan', ids: orderedIds })
-
+// Mirror the daemon's live feed to the renderer, resolving with the close fn the caller runs once the
+// operation settles. Shared by every operation that shows live per-plugin progress.
+function mirrorDaemonProgress(win: BrowserWindow, printerId: string, record: ProgressTarget): Promise<() => void> {
   return watchInstallProgress(record, (event) => {
     const batchEvent = batchEventFrom(event)
     if (batchEvent) send(win, printerId, batchEvent)
   })
+}
+
+// Announce the ordered plan, then mirror the daemon's live install feed to the renderer as the batch
+// runs. The renderer ticks each plugin from these events; an old daemon with no feed just never sends
+// past the plan (the install still completes).
+export async function streamBatchProgress(win: BrowserWindow, printerId: string, record: ProgressTarget, orderedIds: string[]): Promise<() => void> {
+  send(win, printerId, { type: 'plan', ids: orderedIds })
+
+  return mirrorDaemonProgress(win, printerId, record)
+}
+
+// Recovery's live feed. No plan is sent from here: the printer decides which plugins it puts back and
+// in what order, so its plan arrives on the feed and an app-built one would name the wrong plugin.
+export function streamRecoverProgress(win: BrowserWindow, printerId: string, record: ProgressTarget): Promise<() => void> {
+  return mirrorDaemonProgress(win, printerId, record)
 }

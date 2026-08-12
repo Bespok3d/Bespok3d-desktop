@@ -325,8 +325,16 @@ async function readBundleList(readFile, join, scriptDir, file) {
 // explicit path so one id can carry an experiment atom beside its online stable atom, which the
 // id-keyed `bundle` list cannot express. A dir whose files/ has not been built yet is skipped, so the
 // index never points at a .b3 that has not been produced.
+// A named dir that is NOT in the tree is a list that no longer matches the repos, and it is refused
+// rather than dropped: dropping it silently is how the golden shrank once without anyone deciding to
+// shrink it, the refresh writing the smaller claim and the next run reading that back as correct.
+// A dir that is there but carries no built files/ stays a skip: a variant is built by its own repo,
+// and a dev build must not depend on somebody having run that first.
 async function variantSource(readFile, stat, join, pluginsRoot, relativeDir) {
   const dir = join(pluginsRoot, relativeDir)
+  await stat(dir).catch(() => {
+    throw new Error(`the plugin variant list names ${relativeDir}, which is not in the plugins tree`)
+  })
   const built = await stat(join(dir, 'files')).then((entry) => entry.isDirectory()).catch(() => false)
   if (!built) return null
   const manifest = JSON.parse(await readFile(join(dir, 'manifest.json'), 'utf8'))

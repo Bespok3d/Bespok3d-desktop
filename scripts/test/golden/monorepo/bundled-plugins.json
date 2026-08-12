@@ -27,8 +27,5 @@
     "tailscale",
     "zerotier"
   ],
-  "variantDirs": [
-    "fluidd-plugin/fluidd-bleeding-edge",
-    "mainsail-plugin/mainsail-bleeding-edge"
-  ]
+  "variantDirs": []
 }

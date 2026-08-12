@@ -19,6 +19,10 @@ afterEach(cleanup)
 
 function noop() {}
 
+// jsdom lays nothing out, so it ships no scrollIntoView. A component that keeps a live list scrolled
+// to the row in progress calls it on every render.
+Element.prototype.scrollIntoView = noop
+
 export function realI18nValue(): I18nValue {
   return { locale: 'en', t: makeT('en'), setLocale: noop, customLocales: {}, setCustomTranslations: noop }
 }

@@ -21,7 +21,7 @@ class MockSocket extends EventEmitter {
 vi.mock('ws', () => ({ default: vi.fn(() => new MockSocket()) }))
 vi.mock('../client', () => ({ makeAgent: vi.fn(() => ({})) }))
 
-import { watchInstallProgress, parseEvent, installPhaseMessage } from './install-progress'
+import { watchInstallProgress, parseEvent, batchEventFrom, installPhaseMessage } from './install-progress'
 import type { InstallLogPhase } from '@bespok3d/contract'
 
 afterEach(() => {
@@ -87,5 +87,15 @@ describe('watchInstallProgress', () => {
     sockets[0].emit('error', new Error('no route'))
     await expect(close).resolves.toBeTypeOf('function')
     expect(sockets[0].closed).toBe(true)
+  })
+})
+
+describe('a recovery plan announced by the printer', () => {
+  it('reaches the renderer as the plan its rows are drawn from', () => {
+    const data = Buffer.from(JSON.stringify({ type: 'plan', ids: ['rfid-ntag', 'spoolman'] }))
+    const parsed = parseEvent(data)
+
+    expect(parsed).toEqual({ type: 'plan', ids: ['rfid-ntag', 'spoolman'] })
+    expect(batchEventFrom(parsed!)).toEqual({ type: 'plan', ids: ['rfid-ntag', 'spoolman'] })
   })
 })

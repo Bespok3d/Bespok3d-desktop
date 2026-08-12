@@ -31,7 +31,7 @@ function InstallHarness({ onInstall, sourceUrl }: { onInstall: () => void; sourc
 // registry each version comes from.
 function GatedBatchHarness({ updates }: { updates: PluginUpdateSpec[] }) {
   const gate = useInstallGate()
-  const batchOps = useBatchOps([], () => undefined, gate.beforeInstall)
+  const batchOps = useBatchOps([], () => undefined, gate.beforeInstall, () => Promise.resolve(false))
 
   return (
     <>
@@ -249,7 +249,7 @@ function SinglePluginHarness() {
 }
 
 function BatchHarness({ gate }: { gate: GatedInstall }) {
-  const batchOps = useBatchOps([], () => undefined, gate)
+  const batchOps = useBatchOps([], () => undefined, gate, () => Promise.resolve(false))
 
   return (
     <>

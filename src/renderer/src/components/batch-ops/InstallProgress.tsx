@@ -4,6 +4,7 @@ import { useI18n } from '../../i18n/context'
 import cx from '../../utils/cx'
 import { Modal } from '../common/overlay/Modal'
 import { UploadBar } from '../upload'
+import { useListFollowsActiveRow } from './follow-active-row'
 import { rowStatus, completedCount } from './progress'
 import type { BatchProgressState, RowStatus } from './progress'
 
@@ -26,6 +27,7 @@ export function BatchInstallProgress({ title, state }: { title: string; state: B
   const { t } = useI18n()
   const total = state.ids.length
   const done = completedCount(state)
+  const listRef = useListFollowsActiveRow(state.startedIndex)
 
   return (
     <Modal dismissable={false} className="batch-progress-modal">
@@ -35,7 +37,7 @@ export function BatchInstallProgress({ title, state }: { title: string; state: B
       </div>
       <UploadBar printerId={state.printerId} />
       <progress className="batch-progress-bar" value={done} max={total || 1} />
-      <div className="batch-progress-list">
+      <div className="batch-progress-list" ref={listRef}>
         {state.ids.map((pluginId, index) => (
           <BatchRow key={pluginId} pluginId={pluginId} status={rowStatus(state, index)} phaseLabel={state.phaseLabel} />
         ))}

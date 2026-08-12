@@ -4,6 +4,7 @@ import type { BrowserWindow } from 'electron'
 import type { EnrollProgressEvent, CompletedStep } from '../enrollment'
 import { connect } from '../ssh'
 import { stepFractionCarry } from '../step-progress'
+import { cancelWasRequested, clearCancelRequest } from './cancel-requests'
 import type { SshSession } from '../ssh'
 
 export interface OpStep {
@@ -13,7 +14,7 @@ export interface OpStep {
   run: (progress: (hint: string, stepFraction?: number) => void) => Promise<void>
 }
 
-type OpAcc = { failed: boolean; completed: CompletedStep[] }
+type OpAcc = { failed: boolean; cancelled?: boolean; completed: CompletedStep[] }
 
 function emitOpEvent(win: BrowserWindow, event: EnrollProgressEvent): void {
   win.webContents.send('printers:enroll:progress', event)
@@ -21,7 +22,7 @@ function emitOpEvent(win: BrowserWindow, event: EnrollProgressEvent): void {
 
 function makeOpEvent(
   printerId: string, step: OpStep, index: number, total: number,
-  status: 'running' | 'done' | 'failed', completed: CompletedStep[], error?: string,
+  status: EnrollProgressEvent['status'], completed: CompletedStep[], error?: string,
 ): EnrollProgressEvent {
   return {
     printerId, stepId: step.id, stepLabel: step.label, stepDetail: step.detail,
@@ -53,14 +54,25 @@ export async function execOpSteps(win: BrowserWindow, printerId: string, steps: 
 
   async function runOpStepFromIndex(index: number, completed: CompletedStep[]): Promise<OpAcc> {
     if (index >= steps.length) return { failed: false, completed }
+    if (cancelWasRequested(printerId)) {
+      emitOpEvent(win, makeOpEvent(printerId, steps[index], index, steps.length, 'cancelled', completed))
+
+      return { failed: false, cancelled: true, completed }
+    }
     const stepResult = await tryRunOpStep(steps[index], index, completed)
     if (stepResult.failed) return stepResult
 
     return runOpStepFromIndex(index + 1, stepResult.completed)
   }
 
+  clearCancelRequest(printerId)
   const final = await runOpStepFromIndex(0, [])
+  clearCancelRequest(printerId)
   if (final.failed) throw new Error('Operation failed')
+  // A cancelled operation did not do what it was asked to do, so it must not reach the caller's
+  // "it worked" record write: a cancelled deactivate would otherwise mark the printer deactivated
+  // with its boot hook still in place.
+  if (final.cancelled) throw new Error('Operation cancelled')
 }
 
 // The connect/run/close spine every SSH device op shares: open the session, run the caller's steps

@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-277 exported components + hooks across 21 areas.
+280 exported components + hooks across 21 areas.
 
 ## Common primitives
 
@@ -129,7 +129,9 @@ as you touch the file.
 - `BatchReportModal` (component) - [components/batch-ops/ReportModal.tsx](../src/renderer/src/components/batch-ops/ReportModal.tsx) - However a batch op ends, the user meets the same thing: what it was, one line saying how it went,
 - `OtaRecoveryResultsModal` (component) - [components/batch-ops/ResultsModal.tsx](../src/renderer/src/components/batch-ops/ResultsModal.tsx)
 - `useBatchOps` (hook) - [components/batch-ops/index.tsx](../src/renderer/src/components/batch-ops/index.tsx) - The daemon batch operations (OTA recover, update-all, install-selected, uninstall-selected). Recover
+- `useListFollowsActiveRow` (hook) - [components/batch-ops/follow-active-row.ts](../src/renderer/src/components/batch-ops/follow-active-row.ts) - Keeps the row being worked on in view. A run longer than the modal scrolls itself as each plugin
 - `usePendingUpdate` (hook) - [components/batch-ops/pending-update.ts](../src/renderer/src/components/batch-ops/pending-update.ts) - An update batch waits for the user to read it before it runs. Both entry points (the store's Update
+- `useRecoverOp` (hook) - [components/batch-ops/recover-op.ts](../src/renderer/src/components/batch-ops/recover-op.ts) - Recovery, the one batch operation that ends by restarting the printer: putting every plugin back
 
 ## Feature: create
 
@@ -331,6 +333,7 @@ as you touch the file.
 - `useAppCallbacks` (hook) - [app/callbacks.ts](../src/renderer/src/app/callbacks.ts)
 - `useAppI18n` (hook) - [app/locale.ts](../src/renderer/src/app/locale.ts) - The stored preference is either a locale code or 'system' (follow the OS), and 'system' is what a
 - `useB3dDeepLinks` (hook) - [app/deep-links.ts](../src/renderer/src/app/deep-links.ts) - A b3d:// link the OS handed us (window.b3d.onB3dOpen) maps to an in-app navigation; every route is
+- `usePaneSelection` (hook) - [app/pane-selection.ts](../src/renderer/src/app/pane-selection.ts) - Which pane the window shows (the plugin store or the workbench) and which plugin page the store
 - `usePluginVars` (hook) - [app/plugin-vars.ts](../src/renderer/src/app/plugin-vars.ts) - The renderer's one owner of the scoped plugin-vars store: boot migration (v1 flat map to v2
 
 ## Other: components

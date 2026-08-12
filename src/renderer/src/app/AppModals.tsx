@@ -16,13 +16,13 @@ import type { Printer } from '../data/types'
 import type { DiscoveredPrinterRecord } from '../env'
 import type { AppActions } from './callbacks'
 
-export function AppModals({ actions, discovered, existingPrinters }: { actions: AppActions; discovered: DiscoveredPrinterRecord[]; existingPrinters: Printer[] }) {
+export function AppModals({ actions, discovered, existingPrinters, onOpenPlugin }: { actions: AppActions; discovered: DiscoveredPrinterRecord[]; existingPrinters: Printer[]; onOpenPlugin: (pluginId: string) => void }) {
   const { t } = useI18n()
   const appUpdate = useAppUpdate()
   const enrollModal = actions.enrollModal
   // One batch runs at a time, so all four modals are handed the same refusal and each shows it only
-  // when it is the one that was refused.
-  const refusal = { failure: actions.batchFailure, onDismissFailure: actions.dismissBatchFailure, onRepairPrinter: actions.handleRepairPrinter }
+  // when it is the one that was refused. Opening a plugin's page is the same everywhere too.
+  const everyBatchModal = { failure: actions.batchFailure, onDismissFailure: actions.dismissBatchFailure, onRepairPrinter: actions.handleRepairPrinter, onOpenPlugin }
 
   return (
     <>
@@ -81,10 +81,10 @@ export function AppModals({ actions, discovered, existingPrinters }: { actions: 
       )}
       <UpdateConfirmGate pending={actions.pendingUpdate} printers={existingPrinters} onConfirm={actions.confirmUpdateAll} onCancel={actions.cancelUpdateAll} />
       <InstallGateModals gate={actions.installGate} />
-      <BatchOpModal variant="recovery" busy={actions.recovering} result={actions.recoveryResults} {...refusal} onClose={() => actions.setRecoveryResults(null)} />
-      <BatchOpModal variant="update" busy={actions.updatingAll} result={actions.updateAllResult} progress={actions.batchProgress} {...refusal} onClose={() => actions.setUpdateAllResult(null)} />
-      <BatchOpModal variant="install" busy={actions.installingBatch} result={actions.installBatchResult} progress={actions.batchProgress} {...refusal} onClose={() => actions.setInstallBatchResult(null)} />
-      <BatchOpModal variant="uninstall" busy={actions.uninstallingBatch} result={actions.uninstallBatchResult} {...refusal} onClose={() => actions.setUninstallBatchResult(null)} />
+      <BatchOpModal variant="recovery" busy={actions.recovering} result={actions.recoveryResults} progress={actions.batchProgress} restarting={actions.restartingAfterRecovery} {...everyBatchModal} onClose={() => actions.setRecoveryResults(null)} />
+      <BatchOpModal variant="update" busy={actions.updatingAll} result={actions.updateAllResult} progress={actions.batchProgress} {...everyBatchModal} onClose={() => actions.setUpdateAllResult(null)} />
+      <BatchOpModal variant="install" busy={actions.installingBatch} result={actions.installBatchResult} progress={actions.batchProgress} {...everyBatchModal} onClose={() => actions.setInstallBatchResult(null)} />
+      <BatchOpModal variant="uninstall" busy={actions.uninstallingBatch} result={actions.uninstallBatchResult} {...everyBatchModal} onClose={() => actions.setUninstallBatchResult(null)} />
       {actions.addPrinterModal && (
         <AddPrinter
           initialTab={actions.addPrinterModal.tab}

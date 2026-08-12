@@ -23,7 +23,7 @@ function results() {
 describe('OtaRecoveryResultsModal', () => {
   it('lists every plugin result and the failure reason, and closes', async () => {
     var onClose = vi.fn()
-    var { user } = setup(<OtaRecoveryResultsModal results={results()} onClose={onClose} />)
+    var { user } = setup(<OtaRecoveryResultsModal results={results()} onOpenPlugin={vi.fn()} onClose={onClose} />)
 
     expect(screen.getByText(en('recovery_results.title_errors'))).toBeInTheDocument()
     expect(screen.getByText('spoolman')).toBeInTheDocument()
@@ -36,12 +36,12 @@ describe('OtaRecoveryResultsModal', () => {
   })
 
   it('uses the update-variant copy when updating', () => {
-    setup(<OtaRecoveryResultsModal results={results()} onClose={vi.fn()} variant="update" />)
+    setup(<OtaRecoveryResultsModal results={results()} onOpenPlugin={vi.fn()} onClose={vi.fn()} variant="update" />)
     expect(screen.getByText(en('update_results.title_errors'))).toBeInTheDocument()
   })
 
   it('uses the install-variant copy when batch-installing', () => {
-    setup(<OtaRecoveryResultsModal results={results()} onClose={vi.fn()} variant="install" />)
+    setup(<OtaRecoveryResultsModal results={results()} onOpenPlugin={vi.fn()} onClose={vi.fn()} variant="install" />)
     expect(screen.getByText(en('install_results.title_errors'))).toBeInTheDocument()
   })
 
@@ -55,7 +55,7 @@ describe('OtaRecoveryResultsModal', () => {
         { pluginId: 'klipper-motion', ok: false, skipped: false, reason: 'Disabled klipper-motion to keep the printer working', log: [], autoDeactivated: 'klipper-motion', fixDetail: 'klipper failed to import resonance_tester from klipper-motion' },
       ],
     }
-    var { user, container } = setup(<OtaRecoveryResultsModal results={autoDeactivatedResults} onClose={vi.fn()} />)
+    var { user, container } = setup(<OtaRecoveryResultsModal results={autoDeactivatedResults} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
 
     expect(screen.getByText('spoolman')).toBeInTheDocument()
     expect(screen.getByText('Disabled klipper-motion to keep the printer working')).toBeInTheDocument()
@@ -72,8 +72,30 @@ describe('OtaRecoveryResultsModal', () => {
       ok: false,
       results: [{ pluginId: '(services)', ok: false, skipped: false, reason: 'broker-down', log: [] }],
     }
-    setup(<OtaRecoveryResultsModal results={brokerResults} onClose={vi.fn()} />)
+    setup(<OtaRecoveryResultsModal results={brokerResults} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByText(en('diagnosis.broker_down'))).toBeInTheDocument()
     expect(screen.queryByText('broker-down')).not.toBeInTheDocument()
+  })
+
+  // A plugin whose files another installed plugin edits comes back running, and the printer keeps no
+  // packaged copy to put back. The report says so and offers the plugin's own page, where the user
+  // reinstalls it; it must never read as a failure and never deactivate anything.
+  it('offers to reinstall a plugin whose files were changed on the printer', async () => {
+    var changedResults = {
+      ok: true,
+      results: [
+        { pluginId: 'spoolman', ok: true, skipped: false, reason: '', log: [] },
+        { pluginId: 'fluidd', ok: true, skipped: false, reason: '', log: [], changedFiles: ['files/fluidd/index.html'] },
+      ],
+    }
+    var onOpenPlugin = vi.fn()
+    var onClose = vi.fn()
+    var { user } = setup(<OtaRecoveryResultsModal results={changedResults} onOpenPlugin={onOpenPlugin} onClose={onClose} />)
+
+    expect(screen.getByText(en('recovery_results.files_changed', { plugin: 'fluidd' }))).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: en('btn.reinstall') }))
+    expect(onOpenPlugin).toHaveBeenCalledWith('fluidd')
+    expect(onClose).toHaveBeenCalledOnce()
   })
 })

@@ -17,8 +17,11 @@ interface ProgressTarget {
 }
 
 export interface InstallProgressEvent {
-  type: 'phase' | 'plugin' | 'done'
+  type: 'phase' | 'plugin' | 'plan' | 'done'
   phase?: InstallLogPhase
+  // The ordered set a run will work through. Only recovery sends one: the printer decides which
+  // plugins it puts back and in what order, where a batch's set is decided in the app.
+  ids?: string[]
   // On a batch, a 'plugin' event names the plugin a batch is starting (the deferred restart step
   // arrives as a 'plugin' under the '(services)' id with index === total).
   pluginId?: string
@@ -71,6 +74,7 @@ export function parseEvent(data: WebSocket.RawData): InstallProgressEvent | null
   try {
     const obj = JSON.parse(data.toString())
     if (obj.type === 'phase' && obj.phase) return { type: 'phase', phase: obj.phase as InstallLogPhase }
+    if (obj.type === 'plan' && Array.isArray(obj.ids)) return { type: 'plan', ids: obj.ids as string[] }
     if (obj.type === 'plugin' && typeof obj.plugin_id === 'string') return { type: 'plugin', pluginId: obj.plugin_id, index: obj.index ?? 0, total: obj.total ?? 0 }
     if (obj.type === 'done') return { type: 'done', ok: !!obj.ok, error: typeof obj.error === 'string' ? obj.error : undefined }
 
@@ -83,6 +87,7 @@ export function parseEvent(data: WebSocket.RawData): InstallProgressEvent | null
 // Translate one daemon feed event into the renderer-facing batch event, or null for events the batch
 // view does not show (a non-plugin/phase/done message).
 export function batchEventFrom(event: InstallProgressEvent): BatchProgressEvent | null {
+  if (event.type === 'plan' && event.ids) return { type: 'plan', ids: event.ids }
   if (event.type === 'plugin' && event.pluginId) {
     return { type: 'plugin', pluginId: event.pluginId, index: event.index ?? 0, total: event.total ?? 0 }
   }

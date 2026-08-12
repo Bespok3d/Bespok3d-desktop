@@ -388,12 +388,12 @@ function joinPath(...parts: string[]): string {
   return parts.join('/')
 }
 
-function fakeFs(files: Record<string, string>, builtDirs: Set<string>) {
+function fakeFs(files: Record<string, string>, dirsInTree: Set<string>) {
   function readFile(path: string): Promise<string> {
     return path in files ? Promise.resolve(files[path]) : Promise.reject(new Error(`no such file: ${path}`))
   }
   function stat(path: string): Promise<{ isDirectory: () => boolean }> {
-    return builtDirs.has(path) ? Promise.resolve({ isDirectory: () => true }) : Promise.reject(new Error('ENOENT'))
+    return dirsInTree.has(path) ? Promise.resolve({ isDirectory: () => true }) : Promise.reject(new Error('ENOENT'))
   }
 
   return { readFile, stat }
@@ -529,7 +529,7 @@ describe('variantSources (dev-only channel variants)', () => {
 
   it('sources built variants as same-id experiment atoms and skips unbuilt ones', async () => {
     process.env.B3D_INCLUDE_DEV_BUNDLE = '1'
-    const { readFile, stat } = fakeFs(VARIANT_FILES, new Set([`${FLUIDD_DIR}/files`]))
+    const { readFile, stat } = fakeFs(VARIANT_FILES, new Set([FLUIDD_DIR, MAINSAIL_DIR, `${FLUIDD_DIR}/files`]))
     const sources = await variantSources(readFile, stat, joinPath, VARIANT_PLUGINS, VARIANT_SCRIPTS)
     expect(sourceNames(sources)).toEqual(['fluidd'])
     expect(sources[0]).toMatchObject({ dir: FLUIDD_DIR, manifest: { channel: 'experiment', version: '0.2.0-experiment' } })
@@ -537,8 +537,22 @@ describe('variantSources (dev-only channel variants)', () => {
 
   it('sources every built variant when all are built', async () => {
     process.env.B3D_INCLUDE_DEV_BUNDLE = '1'
-    const { readFile, stat } = fakeFs(VARIANT_FILES, new Set([`${FLUIDD_DIR}/files`, `${MAINSAIL_DIR}/files`]))
+    const allDirs = new Set([FLUIDD_DIR, MAINSAIL_DIR, `${FLUIDD_DIR}/files`, `${MAINSAIL_DIR}/files`])
+    const { readFile, stat } = fakeFs(VARIANT_FILES, allDirs)
     const sources = await variantSources(readFile, stat, joinPath, VARIANT_PLUGINS, VARIANT_SCRIPTS)
     expect(sourceNames(sources)).toEqual(['fluidd', 'mainsail'])
+  })
+
+  // A named dir that is not in the tree is a list that no longer matches the repos, and it is refused
+  // rather than dropped. Dropping it silently is how the bundled-plugin golden lost two entries with
+  // nobody deciding to lose them: the refresh wrote the smaller claim and the next run read that back
+  // as correct. Not built, above, stays a skip; not there at all is a stop.
+  it('refuses a variant dir the plugins tree no longer carries', async () => {
+    process.env.B3D_INCLUDE_DEV_BUNDLE = '1'
+    const { readFile, stat } = fakeFs(VARIANT_FILES, new Set([MAINSAIL_DIR, `${MAINSAIL_DIR}/files`]))
+
+    await expect(variantSources(readFile, stat, joinPath, VARIANT_PLUGINS, VARIANT_SCRIPTS)).rejects.toThrow(
+      /fluidd-plugin\/fluidd-bleeding-edge/,
+    )
   })
 })

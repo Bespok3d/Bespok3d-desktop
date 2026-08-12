@@ -16,6 +16,7 @@ import { useDisplayPrefs } from './hooks/displayPrefs'
 import { useAppI18n } from './app/locale'
 import { useAppCallbacks } from './app/callbacks'
 import { useB3dDeepLinks } from './app/deep-links'
+import { usePaneSelection } from './app/pane-selection'
 import { usePluginVars } from './app/plugin-vars'
 import { printerKeyFor } from './data/plugin-vars'
 import { AppModals } from './app/AppModals'
@@ -27,8 +28,7 @@ function App() {
   const { theme, setTheme, setThemeOverride, resolved, density, setDensity, storeGrouped, setStoreGrouped } = useDisplayPrefs()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsPane, setSettingsPane] = useState<Section | undefined>(undefined)
-  const [mode, setMode] = useState<'store' | 'create'>('store')
-  const [focusPluginId, setFocusPluginId] = useState<string | null>(null)
+  const { mode, setMode, focusPluginId, openPluginPage, clearPluginFocus } = usePaneSelection()
   const [workbenchLayout, setWorkbenchLayout] = useState<'A' | 'B'>('A')
   function subscribeOpenSettings() {
     return window.b3d.appUpdate.onOpenSettings(() => { setSettingsPane('update'); setSettingsOpen(true) })
@@ -50,25 +50,25 @@ function App() {
   const pluginVars = usePluginVars(printers)
   const selectedPrinterKey = selectedPrinter ? printerKeyFor(selectedPrinter) : undefined
   const savedPluginVars = pluginVars.viewFor(selectedPrinterKey)
-  useB3dDeepLinks({ printers, openPlugin: (name) => { setMode('store'); setFocusPluginId(name) }, openRepos: () => { setSettingsPane('repos'); setSettingsOpen(true) }, selectPrinter: setSelectedId })
+  useB3dDeepLinks({ printers, openPlugin: openPluginPage, openRepos: () => { setSettingsPane('repos'); setSettingsOpen(true) }, selectPrinter: setSelectedId })
   function mainPane() {
     if (printers.length === 0) return <FirstRun discovered={discovered} onOpenAdd={actions.openAdd} onOpenManual={actions.openManual} onRescan={actions.handleRescan} />
     if (mode === 'create') return <Create printer={selectedPrinter} layout={workbenchLayout} onSetLayout={(next) => { setWorkbenchLayout(next); window.b3d.settings.set({ workbenchLayout: next }) }} />
 
-    return <PluginStore printer={selectedPrinter} density={density} grouped={storeGrouped} onPrinterUpdate={setPrinters} savedPluginVars={savedPluginVars} onSaveVars={(save) => pluginVars.saveFor(selectedPrinterKey, save)} scopeFor={(field) => pluginVars.scopeFor(selectedPrinterKey, field)} onUpdateAll={actions.handleUpdateAll} updatingAll={actions.updatingAll} onInstallSelected={actions.handleInstallBatch} installingSelected={actions.installingBatch} onUninstallSelected={actions.handleUninstallBatch} uninstallingSelected={actions.uninstallingBatch} focusPluginId={focusPluginId} onFocusHandled={() => setFocusPluginId(null)} onConnectGitHub={() => { setSettingsPane('git-host'); setSettingsOpen(true) }} />
+    return <PluginStore printer={selectedPrinter} density={density} grouped={storeGrouped} onPrinterUpdate={setPrinters} savedPluginVars={savedPluginVars} onSaveVars={(save) => pluginVars.saveFor(selectedPrinterKey, save)} scopeFor={(field) => pluginVars.scopeFor(selectedPrinterKey, field)} onUpdateAll={actions.handleUpdateAll} updatingAll={actions.updatingAll} onInstallSelected={actions.handleInstallBatch} installingSelected={actions.installingBatch} onUninstallSelected={actions.handleUninstallBatch} uninstallingSelected={actions.uninstallingBatch} focusPluginId={focusPluginId} onFocusHandled={clearPluginFocus} onConnectGitHub={() => { setSettingsPane('git-host'); setSettingsOpen(true) }} />
   }
 
   return (
     <I18nProvider value={i18n}>
       <CatalogProvider><InstallGateContext.Provider value={actions.installGate.beforeInstall}>
-      <LocalDropZone selectedPrinter={selectedPrinter} onInstall={(id) => { setMode('store'); setFocusPluginId(id) }} />
+      <LocalDropZone selectedPrinter={selectedPrinter} onInstall={openPluginPage} />
       <div className="app" data-theme={resolved} data-platform={window.b3d.platform}>
         <Header
           theme={resolved}
           onToggleTheme={() => setThemeOverride(resolved === 'light' ? 'dark' : 'light')}
           onOpenSettings={() => { setSettingsPane(undefined); setSettingsOpen(true) }}
           onOpenSettingsPane={(pane) => { setSettingsPane(pane); setSettingsOpen(true) }}
-          onOpenPlugin={(id) => { setMode('store'); setFocusPluginId(id) }}
+          onOpenPlugin={openPluginPage}
           installedVersions={selectedPrinter?.installedVersions ?? {}}
           installedSources={selectedPrinter?.installedSources ?? {}}
           printers={printers} selectedId={selectedId} adapterIcons={adapterIcons} adapterTitles={adapterTitles} adapterJinniVersions={jinniVersions} savedPluginVars={savedPluginVars} onSelect={setSelectedId}
@@ -98,7 +98,7 @@ function App() {
             selectedPrinter={selectedPrinter} scopedPluginVars={pluginVars.scopedVars} onScopedPluginVarsChange={pluginVars.setScopedVars}
           />
         )}
-        <AppModals actions={actions} discovered={discovered} existingPrinters={printers} />
+        <AppModals actions={actions} discovered={discovered} existingPrinters={printers} onOpenPlugin={openPluginPage} />
       </div>
       </InstallGateContext.Provider></CatalogProvider>
     </I18nProvider>

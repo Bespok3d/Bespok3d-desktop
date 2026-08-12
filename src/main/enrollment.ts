@@ -12,6 +12,7 @@ import { loadSettings, clientId } from './settings'
 import { updatePrinter } from './printers'
 import { assertKnownPrinterNotDowngraded } from './compat'
 import { stepFractionCarry } from './step-progress'
+import { cancelWasRequested, clearCancelRequest } from './ops/cancel-requests'
 import { reportEvent } from './analytics'
 import { reportErrorEvent } from './analytics/errors'
 
@@ -26,7 +27,7 @@ export interface EnrollProgressEvent {
   stepId: string
   stepLabel: string
   stepDetail: string
-  status: 'running' | 'done' | 'failed'
+  status: 'running' | 'done' | 'failed' | 'cancelled'
   error?: string
   errorDetail?: string
   hint?: string
@@ -90,7 +91,7 @@ function emit(win: BrowserWindow, event: EnrollProgressEvent): void {
 }
 
 type BaseEvent = Omit<EnrollProgressEvent, 'status' | 'error' | 'errorDetail' | 'completedSteps'>
-type StepRunResult = { failed: boolean; completed: CompletedStep[] }
+type StepRunResult = { failed: boolean; cancelled?: boolean; completed: CompletedStep[] }
 
 function makeBaseEvent(
   printerId: string,
@@ -128,9 +129,10 @@ async function runStep(
   } catch (stepError) {
     const errorMessage = stepError instanceof Error ? stepError.message : String(stepError)
     emit(win, { ...base, status: 'failed', error: errorMessage, errorDetail: errorMessage, completedSteps: [...completedSoFar] })
-    // A user left with a printer that did not enrol. Only the kind of failure goes out: the message
-    // on screen names the printer, the step and often the network it is on, and none of that is ours.
-    reportErrorEvent(stepError, 'enrollment')
+    // A user left with a printer that did not enrol. The kind of failure and which step it broke on
+    // go out: the message on screen names the printer and often the network it is on, and none of
+    // that is ours. The step is the adapter's own id for it, cleaned by the reporter before sending.
+    reportErrorEvent(stepError, 'enrollment', step.id)
 
     return { failed: true, completed: completedSoFar }
   }
@@ -205,6 +207,17 @@ function makeContext(
   }
 }
 
+// One SSH session for the whole enrollment, reconnecting itself across the steps that reboot the
+// printer.
+function openEnrollSession(ctx: EnrollContext, credentials: SshCredentials): SshSession {
+  return createPersistentSession(() => ({
+    host: ctx.ip,
+    port: credentials.port,
+    user: credentials.user,
+    password: credentials.password,
+  }))
+}
+
 export async function enrollPrinter(
   win: BrowserWindow,
   printerId: string,
@@ -227,27 +240,29 @@ export async function enrollPrinter(
 
   const ctx = makeContext(printerId, ip, credentials, adapter.defaults.runtimeUser)
 
-  const session = createPersistentSession(() => ({
-    host: ctx.ip,
-    port: credentials.port,
-    user: credentials.user,
-    password: credentials.password,
-  }))
+  const session = openEnrollSession(ctx, credentials)
 
   const totalSteps = steps.length
 
   async function runStepFromIndex(stepIndex: number, completed: CompletedStep[]): Promise<StepRunResult> {
     if (stepIndex >= totalSteps) return { failed: false, completed }
+    if (cancelWasRequested(printerId)) {
+      emit(win, { ...makeBaseEvent(printerId, steps[stepIndex], stepIndex, totalSteps), status: 'cancelled', completedSteps: completed })
+
+      return { failed: false, cancelled: true, completed }
+    }
     const stepResult = await runStep(win, steps[stepIndex], stepIndex, totalSteps, printerId, session, ctx, completed)
     if (stepResult.failed) return stepResult
 
     return runStepFromIndex(stepIndex + 1, stepResult.completed)
   }
 
+  clearCancelRequest(printerId)
   const result = await runStepFromIndex(startIndex, [])
+  clearCancelRequest(printerId)
 
   session.close()
-  if (result.failed) return
+  if (result.failed || result.cancelled) return
 
   markEnrolled(printerId, adapterId, result.completed, ctx)
   // Every step ran and the printer is enrolled. An enrollment the user abandoned, or one a step

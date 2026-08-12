@@ -64,7 +64,7 @@
     {
       "name": "bespok3d-daemon",
       "title": "Bespok3d daemon",
-      "version": "0.12.24",
+      "version": "0.12.25",
       "description": "The on-printer daemon for the Bespok3d plugin manager: a small FastAPI service that installs, updates, and removes plugins, reports printer capabilities, refuses any operation mid-print, and self-heals a plugin that breaks a service so the printer is never left unusable. It is plugin zero: the adapter bootstraps it over SSH at enrollment (cert-pinned HTTPS, bearer-token auth), not through the normal plugin install pipeline, so the install block below is intentionally empty. This package is the publishable, versioned artifact the app reads to know when a newer daemon is available.",
       "tagline": "The on-printer service that installs plugins and keeps the printer safe.",
       "category": "system",
@@ -82,7 +82,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "bespok3d-daemon/doc/README.md",
-      "download_url": "bespok3d-daemon-0.12.24.b3",
+      "download_url": "bespok3d-daemon-0.12.25.b3",
       "min_jinni_version": "0.1.10",
       "changelog_url": "bespok3d-daemon/doc/CHANGELOG.md"
     },
@@ -114,7 +114,7 @@
       "name": "camera-hw-accel",
       "title": "Camera HW Accel",
       "version": "0.1.10+dev.local",
-      "description": "Tap into the SoC's video pipeline instead of CPU-encoding every frame. MJPEG over HTTP at /webcam, WebRTC at /webrtc; works on any browser, smooth 30fps even with two cameras attached.\n\nTo have these auto-registered as cameras in Fluidd and Mainsail (so you don't have to add them by hand under Settings → Cameras), also install b3d://bespok3d-org/webcam-builtin for the built-in MIPI camera and b3d://bespok3d-org/webcam-usb for the external USB camera.",
+      "description": "Tap into the SoC's video pipeline instead of CPU-encoding every frame. MJPEG over HTTP at /webcam, WebRTC at /webrtc; works on any browser, smooth 30fps even with two cameras attached.\n\nTo have these auto-registered as cameras in Fluidd and Mainsail (so you don't have to add them by hand under Settings → Cameras), also install [webcam-builtin](b3d://bespok3d/webcam-builtin) for the built-in MIPI camera and [webcam-usb](b3d://bespok3d/webcam-usb) for the external USB camera.",
       "tagline": "HW-accelerated MJPEG and WebRTC streaming for MIPI & USB cameras.",
       "category": "camera",
       "channel": "stable",
@@ -205,7 +205,7 @@
       "conflicts": [],
       "doc_url": "fluidd/doc/README.md",
       "download_url": "fluidd-0.1.5.b3",
-      "homepage": "https://github.com/bespok3d-org/plugin-fluidd",
+      "homepage": "https://github.com/Bespok3d/fluidd-plugin",
       "config": [
         {
           "key": "FLUIDD_PORT",
@@ -233,52 +233,6 @@
       "sw_version": "1.37.3",
       "attributions": "# Attributions - fluidd\n\n**Plugin author:** the Fluidd project (fluidd-core), packaged by Bespok3d\n\nInstalls the Fluidd web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Fluidd | the Fluidd project (fluidd-core), started by Craig Bassett (cadriel) | GPL-3.0 | yes | yes |\n\nThe released Fluidd web bundle is shipped verbatim inside this plugin (currently v1.37.3). Upstream:\nhttps://github.com/fluidd-core/fluidd\n\nThe U1 packaging approach follows the Extended Firmware overlay `62-app-fluidd` (paxx12), GPL-3.0.\n",
       "license_url": "https://github.com/Bespok3d/fluidd-plugin/blob/dev/fluidd/doc/LICENSE",
-      "changelog_url": "fluidd/doc/CHANGELOG.md",
-      "endpoints": [
-        {
-          "label": "Fluidd",
-          "path": "/"
-        }
-      ]
-    },
-    {
-      "name": "fluidd",
-      "title": "Fluidd",
-      "version": "0.2.1-experiment+dev.local",
-      "description": "Swaps SM's outdated Fluidd for the current upstream release. You get input-shaper graphs, integrated config/G-code editors, tool-colour preview, modern mesh viz. Uninstall reverts to the SM-shipped copy automatically via overlayfs; no nginx config touched. Bleeding-edge build: adds the AFC \"Toolchanger Eject Mode\" toggle (Eject docks the mounted tool on a toolchanger).",
-      "tagline": "Modern Fluidd v1.37.0: replaces the stock SM build.",
-      "category": "ui",
-      "channel": "testing",
-      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
-      "printer_specific": true,
-      "published_at": "2025-10-12",
-      "updated_at": "2026-06-12",
-      "requires": {
-        "capabilities": [
-          "klipper-generic"
-        ]
-      },
-      "provides": [
-        "fluidd-ui"
-      ],
-      "deps": [],
-      "conflicts": [],
-      "doc_url": "fluidd/doc/README.md",
-      "download_url": "fluidd-0.2.1-experiment.b3",
-      "homepage": "https://github.com/bespok3d-org/plugin-fluidd",
-      "config": [
-        {
-          "key": "FLUIDD_PORT",
-          "label": "Fluidd port",
-          "type": "http-port",
-          "default": "80",
-          "hint": "Auto-assigned. Make Fluidd primary to serve it on port 80.",
-          "userEditable": true
-        }
-      ],
-      "author": "bespoked",
-      "attributions": "# Attributions - fluidd\n\n**Plugin author:** the Fluidd project (fluidd-core), packaged by Bespok3d\n\nInstalls the Fluidd web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Fluidd | the Fluidd project (fluidd-core), started by Craig Bassett (cadriel) | GPL-3.0 | yes | yes |\n\nThe released Fluidd web bundle is shipped verbatim inside this plugin (currently v1.37.2). Upstream:\nhttps://github.com/fluidd-core/fluidd\n\nThe U1 packaging approach follows the Extended Firmware overlay `62-app-fluidd` (paxx12), GPL-3.0.\n",
-      "license_url": "https://github.com/Bespok3d/fluidd-plugin/blob/dev/fluidd-bleeding-edge/doc/LICENSE",
       "changelog_url": "fluidd/doc/CHANGELOG.md",
       "endpoints": [
         {
@@ -380,52 +334,6 @@
       "sw_version": "2.18.0",
       "attributions": "# Attributions - mainsail\n\n**Plugin author:** the mainsail-crew, packaged by Bespok3d\n\nInstalls the Mainsail web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Mainsail | the mainsail-crew | GPL-3.0 | yes | yes |\n\nThe released Mainsail web bundle is shipped verbatim inside this plugin (currently v2.18.0).\nUpstream: https://github.com/mainsail-crew/mainsail\n\nThe U1 packaging approach follows the Extended Firmware overlay `63-app-mainsail` (paxx12), GPL-3.0.\n",
       "license_url": "https://github.com/Bespok3d/mainsail-plugin/blob/main/mainsail/doc/LICENSE",
-      "changelog_url": "mainsail/doc/CHANGELOG.md",
-      "endpoints": [
-        {
-          "label": "Mainsail",
-          "path": ":81/"
-        }
-      ]
-    },
-    {
-      "name": "mainsail",
-      "title": "Mainsail",
-      "version": "0.2.3-experiment+dev.local",
-      "description": "Installs Mainsail v2.17.0 as a second web frontend. Runs on port 81 by default so Fluidd stays on port 80. Set port 80 to make Mainsail primary; Fluidd shifts to 81 automatically. Bleeding-edge build: adds the AFC \"Toolchanger Eject Mode\" toggle (Eject docks the mounted tool on a toolchanger).",
-      "tagline": "Mainsail web interface alongside Fluidd, on your chosen port.",
-      "category": "ui",
-      "channel": "testing",
-      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
-      "printer_specific": true,
-      "published_at": "2026-01-10",
-      "updated_at": "2026-06-12",
-      "requires": {
-        "capabilities": [
-          "klipper-generic"
-        ]
-      },
-      "provides": [
-        "mainsail-ui"
-      ],
-      "deps": [],
-      "conflicts": [],
-      "doc_url": "mainsail/doc/README.md",
-      "download_url": "mainsail-0.2.3-experiment.b3",
-      "config": [
-        {
-          "key": "MAINSAIL_PORT",
-          "label": "Mainsail port",
-          "type": "http-port",
-          "default": "81",
-          "hint": "Auto-assigned. Make Mainsail primary to serve it on port 80.",
-          "required": true,
-          "userEditable": true
-        }
-      ],
-      "author": "bespoked",
-      "attributions": "# Attributions - mainsail\n\n**Plugin author:** the mainsail-crew, packaged by Bespok3d\n\nInstalls the Mainsail web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Mainsail | the mainsail-crew | GPL-3.0 | yes | yes |\n\nThe released Mainsail web bundle is shipped verbatim inside this plugin (currently v2.18.0).\nUpstream: https://github.com/mainsail-crew/mainsail\n\nThe U1 packaging approach follows the Extended Firmware overlay `63-app-mainsail` (paxx12), GPL-3.0.\n",
-      "license_url": "https://github.com/Bespok3d/mainsail-plugin/blob/main/mainsail-bleeding-edge/doc/LICENSE",
       "changelog_url": "mainsail/doc/CHANGELOG.md",
       "endpoints": [
         {
@@ -721,7 +629,7 @@
       "conflicts": [],
       "doc_url": "rfid-generic-ndef/doc/README.md",
       "download_url": "rfid-generic-ndef-0.1.0.b3",
-      "homepage": "https://github.com/Bespok3d/all-the-tags",
+      "homepage": "https://github.com/Bespok3d/material-tags",
       "author": "bespoked",
       "attributions": "# Attributions - rfid-generic-ndef\n\n**Plugin author:** Bespok3d, NDEF published by the NFC Forum\n\nReads any plain NDEF tag.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| NDEF specification | the NFC Forum | published specification | no | no |\n",
       "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-generic-ndef/doc/LICENSE",
@@ -751,7 +659,7 @@
       "conflicts": [],
       "doc_url": "rfid-ntag/doc/README.md",
       "download_url": "rfid-ntag-0.1.9.b3",
-      "homepage": "https://github.com/bespok3d-org/plugin-rfid-ntag",
+      "homepage": "https://github.com/Bespok3d/u1-enhanced-rfid",
       "author": "bespoked",
       "attributions": "# Attributions - rfid-ntag\n\n**Plugin author:** Bespok3d, with parts of the Extended Firmware overlay `13-patch-rfid`, OpenRFID there by @suchmememanyskill and the OpenSpool `subtype` field by @morgendagen\n\nReads NTAG filament tags on the printer's built-in reader.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenSpool tag format | the OpenSpool project | published format | no | no |\n| Extended Firmware overlay `13-patch-rfid` | @suchmememanyskill and @morgendagen, packaged by paxx12 | GPL-3.0 | no | yes |\n\nThe patches in this plugin modify Snapmaker's own firmware files on the printer, and the Extended\nFirmware overlay `13-patch-rfid`, GPL-3.0, patches the same files. About a fifth of the lines our\nFM175xx reader patch adds are lines that overlay adds too. In `openspool_mapper.py`, 22 lines are\nthat overlay's: they fill Snapmaker's own tray structure field by field, with the same defaults.\nOpenRFID in that firmware is credited to @suchmememanyskill and the OpenSpool `subtype` field to\n@morgendagen.\n\nThe rest of the reader code (`bespok3d_rfid.py`, `ntag_reader.py`, `ndef_parser.py`,\n`mifare_classic.py`) is written from scratch.\n",
       "license_url": "https://github.com/Bespok3d/u1-enhanced-rfid/blob/dev/rfid-ntag/doc/LICENSE",
@@ -874,7 +782,7 @@
       "doc_url": "spoolman/doc/README.md",
       "download_url": "spoolman-0.1.32.b3",
       "min_daemon_version": "0.10.1",
-      "homepage": "https://github.com/bespok3d-org/plugin-spoolman",
+      "homepage": "https://github.com/Bespok3d/spoolman-klipper-helper",
       "macros": [
         {
           "name": "SET_ACTIVE_SPOOL",

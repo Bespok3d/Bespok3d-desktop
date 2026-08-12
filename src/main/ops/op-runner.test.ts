@@ -8,6 +8,7 @@ vi.mock('../ssh', () => ({ connect: vi.fn() }))
 import { execOpSteps, runSshOp } from './op-runner'
 import type { OpStep } from './op-runner'
 import { connect } from '../ssh'
+import { requestCancel } from './cancel-requests'
 
 function fakeWindow() {
   const send = vi.fn()
@@ -92,5 +93,48 @@ describe('runSshOp', () => {
       runSshOp(win, 'p1', { host: 'h', port: 22, user: 'u', password: 'p' }, () => [step('boom', async () => { throw new Error('x') })]),
     ).rejects.toThrow('Operation failed')
     expect(close).toHaveBeenCalled()
+  })
+})
+
+describe('cancelling an operation', () => {
+  it('stops before the next step and tells the renderer, instead of running the rest', async () => {
+    const { win, send } = fakeWindow()
+    const ran: string[] = []
+    const steps = [
+      step('unlock-overlay', async () => { ran.push('unlock-overlay'); requestCancel('printer-1') }),
+      step('deploy-daemon', async () => { ran.push('deploy-daemon') }),
+    ]
+
+    await expect(execOpSteps(win, 'printer-1', steps)).rejects.toThrow('cancelled')
+
+    expect(ran).toEqual(['unlock-overlay'])
+    const statuses = send.mock.calls.map((call) => (call[1] as { status: string; stepId: string }))
+    expect(statuses.at(-1)).toMatchObject({ status: 'cancelled', stepId: 'deploy-daemon' })
+  })
+
+  it('forgets the cancel once the operation is over, so the next one runs', async () => {
+    const { win } = fakeWindow()
+    await execOpSteps(win, 'printer-1', [step('unlock-overlay', async () => { requestCancel('printer-1') })])
+
+    const ran: string[] = []
+    await execOpSteps(win, 'printer-1', [step('deploy-daemon', async () => { ran.push('deploy-daemon') })])
+
+    expect(ran).toEqual(['deploy-daemon'])
+  })
+
+  it('does not let a cancelled op reach the caller record write that says it worked', async () => {
+    const { win } = fakeWindow()
+    const recorded: string[] = []
+
+    async function deactivateLikeCaller(): Promise<void> {
+      await execOpSteps(win, 'printer-1', [
+        step('stop-plugins', async () => { requestCancel('printer-1') }),
+        step('remove-boot-hook', async () => {}),
+      ])
+      recorded.push('deactivated')
+    }
+
+    await expect(deactivateLikeCaller()).rejects.toThrow('cancelled')
+    expect(recorded).toEqual([])
   })
 })

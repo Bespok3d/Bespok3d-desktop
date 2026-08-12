@@ -37,7 +37,9 @@ export function successCopy(mode: EnrollMode | undefined): SuccessCopy {
 
 interface EnrollmentProgressProps {
   event: EnrollProgressEvent
-  phase: 'enrolling' | 'success' | 'failed'
+  phase: 'enrolling' | 'success' | 'failed' | 'cancelled'
+  onCancelOp: () => void
+  onClose: () => void
   credentials?: SshCredentials
   onDone: () => void
   onRetry: (stepId: string) => void
@@ -86,6 +88,34 @@ function RebootCountdown() {
   )
 }
 
+function CompletedStepRows({ steps }: { steps: EnrollProgressEvent['completedSteps'] }) {
+  return (
+    <>
+      {steps.map((step) => (
+        <div key={step.id} className="enroll-step-row done">
+          <StepIcon status="done" />
+          <div className="enroll-step-content">
+            <div className="enroll-step-label">
+              <Explainer brief={step.label} detail={step.detail} />
+            </div>
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
+// What the printer already went through, under the outcome that ended the run.
+function FinishedStepList({ steps }: { steps: EnrollProgressEvent['completedSteps'] }) {
+  if (steps.length === 0) return null
+
+  return (
+    <div className="enroll-step-list u-mt-3">
+      <CompletedStepRows steps={steps} />
+    </div>
+  )
+}
+
 function SuccessView({ event, message, onDone, printerIsRebooting }: { event: EnrollProgressEvent; message: SuccessCopy; onDone: () => void; printerIsRebooting?: boolean }) {
   const { t } = useI18n()
 
@@ -98,20 +128,7 @@ function SuccessView({ event, message, onDone, printerIsRebooting }: { event: En
           <div className="enroll-success-sub">{t(message.subKey)}</div>
           {printerIsRebooting && <div className="enroll-success-sub">{t('enroll.success.printer_rebooting')}</div>}
         </div>
-        {event.completedSteps.length > 0 && (
-          <div className="enroll-step-list u-mt-3">
-            {event.completedSteps.map((step) => (
-              <div key={step.id} className="enroll-step-row done">
-                <StepIcon status="done" />
-                <div className="enroll-step-content">
-                  <div className="enroll-step-label">
-                    <Explainer brief={step.label} detail={step.detail} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <FinishedStepList steps={event.completedSteps} />
       </div>
       <div className="modal-foot">
         <Button variant="primary" onClick={onDone}>{t('enroll.progress.done')}</Button>
@@ -120,20 +137,50 @@ function SuccessView({ event, message, onDone, printerIsRebooting }: { event: En
   )
 }
 
-function EnrollFooter({ phase, stepId, onReset, onRetry, onEscalate }: {
+// Cancel stops the work at the next step boundary, so some steps did run. They are listed, because
+// what was already done to the printer is the thing the user needs to know.
+function CancelledView({ event, onClose }: { event: EnrollProgressEvent; onClose: () => void }) {
+  const { t } = useI18n()
+
+  return (
+    <>
+      <div className="enroll-body">
+        <div className="enroll-success">
+          <div className="enroll-success-title">{t('enroll.cancelled.title')}</div>
+          <div className="enroll-success-sub">{t('enroll.cancelled.sub')}</div>
+        </div>
+        <FinishedStepList steps={event.completedSteps} />
+      </div>
+      <div className="modal-foot">
+        <Button variant="primary" onClick={onClose}>{t('btn.close')}</Button>
+      </div>
+    </>
+  )
+}
+
+function EnrollFooter({ phase, stepId, onReset, onRetry, onEscalate, onCancelOp }: {
   phase: 'enrolling' | 'failed'
   stepId: string
   onReset: () => void
   onRetry: (stepId: string) => void
   onEscalate?: () => void
+  onCancelOp: () => void
 }) {
   const { t } = useI18n()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [cancelAsked, setCancelAsked] = useState(false)
+
+  function askToCancel() {
+    setCancelAsked(true)
+    onCancelOp()
+  }
 
   if (phase === 'enrolling') {
     return (
       <div className="modal-foot">
-        <Button variant="ghost" onClick={onReset}>{t('btn.cancel')}</Button>
+        <Button variant="ghost" disabled={cancelAsked} onClick={askToCancel}>
+          {cancelAsked ? t('enroll.progress.cancelling') : t('btn.cancel')}
+        </Button>
       </div>
     )
   }
@@ -178,7 +225,7 @@ export function progressFill(stepsDone: number, stepsTotal: number, stepRunning:
   return Math.round(((stepsDone + (stepRunning ? intoStep : 0)) / stepsTotal) * 100)
 }
 
-export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, onEscalate, mode, printerIsRebooting }: EnrollmentProgressProps) {
+export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, onEscalate, onCancelOp, onClose, mode, printerIsRebooting }: EnrollmentProgressProps) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState(false)
   const [acting, setActing] = useState(false)
@@ -186,6 +233,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
   useEffect(() => setActing(false), [event.stepId])
 
   if (phase === 'success') return <SuccessView event={event} message={successCopy(mode)} onDone={onDone} printerIsRebooting={printerIsRebooting} />
+  if (phase === 'cancelled') return <CancelledView event={event} onClose={onClose} />
 
   function handleReset() { setExpanded(false); setActing(true); onReset() }
   function handleRetry(stepId: string) { setExpanded(false); setActing(true); onRetry(stepId) }
@@ -226,16 +274,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
             </div>
             {expanded && (
               <div className="enroll-step-list">
-                {event.completedSteps.map((step) => (
-                  <div key={step.id} className="enroll-step-row done">
-                    <StepIcon status="done" />
-                    <div className="enroll-step-content">
-                      <div className="enroll-step-label">
-                        <Explainer brief={step.label} detail={step.detail} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                <CompletedStepRows steps={event.completedSteps} />
                 <div className={cx('enroll-step-row', currentStepStatus)}>
                   <StepIcon status={currentStepStatus} />
                   <div className="enroll-step-content">
@@ -260,6 +299,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
         onReset={handleReset}
         onRetry={handleRetry}
         onEscalate={onEscalate ? handleEscalate : undefined}
+        onCancelOp={onCancelOp}
       />
     </>
   )

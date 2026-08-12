@@ -145,7 +145,7 @@ function HistoryModal({ printer, onClose }: { printer: Printer; onClose: () => v
         {enrolledAt && <p>Enrolled {formatDateTime(enrolledAt)}</p>}
       </div>
       {event ? (
-        <EnrollmentProgress event={event} phase="success" onDone={onClose} onRetry={() => {}} onReset={() => {}} />
+        <EnrollmentProgress event={event} phase="success" onDone={onClose} onRetry={() => {}} onReset={() => {}} onCancelOp={() => {}} onClose={onClose} />
       ) : (
         <div className="enroll-body">
           <p className="u-hint-sm">No enrollment log recorded.</p>
@@ -179,6 +179,7 @@ interface EnrollmentBodyProps {
   onDone: () => void
   onRetry: (stepId: string) => void
   onReset: () => void
+  onCancelOp: () => void
   onEscalate?: () => void
   printerIsRebooting: boolean
 }
@@ -199,12 +200,14 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
   if (props.state.latestEvent) return (
     <EnrollmentProgress
       event={props.state.latestEvent}
-      phase={props.state.phase as 'enrolling' | 'success' | 'failed'}
+      phase={props.state.phase as 'enrolling' | 'success' | 'failed' | 'cancelled'}
       credentials={props.credentials}
       mode={props.mode}
       onDone={props.onDone}
       onRetry={props.onRetry}
       onReset={props.onReset}
+      onCancelOp={props.onCancelOp}
+      onClose={props.onClose}
       onEscalate={props.mode === 'repair' ? props.onEscalate : undefined}
       printerIsRebooting={props.printerIsRebooting}
     />
@@ -216,14 +219,14 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
         <div className="progress-bar indeterminate u-w-full" />
       </div>
       <div className="modal-foot">
-        <Button variant="outline" onClick={props.onReset}>{t('btn.cancel')}</Button>
+        <Button variant="outline" onClick={props.onCancelOp}>{t('btn.cancel')}</Button>
       </div>
     </div>
   )
 }
 
 export function Enrollment({ printer, mode, fromAdd = false, onEnrolled, onClose, onEscalateRecovery, onExpectedRestart }: EnrollmentProps) {
-  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset } = useEnrollment(printer)
+  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp } = useEnrollment(printer)
   const [credentials, setCredentials] = useState<SshCredentials>({ user: '', password: '', port: 22 })
   const [adapterInfo, setAdapterInfo] = useState<AdapterInfo | null>(null)
   const autoStarted = useRef(false)
@@ -295,7 +298,7 @@ export function Enrollment({ printer, mode, fromAdd = false, onEnrolled, onClose
         printer={printer} mode={mode} state={state} credentials={credentials}
         showCredentialsForm={goAhead.showCredentialsForm} awaitingGoAhead={goAhead.awaiting}
         onStart={handleStart} onGoAhead={goAhead.give} onOwnCredentials={goAhead.askForOwnCredentials} onClose={onClose}
-        onDone={handleDone} onRetry={handleRetry} onReset={reset} onEscalate={onEscalateRecovery}
+        onDone={handleDone} onRetry={handleRetry} onReset={reset} onCancelOp={cancelOp} onEscalate={onEscalateRecovery}
         printerIsRebooting={printerIsRebooting}
       />
     </Modal>

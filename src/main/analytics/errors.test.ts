@@ -59,10 +59,72 @@ describe('what a failure is allowed to say about the person it happened to', () 
   })
 })
 
+describe('which step of enrolling broke', () => {
+  it('is said in the adapter own word for it, so one enrolment failure is not every enrolment failure', () => {
+    reportErrorEvent(new TypeError('nope'), 'enrollment', 'unlock-overlay')
+
+    expect(sentEvent).toHaveBeenCalledWith('error_occurred', {
+      error_class: 'TypeError',
+      area: 'enrollment',
+      step: 'unlock-overlay',
+    })
+  })
+
+  it('cannot carry a printer through a step id an adapter we did not write made up', () => {
+    reportErrorEvent(new Error('nope'), 'enrollment', 'connect-10.6.9.109')
+
+    expect(propertiesOfEverythingSent()).not.toContain('10.6.9.109')
+    expect(propertiesOfEverythingSent()).not.toMatch(/[0-9]/)
+  })
+
+  it('is left out rather than guessed at when the failure was not on a step', () => {
+    reportErrorEvent(new RangeError('nope'), 'main-process')
+
+    expect(sentEvent).toHaveBeenCalledWith('error_occurred', { error_class: 'RangeError', area: 'main-process' })
+  })
+})
+
+describe('what the printer answered with', () => {
+  class DaemonHttpError extends Error {
+    readonly statusCode: number
+
+    constructor(statusCode: number) {
+      super('the printer said no')
+      this.statusCode = statusCode
+    }
+  }
+
+  it('is sent, so a refusal and a broken daemon are not the same one word', () => {
+    reportErrorEvent(new DaemonHttpError(409), 'plugin-install')
+
+    expect(sentEvent).toHaveBeenCalledWith('error_occurred', {
+      error_class: 'DaemonHttpError',
+      area: 'plugin-install',
+      status_code: 409,
+    })
+  })
+
+  it('is only ever a status, never some other number that was called one', () => {
+    reportErrorEvent(new DaemonHttpError(0), 'plugin-install')
+    reportErrorEvent(Object.assign(new Error('nope'), { statusCode: 1770000000000 }), 'main-process')
+    reportErrorEvent(Object.assign(new Error('nope'), { statusCode: '/Users/someone' }), 'main-process')
+
+    expect(propertiesOfEverythingSent()).not.toContain('status_code')
+    expect(propertiesOfEverythingSent()).not.toContain('someone')
+  })
+})
+
 describe('a machine stuck in a loop', () => {
   function throwTheSameThing(times: number, area: 'renderer' | 'enrollment'): void {
     Array.from({ length: times }).forEach(() => reportErrorEvent(new RangeError('again'), area))
   }
+
+  it('gives each step of enrolling its own allowance, or the first step spends them all', () => {
+    Array.from({ length: 500 }).forEach(() => reportErrorEvent(new RangeError('again'), 'enrollment', 'preflight'))
+    Array.from({ length: 500 }).forEach(() => reportErrorEvent(new RangeError('again'), 'enrollment', 'start-daemon'))
+
+    expect(sentEvent).toHaveBeenCalledTimes(6)
+  })
 
   it('says it a few times and then stops, however many times it happens', () => {
     throwTheSameThing(500, 'enrollment')

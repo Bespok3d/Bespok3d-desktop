@@ -49,7 +49,12 @@ export interface AnalyticsEventProperties extends Record<AnalyticsEventName, obj
   // The version the app came FROM, which is what separates an update from a brand-new install: a
   // first run has no previous version and therefore sends no update event at all.
   app_updated: { previous_version: string }
-  // What kind of failure, and where. Nothing else at all: a message or a stack would carry file
-  // paths, printer addresses and the names of plugins a user wrote.
-  error_occurred: { error_class: string; area: AnalyticsArea }
+  // What kind of failure, where, and the two things that tell one apart from the next without any
+  // of them being about the person it happened to. A message or a stack is still never sent: those
+  // carry file paths, printer addresses and the names of plugins a user wrote.
+  // `step`: which part of enrolling broke, in the adapter's own word for it, cut to letters and
+  // dashes so nothing that identifies a machine can be interpolated into one.
+  // `status_code`: the HTTP status a printer's daemon answered with, which is a number in 100 to 599
+  // and can be nothing else. Both are absent when the failure had neither.
+  error_occurred: { error_class: string; area: AnalyticsArea; step?: string; status_code?: number }
 }

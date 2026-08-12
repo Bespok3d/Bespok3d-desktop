@@ -11,6 +11,7 @@ import { pingAndUpdate, refreshEndpoints } from '../../data/printers'
 import { mainProcessMessage } from '../../utils/errorMessage'
 import { reduceBatchProgress } from './progress'
 import { usePendingUpdate } from './pending-update'
+import { useRecoverOp } from './recover-op'
 import { batchSources } from './sources'
 import './batch-ops.css'
 import type { BatchProgressState } from './progress'
@@ -41,29 +42,34 @@ function SpinnerModal({ title, body }: { title: string; body: string }) {
   )
 }
 
-// What shows while a batch op is in flight: the live per-plugin progress when the daemon's feed has
-// reached us (update-all and install-selected), otherwise the spinner (recover, or an older daemon
-// with no batch feed, or the brief moment before the first event arrives).
+// What shows while a batch op is in flight: the live per-plugin progress once the daemon's feed has
+// reached us, otherwise the spinner (an older daemon with no feed, or the brief moment before the
+// first event arrives).
 function BatchBusyView({ variant, progress }: { variant: BatchVariant; progress: BatchProgressState | null | undefined }) {
   const { t } = useI18n()
   const copy = SPINNER_COPY[variant]
-  if (variant !== 'recovery' && progress) return <BatchInstallProgress title={t(copy.title)} state={progress} />
+  if (progress) return <BatchInstallProgress title={t(copy.title)} state={progress} />
 
   return <SpinnerModal title={t(copy.title)} body={t(copy.body)} />
 }
 
 // A batch op (recover / update-all / install-selected) shows the same two-step UI: live progress while
 // it runs, then the per-plugin results report. One component for all three so the variants cannot drift.
-export function BatchOpModal({ variant, busy, result, progress, failure, onRepairPrinter, onClose, onDismissFailure }: {
+export function BatchOpModal({ variant, busy, result, progress, restarting, failure, onRepairPrinter, onOpenPlugin, onClose, onDismissFailure }: {
   variant: BatchVariant
   busy: boolean
   result: RecoverResult | null
   progress?: BatchProgressState | null
+  // Whether the app is restarting this printer itself now the report is up. A printer the user gave
+  // their own SSH login for is not restarted unattended, so the report must not claim it is.
+  restarting?: boolean
   // The app's current batch refusal, whichever operation it belongs to: each modal shows only its own.
   failure: BatchFailure | null
   // Repair the printer's Bespok3d software, for the refusals that only a matched pair clears; the
   // repair re-applies the installed plugins too.
   onRepairPrinter: (printerId: string) => void
+  // Open one plugin's store page, where the report sends the user to put a changed plugin back.
+  onOpenPlugin: (pluginId: string) => void
   onClose: () => void
   onDismissFailure: () => void
 }) {
@@ -75,7 +81,7 @@ export function BatchOpModal({ variant, busy, result, progress, failure, onRepai
   return (
     <>
       {busy && !result && <BatchBusyView variant={variant} progress={progress} />}
-      {result && <OtaRecoveryResultsModal results={result} variant={variant} onClose={onClose} />}
+      {result && <OtaRecoveryResultsModal results={result} variant={variant} restarting={restarting} onOpenPlugin={onOpenPlugin} onClose={onClose} />}
       {failure?.variant === variant && (
         <BatchFailedModal variant={variant} reason={failure.reason} onRepairPrinter={repairTheRefusingPrinter} onClose={onDismissFailure} />
       )}
@@ -96,9 +102,8 @@ export function useBatchOps(
   printers: Printer[],
   setPrinters: (update: Printer[] | ((prev: Printer[]) => Printer[])) => void,
   gatedInstall: GatedInstall,
+  restartAfterReapply: (printerId: string) => Promise<boolean>,
 ) {
-  const [recoveryResults, setRecoveryResults] = useState<RecoverResult | null>(null)
-  const [recovering, setRecovering] = useState(false)
   const [updateAllResult, setUpdateAllResult] = useState<RecoverResult | null>(null)
   const [updatingAll, setUpdatingAll] = useState(false)
   const [installBatchResult, setInstallBatchResult] = useState<RecoverResult | null>(null)
@@ -129,12 +134,11 @@ export function useBatchOps(
     if (printer) pingAndUpdate(printer, setPrinters)
     refreshEndpoints(printerId, setPrinters)
   }
+  const recoverOp = useRecoverOp(restartAfterReapply, (printerId, setBusy) => batchDidNotRun('recovery', printerId, setBusy))
   function runRecover(printerId: string) {
-    setRecovering(true)
     setBatchFailure(null)
-    window.b3d.store.recover(printerId)
-      .then((results) => { setRecovering(false); setRecoveryResults(results) })
-      .catch(batchDidNotRun('recovery', printerId, setRecovering))
+    setBatchProgress(null)
+    recoverOp.runRecover(printerId)
   }
   function runBatch(variant: BatchVariant, printerId: string, specs: PluginUpdateSpec[], setBusy: (busy: boolean) => void, setResult: (result: RecoverResult) => void, post: BatchPoster) {
     setBusy(true)
@@ -170,7 +174,7 @@ export function useBatchOps(
   }
 
   return {
-    recoveryResults, setRecoveryResults, recovering,
+    recoveryResults: recoverOp.recoveryResults, setRecoveryResults: recoverOp.setRecoveryResults, recovering: recoverOp.recovering, restartingAfterRecovery: recoverOp.restartingAfterRecovery,
     updateAllResult, setUpdateAllResult, updatingAll, runUpdateAll, ...updateConfirm,
     installBatchResult, setInstallBatchResult, installingBatch, runInstallBatch,
     uninstallBatchResult, setUninstallBatchResult, uninstallingBatch, runUninstallBatch,

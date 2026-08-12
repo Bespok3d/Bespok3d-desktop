@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ipcMain, shell, type BrowserWindow } from 'electron'
 import { checkSsh, enrollPrinter } from './enrollment'
+import { requestCancel } from './ops/cancel-requests'
 import { getAdapter, listAdapters } from './adapter-loader'
 import type { AdapterInfo } from './adapter-loader'
 import { loadSettings, saveSettings, setSourceEnabled, setChannelEnabled } from './settings'
@@ -108,6 +109,7 @@ function registerPrinterHandlers(getMainWindow: () => BrowserWindow): void {
   ipcMain.handle('printers:checkSsh', (_ev, ip: string, user: string, password: string, port: number) =>
     checkSsh(ip, { user, password, port })
   )
+  ipcMain.handle('printers:cancelOp', (_ev, printerId: string) => requestCancel(printerId))
   ipcMain.handle(
     'printers:enroll',
     async (_ev, printerId: string, ip: string, adapterId: string, user: string, password: string, port: number, retryFromStepId?: string) => {

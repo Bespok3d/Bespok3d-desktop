@@ -9,7 +9,7 @@ export interface SshCredentials {
   port: number
 }
 
-export type EnrollPhase = 'credentials' | 'enrolling' | 'success' | 'failed'
+export type EnrollPhase = 'credentials' | 'enrolling' | 'success' | 'failed' | 'cancelled'
 
 type SshLifecycleOp = (printerId: string, ip: string, user: string, password: string, port: number) => Promise<void>
 
@@ -22,6 +22,7 @@ export interface EnrollState {
 // ends in 'success', anything else is still 'enrolling'.
 function nextEnrollPhase(status: EnrollProgressEvent['status'], isLastStep: boolean): EnrollPhase {
   if (status === 'failed') return 'failed'
+  if (status === 'cancelled') return 'cancelled'
   if (status === 'done' && isLastStep) return 'success'
 
   return 'enrolling'
@@ -79,6 +80,11 @@ export function useEnrollment(printer: Printer) {
   function reset(): void {
     setState({ phase: 'credentials', latestEvent: null })
   }
+  // The steps run on the printer, so the app cannot take back the one in flight: it asks the main
+  // process to stop before the next step and waits on the feed for the cancelled event.
+  function cancelOp(): void {
+    printers.cancelOp(printer.id).catch((error) => console.error('[enroll] cancel IPC failed', error))
+  }
 
-  return { state, startEnrollment, retryFrom, reset, ...sshLifecycleStarters(printer, startOp) }
+  return { state, startEnrollment, retryFrom, reset, cancelOp, ...sshLifecycleStarters(printer, startOp) }
 }

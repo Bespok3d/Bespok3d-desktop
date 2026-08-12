@@ -214,3 +214,32 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
     expect(b3d.printers.reboot).not.toHaveBeenCalled()
   })
 })
+
+describe('Enrollment cancel', () => {
+  it('stops the work on the printer instead of throwing the user back to the start', async () => {
+    var { user, emit, b3d } = renderEnroll('recovery')
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalled())
+
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'running', stepLabel: 'Deploying daemon', stepIndex: 1 })))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(b3d.printers.cancelOp).toHaveBeenCalledWith('printer-1'))
+    expect(screen.getByRole('button', { name: 'Cancelling…' })).toBeDisabled()
+    expect(screen.getByText('Deploying daemon')).toBeInTheDocument()
+  })
+
+  it('reports what was already done once the printer stops', async () => {
+    var { user, emit, b3d } = renderEnroll('recovery')
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalled())
+
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'running', stepLabel: 'Deploying daemon', stepIndex: 1 })))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    act(() => emit.enrollProgress(makeEnrollEvent({
+      status: 'cancelled', stepLabel: 'Deploying daemon', stepIndex: 1,
+      completedSteps: [{ id: 'unlock-overlay', label: 'Unlocking the overlay', detail: 'done' }],
+    })))
+
+    expect(screen.getByText('Cancelled')).toBeInTheDocument()
+    expect(screen.getByText('Unlocking the overlay')).toBeInTheDocument()
+  })
+})

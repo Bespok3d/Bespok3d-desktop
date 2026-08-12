@@ -26,6 +26,8 @@ export const printersApi = {
     ipcRenderer.invoke('printers:checkSsh', ip, user, password, port),
   enroll: (printerId: string, ip: string, adapterId: string, user: string, password: string, port: number, retryFromStepId?: string): Promise<void> =>
     ipcRenderer.invoke('printers:enroll', printerId, ip, adapterId, user, password, port, retryFromStepId),
+  // Stop the operation running on this printer at the next step boundary.
+  cancelOp: (printerId: string): Promise<void> => ipcRenderer.invoke('printers:cancelOp', printerId),
   deactivate: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
     ipcRenderer.invoke('printer:deactivate', printerId, ip, user, password, port),
   reactivate: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>

@@ -109,7 +109,10 @@
           }
         ],
         "auto_deactivated": null,
-        "fix_detail": ""
+        "fix_detail": "",
+        "changed_files": [
+          "files/fluidd/index.html"
+        ]
       }
     ]
   },

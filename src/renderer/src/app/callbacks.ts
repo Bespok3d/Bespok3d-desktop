@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { isDaemonRestartMode } from '../components/enrollment'
 import type { EnrollMode } from '../components/enrollment'
 import { useBatchOps } from '../components/batch-ops'
+import { restartAfterReapply } from '../components/batch-ops/restart-after-reapply'
 import { useInstallGate } from '../hooks/installGate'
 import { POST_OPERATION_GRACE_MS } from '../components/printer-banners'
 import { toRecord, pingAndUpdate, applyToId } from '../data/printers'
@@ -151,7 +152,7 @@ function enrollModeHandlers(openEnrollModal: (id: string, mode: EnrollMode) => v
 // The batch-op state + run handlers the modals and toolbar read straight through from useBatchOps.
 function batchOpHandles(batchOps: BatchOps) {
   return {
-    recoveryResults: batchOps.recoveryResults, setRecoveryResults: batchOps.setRecoveryResults, recovering: batchOps.recovering,
+    recoveryResults: batchOps.recoveryResults, setRecoveryResults: batchOps.setRecoveryResults, recovering: batchOps.recovering, restartingAfterRecovery: batchOps.restartingAfterRecovery,
     updateAllResult: batchOps.updateAllResult, setUpdateAllResult: batchOps.setUpdateAllResult, updatingAll: batchOps.updatingAll,
     installBatchResult: batchOps.installBatchResult, setInstallBatchResult: batchOps.setInstallBatchResult, installingBatch: batchOps.installingBatch, batchProgress: batchOps.batchProgress, uninstallBatchResult: batchOps.uninstallBatchResult, setUninstallBatchResult: batchOps.setUninstallBatchResult, uninstallingBatch: batchOps.uninstallingBatch, handleUninstallBatch: batchOps.runUninstallBatch,
     batchFailure: batchOps.batchFailure, dismissBatchFailure: batchOps.dismissBatchFailure,
@@ -159,6 +160,18 @@ function batchOpHandles(batchOps: BatchOps) {
     handleUpdateAll: batchOps.askUpdateAll,
     pendingUpdate: batchOps.pendingUpdate, confirmUpdateAll: batchOps.confirmUpdateAll, cancelUpdateAll: batchOps.cancelUpdateAll,
     handleInstallBatch: batchOps.runInstallBatch,
+  }
+}
+
+// Recovery ends by restarting the printer, so the app is told to expect it to drop off and come back
+// instead of showing it offline. It answers whether it is restarting the printer itself, which is what
+// the recovery report goes on to tell the user.
+function recoveryRestart(printers: Printer[], restart: { markExpectedRestart: (printerId: string) => void; askForTheirLogin: (printerId: string) => void }) {
+  return function restartTheRecoveredPrinter(printerId: string) {
+    const printer = printers.find((candidate) => candidate.id === printerId)
+    if (!printer) return Promise.resolve(false)
+
+    return restartAfterReapply(printer, restart.markExpectedRestart, restart.askForTheirLogin)
   }
 }
 
@@ -176,7 +189,10 @@ export function useAppCallbacks(
   // The one install gate, made here so every install path shares it: the batch ops take it as an
   // argument and the store panel reads it from the context App puts it in.
   const installGate = useInstallGate()
-  const batchOps = useBatchOps(printers, setPrinters, installGate.beforeInstall)
+  const batchOps = useBatchOps(printers, setPrinters, installGate.beforeInstall, recoveryRestart(printers, {
+    markExpectedRestart: (printerId) => markExpectedRestart(printerId, POST_OPERATION_GRACE_MS),
+    askForTheirLogin: (printerId) => openEnrollModal(printerId, 'reboot'),
+  }))
   function openEnrollModal(printerId: string, mode: EnrollMode) {
     const printer = printers.find((candidate) => candidate.id === printerId)
     if (printer) setEnrollModal({ printer, mode })

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makeT } from '../../i18n'
@@ -34,5 +34,13 @@ describe('BatchInstallProgress', () => {
     )
     expect(screen.getByText(en('batch_progress.restarting'))).toBeInTheDocument()
     expect(container.querySelector('.batch-row.failed')?.textContent).toContain('fluidd')
+  })
+
+  it('scrolls the plugin being worked on into view as the run moves down the list', () => {
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView')
+    const { container, rerender } = setup(<BatchInstallProgress title="Installing plugins" state={state({ startedIndex: 1 })} />)
+    rerender(<BatchInstallProgress title="Installing plugins" state={state({ startedIndex: 2 })} />)
+    expect(scrolled.mock.instances.at(-1)).toBe(container.querySelector('.batch-row.installing'))
+    scrolled.mockRestore()
   })
 })

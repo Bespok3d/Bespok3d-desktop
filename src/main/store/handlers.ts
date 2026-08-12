@@ -12,6 +12,7 @@ import { sendProgress } from './progress'
 import { installGuarded } from './install'
 import { runStoreUninstall, runStoreUninstallBatch } from './uninstall'
 import { runStoreUpdateBatch, runStoreInstallBatch, type PluginUpdateSpec } from './update-batch'
+import { streamRecoverProgress } from './batch-progress'
 
 function registerPluginLogHandlers(getMainWindow: () => BrowserWindow): void {
   ipcMain.handle('store:watchPluginLog', (_ev, printerId: string, pluginId: string) =>
@@ -83,9 +84,12 @@ export function registerStoreHandlers(getMainWindow: () => BrowserWindow): void 
     fetchPluginConfig(getManagedRecord(printerId), pluginId, DAEMON_QUERY_TIMEOUT_MS),
   )
 
+  // The live feed is opened (and awaited) before the call, as a batch does, so the user watches
+  // recovery name each plugin it puts back instead of waiting on a spinner.
   ipcMain.handle('store:recover', async (_ev, printerId: string): Promise<RecoverResult> => {
     const record = getManagedRecord(printerId)
+    const closeProgress = await streamRecoverProgress(getMainWindow(), printerId, record)
 
-    return recoverPackages(record)
+    return recoverPackages(record).finally(closeProgress)
   })
 }
