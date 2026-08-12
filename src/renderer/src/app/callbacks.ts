@@ -12,7 +12,9 @@ import { daemonAccessDecision, enrollPathDecision } from '../data/enroll-gate'
 import type { Printer } from '../data/types'
 
 export type AddPrinterModal = { tab: 'scan' | 'manual'; pickedId?: string }
-export type EnrollModal = { printer: Printer; mode: EnrollMode; fromAdd?: boolean }
+// forced: opened from the Force menu, which is the user saying he wants this run whatever the printer
+// reports about its daemon version.
+export type EnrollModal = { printer: Printer; mode: EnrollMode; fromAdd?: boolean; forced?: boolean }
 
 type SetPrinters = (update: Printer[] | ((prev: Printer[]) => Printer[])) => void
 
@@ -23,32 +25,32 @@ function useEnrollGate(
   setEnrollModal: (value: EnrollModal | null) => void,
   setAccessModal: (value: Printer | null) => void,
 ) {
-  const [rootAccessGate, setRootAccessGate] = useState<{ printer: Printer; fromAdd: boolean } | null>(null)
+  const [rootAccessGate, setRootAccessGate] = useState<{ printer: Printer; fromAdd: boolean; forced: boolean } | null>(null)
   const [enrollProposal, setEnrollProposal] = useState<Printer | null>(null)
   // After SSH is confirmed reachable: when the printer was just added, propose enrollment and wait for
   // the user to confirm; when they explicitly clicked Enroll, start straight away.
-  function startEnrollWhenSshOpen(printer: Printer, fromAdd: boolean) {
+  function startEnrollWhenSshOpen(printer: Printer, fromAdd: boolean, forced: boolean) {
     window.b3d.printers.checkSshOpen(printer.ip).then((sshOpen) => {
       const decision = enrollPathDecision({ sshOpen, fromAdd })
-      if (decision === 'root-gate') setRootAccessGate({ printer, fromAdd })
+      if (decision === 'root-gate') setRootAccessGate({ printer, fromAdd, forced })
       else if (decision === 'enroll-proposal') setEnrollProposal(printer)
-      else setEnrollModal({ printer, mode: 'enroll', fromAdd })
+      else setEnrollModal({ printer, mode: 'enroll', fromAdd, forced })
     })
   }
   // Takes the printer object (not an id) so it works for a just-added printer that is not yet in the
   // printers state array (the setPrinters update has not flushed when add triggers this).
-  function openEnrollOrAccess(printer: Printer, fromAdd: boolean) {
+  function openEnrollOrAccess(printer: Printer, fromAdd: boolean, forced = false) {
     window.b3d.printers.checkDaemon(printer.id).then((result) => {
       const decision = daemonAccessDecision({ isManaged: result.isManaged, enrolled: Boolean(printer.enrollmentLog), hasAccessIdentity: Boolean(printer.accessIdentity) })
       if (decision === 'access') setAccessModal(printer)
-      else startEnrollWhenSshOpen(printer, fromAdd)
+      else startEnrollWhenSshOpen(printer, fromAdd, forced)
     })
   }
   function retryRootAccessGate() {
     if (!rootAccessGate) return
     const gate = rootAccessGate
     setRootAccessGate(null)
-    startEnrollWhenSshOpen(gate.printer, gate.fromAdd)
+    startEnrollWhenSshOpen(gate.printer, gate.fromAdd, gate.forced)
   }
   function confirmEnrollProposal() {
     if (!enrollProposal) return
@@ -79,8 +81,17 @@ interface PrinterActionDeps {
   runRecover: (id: string) => void
 }
 
+// Recovery and repair leave a working daemon with the plugins still to put back, so the app re-applies
+// them once their modal closes. Reactivation puts them back as one of its own steps, on the printer,
+// before the reboot that picks them up: running it again here would repeat the whole job for nothing.
+const MODES_THAT_LEAVE_THE_PLUGINS_TO_PUT_BACK: ReadonlySet<EnrollMode> = new Set<EnrollMode>(['recovery', 'repair'])
+
+export function leavesThePluginsToPutBack(mode: EnrollMode | undefined): boolean {
+  return mode !== undefined && MODES_THAT_LEAVE_THE_PLUGINS_TO_PUT_BACK.has(mode)
+}
+
 // Persist the just-enrolled printer and follow up per mode: uninstall removes it, the restart-bearing
-// modes mark an expected-restart window, and recovery-style modes kick off a plugin recover.
+// modes mark an expected-restart window, and the modes that left the plugins off kick off a recover.
 function applyEnrolledOutcome(updatedPrinter: Printer, mode: EnrollMode | undefined, deps: PrinterActionDeps) {
   if (mode === 'uninstall') {
     deps.removePrinter(updatedPrinter.id)
@@ -91,7 +102,7 @@ function applyEnrolledOutcome(updatedPrinter: Printer, mode: EnrollMode | undefi
   deps.setPrinters((prev) => prev.map((printer) => (printer.id === updatedPrinter.id ? updatedPrinter : printer)))
   if (mode && isDaemonRestartMode(mode)) deps.markExpectedRestart(updatedPrinter.id, POST_OPERATION_GRACE_MS)
   pingAndUpdate(updatedPrinter, deps.setPrinters)
-  if (mode === 'recovery' || mode === 'reactivate' || mode === 'repair') deps.runRecover(updatedPrinter.id)
+  if (leavesThePluginsToPutBack(mode)) deps.runRecover(updatedPrinter.id)
 }
 
 // The printer-lifecycle handlers (add / access-granted / enrolled / rescan / enroll). Built from the
@@ -119,9 +130,9 @@ function buildPrinterActions(deps: PrinterActionDeps) {
     deps.setDiscovered([])
     window.b3d.mdns.stop().then(() => window.b3d.mdns.start())
   }
-  function handleEnrollPrinter(id: string) {
+  function handleEnrollPrinter(id: string, forced?: boolean) {
     const printer = deps.printers.find((candidate) => candidate.id === id)
-    if (printer) deps.enrollGate.openEnrollOrAccess(printer, false)
+    if (printer) deps.enrollGate.openEnrollOrAccess(printer, false, forced)
   }
 
   return { handleAccessGranted, handleAddPrinter, handleEnrolled, handleRescan, handleEnrollPrinter }
@@ -135,14 +146,16 @@ function gateHandles(gate: EnrollGate) {
   }
 }
 
-// Every per-printer toolbar/settings action that just opens enrollment in a specific mode.
-function enrollModeHandlers(openEnrollModal: (id: string, mode: EnrollMode) => void) {
+// Every per-printer toolbar/settings action that just opens enrollment in a specific mode. Recovery and
+// repair also come off the Force menu, which hands them forced: a banner calls them with one argument
+// and gets the usual refusals.
+function enrollModeHandlers(openEnrollModal: (id: string, mode: EnrollMode, forced?: boolean) => void) {
   return {
     handleViewEnrollmentLog: (id: string) => openEnrollModal(id, 'history'),
     handleUpdateDaemon: (id: string) => openEnrollModal(id, 'update-daemon'),
     handleUpdateJinni: (id: string) => openEnrollModal(id, 'update-jinni'),
-    handleRecoverPrinter: (id: string) => openEnrollModal(id, 'recovery'),
-    handleRepairPrinter: (id: string) => openEnrollModal(id, 'repair'),
+    handleRecoverPrinter: (id: string, forced?: boolean) => openEnrollModal(id, 'recovery', forced),
+    handleRepairPrinter: (id: string, forced?: boolean) => openEnrollModal(id, 'repair', forced),
     handleDeactivatePrinter: (id: string) => openEnrollModal(id, 'deactivate'),
     handleReactivatePrinter: (id: string) => openEnrollModal(id, 'reactivate'),
     handleUninstallPrinter: (id: string) => openEnrollModal(id, 'uninstall'),
@@ -193,9 +206,9 @@ export function useAppCallbacks(
     markExpectedRestart: (printerId) => markExpectedRestart(printerId, POST_OPERATION_GRACE_MS),
     askForTheirLogin: (printerId) => openEnrollModal(printerId, 'reboot'),
   }))
-  function openEnrollModal(printerId: string, mode: EnrollMode) {
+  function openEnrollModal(printerId: string, mode: EnrollMode, forced = false) {
     const printer = printers.find((candidate) => candidate.id === printerId)
-    if (printer) setEnrollModal({ printer, mode })
+    if (printer) setEnrollModal({ printer, mode, forced })
   }
   function markExpectedRestart(printerId: string, durationMs: number) {
     setPrinters(applyToId(printerId, { expectedRestartUntil: Date.now() + durationMs }))

@@ -79,6 +79,17 @@ describe('a deploy is always a move forward', () => {
     printerReportsDaemon('0.13.0')
     await expect(assertKnownPrinterNotDowngraded('printer-1')).rejects.toThrow(DaemonMoveRefused)
   })
+
+  // The Force menu is the owner saying he wants this app's daemon on the printer whatever it reports
+  // running now. It stops being a Force menu the moment this guard still refuses him.
+  it('runs anyway when the run was forced, and never even asks the printer its version', async () => {
+    printerReportsDaemon('0.13.0')
+    await expect(assertNotADaemonDowngrade(PRINTER, true)).resolves.toBeUndefined()
+
+    vi.mocked(loadPrinters).mockReturnValue([PRINTER])
+    await expect(assertKnownPrinterNotDowngraded('printer-1', true)).resolves.toBeUndefined()
+    expect(fetchDaemonStatus).not.toHaveBeenCalled()
+  })
 })
 
 describe('a printer that is printing keeps its daemon', () => {
@@ -163,6 +174,17 @@ describe('every path that moves a daemon asks first and records last', () => {
     recorded.slice(0, 3).forEach((upTo) => {
       expect(upTo).toContain('assertPairLandedTogether')
     })
+  })
+
+  // Forcing waives the version question only. A print running on the printer is the user's, so no menu
+  // of ours gets to ruin it, and the Update menu is not a Force flow and keeps the question.
+  it('carries the forced flag into the version question and nowhere near the running-print one', () => {
+    const safeToMove = daemonOps.slice(daemonOps.indexOf('async function assertSafeToMoveDaemon'), daemonOps.indexOf('export async function'))
+
+    expect(safeToMove).toContain('assertPrinterNotPrinting(record.id)')
+    expect(safeToMove).toContain('assertNotADaemonDowngrade(record, forced)')
+    const update = daemonOps.slice(daemonOps.indexOf('export async function runUpdateDaemon'))
+    expect(update).toContain('assertSafeToMoveDaemon(record, false)')
   })
 
   it('asks before recovery after a firmware update re-enrolls a printer the app already knows', () => {

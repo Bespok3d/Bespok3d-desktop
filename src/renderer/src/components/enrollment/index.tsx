@@ -6,6 +6,7 @@ import { useEnrollment } from '../../hooks/enrollment'
 import type { SshCredentials, EnrollState } from '../../hooks/enrollment'
 import { useI18n } from '../../i18n/context'
 import { formatDateTime } from '../../utils/datetime'
+import { mainProcessMessage } from '../../utils/errorMessage'
 import { savedRecord } from '../../data/printers'
 import { Modal } from '../common/overlay/Modal'
 import { Button } from '../common/Button'
@@ -32,6 +33,9 @@ interface EnrollmentProps {
   printer: Printer
   mode: EnrollMode
   fromAdd?: boolean
+  // Launched from the Force menu: run it even though the printer reports a newer daemon than this app
+  // ships. A running print still refuses.
+  forced?: boolean
   onEnrolled: (updated: Printer) => void
   onClose: () => void
   onEscalateRecovery?: () => void
@@ -215,20 +219,34 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
     />
   )
 
+  if (props.state.startError) return (
+    <div className="enroll-body">
+      <p className="u-hint-sm">{t('enroll.start_failed')}</p>
+      <p className="u-hint-sm mono">{props.state.startError}</p>
+      <div className="modal-foot">
+        <Button variant="outline" onClick={props.onClose}>{t('btn.close')}</Button>
+      </div>
+    </div>
+  )
+
+  // Cancel asks the printer to stop between steps, so it can only answer while the printer is
+  // answering at all. Once it has gone quiet there is nothing left to cancel, and the way out is Close.
   return (
     <div className="enroll-body">
       <div className="progress">
         <div className="progress-bar indeterminate u-w-full" />
       </div>
+      {props.state.silentSinceStart && <p className="u-hint-sm">{t('enroll.no_answer_yet')}</p>}
       <div className="modal-foot">
         <Button variant="outline" onClick={props.onCancelOp}>{t('btn.cancel')}</Button>
+        {props.state.silentSinceStart && <Button variant="outline" onClick={props.onClose}>{t('btn.close')}</Button>}
       </div>
     </div>
   )
 }
 
-export function Enrollment({ printer, mode, fromAdd = false, onEnrolled, onClose, onEscalateRecovery, onExpectedRestart }: EnrollmentProps) {
-  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp } = useEnrollment(printer)
+export function Enrollment({ printer, mode, fromAdd = false, forced = false, onEnrolled, onClose, onEscalateRecovery, onExpectedRestart }: EnrollmentProps) {
+  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp, failStart } = useEnrollment(printer, forced)
   const [credentials, setCredentials] = useState<SshCredentials>({ user: '', password: '', port: 22 })
   const [adapterInfo, setAdapterInfo] = useState<AdapterInfo | null>(null)
   const autoStarted = useRef(false)
@@ -239,7 +257,7 @@ export function Enrollment({ printer, mode, fromAdd = false, onEnrolled, onClose
   })
 
   function loadAdapterInfo() {
-    window.b3d.printers.adapterGet(printer.adapter).then(setAdapterInfo)
+    window.b3d.printers.adapterGet(printer.adapter).then(setAdapterInfo).catch(adapterReadFailed)
   }
   useEffect(loadAdapterInfo, [])
 
@@ -254,21 +272,29 @@ export function Enrollment({ printer, mode, fromAdd = false, onEnrolled, onClose
  return }
     startEnrollment(creds)
   }
+  // Every action here needs the printer's adapter to know how to log in. Without it there is nothing to
+  // run, so name the adapter that could not be read instead of leaving a bar that will never move.
+  function adapterReadFailed(error: unknown) {
+    autoStarted.current = false
+    failStart(mainProcessMessage(error))
+  }
   function startWithAdapterDefaults(adapter: AdapterInfo | null) {
-    if (!adapter) { autoStarted.current = false;
+    if (!adapter) {
+      adapterReadFailed(new Error(printer.adapter))
 
- return }
+      return
+    }
     handleStart({ user: adapter.defaults.sshUser, password: adapter.defaults.sshPasswordHint, port: adapter.defaults.sshPort })
   }
   function autoStartWithDefaultCredentials() {
     if (!autoStartEligible(mode, Boolean(printer.customSshCredentials)) || autoStarted.current) return
     autoStarted.current = true
-    window.b3d.printers.adapterGet(printer.adapter).then(startWithAdapterDefaults)
+    window.b3d.printers.adapterGet(printer.adapter).then(startWithAdapterDefaults).catch(adapterReadFailed)
   }
   useEffect(autoStartWithDefaultCredentials, [])
 
   function startOnAdapterDefaults() {
-    window.b3d.printers.adapterGet(printer.adapter).then(startWithAdapterDefaults)
+    window.b3d.printers.adapterGet(printer.adapter).then(startWithAdapterDefaults).catch(adapterReadFailed)
   }
   const goAhead = useGoAhead({
     mode, phase: state.phase,

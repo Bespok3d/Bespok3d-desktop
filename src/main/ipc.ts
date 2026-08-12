@@ -112,8 +112,8 @@ function registerPrinterHandlers(getMainWindow: () => BrowserWindow): void {
   ipcMain.handle('printers:cancelOp', (_ev, printerId: string) => requestCancel(printerId))
   ipcMain.handle(
     'printers:enroll',
-    async (_ev, printerId: string, ip: string, adapterId: string, user: string, password: string, port: number, retryFromStepId?: string) => {
-      const result = await enrollPrinter(getMainWindow(), printerId, ip, adapterId, { user, password, port }, retryFromStepId)
+    async (_ev, printerId: string, ip: string, adapterId: string, user: string, password: string, port: number, retryFromStepId?: string, forced?: boolean) => {
+      const result = await enrollPrinter(getMainWindow(), printerId, ip, adapterId, { user, password, port }, retryFromStepId, forced)
       // Record the true daemon version (and installed list / drift) right away instead of waiting for
       // the first status ping. Reuses the bounded status fetch; a no-op if the daemon is unreachable.
       await checkDaemonRecord(printerId).catch(() => undefined)

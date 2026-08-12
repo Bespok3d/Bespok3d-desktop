@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
+import { readFileSync } from 'fs'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, act, waitFor } from '@testing-library/react'
 import { setup } from './test/harness'
@@ -48,7 +49,8 @@ describe('App flow: a known enrolled printer whose daemon went down (groups 2-4)
     // The banner opens the window; nothing runs on the printer until the user says go on it.
     expect(repair).not.toHaveBeenCalled()
     await user.click(screen.getAllByRole('button', { name: 'Repair daemon' })[1])
-    await waitFor(() => expect(repair).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22))
+    // Not forced: only the Force menu waives the refusal to put a printer back onto an older daemon.
+    await waitFor(() => expect(repair).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22, false))
   })
 
   it('a post-OTA printer (write layer reset) offers Recover, not Repair, and Recover starts the re-enroll', async () => {
@@ -61,7 +63,7 @@ describe('App flow: a known enrolled printer whose daemon went down (groups 2-4)
 
     await user.click(screen.getByRole('button', { name: en('banner.recover_action') }))
     expect(await screen.findByRole('heading', { name: /Recover Alpha/ })).toBeInTheDocument()
-    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22))
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
   })
 
   it('finishing the recovery re-enroll triggers a plugin recover (store.recover)', async () => {
@@ -97,6 +99,17 @@ describe('App flow: a managed printer whose plugin state drifted (group 5)', () 
     })
     await user.click(await screen.findByRole('button', { name: en('banner.drift_action') }))
     await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1'))
+  })
+})
+
+// A repair the user forced can discover mid-run that the printer needs full recovery instead. Handing
+// that recovery over unforced walks him straight back into the refusal he forced his way past, and no
+// rendered test sees it, because the escalation is wired where the modal is mounted.
+describe('App flow: a forced repair that escalates to recovery', () => {
+  it('hands the recovery the same forced flag the repair was launched with', () => {
+    var wiring = readFileSync('src/renderer/src/app/AppModals.tsx', 'utf8')
+
+    expect(wiring).toContain('onEscalateRecovery={() => actions.handleRecoverPrinter(enrollModal.printer.id, enrollModal.forced)}')
   })
 })
 

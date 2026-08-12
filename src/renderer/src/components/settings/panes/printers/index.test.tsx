@@ -126,13 +126,23 @@ describe('PrintersPane remove flow', () => {
 })
 
 describe('PrintersPane Force menu', () => {
-  it('recalls each setup flow on demand for an enrolled printer', async () => {
+  // Forced is the whole point of this menu: what it starts runs even against a printer reporting a
+  // newer daemon than the app ships, which is the state a re-enroll or a repair is usually chasing.
+  it('recalls each setup flow on demand for an enrolled printer, and asks for it forced', async () => {
     var fns = handlers()
     var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...enrolled }), fns)
 
     await user.click(screen.getByRole('button', { name: new RegExp(en('printers.force')) }))
     await user.click(screen.getByRole('button', { name: en('printers.force_recover') }))
-    expect(fns.onRecoverPrinter).toHaveBeenCalledWith('printer-1')
+    expect(fns.onRecoverPrinter).toHaveBeenCalledWith('printer-1', true)
+
+    await user.click(screen.getByRole('button', { name: new RegExp(en('printers.force')) }))
+    await user.click(screen.getByRole('button', { name: en('printers.force_enroll') }))
+    expect(fns.onEnrollPrinter).toHaveBeenCalledWith('printer-1', true)
+
+    await user.click(screen.getByRole('button', { name: new RegExp(en('printers.force')) }))
+    await user.click(screen.getByRole('button', { name: en('printers.force_repair') }))
+    expect(fns.onRepairPrinter).toHaveBeenCalledWith('printer-1', true)
 
     await user.click(screen.getByRole('button', { name: new RegExp(en('printers.force')) }))
     await user.click(screen.getByRole('button', { name: en('printers.force_reinstall') }))

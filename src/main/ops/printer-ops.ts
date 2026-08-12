@@ -152,7 +152,7 @@ export function registerPrinterOperationHandlers(getMainWindow: () => BrowserWin
   ipcMain.handle('printer:reboot', async (_ev, printerId: string, ip: string, user: string, password: string, port: number) =>
     runReboot(getMainWindow(), printerId, await opAddress(printerId, ip), user, password, port)
   )
-  ipcMain.handle('printer:repair', async (_ev, printerId: string, ip: string, user: string, password: string, port: number) =>
-    runRepair(getMainWindow(), printerId, await opAddress(printerId, ip), user, password, port)
+  ipcMain.handle('printer:repair', async (_ev, printerId: string, ip: string, user: string, password: string, port: number, forced?: boolean) =>
+    runRepair(getMainWindow(), printerId, await opAddress(printerId, ip), user, password, port, forced)
   )
 }

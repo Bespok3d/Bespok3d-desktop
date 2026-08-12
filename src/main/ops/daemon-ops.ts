@@ -15,9 +15,12 @@ import { assertNotADaemonDowngrade, assertPairLandedTogether, assertPrinterNotPr
 
 // Asked before a single byte moves, so a refused op never touches the printer at all: it is not
 // printing, and this app is not about to put it back onto an older daemon than it is running.
-async function assertSafeToMoveDaemon(record: PrinterRecord): Promise<void> {
+//
+// Forcing waives the version question and nothing else. A running print is still a refusal however the
+// op was launched: the print is the user's, and no menu of ours is worth ruining it.
+async function assertSafeToMoveDaemon(record: PrinterRecord, forced: boolean): Promise<void> {
   assertPrinterNotPrinting(record.id)
-  await assertNotADaemonDowngrade(record)
+  await assertNotADaemonDowngrade(record, forced)
 }
 
 function repairContext(record: PrinterRecord, ip: string, credentials: SshCredentials, runtimeUser: string): EnrollContext {
@@ -98,9 +101,9 @@ export async function checkWriteLayer(printerId: string): Promise<boolean | null
   }
 }
 
-export async function runRepair(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
+export async function runRepair(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number, forced = false): Promise<void> {
   const { record, adapter, ctx } = daemonOpContext(printerId, ip, { user, password, port })
-  await assertSafeToMoveDaemon(record)
+  await assertSafeToMoveDaemon(record, forced)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'check-write-layer', label: 'Checking the write layer', detail: 'A firmware update resets the printer overlay; when that happens a daemon repair would not survive a reboot, so the printer needs full recovery instead', run: async () => { await guardWriteLayer(adapter, ssh) } },
     { id: 'diagnose', label: 'Diagnosing the daemon', detail: 'Checks for a stale demon directory, a wrong autostart path, a missing daemon, or an occupied port', run: async (progress) => { progress((await diagnoseDaemon(ssh)).trim()) } },
@@ -114,7 +117,8 @@ export async function runRepair(win: BrowserWindow, printerId: string, ip: strin
 
 export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
   const { record, adapter, ctx } = daemonOpContext(printerId, ip, { user, password, port })
-  await assertSafeToMoveDaemon(record)
+  // Update is not a Force flow: it exists to move a printer forward, so it keeps the version question.
+  await assertSafeToMoveDaemon(record, false)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'deploy-daemon', label: 'Uploading fresh daemon code', detail: 'Uploads the latest daemon source and adapter jinni; the cert and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-daemon', ssh, { ...ctx, onProgress: progress }) },
     { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Deploys the autostart script, frees port 4269, and restarts the daemon', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },

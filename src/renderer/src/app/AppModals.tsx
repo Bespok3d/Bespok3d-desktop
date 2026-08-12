@@ -40,15 +40,17 @@ export function AppModals({ actions, discovered, existingPrinters, onOpenPlugin 
           onLater={appUpdate.dismiss}
         />
       )}
+      {/* A forced repair that escalates to recovery stays forced: he already answered that question. */}
       {enrollModal && (
         <Enrollment
           key={`${enrollModal.printer.id}-${enrollModal.mode}`}
           printer={enrollModal.printer}
           mode={enrollModal.mode}
           fromAdd={enrollModal.fromAdd}
+          forced={enrollModal.forced}
           onEnrolled={actions.handleEnrolled}
           onClose={() => actions.setEnrollModal(null)}
-          onEscalateRecovery={() => actions.handleRecoverPrinter(enrollModal.printer.id)}
+          onEscalateRecovery={() => actions.handleRecoverPrinter(enrollModal.printer.id, enrollModal.forced)}
           onExpectedRestart={(printerId) => actions.markExpectedRestart(printerId, EXPECTED_RESTART_GRACE_MS)}
         />
       )}

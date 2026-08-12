@@ -9,9 +9,11 @@ export interface PrinterActions {
   onAddPrinter: () => void
   onRemovePrinter: (id: string) => void
   onUpdatePrinterIcon: (id: string, color?: string, image?: string, size?: number) => void
-  onEnrollPrinter: (id: string) => void
-  onRepairPrinter: (id: string) => void
-  onRecoverPrinter: (id: string) => void
+  // forced: only the Force menu passes it. It waives the refusal to put a printer back onto an older
+  // daemon than it reports running, and nothing else.
+  onEnrollPrinter: (id: string, forced?: boolean) => void
+  onRepairPrinter: (id: string, forced?: boolean) => void
+  onRecoverPrinter: (id: string, forced?: boolean) => void
   onReinstallPlugins: (id: string) => void
   onViewEnrollmentLog: (id: string) => void
   onUpdateDaemon: (id: string) => void

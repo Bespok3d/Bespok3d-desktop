@@ -322,7 +322,7 @@ as you touch the file.
 
 - `useAdapterViews` (hook) - [hooks/adapters.ts](../src/renderer/src/hooks/adapters.ts) - The adapter set is static for a build, so this reads once and never refreshes.
 - `useDisplayPrefs` (hook) - [hooks/displayPrefs.ts](../src/renderer/src/hooks/displayPrefs.ts) - The shell's display preferences, backed by the main settings store so they survive a reload (theme,
-- `useEnrollment` (hook) - [hooks/enrollment.ts](../src/renderer/src/hooks/enrollment.ts)
+- `useEnrollment` (hook) - [hooks/enrollment.ts](../src/renderer/src/hooks/enrollment.ts) - forced: the user launched this from the Force menu, which waives the check that refuses to put a
 - `useGatedInstall` (hook) - [hooks/installGate.ts](../src/renderer/src/hooks/installGate.ts)
 - `useInstallGate` (hook) - [hooks/installGate.ts](../src/renderer/src/hooks/installGate.ts)
 - `useMdnsDiscovery` (hook) - [hooks/printers.ts](../src/renderer/src/hooks/printers.ts)

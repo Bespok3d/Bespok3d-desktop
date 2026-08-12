@@ -48,9 +48,3 @@ connection used to lose that whole list, and the app never asked again, so plugi
 the store with nothing said about it. A list is now asked for up to five times when the connection is
 dropped. A host that is only slow is still asked once, so a slow connection never makes you wait five
 times over.
-
-## A plugin list shown as unsigned had been signed after all
-
-If the connection dropped while Bespok3d was reading the signature that travels with a plugin list,
-the list was shown as unsigned, which told you a publisher had not signed a release they had signed.
-The signature is now asked for again the same way the list is.

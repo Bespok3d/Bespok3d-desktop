@@ -24,8 +24,9 @@ export const printersApi = {
     ipcRenderer.invoke('printers:adapters:list'),
   checkSsh: (ip: string, user: string, password: string, port: number): Promise<SshCheckResult> =>
     ipcRenderer.invoke('printers:checkSsh', ip, user, password, port),
-  enroll: (printerId: string, ip: string, adapterId: string, user: string, password: string, port: number, retryFromStepId?: string): Promise<void> =>
-    ipcRenderer.invoke('printers:enroll', printerId, ip, adapterId, user, password, port, retryFromStepId),
+  // forced: launched from the Force menu, so the daemon-version question is waived. See move-guard.
+  enroll: (printerId: string, ip: string, adapterId: string, user: string, password: string, port: number, retryFromStepId?: string, forced?: boolean): Promise<void> =>
+    ipcRenderer.invoke('printers:enroll', printerId, ip, adapterId, user, password, port, retryFromStepId, forced),
   // Stop the operation running on this printer at the next step boundary.
   cancelOp: (printerId: string): Promise<void> => ipcRenderer.invoke('printers:cancelOp', printerId),
   deactivate: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
@@ -36,8 +37,8 @@ export const printersApi = {
     ipcRenderer.invoke('printer:uninstall', printerId, ip, user, password, port),
   reboot: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
     ipcRenderer.invoke('printer:reboot', printerId, ip, user, password, port),
-  repair: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
-    ipcRenderer.invoke('printer:repair', printerId, ip, user, password, port),
+  repair: (printerId: string, ip: string, user: string, password: string, port: number, forced?: boolean): Promise<void> =>
+    ipcRenderer.invoke('printer:repair', printerId, ip, user, password, port, forced),
   updateDaemon: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
     ipcRenderer.invoke('printer:update-daemon', printerId, ip, user, password, port),
   updateJinni: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>

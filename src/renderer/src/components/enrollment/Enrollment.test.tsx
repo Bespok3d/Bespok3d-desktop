@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { useState } from 'react'
-import { describe, it, expect, vi } from 'vitest'
-import { screen, act, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { screen, act, waitFor, fireEvent } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makePrinter, makeEnrollEvent } from '../../test/fixtures'
 import { Enrollment } from './index'
@@ -45,7 +45,7 @@ describe('Enrollment happy path', () => {
   it('auto-starts with adapter defaults, streams steps, and reports the enrolled printer on Done', async () => {
     var { user, emit, b3d, onEnrolled } = renderEnroll('enroll')
 
-    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22))
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
 
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'running', stepLabel: 'Deploying daemon', stepIndex: 1 })))
     expect(screen.getByText('Deploying daemon')).toBeInTheDocument()
@@ -70,7 +70,23 @@ describe('Enrollment custom SSH credentials', () => {
     expect(b3d.printers.checkSsh).toHaveBeenCalledWith('10.0.0.1', 'root', 'secret', 22)
 
     await user.click(screen.getByRole('button', { name: 'Start enrollment' }))
-    expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', 'secret', 22)
+    expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', 'secret', 22, undefined, false)
+  })
+})
+
+// Launched from the Force menu, the printer reporting a newer daemon than the app ships must not stop
+// the run: the flag has to reach the main process, or the menu offers something it cannot deliver.
+describe('Enrollment launched from the Force menu', () => {
+  it('asks for a forced enroll and a forced repair', async () => {
+    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+    var { b3d } = setup(<Enrollment printer={printer} mode="enroll" forced onEnrolled={vi.fn()} onClose={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} />)
+
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, true))
+
+    const forcedRepair = setup(<Enrollment printer={printer} mode="repair" forced onEnrolled={vi.fn()} onClose={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} />)
+    await forcedRepair.user.click(screen.getByRole('button', { name: 'Repair daemon' }))
+
+    await waitFor(() => expect(forcedRepair.b3d.printers.repair).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22, true))
   })
 })
 
@@ -83,7 +99,7 @@ describe('Enrollment failure handling', () => {
     await user.click(screen.getByRole('button', { name: 'More' }))
     await user.click(screen.getByRole('button', { name: 'Start from step' }))
 
-    expect(b3d.printers.enroll).toHaveBeenLastCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, 'deploy-daemon')
+    expect(b3d.printers.enroll).toHaveBeenLastCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, 'deploy-daemon', false)
   })
 
   it('offers recovery escalation when a repair fails', async () => {
@@ -125,7 +141,7 @@ describe('Enrollment recovery escalation actually starts recovery', () => {
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'check-write-layer', stepLabel: 'Checking the write layer', error: 'write layer reset', stepIndex: 0 })))
 
     await user.click(screen.getByRole('button', { name: 'Run Recovery' }))
-    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22))
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
   })
 })
 
@@ -241,5 +257,92 @@ describe('Enrollment cancel', () => {
 
     expect(screen.getByText('Cancelled')).toBeInTheDocument()
     expect(screen.getByText('Unlocking the overlay')).toBeInTheDocument()
+  })
+})
+
+// The progress feed only reports on an operation the printer actually started. Anything that stops the
+// operation before that point has to say so on screen, or the modal sits on a bar that never moves.
+describe('Enrollment operation that never starts', () => {
+  function renderWithPrinters(printers: Record<string, unknown>) {
+    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+
+    return setup(
+      <Enrollment printer={printer} mode="recovery" onEnrolled={vi.fn()} onClose={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} />,
+      { b3d: { printers } },
+    )
+  }
+
+  it('says so when the printer has no adapter to log in with', async () => {
+    var { container } = renderWithPrinters({ adapterGet: vi.fn().mockResolvedValue(null) })
+
+    expect(await screen.findByText('This could not be started on the printer.')).toBeInTheDocument()
+    expect(screen.getByText('snapmaker-u1')).toBeInTheDocument()
+    expect(container.querySelector('.progress-bar.indeterminate')).toBeNull()
+  })
+
+  it('says so when the adapter cannot be read', async () => {
+    var { container } = renderWithPrinters({ adapterGet: vi.fn().mockRejectedValue(new Error('adapter registry unreachable')) })
+
+    expect(await screen.findByText('This could not be started on the printer.')).toBeInTheDocument()
+    expect(screen.getByText('adapter registry unreachable')).toBeInTheDocument()
+    expect(container.querySelector('.progress-bar.indeterminate')).toBeNull()
+  })
+
+  it('says so when the printer refuses the operation', async () => {
+    var { container } = renderWithPrinters({ enroll: vi.fn().mockRejectedValue(new Error('printer is busy printing')) })
+
+    expect(await screen.findByText('This could not be started on the printer.')).toBeInTheDocument()
+    expect(screen.getByText('printer is busy printing')).toBeInTheDocument()
+    expect(container.querySelector('.progress-bar.indeterminate')).toBeNull()
+  })
+})
+
+// An operation nobody refused, that then reports no step at all. Cancel cannot answer for a printer
+// that is not answering, so without a Close button the user is shut inside the modal for good.
+describe('Enrollment operation that goes quiet', () => {
+  const NO_ANSWER = 'No answer from the printer yet. It may be off, on another network, or refusing the login.'
+
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  async function renderAndWait(waitMs: number) {
+    var onClose = vi.fn()
+    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+    setup(<Enrollment printer={printer} mode="recovery" onEnrolled={vi.fn()} onClose={onClose} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} />)
+    await act(async () => { await Promise.resolve() })
+    await act(async () => { vi.advanceTimersByTime(waitMs) })
+
+    return { onClose }
+  }
+
+  it('keeps the bar and only Cancel while the printer still has time to report', async () => {
+    await renderAndWait(29000)
+
+    expect(screen.queryByText(NO_ANSWER)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+  })
+
+  it('says nothing answered and lets the user out once the printer has gone quiet', async () => {
+    var { onClose } = await renderAndWait(30000)
+
+    expect(screen.getByText(NO_ANSWER)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  // The retry leaves the failed step on screen, so the app cannot read "a step is showing" as "the
+  // printer answered". A retry that goes quiet used to shut the user in exactly as the first try did.
+  it('lets the user out of a retry that goes quiet too', async () => {
+    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+    var { emit } = setup(<Enrollment printer={printer} mode="recovery" onEnrolled={vi.fn()} onClose={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} />)
+    await act(async () => { await Promise.resolve() })
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'deploy-daemon', stepLabel: 'Deploy daemon', error: 'boom', stepIndex: 3 })))
+
+    fireEvent.click(screen.getByRole('button', { name: /More/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start from step' }))
+    await act(async () => { vi.advanceTimersByTime(30000) })
+
+    expect(screen.getByText(NO_ANSWER)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
   })
 })

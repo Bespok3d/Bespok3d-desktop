@@ -27,7 +27,12 @@ export class DaemonMoveRefused extends Error {}
 // build ships would be put backwards by a deploy, silently losing whatever that newer daemon added. A
 // printer that will not say its version is not refused: the deploy's own verification still catches a
 // move that did not take.
-export async function assertNotADaemonDowngrade(record: PrinterRecord): Promise<void> {
+//
+// Forced is the owner saying he knows and wants it anyway, which is the whole point of the Force menu:
+// the app ships the daemon it ships, and putting a printer back onto it is sometimes exactly the repair
+// he is after. Nothing else the guards refuse is waived by it.
+export async function assertNotADaemonDowngrade(record: PrinterRecord, forced = false): Promise<void> {
+  if (forced) return
   const running = await reportedDaemonVersion(record)
   if (!running || isDaemonVersionAtLeast(expectedDaemonVersion(), running)) return
 
@@ -40,11 +45,11 @@ export async function assertNotADaemonDowngrade(record: PrinterRecord): Promise<
 // The same question for a path that is handed an id rather than a record, which is how enrollment
 // arrives: recovery after a firmware update re-enrolls a printer the app already knows. An id the app
 // has no record for is a first enrollment and has nothing to be put backwards.
-export async function assertKnownPrinterNotDowngraded(printerId: string): Promise<void> {
+export async function assertKnownPrinterNotDowngraded(printerId: string, forced = false): Promise<void> {
   const record = loadPrinters().find((known) => known.id === printerId)
   if (!record) return
 
-  await assertNotADaemonDowngrade(record)
+  await assertNotADaemonDowngrade(record, forced)
 }
 
 // Moving either half restarts the daemon and the printer services it drives, so it never happens while
