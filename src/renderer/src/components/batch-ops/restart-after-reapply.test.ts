@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { installB3d } from '../../test/b3d-mock'
 import { makePrinter, makeAdapterInfo } from '../../test/fixtures'
-import { restartAfterReapply } from './restart-after-reapply'
+import { restartAfterReapply, restartSecondsOf } from './restart-after-reapply'
 
 describe('the printer is restarted once its plugins are back on it', () => {
   it('restarts it on the login the adapter ships, without asking the user for anything', async () => {
@@ -68,5 +68,27 @@ describe('a printer the app cannot restart on its own', () => {
 
     expect(askForTheirLogin).toHaveBeenCalledWith('printer-1')
     expect(restarting).toBe(false)
+  })
+})
+
+describe('how long the restart is said to take', () => {
+  it('takes the length from the printer own adapter, so the bar counts that printer restart', async () => {
+    const adapterGet = vi.fn().mockResolvedValue(makeAdapterInfo({ restartSeconds: 42 }))
+    installB3d({ printers: { adapterGet } })
+
+    expect(await restartSecondsOf(makePrinter())).toBe(42)
+  })
+
+  it('says there is no length when the adapter is gone, rather than handing the bar a made up one', async () => {
+    installB3d({ printers: { adapterGet: vi.fn().mockResolvedValue(null) } })
+
+    expect(await restartSecondsOf(makePrinter())).toBeNull()
+  })
+
+  it('says there is no length when the adapter cannot be read at all', async () => {
+    installB3d({ printers: { adapterGet: vi.fn().mockRejectedValue(new Error('no adapter on disk')) } })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(await restartSecondsOf(makePrinter())).toBeNull()
   })
 })

@@ -55,6 +55,9 @@ export interface AdapterInfo {
   // catalogue the build packs. Absent when the build ships no jinni package for it, which is the
   // honest answer: there is then no version to offer.
   jinniVersion?: string
+  // How long this printer takes to come back after a restart. The screens that make the user wait
+  // read it from here, so no number about a printer lives in the app.
+  restartSeconds: number
   description: string
   icon?: string
   defaults: AdapterDefaults
@@ -98,6 +101,9 @@ export interface AdapterDefinition {
   // The package name the jinni ships as, so the app can look up the version it would actually
   // install rather than the one a working copy happens to declare.
   jinniPackage: string
+  // How long this printer takes to come back after a restart, in seconds. Required: how long a wait
+  // lasts is the printer's fact, and the app carries no default for it.
+  restartSeconds: number
   description: string
   // Optional data-URL avatar (PNG/SVG/etc.) shown for every printer on this adapter, unless the user
   // sets their own picture. Travels to the renderer through serializeAdapter; must be a data: URL to

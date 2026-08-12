@@ -33,3 +33,24 @@ Setting up a printer and updating its daemon showed a bar that sat completely st
 count of files climbing past a hundred, which made it look like the app had died. The bar now fills
 up as those files go over, and it only pauses near the end, for the one part that gives nothing to
 count.
+
+## The wait while your printer restarts has a bar again
+
+After Bespok3d puts your plugins back and restarts the printer, the wait showed a percentage next to
+a bar that was not there at all: it had collapsed to nothing. There is now a bar across the width of
+the window and no percentage. It empties while you wait, over the time your own printer takes to come
+back, and clears itself when that time is up.
+
+## Your plugin lists arrive when GitHub drops the connection
+
+github.com drops the connection on some of the asks for the store's plugin lists. One dropped
+connection used to lose that whole list, and the app never asked again, so plugins were missing from
+the store with nothing said about it. A list is now asked for up to five times when the connection is
+dropped. A host that is only slow is still asked once, so a slow connection never makes you wait five
+times over.
+
+## A plugin list shown as unsigned had been signed after all
+
+If the connection dropped while Bespok3d was reading the signature that travels with a plugin list,
+the list was shown as unsigned, which told you a publisher had not signed a release they had signed.
+The signature is now asked for again the same way the list is.

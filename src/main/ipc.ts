@@ -64,7 +64,7 @@ function serializeAdapter(def: ReturnType<typeof getAdapter>): AdapterInfo | nul
   if (!def) return null
 
   return {
-    id: def.id, title: def.title, vendor: def.vendor, version: def.version, jinniVersion: shippedJinniVersion(def),
+    id: def.id, title: def.title, vendor: def.vendor, version: def.version, jinniVersion: shippedJinniVersion(def), restartSeconds: def.restartSeconds,
     description: def.description, icon: def.icon, defaults: def.defaults, envVars: def.envVars,
     enrollSteps: def.enrollSteps.map((step) => ({ id: step.id, label: step.label, detail: step.detail })),
   }

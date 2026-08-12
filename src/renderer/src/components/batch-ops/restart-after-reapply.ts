@@ -29,6 +29,19 @@ export function restartAfterReapply(
     .catch(restartDidNotHappen(printer.id, askForTheirLogin))
 }
 
+// How long this printer says it takes to come back, for the bar the user watches during the restart.
+// Null when the adapter cannot be read: a wait with no declared length is shown without a bar, never
+// with a made-up one.
+export function restartSecondsOf(printer: Printer): Promise<number | null> {
+  return window.b3d.printers.adapterGet(printer.adapter)
+    .then((adapter) => adapter?.restartSeconds ?? null)
+    .catch(function noDeclaredLength(error: unknown) {
+      console.error('[recovery] the restart length could not be read from the adapter', error)
+
+      return null
+    })
+}
+
 function restartDidNotHappen(printerId: string, askForTheirLogin: (printerId: string) => void) {
   return function handItToTheRestartWindow(error: unknown) {
     console.error('[recovery] the restart after putting the plugins back failed', error)

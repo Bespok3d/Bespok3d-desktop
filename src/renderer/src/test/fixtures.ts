@@ -101,7 +101,7 @@ export function makePrinter(overrides: Partial<Printer> = {}): Printer {
 
 export function makeAdapterInfo(overrides: Partial<AdapterInfo> = {}): AdapterInfo {
   return {
-    id: 'snapmaker-u1', title: 'Snapmaker U1', vendor: 'Snapmaker', version: '1.0.0', jinniVersion: '0.1.6',
+    id: 'snapmaker-u1', title: 'Snapmaker U1', vendor: 'Snapmaker', version: '1.0.0', jinniVersion: '0.1.6', restartSeconds: 42,
     description: 'Snapmaker U1 adapter',
     defaults: { sshUser: 'root', sshPort: 22, sshPasswordHint: '', runtimeUser: 'lava' },
     envVars: [], enrollSteps: [],

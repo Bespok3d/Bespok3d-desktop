@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-280 exported components + hooks across 21 areas.
+282 exported components + hooks across 21 areas.
 
 ## Common primitives
 
@@ -26,6 +26,7 @@ as you touch the file.
 - `Markdown` (component) - [components/common/content/Markdown.tsx](../src/renderer/src/components/common/content/Markdown.tsx)
 - `Modal` (component) - [components/common/overlay/Modal.tsx](../src/renderer/src/components/common/overlay/Modal.tsx) - The one modal scaffold: a dismiss-aware backdrop wrapping a focus-trapped dialog surface. Callers
 - `PanelSpinner` (component) - [components/common/feedback/PanelSpinner.tsx](../src/renderer/src/components/common/feedback/PanelSpinner.tsx)
+- `RebootProgress` (component) - [components/common/feedback/RebootProgress.tsx](../src/renderer/src/components/common/feedback/RebootProgress.tsx)
 - `Row` (component) - [components/common/Row.tsx](../src/renderer/src/components/common/Row.tsx)
 - `Segmented` (component) - [components/common/Segmented.tsx](../src/renderer/src/components/common/Segmented.tsx) - A single-choice control: a row of mutually-exclusive segments, one active. Labels/icons are passed
 - `SettingRow` (component) - [components/common/SettingRow.tsx](../src/renderer/src/components/common/SettingRow.tsx)
@@ -128,6 +129,7 @@ as you touch the file.
 - `BatchOpModal` (component) - [components/batch-ops/index.tsx](../src/renderer/src/components/batch-ops/index.tsx) - A batch op (recover / update-all / install-selected) shows the same two-step UI: live progress while
 - `BatchReportModal` (component) - [components/batch-ops/ReportModal.tsx](../src/renderer/src/components/batch-ops/ReportModal.tsx) - However a batch op ends, the user meets the same thing: what it was, one line saying how it went,
 - `OtaRecoveryResultsModal` (component) - [components/batch-ops/ResultsModal.tsx](../src/renderer/src/components/batch-ops/ResultsModal.tsx)
+- `PrinterRestartingModal` (component) - [components/batch-ops/PrinterRestarting.tsx](../src/renderer/src/components/batch-ops/PrinterRestarting.tsx) - What the user watches between the last plugin going back on the printer and the recovery report.
 - `useBatchOps` (hook) - [components/batch-ops/index.tsx](../src/renderer/src/components/batch-ops/index.tsx) - The daemon batch operations (OTA recover, update-all, install-selected, uninstall-selected). Recover
 - `useListFollowsActiveRow` (hook) - [components/batch-ops/follow-active-row.ts](../src/renderer/src/components/batch-ops/follow-active-row.ts) - Keeps the row being worked on in view. A run longer than the modal scrolls itself as each plugin
 - `usePendingUpdate` (hook) - [components/batch-ops/pending-update.ts](../src/renderer/src/components/batch-ops/pending-update.ts) - An update batch waits for the user to read it before it runs. Both entry points (the store's Update

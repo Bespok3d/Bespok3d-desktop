@@ -7,8 +7,31 @@ import { RegistryFetchError } from '../model'
 import type { SourceFailureReason } from '../model'
 import { LIST_FETCH_TIMEOUT_MS } from '../../net/fetch-deadlines'
 
+// github.com drops the connection on roughly half the first asks from a cold process, and one dropped
+// connection used to lose a whole plugin list: the store then showed a short catalog and the log showed
+// a wall of "skipped ... fetch failed". Asking again costs nothing when the host answers, and three
+// asks still left lists missing on the bench, so five is what a full store takes. Only a dropped
+// connection is re-asked: a timeout means the host is slow or unreachable, and asking a slow host four
+// more times just makes the user wait five times as long.
+const ASKS_AFTER_A_DROPPED_CONNECTION = 4
+const DROPPED_CONNECTION_CODES = ['UND_ERR_SOCKET', 'ECONNRESET', 'EPIPE']
+
 export function httpGet(url: string, headers: Record<string, string>, timeoutMs: number = LIST_FETCH_TIMEOUT_MS): Promise<Response> {
-  return fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) }).catch(networkError)
+  return askTheHost(url, headers, timeoutMs, ASKS_AFTER_A_DROPPED_CONNECTION)
+}
+
+function askTheHost(url: string, headers: Record<string, string>, timeoutMs: number, asksLeft: number): Promise<Response> {
+  return fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) }).catch(function askAgainOrGiveUp(error: Error) {
+    if (asksLeft === 0 || !droppedConnection(error)) return networkError(error)
+
+    return askTheHost(url, headers, timeoutMs, asksLeft - 1)
+  })
+}
+
+function droppedConnection(error: Error): boolean {
+  var cause = (error as { cause?: { code?: unknown } }).cause
+
+  return DROPPED_CONNECTION_CODES.includes(String(cause?.code ?? ''))
 }
 
 function networkError(error: Error): never {
@@ -55,8 +78,11 @@ export function connectorFailure(error: Error): never {
 
 // A signature's absence is ordinary (most lists are unsigned) and never fails the fetch, so every
 // failure path here collapses to null.
+// It asks again on a dropped connection for the same reason the index does, and for a sharper one: a
+// signature that never arrives reads to the user as "this list is unsigned", which is a different and
+// worse statement than "that fetch failed".
 export async function fetchSignatureAt(signatureUrl: string, headers: Record<string, string> = {}): Promise<string | null> {
-  const response = await fetch(signatureUrl, { headers, signal: AbortSignal.timeout(LIST_FETCH_TIMEOUT_MS) }).catch(() => null)
+  const response = await askTheHost(signatureUrl, headers, LIST_FETCH_TIMEOUT_MS, ASKS_AFTER_A_DROPPED_CONNECTION).catch(() => null)
   if (!response?.ok) return null
 
   return response.text().catch(() => null)

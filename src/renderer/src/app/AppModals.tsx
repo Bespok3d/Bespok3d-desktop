@@ -81,7 +81,7 @@ export function AppModals({ actions, discovered, existingPrinters, onOpenPlugin 
       )}
       <UpdateConfirmGate pending={actions.pendingUpdate} printers={existingPrinters} onConfirm={actions.confirmUpdateAll} onCancel={actions.cancelUpdateAll} />
       <InstallGateModals gate={actions.installGate} />
-      <BatchOpModal variant="recovery" busy={actions.recovering} result={actions.recoveryResults} progress={actions.batchProgress} restarting={actions.restartingAfterRecovery} {...everyBatchModal} onClose={() => actions.setRecoveryResults(null)} />
+      <BatchOpModal variant="recovery" busy={actions.recovering} result={actions.recoveryResults} progress={actions.batchProgress} restarting={actions.restartingAfterRecovery} printerRestarting={actions.printerRestarting} restartSeconds={actions.restartSeconds} {...everyBatchModal} onClose={() => actions.setRecoveryResults(null)} />
       <BatchOpModal variant="update" busy={actions.updatingAll} result={actions.updateAllResult} progress={actions.batchProgress} {...everyBatchModal} onClose={() => actions.setUpdateAllResult(null)} />
       <BatchOpModal variant="install" busy={actions.installingBatch} result={actions.installBatchResult} progress={actions.batchProgress} {...everyBatchModal} onClose={() => actions.setInstallBatchResult(null)} />
       <BatchOpModal variant="uninstall" busy={actions.uninstallingBatch} result={actions.uninstallBatchResult} {...everyBatchModal} onClose={() => actions.setUninstallBatchResult(null)} />

@@ -23,7 +23,7 @@
     "multi_exported_component_tsx": 0,
     "stories_fake_component": 0,
     "prod_standin_component": 0,
-    "components_without_story": 137,
+    "components_without_story": 135,
     "weak_identifiers": 19,
     "unguarded_fetch_effects": 2
   },

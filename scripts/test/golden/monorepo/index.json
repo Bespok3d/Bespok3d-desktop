@@ -64,7 +64,7 @@
     {
       "name": "bespok3d-daemon",
       "title": "Bespok3d daemon",
-      "version": "0.12.25",
+      "version": "0.12.24",
       "description": "The on-printer daemon for the Bespok3d plugin manager: a small FastAPI service that installs, updates, and removes plugins, reports printer capabilities, refuses any operation mid-print, and self-heals a plugin that breaks a service so the printer is never left unusable. It is plugin zero: the adapter bootstraps it over SSH at enrollment (cert-pinned HTTPS, bearer-token auth), not through the normal plugin install pipeline, so the install block below is intentionally empty. This package is the publishable, versioned artifact the app reads to know when a newer daemon is available.",
       "tagline": "The on-printer service that installs plugins and keeps the printer safe.",
       "category": "system",
@@ -82,7 +82,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "bespok3d-daemon/doc/README.md",
-      "download_url": "bespok3d-daemon-0.12.25.b3",
+      "download_url": "bespok3d-daemon-0.12.24.b3",
       "min_jinni_version": "0.1.10",
       "changelog_url": "bespok3d-daemon/doc/CHANGELOG.md"
     },
@@ -108,7 +108,8 @@
       "conflicts": [],
       "doc_url": "bespok3d-jinni-snapmaker-u1/doc/README.md",
       "download_url": "bespok3d-jinni-snapmaker-u1-0.1.10.b3",
-      "min_daemon_version": "0.12.22"
+      "min_daemon_version": "0.12.22",
+      "changelog_url": "bespok3d-jinni-snapmaker-u1/doc/CHANGELOG.md"
     },
     {
       "name": "camera-hw-accel",

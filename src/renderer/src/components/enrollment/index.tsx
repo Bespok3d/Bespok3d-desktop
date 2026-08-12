@@ -182,6 +182,7 @@ interface EnrollmentBodyProps {
   onCancelOp: () => void
   onEscalate?: () => void
   printerIsRebooting: boolean
+  restartSeconds?: number
 }
 
 function EnrollmentBody(props: EnrollmentBodyProps) {
@@ -210,6 +211,7 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
       onClose={props.onClose}
       onEscalate={props.mode === 'repair' ? props.onEscalate : undefined}
       printerIsRebooting={props.printerIsRebooting}
+      restartSeconds={props.restartSeconds}
     />
   )
 
@@ -299,7 +301,7 @@ export function Enrollment({ printer, mode, fromAdd = false, onEnrolled, onClose
         showCredentialsForm={goAhead.showCredentialsForm} awaitingGoAhead={goAhead.awaiting}
         onStart={handleStart} onGoAhead={goAhead.give} onOwnCredentials={goAhead.askForOwnCredentials} onClose={onClose}
         onDone={handleDone} onRetry={handleRetry} onReset={reset} onCancelOp={cancelOp} onEscalate={onEscalateRecovery}
-        printerIsRebooting={printerIsRebooting}
+        printerIsRebooting={printerIsRebooting} restartSeconds={adapterInfo?.restartSeconds}
       />
     </Modal>
   )

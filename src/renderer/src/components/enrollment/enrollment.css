@@ -199,26 +199,6 @@
   font-weight: var(--weight-medium);
 }
 
-/* Reboot countdown bar */
-
-.enroll-reboot-countdown {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.progress-bar.reboot {
-  background: var(--ink-3);
-  transition: width 200ms linear;
-}
-
-.enroll-reboot-pct {
-  font-size: var(--text-xs);
-  color: var(--ink-3);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 /* WiFi / progress hint banner */
 
 .enroll-hint {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import cx from '../../utils/cx'
 import { Explainer } from '../common/content/Explainer'
 import { Button } from '../common/Button'
+import { RebootProgress } from '../common/feedback/RebootProgress'
 import { IconCheck, IconRefresh, IconAlert, IconCheckCircle, IconChevron } from '../../design-system/icons'
 import { useI18n } from '../../i18n/context'
 import type { SshCredentials } from '../../hooks/enrollment'
@@ -47,45 +48,17 @@ interface EnrollmentProgressProps {
   onEscalate?: () => void
   mode?: EnrollMode
   printerIsRebooting?: boolean
+  // Absent when there is no live restart to watch, as in the history view of a past enrollment.
+  restartSeconds?: number
 }
 
 const REBOOT_STEP_ID = 'reboot-and-reconnect'
-const REBOOT_DURATION_MS = 42_000
 
 function StepIcon({ status }: { status: 'done' | 'running' | 'failed' }) {
   if (status === 'done') return <span className="enroll-step-icon done"><IconCheck size={13} /></span>
   if (status === 'running') return <span className="enroll-step-icon running"><span className="enroll-spin"><IconRefresh size={13} /></span></span>
 
   return <span className="enroll-step-icon failed"><IconAlert size={13} /></span>
-}
-
-function RebootCountdown() {
-  const [elapsed, setElapsed] = useState(0)
-
-  function startCountdown() {
-    const start = Date.now()
-    const id = setInterval(function tick() {
-      const ms = Date.now() - start
-      setElapsed(Math.min(ms, REBOOT_DURATION_MS))
-      if (ms >= REBOOT_DURATION_MS) clearInterval(id)
-    }, 200)
-
-    return function cleanup() { clearInterval(id) }
-  }
-
-  useEffect(startCountdown, [])
-
-  const pct = Math.max(0, 100 - Math.round((elapsed / REBOOT_DURATION_MS) * 100))
-  if (pct === 0) return null
-
-  return (
-    <div className="enroll-reboot-countdown">
-      <div className="progress">
-        <div className="progress-bar reboot" style={{ width: `${pct}%` }} />
-      </div>
-      <div className="enroll-reboot-pct">{pct}%</div>
-    </div>
-  )
 }
 
 function CompletedStepRows({ steps }: { steps: EnrollProgressEvent['completedSteps'] }) {
@@ -225,7 +198,7 @@ export function progressFill(stepsDone: number, stepsTotal: number, stepRunning:
   return Math.round(((stepsDone + (stepRunning ? intoStep : 0)) / stepsTotal) * 100)
 }
 
-export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, onEscalate, onCancelOp, onClose, mode, printerIsRebooting }: EnrollmentProgressProps) {
+export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, onEscalate, onCancelOp, onClose, mode, printerIsRebooting, restartSeconds }: EnrollmentProgressProps) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState(false)
   const [acting, setActing] = useState(false)
@@ -255,7 +228,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
           <div className="progress">
             <div className={cx('progress-bar', !showFailed && event.stepFraction === undefined && 'indeterminate')} style={{ width: `${pct}%` }} />
           </div>
-          {event.stepId === REBOOT_STEP_ID && !showFailed && <RebootCountdown />}
+          {event.stepId === REBOOT_STEP_ID && !showFailed && restartSeconds !== undefined && <RebootProgress restartSeconds={restartSeconds} />}
           {event.hint && <div className="enroll-hint">{event.hint}</div>}
           <div className="enroll-current-step">
             <div

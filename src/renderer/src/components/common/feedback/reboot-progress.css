@@ -1,0 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * The shared bar eases each change over 600ms, which is longer than the 200ms between this one's
+ * steps, so it would never settle and would read as jittery. This one steps evenly instead. */
+.progress-bar.restarting {
+  transition: width 200ms linear;
+}

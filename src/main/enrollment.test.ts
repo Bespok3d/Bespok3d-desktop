@@ -47,7 +47,7 @@ function mockStep(id: string, runImpl = vi.fn().mockResolvedValue(undefined)): E
 function mockAdapter(steps: EnrollStep[]) {
   return {
     id: 'test', title: 'Test', vendor: 'Test', version: '1.0.0', jinniVersion: '0.1.6',
-    jinniPackage: 'bespok3d-jinni-test', description: '',
+    jinniPackage: 'bespok3d-jinni-test', restartSeconds: 42, description: '',
     defaults: { sshUser: 'root', sshPort: 22, sshPasswordHint: '', runtimeUser: 'user' },
     envVars: [], enrollSteps: steps, verifyEnrolled: vi.fn().mockResolvedValue(true),
   }

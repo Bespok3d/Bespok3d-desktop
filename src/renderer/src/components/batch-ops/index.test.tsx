@@ -57,6 +57,7 @@ function RecoverHarness({ onRestart }: { onRestart: (printerId: string) => Promi
         busy={batchOps.recovering}
         result={batchOps.recoveryResults}
         restarting={batchOps.restartingAfterRecovery}
+        printerRestarting={batchOps.printerRestarting}
         failure={batchOps.batchFailure}
         onRepairPrinter={ignoreRepair}
         onOpenPlugin={() => {}}
@@ -99,13 +100,14 @@ describe('a recovery that put the plugins back', () => {
     expect(onRestart).not.toHaveBeenCalled()
   })
 
-  it('tells the user the printer is restarting, so the report explains why it drops off the network', async () => {
+  it('puts the user on a wait screen while the printer restarts, instead of a report it cannot act on', async () => {
     const recover = vi.fn().mockResolvedValue({ ok: true, results: [] })
     const { user } = setup(<RecoverHarness onRestart={vi.fn().mockResolvedValue(true)} />, { b3d: { store: { recover } } })
 
     await user.click(screen.getByRole('button', { name: 'recover' }))
 
-    await waitFor(() => expect(screen.getByText(en('recovery_results.restarting'))).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(en('recovery_restart.title'))).toBeInTheDocument())
+    expect(screen.queryByText(en('recovery_results.title_ok'))).not.toBeInTheDocument()
   })
 
   it('never says it is restarting a printer it is waiting on the user to log into', async () => {

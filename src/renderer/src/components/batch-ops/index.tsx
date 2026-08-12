@@ -12,6 +12,9 @@ import { mainProcessMessage } from '../../utils/errorMessage'
 import { reduceBatchProgress } from './progress'
 import { usePendingUpdate } from './pending-update'
 import { useRecoverOp } from './recover-op'
+import { waitForPrinterBack } from './wait-for-printer'
+import { restartSecondsOf } from './restart-after-reapply'
+import { PrinterRestartingModal } from './PrinterRestarting'
 import { batchSources } from './sources'
 import './batch-ops.css'
 import type { BatchProgressState } from './progress'
@@ -55,14 +58,19 @@ function BatchBusyView({ variant, progress }: { variant: BatchVariant; progress:
 
 // A batch op (recover / update-all / install-selected) shows the same two-step UI: live progress while
 // it runs, then the per-plugin results report. One component for all three so the variants cannot drift.
-export function BatchOpModal({ variant, busy, result, progress, restarting, failure, onRepairPrinter, onOpenPlugin, onClose, onDismissFailure }: {
+export function BatchOpModal({ variant, busy, result, progress, restarting, printerRestarting, restartSeconds, failure, onRepairPrinter, onOpenPlugin, onClose, onDismissFailure }: {
   variant: BatchVariant
   busy: boolean
   result: RecoverResult | null
   progress?: BatchProgressState | null
-  // Whether the app is restarting this printer itself now the report is up. A printer the user gave
-  // their own SSH login for is not restarted unattended, so the report must not claim it is.
+  // Whether the app restarted this printer itself. A printer the user gave their own SSH login for is
+  // not restarted unattended, so the report must not claim it was.
   restarting?: boolean
+  // The printer is restarting right now and the report is waiting behind it.
+  printerRestarting?: boolean
+  // How long this printer takes to come back, from its adapter. Null until the adapter has answered,
+  // and absent for the batch ops that never restart the printer.
+  restartSeconds?: number | null
   // The app's current batch refusal, whichever operation it belongs to: each modal shows only its own.
   failure: BatchFailure | null
   // Repair the printer's Bespok3d software, for the refusals that only a matched pair clears; the
@@ -81,6 +89,7 @@ export function BatchOpModal({ variant, busy, result, progress, restarting, fail
   return (
     <>
       {busy && !result && <BatchBusyView variant={variant} progress={progress} />}
+      {printerRestarting && !result && <PrinterRestartingModal restartSeconds={restartSeconds} />}
       {result && <OtaRecoveryResultsModal results={result} variant={variant} restarting={restarting} onOpenPlugin={onOpenPlugin} onClose={onClose} />}
       {failure?.variant === variant && (
         <BatchFailedModal variant={variant} reason={failure.reason} onRepairPrinter={repairTheRefusingPrinter} onClose={onDismissFailure} />
@@ -134,7 +143,12 @@ export function useBatchOps(
     if (printer) pingAndUpdate(printer, setPrinters)
     refreshEndpoints(printerId, setPrinters)
   }
-  const recoverOp = useRecoverOp(restartAfterReapply, (printerId, setBusy) => batchDidNotRun('recovery', printerId, setBusy))
+  function restartSecondsOfPrinter(printerId: string): Promise<number | null> {
+    const printer = printers.find((candidate) => candidate.id === printerId)
+
+    return printer ? restartSecondsOf(printer) : Promise.resolve(null)
+  }
+  const recoverOp = useRecoverOp(restartAfterReapply, (printerId, setBusy) => batchDidNotRun('recovery', printerId, setBusy), waitForPrinterBack, restartSecondsOfPrinter)
   function runRecover(printerId: string) {
     setBatchFailure(null)
     setBatchProgress(null)
@@ -175,6 +189,7 @@ export function useBatchOps(
 
   return {
     recoveryResults: recoverOp.recoveryResults, setRecoveryResults: recoverOp.setRecoveryResults, recovering: recoverOp.recovering, restartingAfterRecovery: recoverOp.restartingAfterRecovery,
+    printerRestarting: recoverOp.printerRestarting, restartSeconds: recoverOp.restartSeconds,
     updateAllResult, setUpdateAllResult, updatingAll, runUpdateAll, ...updateConfirm,
     installBatchResult, setInstallBatchResult, installingBatch, runInstallBatch,
     uninstallBatchResult, setUninstallBatchResult, uninstallingBatch, runUninstallBatch,

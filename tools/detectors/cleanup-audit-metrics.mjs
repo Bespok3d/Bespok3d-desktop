@@ -24,6 +24,7 @@ const TEXT_FREE_COMPONENTS = new Set([
   'src/renderer/src/components/common/SettingRow.tsx', // renders caller-supplied label/children
   'src/renderer/src/components/common/Toggle.tsx', // on/off control, no prose
   'src/renderer/src/components/settings/panes/printers/PopoverMenu.tsx', // renders a label/children render-prop + chevron, no prose
+  'src/renderer/src/components/common/feedback/RebootProgress.tsx', // a moving bar, no prose
   'src/renderer/src/components/common/content/Markdown.tsx', // renders a markdown string prop
   'src/renderer/src/components/common/content/b3d-ref-provider.tsx', // context Provider wrapping children, no prose
   'src/renderer/src/components/create/code-view/highlighted-code.tsx', // renders syntax-highlighted code tokens (data)

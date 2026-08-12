@@ -152,7 +152,7 @@ function enrollModeHandlers(openEnrollModal: (id: string, mode: EnrollMode) => v
 // The batch-op state + run handlers the modals and toolbar read straight through from useBatchOps.
 function batchOpHandles(batchOps: BatchOps) {
   return {
-    recoveryResults: batchOps.recoveryResults, setRecoveryResults: batchOps.setRecoveryResults, recovering: batchOps.recovering, restartingAfterRecovery: batchOps.restartingAfterRecovery,
+    recoveryResults: batchOps.recoveryResults, setRecoveryResults: batchOps.setRecoveryResults, recovering: batchOps.recovering, restartingAfterRecovery: batchOps.restartingAfterRecovery, printerRestarting: batchOps.printerRestarting, restartSeconds: batchOps.restartSeconds,
     updateAllResult: batchOps.updateAllResult, setUpdateAllResult: batchOps.setUpdateAllResult, updatingAll: batchOps.updatingAll,
     installBatchResult: batchOps.installBatchResult, setInstallBatchResult: batchOps.setInstallBatchResult, installingBatch: batchOps.installingBatch, batchProgress: batchOps.batchProgress, uninstallBatchResult: batchOps.uninstallBatchResult, setUninstallBatchResult: batchOps.setUninstallBatchResult, uninstallingBatch: batchOps.uninstallingBatch, handleUninstallBatch: batchOps.runUninstallBatch,
     batchFailure: batchOps.batchFailure, dismissBatchFailure: batchOps.dismissBatchFailure,
