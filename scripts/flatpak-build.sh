@@ -23,6 +23,12 @@ command -v docker > /dev/null || {
   exit 1
 }
 
+# The Mac's own builds already downloaded every Electron binary, this one included, so the container
+# reads that cache instead of pulling 119MB of its own through an emulated network stack that drops
+# the connection mid-download.
+ELECTRON_CACHE="${ELECTRON_CACHE:-$HOME/Library/Caches/electron}"
+mkdir -p "$ELECTRON_CACHE"
+
 [ -f "$APP_DIR/out/main/index.js" ] || {
   echo "Error: no build to package. Run 'npm run build' in $APP_DIR first." >&2
   exit 1
@@ -34,12 +40,11 @@ docker build --platform "$PLATFORM" -t "$IMAGE" "$APP_DIR/scripts/flatpak"
 echo "Building the Flatpak..."
 # The whole workspace is mounted because the app packs the daemon and the adapters from sibling
 # repos. /dev/fuse and the wider privileges are what flatpak-builder's sandbox needs to assemble a
-# build root. The two named volumes keep the electron download and the builder cache out of the
-# working tree and alive between runs.
+# build root. The named volume keeps the builder cache out of the working tree and alive between runs.
 docker run --rm --platform "$PLATFORM" \
   --privileged --device /dev/fuse \
   -v "$WORKSPACE":/src \
-  -v bespok3d-flatpak-electron:/root/.cache/electron \
+  -v "$ELECTRON_CACHE":/root/.cache/electron \
   -v bespok3d-flatpak-builder:/root/.cache/electron-builder \
   -w /src/Bespok3d-desktop \
   "$IMAGE" \

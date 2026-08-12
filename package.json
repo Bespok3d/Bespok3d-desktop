@@ -1,6 +1,6 @@
 {
   "name": "bespok3d",
-  "version": "0.7.2-beta",
+  "version": "0.7.3-beta",
   "description": "Plugin manager for Klipper 3D printers",
   "main": "./out/main/index.js",
   "author": "unlucio",
@@ -8,7 +8,7 @@
     "predev": "sh ./scripts/name-dev-electron-bundle.sh; sh ./scripts/pack-plugins.sh || true",
     "dev": "electron-vite dev",
     "prebuild": "sh ./scripts/pack-plugins.sh",
-        "build": "electron-vite build",
+    "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -b",
     "typecheck:node": "tsc -b tsconfig.node.json",
