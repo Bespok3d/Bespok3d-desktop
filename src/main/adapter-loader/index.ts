@@ -15,6 +15,9 @@ export { verifiedPackageTrust } from '../store/verify-package'
 export { PackageRefusedError } from '../store/package-refused'
 export { openBundledPackage, unverifiedBundledPayload } from '../store/bundled-package'
 export type { BundledPackage } from '../store/bundled-package'
+// The printer's own machinery (the daemon, the adapter's jinni) comes through its own door: those are
+// the packages the app offers from the published lists and not only from the copy it ships with.
+export { openSystemPackage } from '../store/system-package'
 
 export interface SshCredentials {
   user: string

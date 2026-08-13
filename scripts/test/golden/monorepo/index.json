@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "Bespok3d Official",
   "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
-  "updated": "2026-08-10",
+  "updated": "2026-08-13",
   "plugins": [
     {
       "name": "afc-lite",
@@ -64,7 +64,7 @@
     {
       "name": "bespok3d-daemon",
       "title": "Bespok3d daemon",
-      "version": "0.12.24",
+      "version": "0.12.25",
       "description": "The on-printer daemon for the Bespok3d plugin manager: a small FastAPI service that installs, updates, and removes plugins, reports printer capabilities, refuses any operation mid-print, and self-heals a plugin that breaks a service so the printer is never left unusable. It is plugin zero: the adapter bootstraps it over SSH at enrollment (cert-pinned HTTPS, bearer-token auth), not through the normal plugin install pipeline, so the install block below is intentionally empty. This package is the publishable, versioned artifact the app reads to know when a newer daemon is available.",
       "tagline": "The on-printer service that installs plugins and keeps the printer safe.",
       "category": "system",
@@ -82,14 +82,14 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "bespok3d-daemon/doc/README.md",
-      "download_url": "bespok3d-daemon-0.12.24.b3",
+      "download_url": "bespok3d-daemon-0.12.25.b3",
       "min_jinni_version": "0.1.10",
       "changelog_url": "bespok3d-daemon/doc/CHANGELOG.md"
     },
     {
       "name": "bespok3d-jinni-snapmaker-u1",
       "title": "Snapmaker U1 jinni",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "description": "The Snapmaker U1's jinni: the printer-side process that reads this device's board, service and module facts and actuates the daemon's install operations on it. Bundles the shared klipper jinni runtime it extends, so a printer needs only this one package. It is not independently startable: the daemon owns its lifecycle and picks up a new jinni on the restart its own install op already performs.",
       "tagline": "The printer-side process that gives the daemon Snapmaker U1 device knowledge.",
       "category": "system",
@@ -97,7 +97,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-08-10",
-      "updated_at": "2026-08-10",
+      "updated_at": "2026-08-13",
       "requires": {
         "capabilities": [
           "snapmaker-u1"
@@ -107,7 +107,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "bespok3d-jinni-snapmaker-u1/doc/README.md",
-      "download_url": "bespok3d-jinni-snapmaker-u1-0.1.10.b3",
+      "download_url": "bespok3d-jinni-snapmaker-u1-0.1.11.b3",
       "min_daemon_version": "0.12.22",
       "changelog_url": "bespok3d-jinni-snapmaker-u1/doc/CHANGELOG.md"
     },
@@ -639,7 +639,7 @@
     {
       "name": "rfid-ntag",
       "title": "RFID Spool Reader",
-      "version": "0.1.9+dev.local",
+      "version": "0.1.11+dev.local",
       "description": "USB RFID reader picks up OpenSpool-encoded NTAG215 cards. Writes the current spool's metadata to rfid_data.json on every card event so the rest of the stack just knows.",
       "tagline": "NTAG215/OpenSpool RFID: your filament knows what it is.",
       "category": "filament",
@@ -647,7 +647,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2025-09-02",
-      "updated_at": "2026-07-28",
+      "updated_at": "2026-08-13",
       "requires": {
         "capabilities": [
           "rfid-spi"
@@ -659,8 +659,21 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "rfid-ntag/doc/README.md",
-      "download_url": "rfid-ntag-0.1.9.b3",
+      "download_url": "rfid-ntag-0.1.11.b3",
       "homepage": "https://github.com/Bespok3d/u1-enhanced-rfid",
+      "config": [
+        {
+          "key": "RFID_FORCE_GENERIC_VENDOR",
+          "label": "Show my spools in Snapmaker Orca",
+          "type": "toggle",
+          "onValue": "True",
+          "offValue": "False",
+          "default": "True",
+          "hint": "On: your loaded spools appear under Machine Filament in Snapmaker Orca, listed as Generic plus the material, because those are the only filament names Orca can match. The printer's own screen shows Generic too. Off: the brand written on the tag is used everywhere, and Orca lists nothing for anything but Snapmaker spools.",
+          "userEditable": true,
+          "scope": "global"
+        }
+      ],
       "author": "bespoked",
       "attributions": "# Attributions - rfid-ntag\n\n**Plugin author:** Bespok3d, with parts of the Extended Firmware overlay `13-patch-rfid`, OpenRFID there by @suchmememanyskill and the OpenSpool `subtype` field by @morgendagen\n\nReads NTAG filament tags on the printer's built-in reader.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenSpool tag format | the OpenSpool project | published format | no | no |\n| Extended Firmware overlay `13-patch-rfid` | @suchmememanyskill and @morgendagen, packaged by paxx12 | GPL-3.0 | no | yes |\n\nThe patches in this plugin modify Snapmaker's own firmware files on the printer, and the Extended\nFirmware overlay `13-patch-rfid`, GPL-3.0, patches the same files. About a fifth of the lines our\nFM175xx reader patch adds are lines that overlay adds too. In `openspool_mapper.py`, 22 lines are\nthat overlay's: they fill Snapmaker's own tray structure field by field, with the same defaults.\nOpenRFID in that firmware is credited to @suchmememanyskill and the OpenSpool `subtype` field to\n@morgendagen.\n\nThe rest of the reader code (`bespok3d_rfid.py`, `ntag_reader.py`, `ndef_parser.py`,\n`mifare_classic.py`) is written from scratch.\n",
       "license_url": "https://github.com/Bespok3d/u1-enhanced-rfid/blob/dev/rfid-ntag/doc/LICENSE",
@@ -759,7 +772,7 @@
     {
       "name": "spoolman",
       "title": "Spoolman Bridge",
-      "version": "0.1.32+dev.local",
+      "version": "0.1.34+dev.local",
       "description": "Spoolman for the U1 multi-tool: the active spool follows the tag the printer reads or the spool you pick, color and material reach the screen and AFC panel, tags are matched by their hardware UID, and you can record which printer each spool is on. Filament length per print is logged automatically.",
       "tagline": "Zero-config Spoolman: active spool always tracked.",
       "category": "filament",
@@ -767,7 +780,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": false,
       "published_at": "2025-09-20",
-      "updated_at": "2026-08-04",
+      "updated_at": "2026-08-13",
       "requires": {
         "capabilities": [
           "klipper-generic"
@@ -781,7 +794,7 @@
       ],
       "conflicts": [],
       "doc_url": "spoolman/doc/README.md",
-      "download_url": "spoolman-0.1.32.b3",
+      "download_url": "spoolman-0.1.34.b3",
       "min_daemon_version": "0.10.1",
       "homepage": "https://github.com/Bespok3d/spoolman-klipper-helper",
       "macros": [
@@ -930,6 +943,19 @@
           "hint": "The name written as a loaded spool's location in Spoolman (e.g. unU1jr). Location tracking is inactive until a name is set.",
           "userEditable": true,
           "scope": "printer"
+        },
+        {
+          "key": "SPOOLMAN_FORCE_GENERIC_VENDOR",
+          "label": "Show my hand-picked spools in Snapmaker Orca",
+          "type": "select",
+          "options": [
+            "true",
+            "false"
+          ],
+          "default": "true",
+          "hint": "On: a spool you pick yourself is reported to slicers as Generic plus its material, the only filament names Snapmaker Orca can match, so it appears under Machine Filament. Spoolman, the AFC lane name and your spool's own record keep the real brand. Off: the brand recorded in Spoolman is sent, and Orca lists nothing for anything but Snapmaker spools.",
+          "userEditable": true,
+          "scope": "global"
         }
       ],
       "author": "bespoked",
@@ -1142,15 +1168,15 @@
     {
       "name": "all-the-tags",
       "title": "All the Tags",
-      "version": "0.1.2",
-      "description": "Installs the whole RFID filament-tag reading stack in one click: the NFC reader and hub, every shipped tag-standard decoder, and Spoolman tracking, so almost any spool you tap is identified and tracked. Includes the open standards (OpenTag3D, OpenPrintTag, generic NDEF JSON, TigerTag) plus full payload decoders for the proprietary tags (Bambu and Creality, with your own keys pasted into their config; without a key they fall back to UID-only tracking). Anycubic decodes the dispute-free fields today (a tester dump finishes it). The members install together with a single service restart. Experiment channel until the stack is verified end to end on a real printer.",
+      "version": "0.1.3",
+      "description": "Installs the whole RFID filament-tag reading stack in one click: the NFC reader and hub, every shipped tag-standard decoder, and Spoolman tracking, so almost any spool you tap is identified and tracked. Includes the open standards (OpenTag3D, OpenPrintTag, generic NDEF JSON, TigerTag) plus full payload decoders for the proprietary tags (Bambu and Creality, with your own keys pasted into their config; without a key they fall back to UID-only tracking). QIDI needs no key at all: its tags sit on the Mifare factory default key, so those spools read out of the box. Anycubic decodes the dispute-free fields today (a tester dump finishes it). The members install together with a single service restart. Experiment channel until the stack is verified end to end on a real printer.",
       "tagline": "Every spool, identified: the whole RFID tag-reading stack in one install.",
       "category": "filament",
       "channel": "testing",
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-06-30",
-      "updated_at": "2026-07-26",
+      "updated_at": "2026-08-13",
       "members": [
         {
           "id": "rfid-ntag",
@@ -1174,6 +1200,10 @@
         },
         {
           "id": "rfid-anycubic",
+          "version": ">=0.1.0"
+        },
+        {
+          "id": "rfid-qidi",
           "version": ">=0.1.0"
         },
         {

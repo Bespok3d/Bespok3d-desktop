@@ -11,6 +11,7 @@ import { runSshOp } from './op-runner'
 import { waitForDaemon, tailDaemonLog } from './daemon-log'
 import { recordOrThrow, verifyDaemonVersion } from '../daemon-client/status'
 import { expectedDaemonVersion } from '../daemon-client/expected-version'
+import { offeredJinniVersion } from '../compat/jinni-baseline'
 import { assertNotADaemonDowngrade, assertPairLandedTogether, assertPrinterNotPrinting } from '../compat'
 
 // Asked before a single byte moves, so a refused op never touches the printer at all: it is not
@@ -125,9 +126,9 @@ export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip:
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
   await assertPairLandedTogether(record)
-  // deploy-daemon redeploys the jinni too, so record both at the bundled version: the jinni-update
-  // banner must not flash between this save and the next capabilities ping.
-  updatePrinter(printerId, { status: 'managed', daemonVersion: expectedDaemonVersion(), daemonUpdateAvailable: false, daemonUpdatedAt: new Date().toISOString(), jinniVersion: adapter.jinniVersion })
+  // deploy-daemon redeploys the jinni too, so record both at the version the app just installed: the
+  // jinni-update banner must not flash between this save and the next capabilities ping.
+  updatePrinter(printerId, { status: 'managed', daemonVersion: expectedDaemonVersion(), daemonUpdateAvailable: false, daemonUpdatedAt: new Date().toISOString(), jinniVersion: offeredJinniVersion(adapter) ?? adapter.jinniVersion })
 }
 
 export async function runUpdateJinni(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
@@ -141,5 +142,5 @@ export async function runUpdateJinni(win: BrowserWindow, printerId: string, ip: 
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => tailDaemonLog(ssh)) },
   ])
   await assertPairLandedTogether(record)
-  updatePrinter(printerId, { status: 'managed', jinniVersion: adapter.jinniVersion })
+  updatePrinter(printerId, { status: 'managed', jinniVersion: offeredJinniVersion(adapter) ?? adapter.jinniVersion })
 }

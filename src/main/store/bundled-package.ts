@@ -51,10 +51,9 @@ export function unverifiedBundledPayload(packageName: string, payloadPath: strin
 }
 
 // Verification happens here, before the caller can read a single payload byte, so an enrollment cannot
-// upload anything from a package whose signature does not check out.
-export async function openBundledPackage(packageName: string): Promise<BundledPackage> {
-  const entry = bundledEntry(packageName)
-  const archiveBytes = readFileSync(join(bundledRegistryDir(), String(entry.download_url)))
+// upload anything from a package whose signature does not check out. Shared by the copy this build
+// ships and the newer copy the daemon updater downloads, so both cross the same signing chain.
+export async function openVerifiedPackage(entry: MergedEntry, archiveBytes: Buffer): Promise<BundledPackage> {
   const trust = await verifiedPackageTrust(archiveBytes, entry)
   const members = payloadMembers(archiveBytes)
 
@@ -63,6 +62,12 @@ export async function openBundledPackage(packageName: string): Promise<BundledPa
     version: entry.version,
     trust,
     payloadPaths: members.map((member) => member.entryName.slice(PAYLOAD_PREFIX.length)),
-    payloadBytes: (payloadPath: string) => payloadMember(members, packageName, payloadPath),
+    payloadBytes: (payloadPath: string) => payloadMember(members, entry.name, payloadPath),
   }
+}
+
+export function openBundledPackage(packageName: string): Promise<BundledPackage> {
+  const entry = bundledEntry(packageName)
+
+  return openVerifiedPackage(entry, readFileSync(join(bundledRegistryDir(), String(entry.download_url))))
 }

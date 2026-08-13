@@ -57,6 +57,13 @@ export interface AppSettings {
   // answer was to proceed with the list as it stands.
   listingRefreshedAt?: number
   listingRefreshProposedAt?: number
+  // What the published lists last offered for the printer's own machinery, by package name: the
+  // daemon, and each adapter's jinni. Both are released as their own signed packages so a fix reaches
+  // printers without waiting for an app release, and every reader of "which version would this app
+  // install" is synchronous, so the numbers the last list pass learned are written down here rather
+  // than asked for again. A package missing here was never offered, and the copy this build ships is
+  // then the answer for it.
+  offeredSystemVersions?: Record<string, string>
   // Usage reporting: the answer, and nothing else. Unset means the user has never been asked, so
   // nothing is sent and nothing is kept to send later if they say yes. No value that could tell this
   // install from another one is stored here or anywhere else, which is why saying yes creates nothing

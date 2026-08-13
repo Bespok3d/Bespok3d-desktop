@@ -22,7 +22,7 @@ import {
 import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, pingPrinter, checkSshOpen, probeService, probeServiceUrl, resolveLiveAddress } from './printers'
 import type { PublicPrinterRecord } from './printers'
 import { setAddressResolver } from './daemon-client/client'
-import { shippedJinniVersion } from './compat/jinni-baseline'
+import { offeredJinniVersion } from './compat/jinni-baseline'
 import { expectedDaemonVersion } from './daemon-client/expected-version'
 import { watchPrintState, unwatchPrintState } from './daemon-client/feeds/print-state'
 import { startMdnsScan, stopMdnsScan } from './mdns'
@@ -44,6 +44,7 @@ import type { ApplyRequest } from './dev-tools/types'
 import { loadCatalog } from './registry'
 import type { Catalog } from './registry'
 import { markSystemPackages } from './compat/system-packages'
+import { stampOfferedSystemVersions } from './registry/offered-versions'
 import { offerListingRefresh } from './registry/listing-freshness'
 import { refreshListing } from './registry/listing-refresh'
 import { readAssetStat, readReleaseDoc } from './registry/asset-read'
@@ -64,7 +65,7 @@ function serializeAdapter(def: ReturnType<typeof getAdapter>): AdapterInfo | nul
   if (!def) return null
 
   return {
-    id: def.id, title: def.title, vendor: def.vendor, version: def.version, jinniVersion: shippedJinniVersion(def), restartSeconds: def.restartSeconds,
+    id: def.id, title: def.title, vendor: def.vendor, version: def.version, jinniVersion: offeredJinniVersion(def), restartSeconds: def.restartSeconds,
     description: def.description, icon: def.icon, defaults: def.defaults, envVars: def.envVars,
     enrollSteps: def.enrollSteps.map((step) => ({ id: step.id, label: step.label, detail: step.detail })),
   }
@@ -155,9 +156,14 @@ function registerGitHostHandlers(): void {
 }
 
 // The ONE catalog the renderer is ever handed: every path that returns it comes through here, so the
-// daemon and jinni entries cannot be marked on one route and left plain on another.
+// daemon and jinni entries cannot be marked on one route and left plain on another. It is also where
+// what the lists offer for that machinery is written down, because this is the one place that knows
+// which entries are machinery: the daemon's own name plus every registered adapter's jinni package.
 async function catalogForRenderer(): Promise<Catalog> {
-  return markSystemPackages(await loadCatalog(), listAdapters())
+  const catalog = markSystemPackages(await loadCatalog(), listAdapters())
+  stampOfferedSystemVersions(catalog.plugins)
+
+  return catalog
 }
 
 function registerRegistryHandlers(): void {

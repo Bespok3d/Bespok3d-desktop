@@ -7,18 +7,25 @@ import { join } from 'path'
 
 var catalogueDir = ''
 
-vi.mock('../registry/bundled-dir', () => ({ bundledRegistryDir: () => catalogueDir }))
+var storedSettings: Record<string, unknown> = {}
 
-const { shippedJinniVersion } = await import('./jinni-baseline')
+vi.mock('../registry/bundled-dir', () => ({ bundledRegistryDir: () => catalogueDir }))
+vi.mock('../settings', () => ({
+  loadSettings: () => storedSettings,
+  saveSettings: (patch: Record<string, unknown>) => { storedSettings = { ...storedSettings, ...patch } },
+}))
+
+const { offeredJinniVersion } = await import('./jinni-baseline')
 
 const SNAPMAKER_JINNI = 'bespok3d-jinni-snapmaker-u1'
 
 // The update banner used to be baselined on the version the adapter declares, which in a working copy
 // comes from a sibling checkout and can name a jinni the build does not carry. These hold the baseline
 // on the catalogue this build packs.
-describe('shippedJinniVersion', () => {
+describe('the jinni version this app would install', () => {
   beforeEach(() => {
     catalogueDir = mkdtempSync(join(tmpdir(), 'b3d-jinni-'))
+    storedSettings = {}
   })
 
   afterEach(() => {
@@ -32,16 +39,32 @@ describe('shippedJinniVersion', () => {
   it('names the jinni version this build ships, not the one the adapter declares', () => {
     writeCatalogue([{ name: SNAPMAKER_JINNI, version: '0.1.10' }])
 
-    expect(shippedJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBe('0.1.10')
+    expect(offeredJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBe('0.1.10')
   })
 
   it('has no version to offer when the build ships no jinni package for the adapter', () => {
     writeCatalogue([{ name: 'bespok3d-daemon', version: '0.12.23' }])
 
-    expect(shippedJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBeUndefined()
+    expect(offeredJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBeUndefined()
+  })
+
+  // The jinni is released as its own signed package too: a daemon release that needs a newer jinni
+  // has to be able to move the pair without an app release behind it.
+  it('is the published one when the lists offer a jinni newer than the build ships', () => {
+    writeCatalogue([{ name: SNAPMAKER_JINNI, version: '0.1.10' }])
+    storedSettings = { offeredSystemVersions: { [SNAPMAKER_JINNI]: '0.1.11' } }
+
+    expect(offeredJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBe('0.1.11')
+  })
+
+  it('stays on the shipped one when the published lists are behind the build', () => {
+    writeCatalogue([{ name: SNAPMAKER_JINNI, version: '0.1.10' }])
+    storedSettings = { offeredSystemVersions: { [SNAPMAKER_JINNI]: '0.1.9' } }
+
+    expect(offeredJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBe('0.1.10')
   })
 
   it('has no version to offer when the build packs no catalogue at all', () => {
-    expect(shippedJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBeUndefined()
+    expect(offeredJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBeUndefined()
   })
 })

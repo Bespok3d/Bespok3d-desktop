@@ -3,6 +3,14 @@
 import type { PluginConfigField } from '../../../data/types'
 import { typeDefault } from '../../../data/plugin-vars'
 
+// A manifest is JSON and a printer reports its saved vars as JSON, so a `number` or `toggle` field
+// arrives carrying a real number or boolean however the string type below reads. Every screen that
+// reads a config value treats it as text, so the value is made text HERE, at the one door all of
+// them enter by, rather than at each of the four that would otherwise have to remember.
+function configText(rawValue: unknown): string {
+  return typeof rawValue === 'string' ? rawValue : String(rawValue)
+}
+
 // A complete value per field: the saved/known value when present, else the field default, else the
 // type default. Used to seed install forms and edit drafts, so a partial known map still yields a
 // complete set of vars to send.
@@ -11,7 +19,10 @@ export function initialConfigValues(
   saved: Record<string, string> | undefined,
 ): Record<string, string> {
   return Object.fromEntries(
-    fields.map((field) => [field.key, saved?.[field.key] ?? field.default ?? typeDefault(field)]),
+    fields.map((field) => [
+      field.key,
+      configText(saved?.[field.key] ?? field.default ?? typeDefault(field)),
+    ]),
   )
 }
 
