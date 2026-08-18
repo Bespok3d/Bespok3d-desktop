@@ -1,16 +1,15 @@
-# Your printer updates from the store, without waiting for a new Bespok3d
+# A printer that fails to set up or repair now tells you why, and what to press next
 
-## Your printer updates from the store, without waiting for a new Bespok3d
+## A printer that fails to set up or repair now tells you why, and what to press next
 
-A fix to the daemon, or to the adapter that makes your printer work, only reached your printer when a
-whole new version of the app came out. They are now published on their own: open or refresh the
-store, and if a newer one is out, Bespok3d offers it and puts it on the printer. It never takes your
-printer back to an older version, and with no connection you get the copy that came with the app,
-exactly as before.
+A failure used to say "Operation failed" and nothing else, and a second one cleared the screen and
+left you with Close. The screen now names the step that failed and the reason the printer gave, and
+keeps a button for the next thing to try. When Full recovery is the thing that failed, that button
+is Rebuild Printer: it restarts the printer, sets it up from scratch and puts your plugins back on.
+Report this problem opens a report already filled in with what you ran, the step, the reason and
+your versions. Anything you run from Force now ends by putting your plugins back on, so a forced
+Re-enroll no longer leaves the printer running with all its plugins off.
 
-## A plugin whose files another plugin changed stays switched on
+## Brazilian Portuguese: the plugin update question reads in Portuguese
 
-Some plugins edit another plugin's files while they run, OctoEverywhere edits the printer's web pages
-for example. Recovery used to switch off the plugin whose files had changed, and reinstalling it
-lasted only until the next recovery. Recovery now leaves it running, says which files changed and
-offers to reinstall it.
+The box asking whether to update a plugin was still in English. It is now in Portuguese.
