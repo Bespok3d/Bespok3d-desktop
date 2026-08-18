@@ -41,14 +41,16 @@ describe('execOpSteps', () => {
     expect(doneEvents).toHaveLength(2)
   })
 
-  it('stops at the first failing step, emits a failed event with the error, and throws', async () => {
+  // The step's own reason has to survive the throw. A step refuses for a reason the user can act on
+  // ("run full recovery to rebuild it"); a generic sentence in its place left them a dead end.
+  it('stops at the first failing step, emits a failed event with the error, and throws the step reason', async () => {
     const order: string[] = []
     const { win, send } = fakeWindow()
     await expect(execOpSteps(win, 'p1', [
       step('one', async () => { order.push('one') }),
       step('boom', async () => { throw new Error('kaboom') }),
       step('three', async () => { order.push('three') }),
-    ])).rejects.toThrow('Operation failed')
+    ])).rejects.toThrow('kaboom')
     expect(order).toEqual(['one'])
     const failed = send.mock.calls.find((call) => (call[1] as { status: string }).status === 'failed')
     expect((failed?.[1] as { error: string }).error).toContain('kaboom')
@@ -90,8 +92,8 @@ describe('runSshOp', () => {
     vi.mocked(connect).mockResolvedValue({ close } as never)
     const { win } = fakeWindow()
     await expect(
-      runSshOp(win, 'p1', { host: 'h', port: 22, user: 'u', password: 'p' }, () => [step('boom', async () => { throw new Error('x') })]),
-    ).rejects.toThrow('Operation failed')
+      runSshOp(win, 'p1', { host: 'h', port: 22, user: 'u', password: 'p' }, () => [step('boom', async () => { throw new Error('write layer was reset') })]),
+    ).rejects.toThrow('write layer was reset')
     expect(close).toHaveBeenCalled()
   })
 })

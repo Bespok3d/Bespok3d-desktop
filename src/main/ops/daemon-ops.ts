@@ -90,10 +90,11 @@ export async function checkWriteLayer(printerId: string): Promise<boolean | null
   try {
     const ssh = await connect({ host: record.ip, port: sshPort, user: sshUser, password: sshPasswordHint })
     try {
-      const intact = await adapter.verifyEnrolled(ssh)
-      updatePrinter(printerId, { writeLayerIntact: intact })
-
-      return intact
+      // Answered to the caller, never written to the printer record: a printer can be reflashed while
+      // the app is closed, and a saved "the write layer is fine" was then read back at the next start
+      // as if it had just been measured, so Repair went on being offered on a printer only full
+      // recovery can rebuild. Every app start asks the printer again.
+      return await adapter.verifyEnrolled(ssh)
     } finally {
       ssh.close()
     }

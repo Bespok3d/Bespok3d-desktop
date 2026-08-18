@@ -22,6 +22,16 @@ export function savePrinter(record: PrinterRecord): void {
   writeFileSync(printerFilePath(record.id), JSON.stringify(record, null, 2), 'utf-8')
 }
 
+// A record saved by an older app still carries the one-shot repair-vs-recover verdict. That verdict is
+// a live measurement of the printer, not a property of it: read back off disk it told the app the write
+// layer was fine on a printer that had been reflashed since, so Repair was offered forever on a printer
+// only full recovery can rebuild. It is dropped on the way in and never written again.
+function withoutStoredWriteLayerVerdict(record: PrinterRecord): PrinterRecord {
+  const { writeLayerIntact: _writeLayerIntact, ...kept } = record as PrinterRecord & { writeLayerIntact?: boolean }
+
+  return kept
+}
+
 export function loadPrinters(): PrinterRecord[] {
   const dir = printersDir()
 
@@ -29,6 +39,7 @@ export function loadPrinters(): PrinterRecord[] {
     .filter((filename) => filename.endsWith('.json'))
     .map((filename) => readJsonFile<PrinterRecord | null>(join(dir, filename), null))
     .filter((record): record is PrinterRecord => record !== null)
+    .map(withoutStoredWriteLayerVerdict)
 }
 
 // The renderer-facing load: every record with its daemon credentials stripped. The `printers:load`
@@ -38,7 +49,9 @@ export function loadPublicPrinters(): PublicPrinterRecord[] {
 }
 
 export function loadPrinter(id: string): PrinterRecord | null {
-  return readJsonFile<PrinterRecord | null>(printerFilePath(id), null)
+  const record = readJsonFile<PrinterRecord | null>(printerFilePath(id), null)
+
+  return record ? withoutStoredWriteLayerVerdict(record) : null
 }
 
 type PrinterPatch = Partial<PrinterRecord> | ((current: PrinterRecord) => Partial<PrinterRecord>)

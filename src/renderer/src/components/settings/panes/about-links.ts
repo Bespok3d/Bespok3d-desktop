@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-const SOURCE_REPOSITORY_URL = 'https://github.com/Bespok3d/Bespok3d-desktop'
+import { SOURCE_REPOSITORY_URL } from '../../../utils/source-repository'
 
 export const ABOUT_LINK_URLS = {
   release_notes: `${SOURCE_REPOSITORY_URL}/releases`,

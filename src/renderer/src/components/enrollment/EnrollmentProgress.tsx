@@ -9,6 +9,7 @@ import { IconCheck, IconRefresh, IconAlert, IconCheckCircle, IconChevron } from 
 import { useI18n } from '../../i18n/context'
 import type { SshCredentials } from '../../hooks/enrollment'
 import type { EnrollMode } from './index'
+import type { FailureEscalation } from './failure-escalation'
 import './enrollment.css'
 
 interface SuccessCopy {
@@ -45,7 +46,8 @@ interface EnrollmentProgressProps {
   onDone: () => void
   onRetry: (stepId: string) => void
   onReset: () => void
-  onEscalate?: () => void
+  escalation?: FailureEscalation
+  onReportIssue?: () => void
   mode?: EnrollMode
   printerIsRebooting?: boolean
   // Absent when there is no live restart to watch, as in the history view of a past enrollment.
@@ -131,12 +133,21 @@ function CancelledView({ event, onClose }: { event: EnrollProgressEvent; onClose
   )
 }
 
-function EnrollFooter({ phase, stepId, onReset, onRetry, onEscalate, onCancelOp }: {
+// The step's own words about why it refused. It used to live only inside the expanded step list, so a
+// failure read as "something went wrong" until the user thought to open it.
+function FailureReason({ error }: { error?: string }) {
+  if (!error) return null
+
+  return <div className="enroll-step-error">{error}</div>
+}
+
+function EnrollFooter({ phase, stepId, onReset, onRetry, escalation, onReportIssue, onCancelOp }: {
   phase: 'enrolling' | 'failed'
   stepId: string
   onReset: () => void
   onRetry: (stepId: string) => void
-  onEscalate?: () => void
+  escalation?: FailureEscalation
+  onReportIssue?: () => void
   onCancelOp: () => void
 }) {
   const { t } = useI18n()
@@ -179,8 +190,11 @@ function EnrollFooter({ phase, stepId, onReset, onRetry, onEscalate, onCancelOp 
           <Button variant="outline" onClick={onReset}>{t('enroll.progress.start_over')}</Button>
         </>
       )}
-      {onEscalate && (
-        <Button variant="primary" onClick={onEscalate}>{t('enroll.progress.run_recovery')}</Button>
+      {onReportIssue && (
+        <Button variant="outline" onClick={onReportIssue}>{t('enroll.report_issue')}</Button>
+      )}
+      {escalation && (
+        <Button variant="primary" onClick={escalation.run}>{t(escalation.labelKey)}</Button>
       )}
     </div>
   )
@@ -198,7 +212,7 @@ export function progressFill(stepsDone: number, stepsTotal: number, stepRunning:
   return Math.round(((stepsDone + (stepRunning ? intoStep : 0)) / stepsTotal) * 100)
 }
 
-export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, onEscalate, onCancelOp, onClose, mode, printerIsRebooting, restartSeconds }: EnrollmentProgressProps) {
+export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, escalation, onReportIssue, onCancelOp, onClose, mode, printerIsRebooting, restartSeconds }: EnrollmentProgressProps) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState(false)
   const [acting, setActing] = useState(false)
@@ -211,8 +225,8 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
   function handleReset() { setExpanded(false); setActing(true); onReset() }
   function handleRetry(stepId: string) { setExpanded(false); setActing(true); onRetry(stepId) }
   function handleEscalate() {
-    if (!onEscalate) return
-    setExpanded(false); setActing(true); onEscalate()
+    if (!escalation) return
+    setExpanded(false); setActing(true); escalation.run()
   }
 
   const showFailed = phase === 'failed' && !acting
@@ -254,16 +268,13 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
                     <div className={cx('enroll-step-label', currentStepStatus)}>
                       <Explainer brief={stepLabel} detail={detail} />
                     </div>
-                    {showFailed && event.error && (
-                      <div className="enroll-step-error">
-                        {event.error}
-                      </div>
-                    )}
+                    {showFailed && <FailureReason error={event.error} />}
                   </div>
                 </div>
               </div>
             )}
           </div>
+          {showFailed && !expanded && <FailureReason error={event.error} />}
         </div>
       </div>
       <EnrollFooter
@@ -271,7 +282,8 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
         stepId={event.stepId}
         onReset={handleReset}
         onRetry={handleRetry}
-        onEscalate={onEscalate ? handleEscalate : undefined}
+        escalation={escalation ? { labelKey: escalation.labelKey, run: handleEscalate } : undefined}
+        onReportIssue={showFailed ? onReportIssue : undefined}
         onCancelOp={onCancelOp}
       />
     </>

@@ -160,11 +160,14 @@ describe('printers:checkWriteLayer handler (repair vs recover)', () => {
     vi.mocked(connect).mockResolvedValue({ close: vi.fn() } as never)
   })
 
-  it('returns the verdict and persists it on the record', async () => {
+  // The verdict is a live measurement of the printer, not a property of it: a printer can be reflashed
+  // while the app is closed, and a saved "the write layer is fine" came back at the next start as if it
+  // had just been taken, so Repair was offered forever on a printer only full recovery can rebuild.
+  it('answers the verdict without saving it on the record', async () => {
     vi.mocked(loadPrinters).mockReturnValue([enrolledWriteLayerRecord as never])
     vi.mocked(getAdapter).mockReturnValue(writeLayerAdapter(false))
     expect(await invokeCheckWriteLayer()).toBe(false)
-    expect(updatePrinter).toHaveBeenCalledWith('printer-1', expect.objectContaining({ writeLayerIntact: false }))
+    expect(updatePrinter).not.toHaveBeenCalled()
   })
 
   it('returns null for a custom-credential printer without probing', async () => {

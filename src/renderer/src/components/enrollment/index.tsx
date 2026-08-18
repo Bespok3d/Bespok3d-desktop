@@ -12,6 +12,9 @@ import { Modal } from '../common/overlay/Modal'
 import { Button } from '../common/Button'
 import { CredentialsForm } from './CredentialsForm'
 import { EnrollmentProgress } from './EnrollmentProgress'
+import { nextStepAfterFailure } from './failure-escalation'
+import type { FailureEscalation } from './failure-escalation'
+import { reportOpFailure } from './failure-report'
 import { GoAheadStep } from './GoAheadStep'
 import { usePostOpReboot, postOpRebootCalls } from './usePostOpReboot'
 import { useGoAhead, autoStartEligible } from './useGoAhead'
@@ -39,6 +42,8 @@ interface EnrollmentProps {
   onEnrolled: (updated: Printer) => void
   onClose: () => void
   onEscalateRecovery?: () => void
+  // Offered when the full recovery itself fails: re-enrol the printer and put every plugin back.
+  onRebuildPrinter?: () => void
   onExpectedRestart?: (printerId: string) => void
 }
 
@@ -184,13 +189,17 @@ interface EnrollmentBodyProps {
   onRetry: (stepId: string) => void
   onReset: () => void
   onCancelOp: () => void
-  onEscalate?: () => void
+  escalation?: FailureEscalation
   printerIsRebooting: boolean
   restartSeconds?: number
 }
 
 function EnrollmentBody(props: EnrollmentBodyProps) {
   const { t } = useI18n()
+  const { latestEvent, startError } = props.state
+  function reportThisFailure(): void {
+    reportOpFailure(props.printer, props.mode, { stepLabel: latestEvent?.stepLabel, reason: latestEvent?.error ?? startError ?? '' })
+  }
   if (props.awaitingGoAhead) return <GoAheadStep actionLabel={ACTION_LABELS[props.mode] ?? t('btn.update')} onConfirm={props.onGoAhead} onOwnCredentials={props.onOwnCredentials} onCancel={props.onClose} />
   if (props.showCredentialsForm) return (
     <CredentialsForm
@@ -202,9 +211,9 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
       onCancel={props.onClose}
     />
   )
-  if (props.state.latestEvent) return (
+  if (latestEvent) return (
     <EnrollmentProgress
-      event={props.state.latestEvent}
+      event={latestEvent}
       phase={props.state.phase as 'enrolling' | 'success' | 'failed' | 'cancelled'}
       credentials={props.credentials}
       mode={props.mode}
@@ -213,17 +222,19 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
       onReset={props.onReset}
       onCancelOp={props.onCancelOp}
       onClose={props.onClose}
-      onEscalate={props.mode === 'repair' ? props.onEscalate : undefined}
+      escalation={props.escalation}
+      onReportIssue={reportThisFailure}
       printerIsRebooting={props.printerIsRebooting}
       restartSeconds={props.restartSeconds}
     />
   )
 
-  if (props.state.startError) return (
+  if (startError) return (
     <div className="enroll-body">
       <p className="u-hint-sm">{t('enroll.start_failed')}</p>
-      <p className="u-hint-sm mono">{props.state.startError}</p>
+      <p className="u-hint-sm mono">{startError}</p>
       <div className="modal-foot">
+        <Button variant="outline" onClick={reportThisFailure}>{t('enroll.report_issue')}</Button>
         <Button variant="outline" onClick={props.onClose}>{t('btn.close')}</Button>
       </div>
     </div>
@@ -245,7 +256,7 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
   )
 }
 
-export function Enrollment({ printer, mode, fromAdd = false, forced = false, onEnrolled, onClose, onEscalateRecovery, onExpectedRestart }: EnrollmentProps) {
+export function Enrollment({ printer, mode, fromAdd = false, forced = false, onEnrolled, onClose, onEscalateRecovery, onRebuildPrinter, onExpectedRestart }: EnrollmentProps) {
   const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp, failStart } = useEnrollment(printer, forced)
   const [credentials, setCredentials] = useState<SshCredentials>({ user: '', password: '', port: 22 })
   const [adapterInfo, setAdapterInfo] = useState<AdapterInfo | null>(null)
@@ -326,7 +337,7 @@ export function Enrollment({ printer, mode, fromAdd = false, forced = false, onE
         printer={printer} mode={mode} state={state} credentials={credentials}
         showCredentialsForm={goAhead.showCredentialsForm} awaitingGoAhead={goAhead.awaiting}
         onStart={handleStart} onGoAhead={goAhead.give} onOwnCredentials={goAhead.askForOwnCredentials} onClose={onClose}
-        onDone={handleDone} onRetry={handleRetry} onReset={reset} onCancelOp={cancelOp} onEscalate={onEscalateRecovery}
+        onDone={handleDone} onRetry={handleRetry} onReset={reset} onCancelOp={cancelOp} escalation={nextStepAfterFailure(mode, onEscalateRecovery, onRebuildPrinter)}
         printerIsRebooting={printerIsRebooting} restartSeconds={adapterInfo?.restartSeconds}
       />
     </Modal>

@@ -84,9 +84,6 @@ export interface PrinterRecord extends ConfigTruthRecords {
   // Strings captured from each installed plugin's service log (URLs/regex matches), keyed by plugin
   // id, newest last. Persisted per printer so a one-time link the user saw once is still here later.
   pluginCaptures?: Record<string, string[]>
-  // One-shot repair-vs-recover verdict (adapter.verifyEnrolled). undefined = unchecked, true =
-  // write layer intact (Repair), false = overlay reset by an OTA (full Recover). See Printer.
-  writeLayerIntact?: boolean
 }
 
 // The daemon credentials that authorize this app to the printer. They are written and read only by

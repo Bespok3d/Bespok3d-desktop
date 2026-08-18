@@ -111,6 +111,12 @@ describe('App flow: a forced repair that escalates to recovery', () => {
 
     expect(wiring).toContain('onEscalateRecovery={() => actions.handleRecoverPrinter(enrollModal.printer.id, enrollModal.forced)}')
   })
+
+  it('rebuilds the printer forced, since the recovery it follows has already failed', () => {
+    var wiring = readFileSync('src/renderer/src/app/AppModals.tsx', 'utf8')
+
+    expect(wiring).toContain('onRebuildPrinter={() => actions.handleEnrollPrinter(enrollModal.printer.id, true)}')
+  })
 })
 
 describe('App: the tabs a released build shows', () => {

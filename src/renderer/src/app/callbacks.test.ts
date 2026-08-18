@@ -19,4 +19,22 @@ describe('which modes leave the plugins to put back', () => {
     expect(leavesThePluginsToPutBack('uninstall')).toBe(false)
     expect(leavesThePluginsToPutBack(undefined)).toBe(false)
   })
+
+  it('re-applies after anything run from the Force menu, which rebuilds the layer the plugins hang off', () => {
+    expect(leavesThePluginsToPutBack('enroll', true)).toBe(true)
+    expect(leavesThePluginsToPutBack('recovery', true)).toBe(true)
+    expect(leavesThePluginsToPutBack('repair', true)).toBe(true)
+  })
+
+  it('still does not re-apply after a mode the Force menu never offers, which would restart the printer twice', () => {
+    expect(leavesThePluginsToPutBack('reactivate', true)).toBe(false)
+    expect(leavesThePluginsToPutBack('deactivate', true)).toBe(false)
+    expect(leavesThePluginsToPutBack('uninstall', true)).toBe(false)
+    expect(leavesThePluginsToPutBack('reboot', true)).toBe(false)
+    expect(leavesThePluginsToPutBack('update-daemon', true)).toBe(false)
+  })
+
+  it('does not re-apply after a first-time enrollment, which has no plugins to put back', () => {
+    expect(leavesThePluginsToPutBack('enroll', false)).toBe(false)
+  })
 })

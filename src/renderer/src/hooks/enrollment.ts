@@ -80,6 +80,13 @@ function sshLifecycleStarters(printer: Printer, startOp: (invoke: () => Promise<
   }
 }
 
+// A rejection with no step on screen means the operation never started, so its reason is all the user
+// has and it goes on screen. A rejection AFTER a step failed is that same failure arriving a second
+// time: the progress screen already names the step and carries the way out, so keep it.
+function afterOpFailure(previous: EnrollState, error: unknown): EnrollState {
+  return previous.latestEvent ? previous : couldNotStart(mainProcessMessage(error))
+}
+
 // forced: the user launched this from the Force menu, which waives the check that refuses to put a
 // printer back onto an older daemon than it is running. It never waives the running-print refusal.
 export function useEnrollment(printer: Printer, forced = false) {
@@ -110,9 +117,7 @@ export function useEnrollment(printer: Printer, forced = false) {
   }
   function startOp(invoke: () => Promise<void>): void {
     setState({ phase: 'enrolling', latestEvent: null })
-    // The UI's progress and terminal failed/success state arrive on the onEnrollProgress ws feed above,
-    // not this POST promise; a rejection here means the operation never started, so it goes on screen.
-    invoke().catch((error) => failStart(mainProcessMessage(error)))
+    invoke().catch((error) => setState((prev) => afterOpFailure(prev, error)))
   }
   function startEnrollment(creds: SshCredentials): void {
     startOp(() => printers.enroll(printer.id, printer.ip, printer.adapter, creds.user, creds.password, creds.port, undefined, forced))

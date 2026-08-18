@@ -77,6 +77,16 @@ function maybeCheckWriteLayer(printer: Printer, detail: PrinterConnection, set: 
     .finally(() => writeLayerChecksInFlight.delete(printer.id))
 }
 
+// A daemon that was answering and now is not starts a NEW recoverable episode, so the stored
+// repair-vs-recover verdict belongs to the previous one. It is only ever discarded when the daemon
+// answers, and after a firmware update it never can, so Repair went on being offered forever on a
+// printer that only full recovery can rebuild.
+function writeLayerVerdictIsStale(printer: Printer, detail: PrinterConnection): boolean {
+  if (printer.writeLayerIntact === undefined) return false
+
+  return printer.connection?.reach === 'managed' && detail.reach !== 'managed'
+}
+
 function targetStatus(report: DaemonResult): ProbeStatus {
   if (report.isManaged) return 'managed'
 
@@ -111,8 +121,9 @@ export async function pingAndUpdate(printer: Printer, set: SetPrinters): Promise
   // new lease), so a repair/enroll/recover op targets the live IP rather than the stale recorded one.
   if (safe.ip && safe.ip !== printer.ip) patch.ip = safe.ip
   if (safe.networkInterfaces) patch.networkInterfaces = safe.networkInterfaces
+  if (writeLayerVerdictIsStale(printer, detail)) patch.writeLayerIntact = undefined
   set(applyToId(printer.id, patch))
-  maybeCheckWriteLayer(printer, detail, set)
+  maybeCheckWriteLayer({ ...printer, ...patch }, detail, set)
 }
 
 // Pull fresh endpoints into App state after a device-mutating batch. pingAndUpdate (checkDaemon) does

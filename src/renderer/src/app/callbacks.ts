@@ -77,6 +77,7 @@ interface PrinterActionDeps {
   removePrinter: (id: string) => void
   enrollGate: EnrollGate
   enrollMode: EnrollMode | undefined
+  enrollForced: boolean | undefined
   markExpectedRestart: (id: string, durationMs: number) => void
   runRecover: (id: string) => void
 }
@@ -85,9 +86,17 @@ interface PrinterActionDeps {
 // them once their modal closes. Reactivation puts them back as one of its own steps, on the printer,
 // before the reboot that picks them up: running it again here would repeat the whole job for nothing.
 const MODES_THAT_LEAVE_THE_PLUGINS_TO_PUT_BACK: ReadonlySet<EnrollMode> = new Set<EnrollMode>(['recovery', 'repair'])
+// The three the Force menu offers. Each one is run on a printer that is already misbehaving and each
+// rebuilds the write layer the plugins hang off, which unplugs every one of them, so each ends with
+// the plugins put back on. A forced re-enroll that stopped there left the printer able to print with
+// every plugin dark, which is what the colours plugin then failed to update over.
+const MODES_THE_FORCE_MENU_OFFERS: ReadonlySet<EnrollMode> = new Set<EnrollMode>(['enroll', 'recovery', 'repair'])
 
-export function leavesThePluginsToPutBack(mode: EnrollMode | undefined): boolean {
-  return mode !== undefined && MODES_THAT_LEAVE_THE_PLUGINS_TO_PUT_BACK.has(mode)
+export function leavesThePluginsToPutBack(mode: EnrollMode | undefined, forced?: boolean): boolean {
+  if (mode === undefined) return false
+  if (forced === true && MODES_THE_FORCE_MENU_OFFERS.has(mode)) return true
+
+  return MODES_THAT_LEAVE_THE_PLUGINS_TO_PUT_BACK.has(mode)
 }
 
 // Persist the just-enrolled printer and follow up per mode: uninstall removes it, the restart-bearing
@@ -102,7 +111,7 @@ function applyEnrolledOutcome(updatedPrinter: Printer, mode: EnrollMode | undefi
   deps.setPrinters((prev) => prev.map((printer) => (printer.id === updatedPrinter.id ? updatedPrinter : printer)))
   if (mode && isDaemonRestartMode(mode)) deps.markExpectedRestart(updatedPrinter.id, POST_OPERATION_GRACE_MS)
   pingAndUpdate(updatedPrinter, deps.setPrinters)
-  if (leavesThePluginsToPutBack(mode)) deps.runRecover(updatedPrinter.id)
+  if (leavesThePluginsToPutBack(mode, deps.enrollForced)) deps.runRecover(updatedPrinter.id)
 }
 
 // The printer-lifecycle handlers (add / access-granted / enrolled / rescan / enroll). Built from the
@@ -215,7 +224,7 @@ export function useAppCallbacks(
   }
   const actions = buildPrinterActions({
     printers, setPrinters, setSelectedId, setDiscovered, setAddPrinterModal, setEnrollModal,
-    removePrinter, enrollGate, enrollMode: enrollModal?.mode, markExpectedRestart, runRecover: batchOps.runRecover,
+    removePrinter, enrollGate, enrollMode: enrollModal?.mode, enrollForced: enrollModal?.forced, markExpectedRestart, runRecover: batchOps.runRecover,
   })
 
   return {

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin, Printer } from '../../../data/types'
+import { githubIssueUrl } from '../../../utils/source-repository'
 
 export interface ReportContext {
   plugin: Plugin
@@ -76,7 +77,6 @@ export function repoIssueUrl(plugin: Plugin, title: string, body: string): strin
   if (!ref) return null
   const [owner, repo] = ref.slice('github:'.length).split('/')
   if (!owner || !repo) return null
-  const query = `title=${encodeURIComponent(title)}&body=${encodeURIComponent(body.slice(0, 6000))}`
 
-  return `https://github.com/${owner}/${repo}/issues/new?${query}`
+  return githubIssueUrl(`https://github.com/${owner}/${repo}`, title, body)
 }

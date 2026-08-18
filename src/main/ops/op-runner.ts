@@ -14,7 +14,10 @@ export interface OpStep {
   run: (progress: (hint: string, stepFraction?: number) => void) => Promise<void>
 }
 
-type OpAcc = { failed: boolean; cancelled?: boolean; completed: CompletedStep[] }
+// error: the failing step's own reason, carried out to the caller. A step refuses for a reason the
+// user can act on ("run full recovery to rebuild it"); replacing that with a generic sentence left
+// them with a dead end and nothing to do about it.
+type OpAcc = { failed: boolean; cancelled?: boolean; completed: CompletedStep[]; error?: string }
 
 function emitOpEvent(win: BrowserWindow, event: EnrollProgressEvent): void {
   win.webContents.send('printers:enroll:progress', event)
@@ -44,7 +47,7 @@ export async function execOpSteps(win: BrowserWindow, printerId: string, steps: 
     } catch (stepError) {
       emitOpEvent(win, makeOpEvent(printerId, step, index, steps.length, 'failed', completed, String(stepError)))
 
-      return { failed: true, completed }
+      return { failed: true, completed, error: String(stepError) }
     }
     const nextCompleted = [...completed, { id: step.id, label: step.label, detail: step.detail }]
     emitOpEvent(win, makeOpEvent(printerId, step, index, steps.length, 'done', nextCompleted))
@@ -68,7 +71,7 @@ export async function execOpSteps(win: BrowserWindow, printerId: string, steps: 
   clearCancelRequest(printerId)
   const final = await runOpStepFromIndex(0, [])
   clearCancelRequest(printerId)
-  if (final.failed) throw new Error('Operation failed')
+  if (final.failed) throw new Error(final.error ?? 'Operation failed')
   // A cancelled operation did not do what it was asked to do, so it must not reach the caller's
   // "it worked" record write: a cancelled deactivate would otherwise mark the printer deactivated
   // with its boot hook still in place.

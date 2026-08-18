@@ -2,12 +2,12 @@
   "schema_version": 1,
   "name": "Bespok3d Official",
   "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
-  "updated": "2026-08-13",
+  "updated": "2026-08-15",
   "plugins": [
     {
       "name": "afc-lite",
       "title": "AFC Lite (Automated Filament Changer)",
-      "version": "0.1.10+dev.local",
+      "version": "0.1.12+dev.local",
       "description": "Lightweight Automated Filament Changer support for the Snapmaker U1's four toolheads. Ships the AFC, AFC_unit and AFC_lane Klipper extras plus an afc.cfg that maps the four lanes (E0-E3) to the U1 extruders and filament motion sensors, and adds gcode macros for color, material, vendor, map, spool id, weight, tool change and lane/tool unload. Per-lane state feeds the U1's SET_PRINT_FILAMENT_CONFIG so the slicer and screen track what is loaded.",
       "tagline": "Four-lane filament tracking and tool-change macros for the U1.",
       "category": "filament",
@@ -15,7 +15,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-06-08",
-      "updated_at": "2026-08-01",
+      "updated_at": "2026-08-15",
       "requires": {
         "capabilities": [
           "klipper-generic"
@@ -27,7 +27,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "afc-lite/doc/README.md",
-      "download_url": "afc-lite-0.1.10.b3",
+      "download_url": "afc-lite-0.1.12.b3",
       "config": [
         {
           "key": "AFC_TOOLMAP_ASK",
@@ -185,7 +185,7 @@
     {
       "name": "fluidd",
       "title": "Fluidd",
-      "version": "0.1.5+dev.local",
+      "version": "0.1.6+dev.local",
       "description": "Swaps SM's outdated Fluidd for the current upstream release. You get input-shaper graphs, integrated config/G-code editors, tool-colour preview, modern mesh viz. Uninstall restores the SM-shipped copy automatically; no nginx config touched.",
       "tagline": "Modern Fluidd v1.37.3: replaces the stock SM build.",
       "category": "ui",
@@ -205,7 +205,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "fluidd/doc/README.md",
-      "download_url": "fluidd-0.1.5.b3",
+      "download_url": "fluidd-0.1.6.b3",
       "homepage": "https://github.com/Bespok3d/fluidd-plugin",
       "config": [
         {
@@ -231,7 +231,7 @@
         }
       ],
       "author": "bespoked",
-      "sw_version": "1.37.3",
+      "sw_version": "1.37.4",
       "attributions": "# Attributions - fluidd\n\n**Plugin author:** the Fluidd project (fluidd-core), packaged by Bespok3d\n\nInstalls the Fluidd web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Fluidd | the Fluidd project (fluidd-core), started by Craig Bassett (cadriel) | GPL-3.0 | yes | yes |\n\nThe released Fluidd web bundle is shipped verbatim inside this plugin (currently v1.37.3). Upstream:\nhttps://github.com/fluidd-core/fluidd\n\nThe U1 packaging approach follows the Extended Firmware overlay `62-app-fluidd` (paxx12), GPL-3.0.\n",
       "license_url": "https://github.com/Bespok3d/fluidd-plugin/blob/dev/fluidd/doc/LICENSE",
       "changelog_url": "fluidd/doc/CHANGELOG.md",
@@ -286,7 +286,7 @@
     {
       "name": "mainsail",
       "title": "Mainsail",
-      "version": "0.1.8+dev.local",
+      "version": "0.1.9+dev.local",
       "description": "Installs Mainsail v2.18.0 as a second web frontend. Runs on port 81 by default so Fluidd stays on port 80. Set port 80 to make Mainsail primary; Fluidd shifts to 81 automatically.",
       "tagline": "Mainsail web interface alongside Fluidd, on your chosen port.",
       "category": "ui",
@@ -306,7 +306,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "mainsail/doc/README.md",
-      "download_url": "mainsail-0.1.8.b3",
+      "download_url": "mainsail-0.1.9.b3",
       "config": [
         {
           "key": "MAINSAIL_PORT",
@@ -489,7 +489,7 @@
       "name": "rfid-bambu",
       "title": "Bambu Filament Tag",
       "version": "0.2.0+dev.local",
-      "description": "Reads Bambu Lab filament spool tags (encrypted Mifare Classic) and decodes the full filament: material, color, diameter, weight, and nozzle/bed temperatures into the shared rfid_data.json. REQUIRES A KEY YOU SUPPLY: Bambu tags are encrypted, so you must paste the public Bambu master key into this plugin's config (see the documentation for where to get it) before the tag can be decoded. Without a key the spool is still tracked by its tag UID. Installs the RFID Spool Reader automatically. Read-only: it never writes a tag. Experiment channel until verified on a real tag.",
+      "description": "Reads Bambu Lab filament spool tags (encrypted Mifare Classic) and decodes the full filament: material, color, diameter, weight, and nozzle/bed temperatures into the shared rfid_data.json. REQUIRES A KEY YOU SUPPLY: Bambu tags are encrypted, so you must paste the public Bambu master key into this plugin's config (see the documentation for where to get it) before the tag can be decoded. Without a key the spool is still tracked by its tag UID. Installs the RFID Spool Reader automatically. Read-only: it never writes a tag.",
       "tagline": "Decode Bambu spools on stock firmware (you supply the key).",
       "category": "filament",
       "channel": "stable",
@@ -613,7 +613,7 @@
       "description": "Best-effort reader for filament NFC tags that store their data as plain JSON in an NDEF record but do not use a recognized protocol (OpenSpool and other protocol-keyed tags are handled by their own decoders). Maps common field names (brand, type, color_hex, min_temp/max_temp, bed_temp, diameter, weight) into the shared rfid_data.json. Requires the RFID Spool Reader, which it installs automatically. Read-only: it never writes a tag. Experiment channel until verified on a real tag.",
       "tagline": "Read any plain-JSON NFC filament tag the U1 reader can see.",
       "category": "filament",
-      "channel": "testing",
+      "channel": "stable",
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-06-29",
@@ -639,7 +639,7 @@
     {
       "name": "rfid-ntag",
       "title": "RFID Spool Reader",
-      "version": "0.1.11+dev.local",
+      "version": "0.1.12+dev.local",
       "description": "USB RFID reader picks up OpenSpool-encoded NTAG215 cards. Writes the current spool's metadata to rfid_data.json on every card event so the rest of the stack just knows.",
       "tagline": "NTAG215/OpenSpool RFID: your filament knows what it is.",
       "category": "filament",
@@ -647,7 +647,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2025-09-02",
-      "updated_at": "2026-08-13",
+      "updated_at": "2026-08-14",
       "requires": {
         "capabilities": [
           "rfid-spi"
@@ -659,21 +659,9 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "rfid-ntag/doc/README.md",
-      "download_url": "rfid-ntag-0.1.11.b3",
+      "download_url": "rfid-ntag-0.1.12.b3",
       "homepage": "https://github.com/Bespok3d/u1-enhanced-rfid",
-      "config": [
-        {
-          "key": "RFID_FORCE_GENERIC_VENDOR",
-          "label": "Show my spools in Snapmaker Orca",
-          "type": "toggle",
-          "onValue": "True",
-          "offValue": "False",
-          "default": "True",
-          "hint": "On: your loaded spools appear under Machine Filament in Snapmaker Orca, listed as Generic plus the material, because those are the only filament names Orca can match. The printer's own screen shows Generic too. Off: the brand written on the tag is used everywhere, and Orca lists nothing for anything but Snapmaker spools.",
-          "userEditable": true,
-          "scope": "global"
-        }
-      ],
+      "config": [],
       "author": "bespoked",
       "attributions": "# Attributions - rfid-ntag\n\n**Plugin author:** Bespok3d, with parts of the Extended Firmware overlay `13-patch-rfid`, OpenRFID there by @suchmememanyskill and the OpenSpool `subtype` field by @morgendagen\n\nReads NTAG filament tags on the printer's built-in reader.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenSpool tag format | the OpenSpool project | published format | no | no |\n| Extended Firmware overlay `13-patch-rfid` | @suchmememanyskill and @morgendagen, packaged by paxx12 | GPL-3.0 | no | yes |\n\nThe patches in this plugin modify Snapmaker's own firmware files on the printer, and the Extended\nFirmware overlay `13-patch-rfid`, GPL-3.0, patches the same files. About a fifth of the lines our\nFM175xx reader patch adds are lines that overlay adds too. In `openspool_mapper.py`, 22 lines are\nthat overlay's: they fill Snapmaker's own tray structure field by field, with the same defaults.\nOpenRFID in that firmware is credited to @suchmememanyskill and the OpenSpool `subtype` field to\n@morgendagen.\n\nThe rest of the reader code (`bespok3d_rfid.py`, `ntag_reader.py`, `ndef_parser.py`,\n`mifare_classic.py`) is written from scratch.\n",
       "license_url": "https://github.com/Bespok3d/u1-enhanced-rfid/blob/dev/rfid-ntag/doc/LICENSE",
@@ -772,7 +760,7 @@
     {
       "name": "spoolman",
       "title": "Spoolman Bridge",
-      "version": "0.1.34+dev.local",
+      "version": "0.1.35+dev.local",
       "description": "Spoolman for the U1 multi-tool: the active spool follows the tag the printer reads or the spool you pick, color and material reach the screen and AFC panel, tags are matched by their hardware UID, and you can record which printer each spool is on. Filament length per print is logged automatically.",
       "tagline": "Zero-config Spoolman: active spool always tracked.",
       "category": "filament",
@@ -780,7 +768,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": false,
       "published_at": "2025-09-20",
-      "updated_at": "2026-08-13",
+      "updated_at": "2026-08-15",
       "requires": {
         "capabilities": [
           "klipper-generic"
@@ -794,7 +782,7 @@
       ],
       "conflicts": [],
       "doc_url": "spoolman/doc/README.md",
-      "download_url": "spoolman-0.1.34.b3",
+      "download_url": "spoolman-0.1.35.b3",
       "min_daemon_version": "0.10.1",
       "homepage": "https://github.com/Bespok3d/spoolman-klipper-helper",
       "macros": [
@@ -833,6 +821,11 @@
           "name": "SH_BIND_CARD_UID",
           "params": "CHANNEL={0..3} SPOOL=<id>",
           "description": "Bind the tag UID currently on a lane to a Spoolman spool, so the next tap of that tag resolves to it directly."
+        },
+        {
+          "name": "SH_APPLY_TAG_TO_SPOOL",
+          "params": "CHANNEL={0..3} SPOOL=<id>",
+          "description": "Write what the lane's tag says onto a Spoolman spool you picked, and bind the tag to it."
         },
         {
           "name": "SH_CONFIG",
@@ -922,6 +915,19 @@
           "scope": "global"
         },
         {
+          "key": "SPOOLMAN_REGISTER_FROM_TAG",
+          "label": "Make a spool out of a tag Spoolman does not have",
+          "type": "select",
+          "options": [
+            "true",
+            "false"
+          ],
+          "default": "true",
+          "hint": "On by default. When a tag matches nothing and none of your spools came close, the spool is created in Spoolman from what the card carries and the card is bound to it. Diameter and density are not on the card, so they are copied from your own filaments of that material; if you have none of that material, nothing is created and the console says so. This also covers writing a card onto a spool you picked (SH_APPLY_TAG_TO_SPOOL).",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
           "key": "SPOOLMAN_TRACK_LOCATION",
           "label": "Track spool location in Spoolman",
           "type": "select",
@@ -945,15 +951,25 @@
           "scope": "printer"
         },
         {
-          "key": "SPOOLMAN_FORCE_GENERIC_VENDOR",
-          "label": "Show my hand-picked spools in Snapmaker Orca",
+          "key": "SPOOLMAN_OVERRIDES_TAG",
+          "label": "Spoolman pick overrides a tagged lane",
           "type": "select",
           "options": [
             "true",
             "false"
           ],
-          "default": "true",
-          "hint": "On: a spool you pick yourself is reported to slicers as Generic plus its material, the only filament names Snapmaker Orca can match, so it appears under Machine Filament. Spoolman, the AFC lane name and your spool's own record keep the real brand. Off: the brand recorded in Spoolman is sent, and Orca lists nothing for anything but Snapmaker spools.",
+          "default": "false",
+          "hint": "When a lane has both an RFID tag and a spool picked in Spoolman, this says which one the printer believes. Off, the tag wins. On, Spoolman wins. Turn it on if your spool profiles live in Spoolman, as they do on the extended firmware.",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
+          "key": "SPOOLMAN_SUBTYPE_SOURCES",
+          "label": "Where the sub-type comes from",
+          "type": "text",
+          "placeholder": "sub_type,variant,name_inferred",
+          "default": "sub_type,variant,name_inferred",
+          "hint": "The three places a sub-type can come from, tried in this order, first one with a value wins. sub_type: a sub_type field you added in Spoolman. variant: the variant field the extended firmware writes there. name_inferred: we read it out of the filament name, so Matte PLA Olive gives Matte. Reorder them to change which wins, remove one to stop reading it.",
           "userEditable": true,
           "scope": "global"
         }
@@ -1003,11 +1019,11 @@
     {
       "name": "tailscale",
       "title": "Tailscale",
-      "version": "0.1.1+dev.local",
+      "version": "0.1.2+dev.local",
       "description": "Joins the printer to your Tailscale mesh network (tailnet), so you can reach Fluidd/Mainsail, the camera, and SSH from anywhere without opening a port on your router. Bring your own account: generate an auth key at login.tailscale.com/admin/settings/keys, then paste it below. The printer authorizes itself the way any Tailscale device does; it appears in your tailnet's device list like a laptop or phone. Bespok3d hosts no coordination service and never sees your auth key or traffic. Runs tailscaled as a managed service on top of the tun-module base (a real /dev/net/tun the tailscale0 network interface needs).",
       "tagline": "Reach your printer from anywhere over your Tailscale network.",
       "category": "system",
-      "channel": "testing",
+      "channel": "stable",
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": false,
       "published_at": "2026-07-05",
@@ -1025,7 +1041,7 @@
       ],
       "conflicts": [],
       "doc_url": "tailscale/doc/README.md",
-      "download_url": "tailscale-0.1.1.b3",
+      "download_url": "tailscale-0.1.2.b3",
       "config": [
         {
           "key": "TS_AUTHKEY",
@@ -1048,11 +1064,11 @@
     {
       "name": "tun-module",
       "title": "TUN kernel module",
-      "version": "0.1.0+dev.local",
+      "version": "0.1.1+dev.local",
       "description": "Loads the Linux `tun` kernel module so the printer has a working /dev/net/tun. Mesh-VPN plugins (ZeroTier needs it; Tailscale runs lighter with it) build a virtual network interface on top of it. The Snapmaker U1's stock kernel ships tun neither built in nor as a module, so this plugin carries a `tun.ko` cross-built against the exact running kernel (6.1.99 aarch64) and insmods it at boot, before the services that need it. Nothing to configure: install it (or install a VPN plugin that requires it) and /dev/net/tun is there.",
       "tagline": "Adds /dev/net/tun to the printer, the base a mesh VPN builds on.",
       "category": "system",
-      "channel": "testing",
+      "channel": "stable",
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-07-05",
@@ -1068,7 +1084,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "tun-module/doc/README.md",
-      "download_url": "tun-module-0.1.0.b3",
+      "download_url": "tun-module-0.1.1.b3",
       "config": [],
       "author": "bespoked",
       "attributions": "# Attributions - tun-module\n\n**Plugin author:** the Linux kernel contributors, built by Bespok3d from the printer kernel source\n\nLoads the kernel `tun` driver the VPN plugins need.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Linux kernel `tun` driver 6.1.99 | the Linux kernel contributors | GPL-2.0-only | yes | yes |\n\nThe module is cross-built at build time from the Rockchip kernel tree at commit\n`8533b2249e1550b233a4836d039d64e3bb2fed7a`, against the stock Snapmaker U1 kernel configuration, and\nshipped as a `.ko`. The licence text and the provenance note are in `vendor/linux-tun/` at the root\nof this repository.\n\nBecause Bespok3d builds this binary, Bespok3d owes its Corresponding Source: the pinned upstream\ncommit plus the `Dockerfile` and `junior-6.1.99.config` in `tun-module/toolchain/`, both published\nwith every release. The inventory entry is in `Bespok3d_history/doc/gpl-source-inventory.md`.\n\nRelated Extended Firmware overlay: `10-patch-kernel-modules` (paxx12), GPL-3.0.\n",
@@ -1078,11 +1094,11 @@
     {
       "name": "u1-gcode-colors",
       "title": "U1 G-code Preview Colors",
-      "version": "0.1.1+dev.local",
+      "version": "0.1.2+dev.local",
       "description": "Fills Fluidd's G-code preview filament_colors array from the U1's live print_task state, so each tool line shows the color actually loaded on the extruder it maps to, instead of the fixed fallback palette. No Fluidd patch. Works with any color source the printer already has (RFID, screen picks, or the Spoolman helper if installed).",
       "tagline": "Real per-tool colors in the G-code preview, from what is actually loaded.",
       "category": "ui",
-      "channel": "testing",
+      "channel": "stable",
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-07-04",
@@ -1098,7 +1114,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "u1-gcode-colors/doc/README.md",
-      "download_url": "u1-gcode-colors-0.1.1.b3",
+      "download_url": "u1-gcode-colors-0.1.2.b3",
       "min_daemon_version": "0.10.1",
       "config": [
         {
@@ -1121,11 +1137,11 @@
     {
       "name": "zerotier",
       "title": "ZeroTier",
-      "version": "0.1.1+dev.local",
+      "version": "0.1.2+dev.local",
       "description": "Joins the printer to a ZeroTier mesh network, so you can reach Fluidd/Mainsail, the camera, and SSH from anywhere without opening a port on your router. Bring your own account: create a free network at my.zerotier.com, then paste its 16-hex-digit network id below. The printer authorizes itself the way any ZeroTier device does; approve it in ZeroTier Central like you would a laptop or phone. Bespok3d hosts no coordination service and never sees your network id or traffic. Runs zerotier-one as a managed service on top of the tun-module base (a real /dev/net/tun the ZeroTier virtual network interface needs).",
       "tagline": "Reach your printer from anywhere over a ZeroTier mesh network.",
       "category": "system",
-      "channel": "testing",
+      "channel": "stable",
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": false,
       "published_at": "2026-07-05",
@@ -1143,7 +1159,7 @@
       ],
       "conflicts": [],
       "doc_url": "zerotier/doc/README.md",
-      "download_url": "zerotier-0.1.1.b3",
+      "download_url": "zerotier-0.1.2.b3",
       "config": [
         {
           "key": "ZT_NETWORK_ID",
@@ -1169,14 +1185,14 @@
       "name": "all-the-tags",
       "title": "All the Tags",
       "version": "0.1.3",
-      "description": "Installs the whole RFID filament-tag reading stack in one click: the NFC reader and hub, every shipped tag-standard decoder, and Spoolman tracking, so almost any spool you tap is identified and tracked. Includes the open standards (OpenTag3D, OpenPrintTag, generic NDEF JSON, TigerTag) plus full payload decoders for the proprietary tags (Bambu and Creality, with your own keys pasted into their config; without a key they fall back to UID-only tracking). QIDI needs no key at all: its tags sit on the Mifare factory default key, so those spools read out of the box. Anycubic decodes the dispute-free fields today (a tester dump finishes it). The members install together with a single service restart. Experiment channel until the stack is verified end to end on a real printer.",
+      "description": "Installs the whole RFID filament-tag reading stack in one click: the NFC reader and hub, every shipped tag-standard decoder, and Spoolman tracking, so almost any spool you tap is identified and tracked. Includes the open standards (OpenTag3D, OpenPrintTag, generic NDEF JSON, TigerTag) plus full payload decoders for the proprietary tags (Bambu and Creality, with your own keys pasted into their config; without a key they fall back to UID-only tracking). QIDI needs no key at all: its tags sit on the Mifare factory default key, so those spools read out of the box. Anycubic decodes the dispute-free fields today (a tester dump finishes it). The members install together with a single service restart.",
       "tagline": "Every spool, identified: the whole RFID tag-reading stack in one install.",
       "category": "filament",
-      "channel": "testing",
+      "channel": "stable",
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-06-30",
-      "updated_at": "2026-08-13",
+      "updated_at": "2026-08-15",
       "members": [
         {
           "id": "rfid-ntag",

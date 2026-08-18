@@ -87,3 +87,24 @@ describe('a switched-off printer with no daemon left to answer', () => {
     expect(seen[0].deactivated).toBe(false)
   })
 })
+
+// A firmware update takes the daemon with it, and after it there is no daemon left to answer, so the
+// repair-vs-recover verdict taken before the update was never revisited: the printer was offered a
+// daemon repair it cannot survive instead of the full recovery that rebuilds it.
+describe('a daemon that was answering and now is not', () => {
+  it('drops the verdict taken while it was answering, and asks the printer again', async () => {
+    var seen: Printer[] = [makePrinter({
+      id: 'printer-after-reflash', status: 'managed', writeLayerIntact: true,
+      connection: { reach: 'managed', sshOpen: true },
+      enrollmentLog: { enrolledAt: '2026-01-01', adapterId: 'snapmaker-u1', steps: [] },
+    })]
+    const checkWriteLayer = vi.fn().mockResolvedValue(false)
+    vi.stubGlobal('b3d', { printers: { checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }), checkWriteLayer } })
+
+    await pingAndUpdate(seen[0], (update) => { seen = update(seen) })
+    await pingAndUpdate(seen[0], (update) => { seen = update(seen) })
+
+    expect(checkWriteLayer).toHaveBeenCalledWith('printer-after-reflash')
+    expect(seen[0].writeLayerIntact).toBe(false)
+  })
+})

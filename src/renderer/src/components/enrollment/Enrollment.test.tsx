@@ -14,12 +14,13 @@ function renderEnroll(mode: EnrollMode, printerOverrides = {}, handlers: Record<
   var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online', ...printerOverrides })
   var onEnrolled = handlers.onEnrolled ?? vi.fn()
   var onEscalateRecovery = handlers.onEscalateRecovery ?? vi.fn()
+  var onRebuildPrinter = handlers.onRebuildPrinter ?? vi.fn()
   var onExpectedRestart = handlers.onExpectedRestart ?? vi.fn()
   var rendered = setup(
-    <Enrollment printer={printer} mode={mode} onEnrolled={onEnrolled} onClose={vi.fn()} onEscalateRecovery={onEscalateRecovery} onExpectedRestart={onExpectedRestart} />,
+    <Enrollment printer={printer} mode={mode} onEnrolled={onEnrolled} onClose={vi.fn()} onEscalateRecovery={onEscalateRecovery} onRebuildPrinter={onRebuildPrinter} onExpectedRestart={onExpectedRestart} />,
   )
 
-  return { ...rendered, onEnrolled, onEscalateRecovery, onExpectedRestart }
+  return { ...rendered, onEnrolled, onEscalateRecovery, onRebuildPrinter, onExpectedRestart }
 }
 
 // The ops that stop plugins, re-deploy the daemon or restart the printer wait on their go-ahead
@@ -90,6 +91,8 @@ describe('Enrollment launched from the Force menu', () => {
   })
 })
 
+const WRITE_LAYER_REFUSAL = "This printer's write layer was reset. Run full recovery to rebuild it."
+
 describe('Enrollment failure handling', () => {
   it('retries from the failed step', async () => {
     var { user, emit, b3d } = renderEnroll('enroll')
@@ -102,6 +105,25 @@ describe('Enrollment failure handling', () => {
     expect(b3d.printers.enroll).toHaveBeenLastCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, 'deploy-daemon', false)
   })
 
+  // The op rejects a moment after the step it stopped on fails. That rejection used to clear the
+  // progress screen, taking the step's own reason and the Run Recovery button with it, and left the
+  // user looking at "Operation failed" with nothing but Close.
+  it('keeps the failed step, its reason and the way out when the operation itself rejects', async () => {
+    var refuse: ((reason: Error) => void) | undefined
+    var { user, emit, b3d, onEscalateRecovery } = renderEnroll('repair')
+    vi.mocked(b3d.printers.repair).mockReturnValue(new Promise((_resolve, reject) => { refuse = reject }))
+    await user.click(screen.getByRole('button', { name: 'Repair daemon' }))
+    await waitFor(() => expect(b3d.printers.repair).toHaveBeenCalled())
+
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'check-write-layer', stepLabel: 'Checking the write layer', error: WRITE_LAYER_REFUSAL, stepIndex: 0 })))
+    await act(async () => { refuse?.(new Error(WRITE_LAYER_REFUSAL)) })
+
+    expect(screen.getByText(WRITE_LAYER_REFUSAL)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Report this problem' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Run Recovery' }))
+    expect(onEscalateRecovery).toHaveBeenCalledOnce()
+  })
+
   it('offers recovery escalation when a repair fails', async () => {
     var { user, emit, b3d, onEscalateRecovery } = await renderAndSayGo('repair')
     await waitFor(() => expect(b3d.printers.repair).toHaveBeenCalled())
@@ -109,6 +131,30 @@ describe('Enrollment failure handling', () => {
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'deploy-daemon', stepLabel: 'Deploy daemon', error: 'boom', stepIndex: 3 })))
     await user.click(screen.getByRole('button', { name: 'Run Recovery' }))
     expect(onEscalateRecovery).toHaveBeenCalledOnce()
+  })
+
+  // Full recovery is the end of the line the daemon fix escalates into, so its own failure used to
+  // leave the user with nothing to press. Rebuilding re-enrols the printer and puts the plugins back.
+  it('offers rebuilding the printer when the full recovery itself fails', async () => {
+    var { user, emit, b3d, onRebuildPrinter } = await renderAndSayGo('recovery')
+    await act(async () => { await Promise.resolve() })
+    expect(b3d.printers.enroll).toHaveBeenCalled()
+
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'deploy-daemon', stepLabel: 'Deploy daemon', error: 'boom', stepIndex: 3 })))
+    expect(screen.getByText('boom')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Rebuild Printer' }))
+    expect(onRebuildPrinter).toHaveBeenCalledOnce()
+  })
+
+  it('offers no next step when a plain enrollment fails, because there is nothing further to try', async () => {
+    var { emit, b3d } = await renderAndSayGo('enroll')
+    await act(async () => { await Promise.resolve() })
+    expect(b3d.printers.enroll).toHaveBeenCalled()
+
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'deploy-daemon', stepLabel: 'Deploy daemon', error: 'boom', stepIndex: 3 })))
+    expect(screen.getByText('boom')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Run Recovery' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Rebuild Printer' })).not.toBeInTheDocument()
   })
 })
 

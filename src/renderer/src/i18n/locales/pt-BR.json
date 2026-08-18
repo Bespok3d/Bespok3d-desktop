@@ -1110,5 +1110,12 @@
   "patchsnap.hint_drag": "o patch para deslizar todos os hunks",
   "patchsnap.hint_nudge": "desloca +/-1 linha",
   "patchsnap.read_only_note": "somente leitura - nada é gravado até Aplicar",
-  "patchsnap.applied_toast": "Patch aplicado; o branch foi mantido para reverter"
+  "patchsnap.applied_toast": "Patch aplicado; o branch foi mantido para reverter",
+  "store.update_confirm.title": "Atualizar esse plugin?",
+  "store.update_confirm.summary": "{count} plugin(s) vão ser atualizados de onde cada um foi instalado..",
+  "store.update_confirm.detail": "Cada plugin é atualizado do mesmo lugar que foi instalado.",
+  "store.update_confirm.versions": "{from} vira {to}",
+  "store.update_confirm.other_versions": "Outras versões",
+  "store.update_confirm.confirm": "Atualizar",
+  "store.update_confirm.moved_source": "O lugar que essa cópia veio não oferece mais."
 }
