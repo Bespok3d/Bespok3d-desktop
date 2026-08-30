@@ -60,6 +60,26 @@ describe('the settings each listed version carries', () => {
   })
 })
 
+// The same plugin listed by two lists shows one row, and the row is the version that won the merge,
+// not always the version the app offers. A change of shape is declared by the version that carries it,
+// so the terms have to reach the version they were written for or the offer reads as a plain update.
+describe('the change of shape each listed version declares', () => {
+  it('gives the version that declares it its own terms, not only the merged entry', () => {
+    const merged = makeIndexEntry({
+      name: 'rfid-ntag',
+      variants: [
+        makeIndexEntry({ name: 'rfid-ntag', version: '0.1.12', registry_url: 'github:Bespok3d/main-index/index.json' }),
+        makeIndexEntry({ name: 'rfid-ntag', version: '0.1.14', registry_url: '/Users/dev/local/index.json', migration: { until_version: '0.1.14', requires_daemon: '0.14.2', summary: 'The base layer holds those files now.' } }),
+      ],
+    })
+    const [plugin] = indexToPlugins([merged], [])
+
+    expect(plugin?.migration).toBeUndefined()
+    expect(plugin?.sources[0]?.migration).toBeUndefined()
+    expect(plugin?.sources[1]?.migration).toEqual({ fromVersion: undefined, untilVersion: '0.1.14', requiresDaemon: '0.14.2', summary: 'The base layer holds those files now.' })
+  })
+})
+
 // A store page must show the words of the version it is offering. The publisher's build rewrites these
 // fields to the docs released beside the package; only that form can be read at runtime, so a source
 // path or a link for a human to click must not be handed to the fetch as if it were one.

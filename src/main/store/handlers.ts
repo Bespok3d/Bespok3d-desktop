@@ -3,7 +3,8 @@
 import { ipcMain, type BrowserWindow } from 'electron'
 import { updatePrinter, appendPluginCapture, pluginCaptures } from '../printers'
 import type { ReleaseChannel } from '../settings'
-import type { InstallLog, RecoverResult } from '@bespok3d/contract'
+import type { InstallLog } from '@bespok3d/contract'
+import type { BatchResult } from '../daemon-client/batch-result'
 import { fetchCapabilities, fetchPluginConfig, reconfigurePlugin, recoverPackages } from '../daemon-client/client'
 import { getManagedRecord, parseCaps, DAEMON_QUERY_TIMEOUT_MS } from '../daemon-client/status'
 import { recordAppliedVars } from './record-sync'
@@ -86,7 +87,7 @@ export function registerStoreHandlers(getMainWindow: () => BrowserWindow): void 
 
   // The live feed is opened (and awaited) before the call, as a batch does, so the user watches
   // recovery name each plugin it puts back instead of waiting on a spinner.
-  ipcMain.handle('store:recover', async (_ev, printerId: string): Promise<RecoverResult> => {
+  ipcMain.handle('store:recover', async (_ev, printerId: string): Promise<BatchResult> => {
     const record = getManagedRecord(printerId)
     const closeProgress = await streamRecoverProgress(getMainWindow(), printerId, record)
 

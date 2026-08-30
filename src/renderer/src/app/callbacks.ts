@@ -176,12 +176,13 @@ function batchOpHandles(batchOps: BatchOps) {
   return {
     recoveryResults: batchOps.recoveryResults, setRecoveryResults: batchOps.setRecoveryResults, recovering: batchOps.recovering, restartingAfterRecovery: batchOps.restartingAfterRecovery, printerRestarting: batchOps.printerRestarting, restartSeconds: batchOps.restartSeconds,
     updateAllResult: batchOps.updateAllResult, setUpdateAllResult: batchOps.setUpdateAllResult, updatingAll: batchOps.updatingAll,
-    installBatchResult: batchOps.installBatchResult, setInstallBatchResult: batchOps.setInstallBatchResult, installingBatch: batchOps.installingBatch, batchProgress: batchOps.batchProgress, uninstallBatchResult: batchOps.uninstallBatchResult, setUninstallBatchResult: batchOps.setUninstallBatchResult, uninstallingBatch: batchOps.uninstallingBatch, handleUninstallBatch: batchOps.runUninstallBatch,
+    installBatchResult: batchOps.installBatchResult, setInstallBatchResult: batchOps.setInstallBatchResult, installingBatch: batchOps.installingBatch, installBatchVariant: batchOps.installBatchVariant, batchProgress: batchOps.batchProgress, uninstallBatchResult: batchOps.uninstallBatchResult, setUninstallBatchResult: batchOps.setUninstallBatchResult, uninstallingBatch: batchOps.uninstallingBatch, handleUninstallBatch: batchOps.runUninstallBatch,
     batchFailure: batchOps.batchFailure, dismissBatchFailure: batchOps.dismissBatchFailure,
     handleRecoverDrift: batchOps.runRecover,
     handleUpdateAll: batchOps.askUpdateAll,
     pendingUpdate: batchOps.pendingUpdate, confirmUpdateAll: batchOps.confirmUpdateAll, cancelUpdateAll: batchOps.cancelUpdateAll,
     handleInstallBatch: batchOps.runInstallBatch,
+    handleMigrateBatch: batchOps.runMigrateBatch,
   }
 }
 

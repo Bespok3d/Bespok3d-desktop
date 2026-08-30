@@ -99,3 +99,83 @@ describe('OtaRecoveryResultsModal', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 })
+
+// R-TORN-2: alongside the batch it ran, the printer reports any plugin whose own manifest it could not
+// read. The report names that plugin and what the printer could not make sense of. A printer that
+// reports nothing shows nothing: that is the ordinary answer, not something to render as a fault.
+describe('OtaRecoveryResultsModal, plugins the printer could not read', () => {
+  var unreadable = { plugin: 'rfid-ntag', problem: 'manifest-unreadable', detail: 'manifest.json: Expecting value: line 1 column 1' }
+
+  // A batch that ends badly used to end HERE: a failed row, the printer's reason, and a Close button.
+  // The plugin's own page is where installing it resolves what it is missing, so a plugin that did not
+  // go through has to be one click from it.
+  it('offers a way out of a plugin that did not go through, on its own page', async () => {
+    var onOpenPlugin = vi.fn()
+    var onClose = vi.fn()
+    var { user } = setup(<OtaRecoveryResultsModal results={results()} onOpenPlugin={onOpenPlugin} onClose={onClose} variant="update" />)
+
+    await user.click(screen.getByRole('button', { name: en('btn.fix') }))
+    expect(onOpenPlugin).toHaveBeenCalledWith('fluidd')
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  // The dead end the user actually hit: the printer left a plugin out because a plugin it needs was not
+  // there, said so, and the report offered only Close. Its own page is where that missing plugin is
+  // fetched, so a left-out plugin the printer gave a reason for is one click from putting it right.
+  it('offers a way out of a plugin the printer left out because something it needs is missing', async () => {
+    var leftOut = {
+      ok: false,
+      results: [{ pluginId: 'rfid-ntag', ok: false, skipped: true, reason: 'Requires a plugin that provides: u1-base-print-task-config', log: [] }],
+    }
+    var onOpenPlugin = vi.fn()
+    var { user } = setup(<OtaRecoveryResultsModal results={leftOut} onOpenPlugin={onOpenPlugin} onClose={vi.fn()} variant="update" />)
+
+    await user.click(screen.getByRole('button', { name: en('btn.fix') }))
+    expect(onOpenPlugin).toHaveBeenCalledWith('rfid-ntag')
+  })
+
+  it('offers nothing of the kind for a plugin the printer walked past on purpose', () => {
+    var skippedOnly = { ok: true, results: [{ pluginId: 'rfid-ntag', ok: false, skipped: true, reason: '', log: [] }] }
+    setup(<OtaRecoveryResultsModal results={skippedOnly} onOpenPlugin={vi.fn()} onClose={vi.fn()} variant="update" />)
+
+    expect(screen.queryByRole('button', { name: en('btn.fix') })).not.toBeInTheDocument()
+  })
+
+  // The rows say what happened in the app's own words; what whoever reads the issue needs is the
+  // printer's, for every plugin at once, and a screenshot of this modal loses it.
+  it('hands the user the whole outcome to paste into a report', async () => {
+    var { user } = setup(<OtaRecoveryResultsModal results={results()} onOpenPlugin={vi.fn()} onClose={vi.fn()} variant="update" />)
+
+    await user.click(screen.getByRole('button', { name: en('install_error.copy') }))
+    const report = await navigator.clipboard.readText()
+    expect(report).toContain('fluidd: failed')
+    expect(report).toContain('failed to symlink config')
+    expect(report).toContain('spoolman: ok')
+  })
+
+  it('does not offer a report for a batch that went through', () => {
+    var allInstalled = { ok: true, results: [{ pluginId: 'spoolman', ok: true, skipped: false, reason: '', log: [] }] }
+    setup(<OtaRecoveryResultsModal results={allInstalled} onOpenPlugin={vi.fn()} onClose={vi.fn()} variant="update" />)
+
+    expect(screen.queryByRole('button', { name: en('install_error.copy') })).not.toBeInTheDocument()
+  })
+
+  it('names the plugin the printer could not read and what it could not make sense of', async () => {
+    var warned = { ...results(), manifestWarnings: [unreadable] }
+    var { user, container } = setup(<OtaRecoveryResultsModal results={warned} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getByText(en('batch_results.unreadable_plugin', { plugin: 'rfid-ntag' }))).toBeInTheDocument()
+
+    await user.click(container.querySelector('.explainer-toggle') as HTMLElement)
+    expect(screen.getByText(new RegExp(en('diagnosis.manifest_unreadable')))).toBeInTheDocument()
+    expect(screen.getByText(/Expecting value: line 1 column 1/)).toBeInTheDocument()
+    expect(screen.queryByText(/manifest-unreadable/)).not.toBeInTheDocument()
+  })
+
+  it('shows nothing of the kind when the printer reported no such plugin', () => {
+    var { container } = setup(<OtaRecoveryResultsModal results={results()} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.queryByText(en('batch_results.unreadable_plugin', { plugin: 'rfid-ntag' }))).not.toBeInTheDocument()
+    expect(container.querySelectorAll('.recovery-row')).toHaveLength(results().results.length)
+  })
+})

@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState } from 'react'
-import type { RecoverResult } from '@bespok3d/contract'
+import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 
 interface RecoveryReportHandlers {
   waitForPrinterBack: (printerId: string) => Promise<void>
   setRestartingAfterRecovery: (restarting: boolean) => void
-  showReport: (results: RecoverResult) => void
+  showReport: (results: BatchResult) => void
 }
 
 // The report is held until the printer answers again. Showing it the moment the plugins were back is
@@ -15,7 +15,7 @@ interface RecoveryReportHandlers {
 //
 // The restart answers whether the app is making it itself. A printer the user gave their own SSH login
 // for is not restarted unattended, so there is nothing to wait for and that one is reported at once.
-function reportWhenThePrinterIsBack(printerId: string, results: RecoverResult, handlers: RecoveryReportHandlers) {
+function reportWhenThePrinterIsBack(printerId: string, results: BatchResult, handlers: RecoveryReportHandlers) {
   return function holdTheReport(restarting: boolean) {
     handlers.setRestartingAfterRecovery(restarting)
     if (!restarting) {
@@ -45,12 +45,12 @@ export function useRecoverOp(
   waitForPrinterBack: (printerId: string) => Promise<void>,
   restartSecondsOf: (printerId: string) => Promise<number | null>,
 ) {
-  const [recoveryResults, setRecoveryResults] = useState<RecoverResult | null>(null)
+  const [recoveryResults, setRecoveryResults] = useState<BatchResult | null>(null)
   const [recovering, setRecovering] = useState(false)
   const [restartingAfterRecovery, setRestartingAfterRecovery] = useState(false)
   const [printerRestarting, setPrinterRestarting] = useState(false)
   const [restartSeconds, setRestartSeconds] = useState<number | null>(null)
-  function showReport(results: RecoverResult) {
+  function showReport(results: BatchResult) {
     setPrinterRestarting(false)
     setRecoveryResults(results)
   }

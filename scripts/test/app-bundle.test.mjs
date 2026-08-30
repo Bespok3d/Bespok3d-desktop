@@ -41,7 +41,7 @@ import { join, relative } from 'node:path'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildBundle, buildIndex, canonicalSourcePerId, firstSourcePerName } from '../app-bundle.mjs'
+import { buildBundle, buildIndex, canonicalSourcePerId, findManifestDirs, firstSourcePerName } from '../app-bundle.mjs'
 import { SIGNING_KEY_VAR } from '../bundle-signing.mjs'
 import {
   GOLDEN_DIR,
@@ -451,4 +451,61 @@ test('an id claimed by one dir not named for it still resolves to that dir', () 
 
   assert.deepEqual(canonicalSourcePerId(soleClaim), soleClaim)
   assert.equal(shellResolvedDir([`camera-hw-accel\t${soleClaimDir}`], 'camera-hw-accel'), soleClaimDir)
+})
+
+// A co-repo whose ROOT manifest is the collection keeps its member plugins in sub-dirs (plugins/u1-base
+// holds the six base plugins). Discovery treated any dir holding a manifest as a leaf, so it stopped at
+// the collection root and never saw the members, while pack-plugins.sh's flat find over manifest.json
+// listed all seven: the base layer could not be packed at all, and the two sides must answer the same.
+const CO_REPO_ROOT = '/workspace/plugins'
+const COLLECTION_DIR = `${CO_REPO_ROOT}/u1-base`
+const MEMBER_DIR = `${COLLECTION_DIR}/u1-base-toolhead`
+
+function fakeDirent(name, kind) {
+  return { name, isFile: () => kind === 'file', isDirectory: () => kind === 'dir' }
+}
+
+const CO_REPO_ENTRIES = {
+  [CO_REPO_ROOT]: [fakeDirent('u1-base', 'dir')],
+  [COLLECTION_DIR]: [fakeDirent('manifest.json', 'file'), fakeDirent('u1-base-toolhead', 'dir'), fakeDirent('vendor', 'dir')],
+  [MEMBER_DIR]: [fakeDirent('manifest.json', 'file'), fakeDirent('files', 'dir')],
+  [`${COLLECTION_DIR}/vendor`]: [fakeDirent('LICENSE', 'file')],
+}
+
+const CO_REPO_MANIFESTS = {
+  [`${COLLECTION_DIR}/manifest.json`]: '{"name":"u1-base","kind":"collection"}',
+  [`${MEMBER_DIR}/manifest.json`]: '{"name":"u1-base-toolhead"}',
+}
+
+async function fakeReaddir(dir) {
+  return CO_REPO_ENTRIES[dir] ?? Promise.reject(new Error(`ENOENT ${dir}`))
+}
+
+async function fakeReadFile(path) {
+  return CO_REPO_MANIFESTS[path] ?? Promise.reject(new Error(`ENOENT ${path}`))
+}
+
+test('discovery descends past a collection manifest so a co-repo\'s member plugins are found', async () => {
+  const found = await findManifestDirs(fakeReadFile, fakeReaddir, join, CO_REPO_ROOT, 4)
+
+  assert.deepEqual(found.sort(), [COLLECTION_DIR, MEMBER_DIR])
+})
+
+test('discovery still stops at a plugin manifest, so a payload manifest is never a source', async () => {
+  const found = await findManifestDirs(fakeReadFile, fakeReaddir, join, COLLECTION_DIR, 4)
+
+  assert.deepEqual(found.sort(), [COLLECTION_DIR, MEMBER_DIR])
+})
+
+// The bundle list is a claim, not a wish: an id that resolves to no source dir refuses the build
+// (variantSource's missing-dir refusal, extended to the id list), never exits 0 with the plugin
+// quietly missing - a silent shrink the next golden refresh would write back as the correct claim.
+test('a bundle-list id with no matching source refuses the build instead of packing without it', { ...NEEDS_PLUGIN_SOURCES }, async () => {
+  const curation = goldenDevCuration()
+  const outputDir = makeScratchOutputDir('app-bundle-ghost-')
+
+  await assert.rejects(
+    buildBundle({ sourceRoot: APP_REPO_DIR, outputDir, channel: 'dev', devCuration: { ...curation, bundle: [...curation.bundle, 'ghost-plugin'] } }),
+    /names ghost-plugin, which match no plugin source/,
+  )
 })

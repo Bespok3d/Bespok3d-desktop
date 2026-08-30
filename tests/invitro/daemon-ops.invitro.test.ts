@@ -13,7 +13,7 @@ import { DaemonHttpError } from '../../src/main/daemon-client/transport'
 import { daemonNeedsUpdate } from '../../src/main/daemon-client/status'
 import { makeDeviceTarget, DEVICE_AUTOSTART, DEVICE_VENV_PYTHON } from './device-target'
 import type { DeviceTarget } from './device-target'
-import { FIXTURE_PLUGIN_ID, fixturePluginVars, untamperedPackage, packageWithTamperedPayload } from './tampered-package'
+import { FIXTURE_PLUGIN_ID, FIXTURE_PACKAGE_BUNDLED, fixturePluginVars, untamperedPackage, packageWithTamperedPayload } from './tampered-package'
 
 // The daemon maintenance the app performs on an already-enrolled printer, driven end to end against a
 // live daemon: update, repair, and the repair refusal after a firmware OTA resets the write layer.
@@ -158,7 +158,7 @@ describe('the app daemon maintenance ops against a live daemon', () => {
     expect(storedRecord().daemonUpdateAvailable).toBe(false)
   }, OP_TIMEOUT_MS)
 
-  it('refuses a package tampered after packing, on the daemon the app itself deployed', async () => {
+  it.skipIf(!FIXTURE_PACKAGE_BUNDLED)('refuses a package tampered after packing, on the daemon the app itself deployed', async () => {
     const refusal = await installPlugin(record(), packageWithTamperedPayload(), FIXTURE_PLUGIN_ID, fixturePluginVars())
       .then(() => null, (installError: Error) => installError)
 
@@ -181,7 +181,7 @@ describe('the app daemon maintenance ops against a live daemon', () => {
     await target().resetWriteLayer()
     const { win, send } = fakeWindow()
 
-    await expect(runDaemonOp(runRepair, win)).rejects.toThrow('Operation failed')
+    await expect(runDaemonOp(runRepair, win)).rejects.toThrow(/full recovery/i)
     expect(doneStepIds(send)).toEqual([])
     const failure = opEvents(send).find((event) => event.status === 'failed')
     expect(failure?.stepId).toBe('check-write-layer')

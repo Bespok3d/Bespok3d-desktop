@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PrinterRecord } from '../printers'
-import type { InstallLogPhase, InstallLog, RecoverResult } from '@bespok3d/contract'
+import type { InstallLogPhase, InstallLog } from '@bespok3d/contract'
+import type { BatchResult } from './batch-result'
+import { manifestWarningsIn } from './batch-result'
 import { doRequest, LONG_OP_TIMEOUT_MS, type UploadProgressFn } from './transport'
 
 function toInstallLog(text: string): InstallLog {
@@ -86,14 +88,16 @@ export async function teardownDaemon(record: PrinterRecord): Promise<void> {
   await doRequest(record, 'POST', '/teardown', undefined, undefined, LONG_OP_TIMEOUT_MS)
 }
 
-function parseRecoverResult(text: string): RecoverResult {
+function parseBatchResult(text: string): BatchResult {
   const raw = JSON.parse(text) as {
     ok: boolean
     results: Array<{ plugin_id: string; ok: boolean; skipped: boolean; reason: string; log: InstallLogPhase[]; auto_deactivated?: string | null; fix_detail?: string; changed_files?: string[] }>
+    manifest_warnings?: unknown
   }
 
   return {
     ok: raw.ok,
+    manifestWarnings: manifestWarningsIn(raw.manifest_warnings),
     results: raw.results.map((item) => ({
       pluginId: item.plugin_id,
       ok: item.ok,
@@ -107,8 +111,8 @@ function parseRecoverResult(text: string): RecoverResult {
   }
 }
 
-export async function recoverPackages(record: PrinterRecord): Promise<RecoverResult> {
-  return parseRecoverResult(await doRequest(record, 'POST', '/packages/recover', undefined, undefined, LONG_OP_TIMEOUT_MS))
+export async function recoverPackages(record: PrinterRecord): Promise<BatchResult> {
+  return parseBatchResult(await doRequest(record, 'POST', '/packages/recover', undefined, undefined, LONG_OP_TIMEOUT_MS))
 }
 
 export interface BatchUpdatePackage {
@@ -134,17 +138,17 @@ function buildBatchMultipart(boundary: string, packages: BatchUpdatePackage[], v
   return Buffer.concat(parts)
 }
 
-export async function uninstallBatch(record: PrinterRecord, pluginIds: string[], cascade: boolean): Promise<RecoverResult> {
+export async function uninstallBatch(record: PrinterRecord, pluginIds: string[], cascade: boolean): Promise<BatchResult> {
   const body = Buffer.from(JSON.stringify({ plugin_ids: pluginIds, cascade }))
   const text = await doRequest(record, 'POST', '/packages/uninstall-batch', body, 'application/json', LONG_OP_TIMEOUT_MS)
 
-  return parseRecoverResult(text)
+  return parseBatchResult(text)
 }
 
 // Post several .b3 packages to a batch route (update-batch or install-batch), which applies them all
 // and restarts the affected services once. The two routes share the exact multipart shape; only the
 // daemon-side semantics differ (install checks conflicts and reports an install), so this is one poster.
-async function postBatchPackages(record: PrinterRecord, route: string, packages: BatchUpdatePackage[], onUploadProgress?: UploadProgressFn): Promise<RecoverResult> {
+async function postBatchPackages(record: PrinterRecord, route: string, packages: BatchUpdatePackage[], onUploadProgress?: UploadProgressFn): Promise<BatchResult> {
   const boundary = `----B3Boundary${Date.now()}`
   const varsById: Record<string, Record<string, string>> = {}
   packages.forEach((pkg) => {
@@ -153,13 +157,13 @@ async function postBatchPackages(record: PrinterRecord, route: string, packages:
   const body = buildBatchMultipart(boundary, packages, varsById)
   const text = await doRequest(record, 'POST', route, body, `multipart/form-data; boundary=${boundary}`, LONG_OP_TIMEOUT_MS, onUploadProgress)
 
-  return parseRecoverResult(text)
+  return parseBatchResult(text)
 }
 
-export function updateBatchPackages(record: PrinterRecord, packages: BatchUpdatePackage[], onUploadProgress?: UploadProgressFn): Promise<RecoverResult> {
+export function updateBatchPackages(record: PrinterRecord, packages: BatchUpdatePackage[], onUploadProgress?: UploadProgressFn): Promise<BatchResult> {
   return postBatchPackages(record, '/packages/update-batch', packages, onUploadProgress)
 }
 
-export function installBatchPackages(record: PrinterRecord, packages: BatchUpdatePackage[], onUploadProgress?: UploadProgressFn): Promise<RecoverResult> {
+export function installBatchPackages(record: PrinterRecord, packages: BatchUpdatePackage[], onUploadProgress?: UploadProgressFn): Promise<BatchResult> {
   return postBatchPackages(record, '/packages/install-batch', packages, onUploadProgress)
 }

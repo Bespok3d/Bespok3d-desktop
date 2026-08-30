@@ -214,7 +214,7 @@ describe('PrinterDropdown footer (update all plugins)', () => {
     )
     await user.click(container.querySelector('.printer-trigger') as HTMLElement)
     await user.click(screen.getByRole('button', { name: en('printers.update_all', { count: 1 }) }))
-    expect(onUpdateAll).toHaveBeenCalledWith('printer-1', [expect.objectContaining({ pluginId: 'demo' })])
+    expect(onUpdateAll).toHaveBeenCalledWith('printer-1', { updates: [expect.objectContaining({ pluginId: 'demo' })], migrations: [] })
   })
 })
 
@@ -267,7 +267,7 @@ describe('PrinterDropdown printing state', () => {
     await reportPrinting(emit, ['plugin_install'])
     await user.click(container.querySelector('.printer-trigger') as HTMLElement)
     await user.click(screen.getByRole('button', { name: en('printers.update_all', { count: 1 }) }))
-    expect(onUpdateAll).toHaveBeenCalledWith('printer-1', [expect.objectContaining({ pluginId: 'demo' })])
+    expect(onUpdateAll).toHaveBeenCalledWith('printer-1', { updates: [expect.objectContaining({ pluginId: 'demo' })], migrations: [] })
   })
 })
 

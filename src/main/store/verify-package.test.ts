@@ -4,6 +4,8 @@ import { describe, it, expect } from 'vitest'
 import AdmZip from 'adm-zip'
 import * as openpgp from 'openpgp'
 import { verifiedPackageTrust, PackageRefusedError } from './verify-package'
+import { PACKAGE_REFUSED_PREFIX } from './package-refused'
+import { payloadPaths } from './payload-entries'
 import type { TrustAnchor } from './trust-anchors'
 import type { MergedEntry } from '../registry/model'
 
@@ -75,6 +77,14 @@ function unsignedPackage(manifest: Record<string, unknown>): Buffer {
 
 function listedEntry(fields: Partial<MergedEntry> = {}): MergedEntry {
   return { name: 'idle-timeout', version: '0.2.0', trust: 'project', signer: null, registry_url: '/registry/index.json', ...fields }
+}
+
+// What the check said when it refused these bytes. A check that did NOT refuse fails on the sentence
+// this stands in for, which is the failure that belongs there.
+function refusalOf(archiveBytes: Buffer): Promise<Error> {
+  return verifiedPackageTrust(archiveBytes, listedEntry(), [])
+    .then(() => new Error('the package check installed these bytes instead of refusing them'))
+    .catch((refused: Error) => refused)
 }
 
 describe('verifiedPackageTrust signature checking', () => {
@@ -187,5 +197,66 @@ describe('verifiedPackageTrust binding to the chosen catalog entry', () => {
     const publisher = await throwawayPublisher('Anchored Publisher')
     const archive = await signedPackage({ ...IDLE_TIMEOUT_MANIFEST, version: '0.3.0' }, publisher)
     expect(await verifiedPackageTrust(archive, listedEntry({ version: '0.2.0' }), [publisher.anchor])).toBe('project')
+  })
+})
+
+// Bytes that are not a package at all. A download cut short, an error page saved under the package's
+// name, or a file built wrong all arrive at the check as bytes, and until this Stage the zip reader
+// and the manifest parser refused them in THEIR words: no plugin named, and worded like the app's
+// machinery had gone wrong. That is the one thing it is not. The store reads the refusal prefix to
+// decide whether to offer Try again, so a package that will never install was showing the user a
+// retry that fetches the same wrong bytes forever.
+describe('the package check meeting bytes that are not a readable package', () => {
+  const NOT_AN_ARCHIVE = {
+    'a download that produced nothing': Buffer.alloc(0),
+    'an error page saved under the package name': Buffer.from('<html><body>404 Not Found</body></html>', 'utf8'),
+    'a package cut short in transit': unsignedPackage(IDLE_TIMEOUT_MANIFEST).subarray(0, 48),
+  }
+
+  Object.entries(NOT_AN_ARCHIVE).forEach(([bytesAre, archiveBytes]) => {
+    it(`refuses ${bytesAre}`, async () => {
+      await expect(verifiedPackageTrust(archiveBytes, listedEntry(), [])).rejects.toThrow(PackageRefusedError)
+    })
+  })
+
+  it('names the plugin the user was waiting for, in the app words and not the zip reader words', async () => {
+    const refusal = await refusalOf(Buffer.from('not a zip', 'utf8'))
+
+    expect(refusal.message).toContain(PACKAGE_REFUSED_PREFIX)
+    expect(refusal.message).toContain('idle-timeout')
+    expect(refusal.message).not.toMatch(/END header|ADM-ZIP/i)
+  })
+
+  // The overlap check reads a package's contents before a single byte is sent, and it is reached on
+  // the install path ahead of the trust check, so it has to refuse the same bytes the same way.
+  it('refuses the same bytes where a batch weighs two packages against each other', () => {
+    expect(() => payloadPaths(Buffer.from('not a zip', 'utf8'), 'idle-timeout')).toThrow(PackageRefusedError)
+  })
+})
+
+// A package whose manifest will not parse is the package failing the check, not the machinery failing.
+// The parser says what is wrong in one line; the plugin's name goes in front of it so the store shows
+// which package will not install.
+describe('the package check meeting a manifest it cannot read', () => {
+  const UNREADABLE_MANIFESTS = {
+    'a manifest that is not JSON': Buffer.from('{ this was never json', 'utf8'),
+    'a manifest that is JSON but not an object': Buffer.from('"idle-timeout"', 'utf8'),
+  }
+
+  Object.entries(UNREADABLE_MANIFESTS).forEach(([manifestIs, unreadableBytes]) => {
+    it(`refuses ${manifestIs}`, async () => {
+      const archive = packArchive({ 'manifest.json': unreadableBytes, ...PAYLOAD_MEMBER })
+
+      await expect(verifiedPackageTrust(archive, listedEntry(), [])).rejects.toThrow(PackageRefusedError)
+    })
+  })
+
+  it('refuses a manifest with no plugin name, and keeps what the parser said about it', async () => {
+    const archive = packArchive({ 'manifest.json': manifestBytes({ version: '0.2.0' }), ...PAYLOAD_MEMBER })
+    const refusal = await refusalOf(archive)
+
+    expect(refusal.message).toContain(PACKAGE_REFUSED_PREFIX)
+    expect(refusal.message).toContain('idle-timeout')
+    expect(refusal.message).toMatch(/no valid plugin name/)
   })
 })

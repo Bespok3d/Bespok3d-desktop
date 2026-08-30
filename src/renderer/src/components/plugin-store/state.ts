@@ -8,7 +8,9 @@ import { refreshInstallProvenance } from './install-provenance'
 import { useI18n } from '../../i18n/context'
 import { batchBlockReason } from './batch-gate'
 import type { InstallBlock } from './panel/install-gate'
-import { updatablePlugins, buildUpdateSpecs } from './update-all'
+import type { Collection } from '../../data/collections'
+import type { UpdateAllPlan } from './migrations'
+import { buildUpdatePlan, updateAllCount, planIsEmpty } from './migrations'
 import { installedFromRecords } from '../../data/channels/updates'
 import { autoRecoveryNotice } from './safety/notice'
 import type { SafetyNotice } from './safety/notice'
@@ -93,7 +95,8 @@ interface UpdateAllDeps {
   disabledChannels: ReleaseChannel[]
   printActive: boolean
   blockedActions: string[]
-  onUpdateAll?: (printerId: string, updates: PluginUpdateSpec[]) => void
+  collections: Collection[]
+  onUpdateAll?: (printerId: string, plan: UpdateAllPlan) => void
 }
 
 // Builds the batch update specs and hands them to the App-level handler, which runs a single
@@ -103,12 +106,13 @@ interface UpdateAllDeps {
 export function useUpdateAll(deps: UpdateAllDeps): { updatableCount: number; updateBlock: InstallBlock | null; updateAll: () => void } {
   const { t } = useI18n()
   const installed = installedFromRecords(deps.installedVersions, deps.installedSources, deps.ceilingFor, deps.disabledChannels)
-  const updatableCount = updatablePlugins(deps.plugins, installed).length
+  const plan = buildUpdatePlan(deps.plugins, deps.collections, deps.installedIds, installed, deps.savedVars)
+  const updatableCount = updateAllCount(plan)
   const updateBlock = batchBlockReason(t, { printerId: deps.printerId, printActive: deps.printActive, blockedActions: deps.blockedActions })
 
   function updateAll(): void {
-    if (!deps.printerId || !deps.onUpdateAll || updatableCount === 0 || updateBlock) return
-    deps.onUpdateAll(deps.printerId, buildUpdateSpecs(deps.plugins, deps.installedIds, installed, deps.savedVars))
+    if (!deps.printerId || !deps.onUpdateAll || planIsEmpty(plan) || updateBlock) return
+    deps.onUpdateAll(deps.printerId, plan)
   }
 
   return { updatableCount, updateBlock, updateAll }

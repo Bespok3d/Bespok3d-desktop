@@ -33,3 +33,35 @@ describe('batch package routes', () => {
     expect(postedPath()).toBe('/packages/update-batch')
   })
 })
+
+// R-TORN-2: the printer reports the plugins whose own manifest it could not read alongside the batch it
+// ran. It is read off that same answer, in the same parse, or nothing downstream can tell the user which
+// plugin the printer cannot account for.
+describe('what the printer says about plugins it could not read', () => {
+  beforeEach(() => vi.mocked(doRequest).mockClear())
+
+  const oneUnreadablePlugin = { plugin: 'rfid-ntag', problem: 'manifest-unreadable', detail: 'manifest.json: Expecting value: line 1 column 1' }
+
+  it('carries what the printer reported off the batch answer', async () => {
+    vi.mocked(doRequest).mockResolvedValueOnce(JSON.stringify({ ok: true, results: [], manifest_warnings: [oneUnreadablePlugin] }))
+    const batch = await updateBatchPackages(record, packages)
+
+    expect(batch.manifestWarnings).toEqual([oneUnreadablePlugin])
+  })
+
+  // Every daemon in the field today answers without the field. That is the ordinary answer, not a fault.
+  it('reads an answer that does not mention it as nothing to report', async () => {
+    const batch = await updateBatchPackages(record, packages)
+
+    expect(batch.manifestWarnings).toBeUndefined()
+    expect(batch.ok).toBe(true)
+  })
+
+  it('drops an entry it could not show rather than putting a broken row in front of the user', async () => {
+    const halfAnEntry = { plugin: 'camera' }
+    vi.mocked(doRequest).mockResolvedValueOnce(JSON.stringify({ ok: true, results: [], manifest_warnings: [halfAnEntry, 'not an entry at all', oneUnreadablePlugin] }))
+    const batch = await updateBatchPackages(record, packages)
+
+    expect(batch.manifestWarnings?.map((warning) => warning.plugin)).toEqual(['rfid-ntag'])
+  })
+})

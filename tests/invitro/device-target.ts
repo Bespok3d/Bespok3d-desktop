@@ -46,6 +46,19 @@ export const DEVICE_AUTOSTART = `${DEVICE_WORKSPACE}/etc/init.d/autostart/s10bes
 const DEVICE_VERSION_FILE = `${DEVICE_WORKSPACE}/var/lib/daemon/version.py`
 // The python the app's own deploy builds on the device, from the wheels the daemon package carries.
 export const DEVICE_VENV_PYTHON = `${DEVICE_WORKSPACE}/venv/bin/python`
+const DAEMON_VERSION_LINE = /^DAEMON_VERSION\s*=.*$/m
+
+// Ageing a daemon means changing the version it reports, and NOTHING else. version.py also declares
+// MIN_JINNI_VERSION, which the daemon imports at startup, so writing a file that holds the version
+// line alone leaves a daemon that cannot start at all: the downgrade stops being a downgrade and
+// becomes a brick, on shared hardware as much as in a container.
+function agedVersionFile(deployedFile: string, version: string): string {
+  if (!DAEMON_VERSION_LINE.test(deployedFile)) {
+    throw new Error('the device version file carries no DAEMON_VERSION line to age')
+  }
+
+  return deployedFile.replace(DAEMON_VERSION_LINE, `DAEMON_VERSION = "${version}"`)
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise((done) => setTimeout(done, ms))
@@ -141,7 +154,8 @@ class DockerDevice implements DeviceTarget {
   // fixture copy under /daemon, while the app's update path deploys to DAEMON_BASE and starts from
   // there, so the expected version can only reach the device through the app's own code.
   async downgradeDaemon(version: string): Promise<void> {
-    await this.session().putContent('/daemon/version.py', `DAEMON_VERSION = "${version}"\n`)
+    const deployed = await this.session().getContent('/daemon/version.py')
+    await this.session().putContent('/daemon/version.py', agedVersionFile(deployed, version))
     stopDaemonProcess(this.container)
     await this.startDaemon()
   }
@@ -151,7 +165,8 @@ class DockerDevice implements DeviceTarget {
   // can only go green by genuinely re-uploading source. Ages the tree the app's deploy-daemon owns, not
   // the fixture copy downgradeDaemon touches.
   async ageDeployedDaemon(version: string): Promise<void> {
-    await this.session().putContent(DEVICE_VERSION_FILE, `DAEMON_VERSION = "${version}"\n`)
+    const deployed = await this.session().getContent(DEVICE_VERSION_FILE)
+    await this.session().putContent(DEVICE_VERSION_FILE, agedVersionFile(deployed, version))
     await this.stopDaemon()
   }
 
@@ -242,10 +257,13 @@ class RealU1Device implements DeviceTarget {
   // On the bot there is only ever the deployed tree, so ageing it IS the downgrade; the difference is
   // that this one leaves the daemon down for the repair path to bring back. Keeps the bot's real version
   // file so teardown can put it back even when a run dies mid-suite: an update test overwrites it with
-  // the true source anyway, this covers the run that never gets that far.
+  // the true source anyway, this covers the run that never gets that far. Captured on the FIRST ageing
+  // only, because by the second one what is on the device is this harness's own aged file, and putting
+  // that back at teardown would leave the bot claiming a version it is not running.
   async ageDeployedDaemon(version: string): Promise<void> {
-    this.trueVersionFile = await this.session().getContent(DEVICE_VERSION_FILE)
-    await this.session().putContent(DEVICE_VERSION_FILE, `DAEMON_VERSION = "${version}"\n`)
+    const deployed = await this.session().getContent(DEVICE_VERSION_FILE)
+    if (!this.trueVersionFile) this.trueVersionFile = deployed
+    await this.session().putContent(DEVICE_VERSION_FILE, agedVersionFile(deployed, version))
     await this.stopDaemon()
   }
 

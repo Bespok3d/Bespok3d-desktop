@@ -10,6 +10,7 @@ import { PluginStore } from './components/plugin-store'
 import { LocalDropZone } from './components/LocalDropZone'
 import { Create, ModeBar } from './components/create'
 import { PrinterBanners } from './components/printer-banners'
+import { PrinterNotices } from './components/migration/PrinterNotices'
 import { usePrinterSync, useMdnsDiscovery } from './hooks/printers'
 import { useAdapterViews } from './hooks/adapters'
 import { useDisplayPrefs } from './hooks/displayPrefs'
@@ -55,7 +56,7 @@ function App() {
     if (printers.length === 0) return <FirstRun discovered={discovered} onOpenAdd={actions.openAdd} onOpenManual={actions.openManual} onRescan={actions.handleRescan} />
     if (mode === 'create') return <Create printer={selectedPrinter} layout={workbenchLayout} onSetLayout={(next) => { setWorkbenchLayout(next); window.b3d.settings.set({ workbenchLayout: next }) }} />
 
-    return <PluginStore printer={selectedPrinter} density={density} grouped={storeGrouped} onPrinterUpdate={setPrinters} savedPluginVars={savedPluginVars} onSaveVars={(save) => pluginVars.saveFor(selectedPrinterKey, save)} scopeFor={(field) => pluginVars.scopeFor(selectedPrinterKey, field)} onUpdateAll={actions.handleUpdateAll} updatingAll={actions.updatingAll} onInstallSelected={actions.handleInstallBatch} installingSelected={actions.installingBatch} onUninstallSelected={actions.handleUninstallBatch} uninstallingSelected={actions.uninstallingBatch} focusPluginId={focusPluginId} onFocusHandled={clearPluginFocus} onConnectGitHub={() => { setSettingsPane('git-host'); setSettingsOpen(true) }} />
+    return <PluginStore printer={selectedPrinter} density={density} grouped={storeGrouped} onPrinterUpdate={setPrinters} savedPluginVars={savedPluginVars} onSaveVars={(save) => pluginVars.saveFor(selectedPrinterKey, save)} scopeFor={(field) => pluginVars.scopeFor(selectedPrinterKey, field)} onUpdateAll={actions.handleUpdateAll} updatingAll={actions.updatingAll} onInstallSelected={actions.handleInstallBatch} installingSelected={actions.installingBatch} onUninstallSelected={actions.handleUninstallBatch} onMigrateSelected={actions.handleMigrateBatch} uninstallingSelected={actions.uninstallingBatch} focusPluginId={focusPluginId} onFocusHandled={clearPluginFocus} onConnectGitHub={() => { setSettingsPane('git-host'); setSettingsOpen(true) }} />
   }
 
   return (
@@ -76,7 +77,9 @@ function App() {
           installingCount={0} empty={printers.length === 0}
         />
         {printers.length > 0 && showsUnreleasedFeatures() && <ModeBar mode={mode} onModeChange={setMode} printerName={selectedPrinter?.nick} />}
-        <PrinterBanners selectedPrinter={selectedPrinter} bundledJinniVersion={selectedPrinter ? jinniVersions[selectedPrinter.adapter] : undefined} onRepair={actions.handleRepairPrinter} onRecover={actions.handleRecoverPrinter} onReactivate={actions.handleReactivatePrinter} onRecoverDrift={actions.handleRecoverDrift} onUpdateJinni={actions.handleUpdateJinni} onReboot={actions.handleReboot} />
+        <PrinterNotices printer={selectedPrinter} savedPluginVars={savedPluginVars} onUpdateDaemon={actions.handleUpdateDaemon} onMigrate={actions.handleMigrateBatch}
+          standingBanners={<PrinterBanners selectedPrinter={selectedPrinter} bundledJinniVersion={selectedPrinter ? jinniVersions[selectedPrinter.adapter] : undefined} onRepair={actions.handleRepairPrinter} onRecover={actions.handleRecoverPrinter} onReactivate={actions.handleReactivatePrinter} onRecoverDrift={actions.handleRecoverDrift} onUpdateJinni={actions.handleUpdateJinni} onReboot={actions.handleReboot} />}
+        />
         <div className="u-fill">
           {mainPane()}
         </div>

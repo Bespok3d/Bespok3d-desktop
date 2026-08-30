@@ -8,7 +8,7 @@ import type { PrinterRecord } from '../../src/main/printers'
 import type { InstallLog } from '@bespok3d/contract'
 import { makeDeviceTarget } from './device-target'
 import type { DeviceTarget } from './device-target'
-import { FIXTURE_PLUGIN_ID, fixturePluginVars, untamperedPackage, packageWithTamperedPayload } from './tampered-package'
+import { FIXTURE_PLUGIN_ID, FIXTURE_PACKAGE_BUNDLED, fixturePluginVars, untamperedPackage, packageWithTamperedPayload } from './tampered-package'
 
 // The device half of the signing chain. The published index is signed so the app can trust WHICH .b3
 // to fetch (verify.ts, unit-tested); this suite proves the other half on a real daemon: the manifest
@@ -49,7 +49,7 @@ afterAll(async () => {
   await harness.target?.teardown()
 }, 180000)
 
-describe('daemon package integrity on a live daemon', () => {
+describe.skipIf(!FIXTURE_PACKAGE_BUNDLED)('daemon package integrity on a live daemon', () => {
   it('refuses a package tampered with after packing, and installs nothing', async () => {
     const refusal = await installPlugin(record(), packageWithTamperedPayload(), FIXTURE_PLUGIN_ID, fixturePluginVars())
       .then(() => null, (error: Error) => error)

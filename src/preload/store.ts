@@ -3,7 +3,8 @@
 import { ipcRenderer } from 'electron'
 import { subscribe } from './subscribe'
 import type { ReleaseChannel } from '../main/settings'
-import type { CapabilitiesResult, InstallLog, RecoverResult } from '@bespok3d/contract'
+import type { CapabilitiesResult, InstallLog } from '@bespok3d/contract'
+import type { BatchResult } from '../main/daemon-client/batch-result'
 import type { PluginProgressEvent } from '../main/ipc'
 import type { PluginLogPush } from '../main/daemon-client/feeds/plugin-log'
 import type { BatchProgressEvent, UploadProgressEvent } from '../main/daemon-client/feeds/install-progress'
@@ -19,13 +20,13 @@ export const storeApi = {
     ipcRenderer.invoke('store:reconfigure', printerId, pluginId, vars),
   pluginConfig: (printerId: string, pluginId: string): Promise<Record<string, string> | null> =>
     ipcRenderer.invoke('store:pluginConfig', printerId, pluginId),
-  recover: (printerId: string): Promise<RecoverResult> =>
+  recover: (printerId: string): Promise<BatchResult> =>
     ipcRenderer.invoke('store:recover', printerId),
-  updateBatch: (printerId: string, updates: Array<{ pluginId: string; vars?: Record<string, string>; depIds?: string[]; sourceUrl?: string; channel?: ReleaseChannel }>): Promise<RecoverResult> =>
+  updateBatch: (printerId: string, updates: Array<{ pluginId: string; vars?: Record<string, string>; depIds?: string[]; sourceUrl?: string; channel?: ReleaseChannel }>): Promise<BatchResult> =>
     ipcRenderer.invoke('store:update-batch', printerId, updates),
-  installBatch: (printerId: string, specs: Array<{ pluginId: string; vars?: Record<string, string>; depIds?: string[]; sourceUrl?: string; channel?: ReleaseChannel }>): Promise<RecoverResult> =>
+  installBatch: (printerId: string, specs: Array<{ pluginId: string; vars?: Record<string, string>; depIds?: string[]; sourceUrl?: string; channel?: ReleaseChannel }>): Promise<BatchResult> =>
     ipcRenderer.invoke('store:install-batch', printerId, specs),
-  uninstallBatch: (printerId: string, pluginIds: string[], cascade: boolean): Promise<RecoverResult> =>
+  uninstallBatch: (printerId: string, pluginIds: string[], cascade: boolean): Promise<BatchResult> =>
     ipcRenderer.invoke('store:uninstall-batch', printerId, pluginIds, cascade),
   onPluginProgress: (callback: (event: PluginProgressEvent) => void): (() => void) =>
     subscribe('store:plugin:progress', callback),

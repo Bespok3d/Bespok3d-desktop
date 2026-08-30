@@ -21,12 +21,12 @@ const COLLECTION = makeCollection({
 
 function noop() {}
 
-function Panel({ installedIds, printerId, printActive = false }: { installedIds: string[]; printerId?: string; printActive?: boolean }) {
+function Panel({ installedIds, printerId, printActive = false, migratable = false }: { installedIds: string[]; printerId?: string; printActive?: boolean; migratable?: boolean }) {
   return (
     <CollectionDetailPanel
-      collection={COLLECTION} plugins={MEMBERS} installedIds={installedIds} printerId={printerId} installing={false}
+      collection={COLLECTION} plugins={MEMBERS} collections={[]} installedIds={installedIds} printerId={printerId} installing={false}
       printActive={printActive} blockedActions={printActive ? ['install'] : []}
-      onInstallSelected={noop} onOpenPlugin={noop} onClose={noop}
+      onInstallSelected={noop} onMigrateSelected={migratable ? noop : undefined} onOpenPlugin={noop} onClose={noop}
     />
   )
 }
@@ -49,4 +49,9 @@ export function NoPrinter() {
 
 export function PrintRunning() {
   return <Panel installedIds={['rfid-ntag']} printerId="printer-1" printActive />
+}
+
+// The collection's own id still installed as a plugin: the foot offers the migration instead of install-all.
+export function PluginBecameCollection() {
+  return <Panel installedIds={['all-the-tags', 'rfid-ntag']} printerId="printer-1" migratable />
 }

@@ -1,6 +1,20 @@
 {
   "_comment": "DEV-ONLY bundling. These ids are packed into the bundled index for dev builds (predev, manual pack-plugins.sh, check.sh) so you can test plugins offline without publishing, but they are NEVER shipped in a release. Release builds (prebuild, or B3D_RELEASE=1) ignore this file and use only bundle.json. Read by scripts/app-bundle.mjs and scripts/pack-plugins.sh.",
-  "bundle": ["rfid-ntag", "spoolman"],
+  "bundle": [
+    "camera-hw-accel",
+    "klipper-motion",
+    "print-prefs-core",
+    "rfid-ntag",
+    "spoolman",
+    "u1-base",
+    "u1-base-filament-detect",
+    "u1-base-fm175xx-reader",
+    "u1-base-print-task-config",
+    "u1-base-resonance-tester",
+    "u1-base-shaper-calibrate",
+    "u1-base-toolhead",
+    "afc-lite"
+  ],
   "_variantDirs_comment": "Plugin source dirs (relative to the sibling plugins/ tree) bundled AS-IS by explicit path, NOT by id. This lets one plugin id carry a dev-only channel variant (e.g. an experiment build of fluidd) alongside its online stable atom, which the id-keyed `bundle` list cannot express. Dev-only; a dir whose files/ has not been built yet is skipped.",
   "variantDirs": []
 }

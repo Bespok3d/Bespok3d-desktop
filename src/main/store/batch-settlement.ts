@@ -5,7 +5,8 @@
 // be the same as installing them one by one: a package the app refuses costs that plugin, and the
 // plugins that need it, and nothing else. Every plugin left behind is reported at the end, in the same
 // per-plugin results the daemon's own failures come back in.
-import type { PluginRecoveryResult, RecoverResult } from '@bespok3d/contract'
+import type { PluginRecoveryResult } from '@bespok3d/contract'
+import type { BatchResult } from '../daemon-client/batch-result'
 import type { PluginUpdateSpec } from './update-batch'
 import { refusedAttempt, waitingOnDependencyReason } from './failed-installs'
 
@@ -61,10 +62,14 @@ export function unsentPluginRows(specs: readonly PluginUpdateSpec[], unsent: rea
 
 // The whole batch as the user sees it: what the daemon reported for the packages that were sent, plus
 // a row for every plugin that never left the app. A batch with anything left behind is not ok, even
-// when every package that WAS sent installed cleanly.
-export function batchResultWithUnsent(sentResult: RecoverResult | null, unsentRows: readonly PluginRecoveryResult[]): RecoverResult {
+// when every package that WAS sent installed cleanly. What the printer said about plugins it could not
+// read is carried across unchanged: it is not about the packages that were sent, and rebuilding the
+// answer without it would lose the one place the user is told which plugin the printer cannot account
+// for.
+export function batchResultWithUnsent(sentResult: BatchResult | null, unsentRows: readonly PluginRecoveryResult[]): BatchResult {
   return {
     ok: unsentRows.length === 0 && (sentResult?.ok ?? true),
     results: [...(sentResult?.results ?? []), ...unsentRows],
+    manifestWarnings: sentResult?.manifestWarnings,
   }
 }

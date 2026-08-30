@@ -23,7 +23,7 @@ function noop() {}
 function Shelf({ installedIds }: { installedIds: string[] }) {
   return (
     <div className="plugin-grid">
-      <CollectionCard collection={COLLECTION} plugins={MEMBERS} installedIds={installedIds} onOpen={noop} />
+      <CollectionCard collection={COLLECTION} plugins={MEMBERS} collections={[]} installedIds={installedIds} onOpen={noop} />
     </div>
   )
 }
@@ -38,4 +38,9 @@ export function SomeInstalled() {
 
 export function AllInstalled() {
   return <Shelf installedIds={['rfid-ntag', 'rfid-opentag', 'spoolman']} />
+}
+
+// The collection's own id still installed as a plugin: the update pill marks the pending migration.
+export function PluginBecameCollection() {
+  return <Shelf installedIds={['all-the-tags', 'rfid-ntag', 'rfid-opentag', 'spoolman']} />
 }

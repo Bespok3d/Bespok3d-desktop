@@ -9,6 +9,7 @@
 // once, and the card now reaches the same verdict rather than owning it.
 import type { PrinterRecord } from '../printers'
 import { declaredDaemonFloor, declaredJinniFloor } from '@bespok3d/contract'
+import type { ReportedPair } from './floors'
 import { packageFloorRefusal, packageJinniFloorRefusal } from './floors'
 import { askPrinterCompat } from './reported'
 
@@ -38,12 +39,19 @@ export async function assertPrinterMeetsPackageFloors(
   record: PrinterRecord,
   entry: PackageFloors,
 ): Promise<void> {
-  const daemonFloor = declaredDaemonFloor(entry)
-  const jinniFloor = declaredJinniFloor(entry)
-  if (!daemonFloor && !jinniFloor) return
+  if (!declaredDaemonFloor(entry) && !declaredJinniFloor(entry)) return
 
   const { pair } = await askPrinterCompat(record)
-  const refusal = packageFloorRefusal(entry.name, daemonFloor, pair.daemonVersion)
-    ?? packageJinniFloorRefusal(entry.name, jinniFloor, pair.jinniVersion)
+
+  return assertPackageFitsPair(entry, pair)
+}
+
+// The same verdict against a pair that has already been read. A batch weighs many packages against one
+// printer, and asking that printer what it is running once per package would be the same two reads over
+// and over: the pair is read once for the batch and every package is judged against it here, so the
+// refusal a batch makes and the refusal a single install makes are the one sentence, from one place.
+export function assertPackageFitsPair(entry: PackageFloors, pair: ReportedPair): void {
+  const refusal = packageFloorRefusal(entry.name, declaredDaemonFloor(entry), pair.daemonVersion)
+    ?? packageJinniFloorRefusal(entry.name, declaredJinniFloor(entry), pair.jinniVersion)
   if (refusal) throw new PackageDoesNotFitPrinter(refusal)
 }

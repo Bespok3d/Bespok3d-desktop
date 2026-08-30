@@ -12,6 +12,8 @@ import { mainProcessMessage } from '../../utils/errorMessage'
 import { reduceBatchProgress } from './progress'
 import { usePendingUpdate } from './pending-update'
 import { useRecoverOp } from './recover-op'
+import { migrateRunner } from './migrate-op'
+import { updateAllRunner } from './update-all-op'
 import { waitForPrinterBack } from './wait-for-printer'
 import { restartSecondsOf } from './restart-after-reapply'
 import { PrinterRestartingModal } from './PrinterRestarting'
@@ -21,7 +23,7 @@ import type { BatchProgressState } from './progress'
 import type { GatedInstall } from '../../hooks/installGate'
 import type { BatchFailure, BatchVariant } from './variant'
 import type { Printer } from '../../data/types'
-import type { RecoverResult } from '@bespok3d/contract'
+import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 
 // Each batch op's in-flight spinner copy, keyed by variant so the title/body live in one place.
 const SPINNER_COPY: Record<BatchVariant, { title: string; body: string }> = {
@@ -29,6 +31,8 @@ const SPINNER_COPY: Record<BatchVariant, { title: string; body: string }> = {
   update: { title: 'updating_all.title', body: 'updating_all.body' },
   install: { title: 'installing_selected.title', body: 'installing_selected.body' },
   uninstall: { title: 'uninstalling_selected.title', body: 'uninstalling_selected.body' },
+  migration: { title: 'migrating.title', body: 'migrating.body' },
+  'migration-in-place': { title: 'migrating_change.title', body: 'migrating_change.body' },
 }
 
 function SpinnerModal({ title, body }: { title: string; body: string }) {
@@ -61,7 +65,7 @@ function BatchBusyView({ variant, progress }: { variant: BatchVariant; progress:
 export function BatchOpModal({ variant, busy, result, progress, restarting, printerRestarting, restartSeconds, failure, onRepairPrinter, onOpenPlugin, onClose, onDismissFailure }: {
   variant: BatchVariant
   busy: boolean
-  result: RecoverResult | null
+  result: BatchResult | null
   progress?: BatchProgressState | null
   // Whether the app restarted this printer itself. A printer the user gave their own SSH login for is
   // not restarted unattended, so the report must not claim it was.
@@ -100,7 +104,7 @@ export function BatchOpModal({ variant, busy, result, progress, restarting, prin
 
 // A single batch op: update-all or install-selected, each posting its set of plugins to the daemon and
 // returning per-plugin results.
-type BatchPoster = (printerId: string, specs: PluginUpdateSpec[]) => Promise<RecoverResult>
+type BatchPoster = (printerId: string, specs: PluginUpdateSpec[]) => Promise<BatchResult>
 
 // The daemon batch operations (OTA recover, update-all, install-selected, uninstall-selected). Recover
 // has its own daemon route; update-all rides update-batch and install-selected rides install-batch (a
@@ -113,11 +117,12 @@ export function useBatchOps(
   gatedInstall: GatedInstall,
   restartAfterReapply: (printerId: string) => Promise<boolean>,
 ) {
-  const [updateAllResult, setUpdateAllResult] = useState<RecoverResult | null>(null)
+  const [updateAllResult, setUpdateAllResult] = useState<BatchResult | null>(null)
   const [updatingAll, setUpdatingAll] = useState(false)
-  const [installBatchResult, setInstallBatchResult] = useState<RecoverResult | null>(null)
+  const [installBatchResult, setInstallBatchResult] = useState<BatchResult | null>(null)
+  const [installBatchVariant, setInstallBatchVariant] = useState<BatchVariant>('install')
   const [installingBatch, setInstallingBatch] = useState(false)
-  const [uninstallBatchResult, setUninstallBatchResult] = useState<RecoverResult | null>(null)
+  const [uninstallBatchResult, setUninstallBatchResult] = useState<BatchResult | null>(null)
   const [uninstallingBatch, setUninstallingBatch] = useState(false)
   const [batchProgress, setBatchProgress] = useState<BatchProgressState | null>(null)
   const [batchFailure, setBatchFailure] = useState<BatchFailure | null>(null)
@@ -132,9 +137,6 @@ export function useBatchOps(
       setBusy(false)
       setBatchFailure({ variant, printerId, reason: mainProcessMessage(error) })
     }
-  }
-  function dismissBatchFailure() {
-    setBatchFailure(null)
   }
   // Pull installed counts (ping) and fresh endpoints (fly-out) into App state after any batch op, so
   // the dropdown never reads stale until a manual reload (the single-op path does the same).
@@ -154,7 +156,7 @@ export function useBatchOps(
     setBatchProgress(null)
     recoverOp.runRecover(printerId)
   }
-  function runBatch(variant: BatchVariant, printerId: string, specs: PluginUpdateSpec[], setBusy: (busy: boolean) => void, setResult: (result: RecoverResult) => void, post: BatchPoster) {
+  function runBatch(variant: BatchVariant, printerId: string, specs: PluginUpdateSpec[], setBusy: (busy: boolean) => void, setResult: (result: BatchResult) => void, post: BatchPoster) {
     setBusy(true)
     setBatchProgress(null)
     setBatchFailure(null)
@@ -168,11 +170,11 @@ export function useBatchOps(
   }
   // Each spec carries the registry its version comes from, so a batch built entirely from versions held
   // on this machine is installed without the offer to refresh the online lists.
-  function runUpdateAll(printerId: string, updates: PluginUpdateSpec[]) {
-    gatedInstall(() => runBatch('update', printerId, updates, setUpdatingAll, setUpdateAllResult, window.b3d.store.updateBatch), batchSources(updates))
-  }
+  const runUpdateAll = updateAllRunner({ gatedInstall, batchDidNotRun, setUpdatingAll, setUpdateAllResult, setBatchProgress, setBatchFailure, refreshAfterBatch })
   const updateConfirm = usePendingUpdate(runUpdateAll)
   function runInstallBatch(printerId: string, specs: PluginUpdateSpec[]) {
+    setInstallBatchVariant('install')
+    setInstallBatchVariant('install')
     gatedInstall(() => runBatch('install', printerId, specs, setInstallingBatch, setInstallBatchResult, window.b3d.store.installBatch), batchSources(specs))
   }
   function runUninstallBatch(printerId: string, pluginIds: string[], cascade: boolean) {
@@ -186,14 +188,15 @@ export function useBatchOps(
       })
       .catch(batchDidNotRun('uninstall', printerId, setUninstallingBatch))
   }
+  const runMigrateBatch = migrateRunner({ gatedInstall, runBatch, batchDidNotRun, setInstallingBatch, setInstallBatchResult, setInstallBatchVariant, setBatchProgress, setBatchFailure, refreshAfterBatch })
 
   return {
     recoveryResults: recoverOp.recoveryResults, setRecoveryResults: recoverOp.setRecoveryResults, recovering: recoverOp.recovering, restartingAfterRecovery: recoverOp.restartingAfterRecovery,
     printerRestarting: recoverOp.printerRestarting, restartSeconds: recoverOp.restartSeconds,
     updateAllResult, setUpdateAllResult, updatingAll, runUpdateAll, ...updateConfirm,
-    installBatchResult, setInstallBatchResult, installingBatch, runInstallBatch,
+    installBatchResult, setInstallBatchResult, installingBatch, runInstallBatch, installBatchVariant,
     uninstallBatchResult, setUninstallBatchResult, uninstallingBatch, runUninstallBatch,
-    batchProgress, runRecover,
-    batchFailure, dismissBatchFailure,
+    batchProgress, runRecover, runMigrateBatch,
+    batchFailure, dismissBatchFailure: () => setBatchFailure(null),
   }
 }

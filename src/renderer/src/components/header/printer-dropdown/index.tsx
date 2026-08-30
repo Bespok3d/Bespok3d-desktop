@@ -4,7 +4,8 @@ import { useState, useRef } from 'react'
 import { useI18n } from '../../../i18n/context'
 import { useClickOutside } from '../../common/hooks/useClickOutside'
 import { useCatalog } from '../../../data/catalog'
-import { buildUpdateSpecs } from '../../plugin-store/update-all'
+import type { UpdateAllPlan } from '../../plugin-store/migrations'
+import { buildUpdatePlan } from '../../plugin-store/migrations'
 import { installedOnPrinter } from '../../../data/channels/updates'
 import { useChannelPrefs } from '../../common/hooks/useChannelPrefs'
 import { usePrinterUpdates } from './usePrinterUpdates'
@@ -29,7 +30,7 @@ export interface PrinterDropdownProps {
   onOpenSettings: () => void
   onUpdateDaemon: (id: string) => void
   onUpdateJinni: (id: string) => void
-  onUpdateAll: (printerId: string, updates: PluginUpdateSpec[]) => void
+  onUpdateAll: (printerId: string, plan: UpdateAllPlan) => void
   installingCount: number
 }
 
@@ -52,7 +53,7 @@ export function PrinterDropdown({
   installingCount,
 }: PrinterDropdownProps) {
   const { t } = useI18n()
-  const { plugins } = useCatalog()
+  const { plugins, collections } = useCatalog()
   const { ceilingFor, disabledChannels } = useChannelPrefs()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -67,7 +68,7 @@ export function PrinterDropdown({
 
   function updateAllPlugins() {
     if (!selected) return
-    onUpdateAll(selected.id, buildUpdateSpecs(plugins, selected.installedIds, installedOnPrinter(selected, ceilingFor, disabledChannels), savedPluginVars))
+    onUpdateAll(selected.id, buildUpdatePlan(plugins, collections, selected.installedIds, installedOnPrinter(selected, ceilingFor, disabledChannels), savedPluginVars))
     setOpen(false)
   }
 

@@ -18,6 +18,8 @@ const TEXT_FREE_COMPONENTS = new Set([
   'src/renderer/src/App.tsx', // app shell composition root; renders only child components, no prose of its own
   'src/renderer/src/components/add-printer/AdapterSelect.tsx', // renders adapter records (data), no prose
   'src/renderer/src/components/common/Button.tsx', // renders children + variant props
+  'src/renderer/src/components/common/PrinterBanner.tsx', // renders a caller-supplied sentence + button label
+  'src/renderer/src/components/migration/PrinterNotices.tsx', // chooses which notice renders; every word is its children's
   'src/renderer/src/components/common/Group.tsx', // wraps children under a caller-supplied title
   'src/renderer/src/components/common/Row.tsx', // layout wrapper for children
   'src/renderer/src/components/common/Segmented.tsx', // renders caller-supplied option labels

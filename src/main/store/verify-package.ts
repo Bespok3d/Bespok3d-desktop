@@ -10,15 +10,15 @@
 // proof, so the package installs at tier 'unknown'. A signature that is present and does not check out,
 // a signed package that does not enumerate its own payload, a manifest naming a different plugin, or a
 // version below what the index carries are all hard refusals in every mode, with no override.
-import AdmZip from 'adm-zip'
 import { compareSemanticVersions } from '@bespok3d/contract'
 import type { MergedEntry, PackageTrust } from '../registry/model'
-import { parseManifest } from '../registry/local/b3-manifest'
+import { B3ValidationError, parseManifest } from '../registry/local/b3-manifest'
 import type { StoredManifest } from '../registry/local/b3-manifest'
 import { fingerprintOfValidSigner } from '../registry/resolve/verify'
 import { TRUSTED_PACKAGE_ANCHORS } from './trust-anchors'
 import type { TrustAnchor } from './trust-anchors'
 import { PackageRefusedError } from './package-refused'
+import { packageArchive } from './payload-entries'
 
 export { PackageRefusedError, PACKAGE_REFUSED_PREFIX } from './package-refused'
 
@@ -30,7 +30,7 @@ interface SignedManifest {
 }
 
 function readSignedManifest(archiveBytes: Buffer, pluginId: string): SignedManifest {
-  const zip = new AdmZip(archiveBytes)
+  const zip = packageArchive(archiveBytes, pluginId)
   const manifestEntry = zip.getEntry('manifest.json')
   if (!manifestEntry) throw new PackageRefusedError(`the package for "${pluginId}" has no manifest.json, so nothing about it can be verified`)
   const signatureEntry = zip.getEntry('manifest.json.sig')
@@ -81,6 +81,21 @@ function refuseUnlessPayloadIsEnumerated(manifest: StoredManifest, pluginId: str
   }
 }
 
+// A manifest that will not parse is the package failing the app's own check, not the machinery
+// failing: the parser says what is wrong with it in one line, and this puts the plugin's name in
+// front of that line and marks it a refusal, so the store shows a package that will not install
+// rather than an error the user is invited to retry. Anything the parser did not raise itself is a
+// fault in this app and travels up untouched.
+function manifestOrRefusal(manifestBytes: Buffer, pluginId: string): StoredManifest {
+  try {
+    return parseManifest(manifestBytes.toString('utf8'))
+  } catch (unreadable) {
+    if (!(unreadable instanceof B3ValidationError)) throw unreadable
+
+    throw new PackageRefusedError(`the package for "${pluginId}" could not be read (${unreadable.message}), so it was not installed`)
+  }
+}
+
 // The trust tier this package earns, or a throw if it must not be installed at all. The anchor set is
 // a parameter for the same reason the index verifier's anchor is: the org's private key is a CI secret
 // that never comes near this repo, so a closed-over set would leave the passing path untestable.
@@ -90,7 +105,7 @@ export async function verifiedPackageTrust(
   anchors: readonly TrustAnchor[] = TRUSTED_PACKAGE_ANCHORS,
 ): Promise<PackageTrust> {
   const { manifestBytes, armoredSignature } = readSignedManifest(archiveBytes, entry.name)
-  const manifest = parseManifest(manifestBytes.toString('utf8'))
+  const manifest = manifestOrRefusal(manifestBytes, entry.name)
   refuseUnlessManifestMatchesEntry(manifest, entry)
   if (!armoredSignature) return 'unknown'
   const anchor = await anchorOfValidSignature(manifestBytes, armoredSignature, anchors)
