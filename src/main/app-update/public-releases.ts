@@ -62,6 +62,18 @@ const ENTRY_TITLE = /<title[^>]*>([\s\S]*?)<\/title>/
 const ENTRY_UPDATED = /<updated>([^<]+)<\/updated>/
 const ENTRY_CONTENT = /<content[^>]*>([\s\S]*?)<\/content>/
 
+// Where a release entry's link is allowed to point. Opening a release page hands its address to the
+// machine, which opens whatever it has registered for the scheme in front of it: file:// opens a local
+// file, and on Windows a registered scheme is a program starting. The feed is a remote answer and is
+// the only thing that says what that address is, so a link that is not a web page is refused and the
+// version it belongs to is not listed at all. A version whose page cannot be opened is not a version
+// this app can offer, so dropping it is the honest answer rather than listing a dead button.
+const RELEASE_PAGE = /^https:\/\/[^/]+\//i
+
+export function isReleasePageUrl(candidate: string): boolean {
+  return RELEASE_PAGE.test(candidate)
+}
+
 // The feed states no draft/prerelease flag, so the version says it instead: a tag carrying a
 // prerelease suffix IS a prerelease, which is the same thing the app's own version comparison reads.
 function isPrereleaseTag(tag: string): boolean {
@@ -74,6 +86,7 @@ function isPrereleaseTag(tag: string): boolean {
 function feedEntryToRelease(entry: string): ReleaseInfo | null {
   const link = ENTRY_TAG.exec(entry)
   if (!link) return null
+  if (!isReleasePageUrl(link[1])) return null
   const tag = decodeURIComponent(link[2])
   const content = ENTRY_CONTENT.exec(entry)
 
@@ -117,6 +130,24 @@ export async function readPublishedReleases(repo: PublicRepo): Promise<Published
 
 const UPDATE_FILE_ENTRY = /^\s*-?\s*url:\s*(\S+)\s*$/gm
 
+// The installer's file name comes out of the release's own update file, which is a remote answer. It
+// is joined onto the temp directory and the machine is then asked to run whatever sits at that path,
+// so a name carrying a path of its own would put the installer somewhere else entirely and run it from
+// there. A name that is not a plain file name is not an installer this app will offer.
+function isPlainFileName(fileName: string): boolean {
+  return fileName.length > 0 && !fileName.startsWith('.') && !/[/\\]/.test(fileName)
+}
+
+// A name that is not decodable is not a name: a stray percent sign in the update file makes the decode
+// throw, and that throw would come out of a rollback the user asked for as a fault in this app.
+function decodedFileName(raw: string): string {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return ''
+  }
+}
+
 function installerAsset(repo: PublicRepo, tag: string, fileName: string): AssetInfo {
   return { id: fileName, name: fileName, downloadUrl: releaseDownloadUrl(repo, tag, fileName), downloadCount: 0 }
 }
@@ -129,7 +160,9 @@ export async function fetchReleaseInstallers(repo: PublicRepo, tag: string, plat
   if (!updateFile) return []
   const published = await fetchPublicTextOrEmpty(releaseDownloadUrl(repo, tag, updateFile))
 
-  return Array.from(published.matchAll(UPDATE_FILE_ENTRY), (match) => installerAsset(repo, tag, decodeURIComponent(match[1])))
+  const named = Array.from(published.matchAll(UPDATE_FILE_ENTRY), (match) => decodedFileName(match[1]))
+
+  return named.filter(isPlainFileName).map((fileName) => installerAsset(repo, tag, fileName))
 }
 
 export async function downloadPublicAsset(url: string): Promise<Buffer> {

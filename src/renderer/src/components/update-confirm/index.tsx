@@ -7,15 +7,17 @@ import { useI18n } from '../../i18n/context'
 import { Button } from '../common/Button'
 import { ConfirmActionDialog } from '../common/overlay/ConfirmActionDialog'
 import { SourcesSection, sourceKey } from '../plugin-store/panel/tabs/sources'
-import type { UpdateConfirmRow } from './rows'
+import type { UpdateConfirmRow, ReplacedRow } from './rows'
+import { replacedSentenceKey } from './rows'
 import { updateConfirmRows, specsWithPickedSource } from './rows'
 import './update-confirm.css'
 
 // What the update is about to do, before it does it: one line per plugin with the two versions and
 // where the new build comes from, and, folded away under each line, every other place that offers the
 // same plugin, so the user can send a different build instead of the one that was offered.
-export function UpdateConfirmDialog({ specs, plugins, installed, onConfirm, onCancel }: {
+export function UpdateConfirmDialog({ specs, replaced = [], plugins, installed, onConfirm, onCancel }: {
   specs: PluginUpdateSpec[]
+  replaced?: ReplacedRow[]
   plugins: Plugin[]
   installed: InstalledOnPrinter
   onConfirm: (specs: PluginUpdateSpec[]) => void
@@ -44,6 +46,18 @@ export function UpdateConfirmDialog({ specs, plugins, installed, onConfirm, onCa
     )
   }
 
+  function replacedRowFor(row: ReplacedRow) {
+    return (
+      <li key={row.migratingPluginId} className="update-confirm-row">
+        <div className="update-confirm-line">
+          <span className="update-confirm-name">{row.name}</span>
+          <span className="card-version">{t('store.update_confirm.versions', { from: row.fromVersion, to: row.toVersion })}</span>
+        </div>
+        <p className="update-confirm-moved">{t(replacedSentenceKey(row), { count: String(row.arrivingCount) })}</p>
+      </li>
+    )
+  }
+
   function rowFor(row: UpdateConfirmRow) {
     const open = openFor === row.pluginId
 
@@ -66,10 +80,10 @@ export function UpdateConfirmDialog({ specs, plugins, installed, onConfirm, onCa
   return (
     <ConfirmActionDialog
       title={t('store.update_confirm.title')}
-      summary={t('store.update_confirm.summary', { count: String(rows.length) })}
+      summary={t('store.update_confirm.summary', { count: String(rows.length + replaced.length) })}
       detail={t('store.update_confirm.detail')}
       confirmLabel={t('store.update_confirm.confirm')}
-      extra={<ul className="update-confirm-list">{rows.map(rowFor)}</ul>}
+      extra={<ul className="update-confirm-list">{replaced.map(replacedRowFor)}{rows.map(rowFor)}</ul>}
       onConfirm={() => onConfirm(picked)}
       onCancel={onCancel}
     />

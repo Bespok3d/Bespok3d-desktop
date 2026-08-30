@@ -29,7 +29,7 @@ describe('PluginStore update-all wiring', () => {
     var button = await screen.findByRole('button', { name: en('store.update_all', { count: 1 }) })
     await user.click(button)
 
-    expect(onUpdateAll).toHaveBeenCalledWith('printer-1', expect.arrayContaining([expect.objectContaining({ pluginId: 'demo-a' })]))
+    expect(onUpdateAll).toHaveBeenCalledWith('printer-1', expect.objectContaining({ updates: expect.arrayContaining([expect.objectContaining({ pluginId: 'demo-a' })]) }))
   })
 
   // Updating everything at once is an automation of updating them one at a time, so it answers to the

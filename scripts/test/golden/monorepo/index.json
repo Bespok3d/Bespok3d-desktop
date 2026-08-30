@@ -60,6 +60,11 @@
       ],
       "author": "bespoked",
       "attributions": "# Attributions - afc-lite\n\n**Plugin author:** paxx12 (Extended Firmware overlay `31-feature-afc-lite`) and Bespok3d, extended from that overlay\n\nKlipper support for an AFC filament changer.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Extended Firmware overlay `31-feature-afc-lite` | paxx12 | GPL-3.0 | no | yes |\n\nThe Klipper extras in this package come from the Extended Firmware overlay `31-feature-afc-lite`\n(paxx12), GPL-3.0. `AFC_unit.py` ships unchanged. `AFC.py` and `AFC_lane.py` are that overlay's\nfiles extended here; about half of what this plugin ships is still that overlay's code.\n",
+      "migration": {
+        "until_version": "0.1.13",
+        "requires_daemon": "0.14.0",
+        "summary": "AFC Lite now needs a spool reader working alongside it, so this update also puts the RFID Spool Reader on your printer. What each lane already holds is kept."
+      },
       "license_url": "https://github.com/Bespok3d/u1-afc-lite/blob/dev/afc-lite/doc/LICENSE",
       "changelog_url": "afc-lite/doc/CHANGELOG.md"
     },
@@ -671,6 +676,11 @@
       "config": [],
       "author": "bespoked",
       "attributions": "# Attributions - rfid-ntag\n\n**Plugin author:** Bespok3d, with parts of the Extended Firmware overlay `13-patch-rfid`, OpenRFID there by @suchmememanyskill and the OpenSpool `subtype` field by @morgendagen\n\nReads NTAG filament tags on the printer's built-in reader.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenSpool tag format | the OpenSpool project | published format | no | no |\n| Extended Firmware overlay `13-patch-rfid` | @suchmememanyskill and @morgendagen, packaged by paxx12 | GPL-3.0 | no | yes |\n\nThis plugin no longer changes Snapmaker's own firmware files. Those changes moved to the base layer\nplugins `u1-base-fm175xx-reader`, `u1-base-filament-detect` and `u1-base-print-task-config`, which\nthis plugin now requires and calls into. In `openspool_mapper.py`, 22 lines are the Extended\nFirmware overlay `13-patch-rfid`'s, GPL-3.0: they fill Snapmaker's own tray structure field by\nfield, with the same defaults. OpenRFID in that firmware is credited to @suchmememanyskill and the\nOpenSpool `subtype` field to @morgendagen.\n\nThe rest of the reader code (`bespok3d_rfid.py`, `ntag_reader.py`, `ndef_parser.py`,\n`mifare_classic.py`) is written from scratch.\n",
+      "migration": {
+        "until_version": "0.1.14",
+        "requires_daemon": "0.14.0",
+        "summary": "RFID Spool Reader used to change your printer's Klipper files itself. From 0.1.14 the printer's base layer does that work instead, so this update also puts on the three base layer plugins that now hold those files. Your saved spool tags and your settings are kept."
+      },
       "license_url": "https://github.com/Bespok3d/u1-enhanced-rfid/blob/dev/rfid-ntag/doc/LICENSE",
       "changelog_url": "rfid-ntag/doc/CHANGELOG.md"
     },

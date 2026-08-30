@@ -62,3 +62,30 @@ describe('splitByBatchGate', () => {
     expect(memberBlockReason(t, keyed, { ...context(IDLE), catalogPlugins: [READER, keyed] })).toBeNull()
   })
 })
+
+// A plugin whose card is greyed out because this printer runs an older daemon than it declares was
+// still offered inside a batch: the printer took the batch and refused that one member on arrival,
+// which is a failed install shown after the click instead of an ineligible member shown before it.
+describe('a member this printer is too old to run', () => {
+  const NEEDS_NEW_DAEMON = makePlugin({ id: 'rfid-opentag', name: 'rfid-opentag', title: 'OpenTag Decoder', minDaemonVersion: '0.11.0' })
+
+  function contextOnDaemon(daemonVersion?: string) {
+    return { ...context(IDLE), catalogPlugins: [READER, NEEDS_NEW_DAEMON], daemonVersion }
+  }
+
+  it('is left out of the batch, naming the version it needs and the one the printer runs', () => {
+    const split = splitByBatchGate(t, [NEEDS_NEW_DAEMON], contextOnDaemon('0.10.31'))
+
+    expect(split.eligible).toEqual([])
+    expect(split.blocked.map((row) => row.block.brief)).toEqual([t('store.block.daemon_too_old.brief', { required: '0.11.0', running: '0.10.31' })])
+  })
+
+  it('joins the batch once the printer runs a daemon new enough', () => {
+    expect(splitByBatchGate(t, [NEEDS_NEW_DAEMON], contextOnDaemon('0.11.4')).eligible.map((plugin) => plugin.id)).toEqual(['rfid-opentag'])
+  })
+
+  // The version is what the printer answered. Not having answered yet is not the printer saying no.
+  it('is not refused by a printer that has not said what it runs', () => {
+    expect(memberBlockReason(t, NEEDS_NEW_DAEMON, contextOnDaemon(undefined))).toBeNull()
+  })
+})

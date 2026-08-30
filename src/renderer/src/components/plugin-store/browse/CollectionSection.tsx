@@ -33,7 +33,7 @@ export function CollectionSection({ collections, plugins, installedIds, onOpen }
       {!collapsed && (
         <div className="plugin-grid collections-grid">
           {collections.map((collection) => (
-            <CollectionCard key={collection.id} collection={collection} plugins={plugins} installedIds={installedIds} onOpen={() => onOpen(collection)} />
+            <CollectionCard key={collection.id} collection={collection} plugins={plugins} collections={collections} installedIds={installedIds} onOpen={() => onOpen(collection)} />
           ))}
         </div>
       )}

@@ -56,6 +56,10 @@ export interface PluginSource {
   // package held on this machine states them in its own manifest, and an experimental build that
   // carries extra settings is unusable unless the panel shows the picked version's own list.
   config?: PluginConfigField[]
+  // The change of shape THIS version declares. A plugin listed by several sources shows one catalog
+  // row, and the version that changes what the plugin does is not always the one that row came from,
+  // so the terms have to travel with the version they were written for.
+  migration?: MigrationTerms
 }
 
 // Marks a plugin whose running service writes a log we can tail and surface in the Captured tab.
@@ -64,6 +68,28 @@ export interface PluginSource {
 export interface PluginLog {
   path?: string
   captures?: Record<string, string>
+}
+
+// What a package declares when its next version is not just a newer build but a change to the shape of
+// what sits on the printer. Without it the app cannot tell the two apart and sends an ordinary update;
+// with it, the publisher says from which installed version onwards it applies, what the user is told is
+// happening, and which daemon has to be on the printer first. A plugin that retires into a collection
+// and a plugin that keeps its id and changes what it does both declare it the same way.
+export interface MigrationTerms {
+  fromVersion?: string
+  // The version the new shape arrives in. A printer already carrying it (or anything after it) has
+  // made the move, so its next ordinary update is an ordinary update again.
+  untilVersion?: string
+  summary: string
+  requiresDaemon?: string
+}
+
+// The wire form of the same declaration (snake_case, like every other index field).
+export interface MigrationEntry {
+  from_version?: string
+  until_version?: string
+  summary: string
+  requires_daemon?: string
 }
 
 export interface Plugin {
@@ -96,6 +122,9 @@ export interface Plugin {
   endpoints?: PluginEndpoint[]
   config?: PluginConfigField[]
   minDaemonVersion?: string
+  // The publisher saying this version changes the shape of what is on the printer, so the app offers it
+  // as a move it walks the user through rather than as one more update badge.
+  migration?: MigrationTerms
   publishedAt?: string
   updatedAt?: string
   homepage?: string
@@ -153,6 +182,7 @@ export interface IndexEntry {
   attributions?: string
   icon?: string
   min_daemon_version?: string
+  migration?: MigrationEntry
   // True for the daemon and for an adapter's jinni. Stamped by main from what this build carries
   // (never read from a published list), because only main knows both package names.
   system_package?: boolean

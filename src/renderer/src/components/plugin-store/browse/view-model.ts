@@ -5,6 +5,8 @@ import type { CeilingResolver } from '../../../data/channels'
 import { matchesPlugin, sortPlugins } from './filters'
 import type { MatchOpts, SortKey, SortDir, StatusFacet } from './filters'
 import { orphanPlugins } from '../../../data/deps/orphans'
+import { becameCollectionIds } from '../../../data/collections'
+import type { Collection } from '../../../data/collections'
 import type { useBatchInstall } from '../select/useBatchInstall'
 import type { useBatchUninstall } from '../select/useBatchUninstall'
 import type { CardSelection } from './grid'
@@ -18,6 +20,7 @@ interface StoreFilters {
 interface StoreViewInputs {
   printer: Printer | null | undefined
   catalogPlugins: Plugin[]
+  catalogCollections: Collection[]
   live: { installedIds: string[] | null; installedVersions: Record<string, string> | null; deactivatedIds: string[] | null }
   filters: StoreFilters
 }
@@ -45,7 +48,7 @@ function browsablePlugins(catalogPlugins: Plugin[]): Plugin[] {
 // The store's view model: resolve the installed/deactivated sets (live, falling back to the printer
 // record), then the orphan + filtered + sorted plugin lists. Pure, so it stays out of the component
 // body and is testable on its own.
-export function deriveStoreView({ printer, catalogPlugins, live, filters }: StoreViewInputs) {
+export function deriveStoreView({ printer, catalogPlugins, catalogCollections, live, filters }: StoreViewInputs) {
   const machineryVersions = machineryOnPrinter(printer)
   const pluginIds = live.installedIds ?? (printer?.status === 'managed' ? (printer?.installedIds ?? []) : [])
   const installedIds = [...new Set([...pluginIds, ...Object.keys(machineryVersions)])]
@@ -55,7 +58,12 @@ export function deriveStoreView({ printer, catalogPlugins, live, filters }: Stor
   // The orphan pass is given the PLUGIN ids only. Fed the machinery, it would synthesize a remove-only
   // card for any machinery package this build has no catalog entry for, which is the app offering to
   // uninstall the daemon from an enrolled printer.
-  const orphans = orphanPlugins(catalogPlugins, pluginIds, installedVersions)
+  // An installed plugin whose id is now a catalog collection (klipper-motion since 0.1.4) is not an
+  // orphan either: an orphan card could only offer a bare uninstall, and the collection detail page
+  // owns that migration.
+  const migratingIds = becameCollectionIds(catalogCollections, pluginIds)
+  const orphanCandidateIds = pluginIds.filter((installedId) => !migratingIds.includes(installedId))
+  const orphans = orphanPlugins(catalogPlugins, orphanCandidateIds, installedVersions)
   const displayPlugins = [...browsablePlugins(catalogPlugins), ...orphans]
   const matchOpts: MatchOpts = {
     query: filters.query, channels: filters.channels, categories: filters.categories, trusts: filters.trusts,

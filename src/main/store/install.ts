@@ -7,12 +7,13 @@ import type { ReleaseChannel } from '../settings'
 import type { MergedEntry, PackageTrust } from '../registry/model'
 import type { InstallLog } from '@bespok3d/contract'
 import { installPlugin } from '../daemon-client/client'
-import { assertPrinterMeetsPackageFloors, firstOverlapRefusal } from '../compat'
+import { assertPrinterMeetsPackageFloors } from '../compat'
 import { loadCatalog } from '../registry'
 import { getManagedRecord } from '../daemon-client/status'
 import { withFreshestRelease } from '../registry/resolve/refresh-entry'
 import { discardCachedArchive, findCatalogVariant, resolveArchiveBytes } from './catalog-archive'
-import { payloadPaths } from './payload-entries'
+import type { PackageOrigin } from './catalog-variant'
+import { declaresDependencies, missingDependencyIds } from './missing-deps'
 import { MALFORMED_PACKAGE_PREFIX } from './malformed-package'
 import { verifiedPackageTrustOrDiscard } from './package-check'
 import { DependencyDidNotInstall, failedLogsAfter, refusedAttempt, whyItDidNotInstall } from './failed-installs'
@@ -58,37 +59,29 @@ async function installDepsInOrder(
   return installDepsInOrder(win, record, catalog, pluginId, channel, rest)
 }
 
-// The declared dependencies this printer does not have yet, which are the ones this install will put on
-// it: a dependency that installs here is a plugin that just installed, so an earlier failed attempt of
-// it is no longer about anything.
+// The dependencies this printer does not have yet, which are the ones this install will put on it: a
+// dependency that installs here is a plugin that just installed, so an earlier failed attempt of it is
+// no longer about anything. What the package itself declares in the catalog counts as much as what the
+// window asked with, so a requirement the window's list never knew about is still met.
 //
-// Reading the printer is only ever about the declared dependencies, so a plugin with none never asks.
+// Reading the printer is only ever about a package that declares something, so a plugin that depends on
+// nothing never asks.
 // The read is also allowed to fail: it happens BEFORE a single byte is sent, and a printer whose jinni
 // is mid-restart answers it with a 500. Letting that abort marked the plugin as failed to install when
 // nothing had been attempted, so an unreadable printer falls back to the set last known instead.
-async function missingDepIds(record: PrinterRecord, depIds?: string[]): Promise<string[]> {
+async function missingDepIds(
+  record: PrinterRecord,
+  catalog: readonly MergedEntry[],
+  pluginId: string,
+  origin: PackageOrigin,
+  depIds?: string[],
+): Promise<string[]> {
   const declaredDeps = depIds ?? []
-  if (declaredDeps.length === 0) return []
+  if (!declaresDependencies(catalog, pluginId, declaredDeps, origin)) return []
 
   const alreadyInstalled = (await capsOrFallback(record, {})).installedIds
 
-  return declaredDeps.filter((depId) => !alreadyInstalled.includes(depId))
-}
-
-// Everything one install would put on the printer, weighed as a set before any of it is sent. A plugin
-// and the dependencies pulled in with it land on the same tree, so one writing over another leaves the
-// printer running part of each: a set that passed every version floor and is still broken. A lone
-// package can clash with nothing, so it is never read for this. The archives the others need are read
-// through the same cache the upload reads, so nothing is fetched twice.
-async function refuseOverwritingPackages(entries: readonly MergedEntry[]): Promise<void> {
-  if (entries.length < 2) return
-
-  const packages = await Promise.all(entries.map(async (entry) => ({
-    packageName: entry.name,
-    payloadPaths: payloadPaths(await resolveArchiveBytes(entry)),
-  })))
-  const refusal = firstOverlapRefusal(packages)
-  if (refusal) throw new Error(refusal)
+  return missingDependencyIds(catalog, pluginId, declaredDeps, alreadyInstalled, origin)
 }
 
 interface SentPackage {
@@ -153,13 +146,11 @@ async function runStoreInstall(
 ): Promise<{ installedIds: string[]; log: InstallLog }> {
   const record = getManagedRecord(printerId)
   const catalog = (await loadCatalog()).plugins
-  const missingDeps = await missingDepIds(record, depIds)
+  const missingDeps = await missingDepIds(record, catalog, pluginId, { sourceUrl, channel }, depIds)
   // Asked afresh, not taken from the list: the store page showed whatever this plugin's repo last
   // released, so the install has to fetch that same release or the owner gets an older build than the
   // number he clicked. A repo that cannot answer leaves the listed entry as it was.
   const entry = await withFreshestRelease(findCatalogVariant(catalog, pluginId, sourceUrl, channel))
-  const depEntries = missingDeps.map((depId) => findCatalogVariant(catalog, depId, undefined, channel))
-  await refuseOverwritingPackages([entry, ...depEntries])
   // The floors are checked against the entry that will actually be sent, after the fresh-release read:
   // the release the store page listed and the release about to be installed can be different builds
   // with different floors, and the one that matters is the one going onto the printer. It is asked

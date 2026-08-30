@@ -35,6 +35,10 @@ export interface PrinterRecord extends ConfigTruthRecords {
   deactivated?: boolean
   customSshCredentials?: boolean
   installedIds: string[]
+  // The installed plugins the printer has switched OFF: on disk, listed in `installedIds`, providing
+  // nothing. Read from `/capabilities` on every probe so the app answers "is this dependency there?"
+  // the same way the printer does, instead of counting a switched-off plugin as a working one.
+  deactivatedIds?: string[]
   installedVersions?: Record<string, string>
   // What the printer's own machinery is running, keyed by package name: the daemon, and the jinni of
   // the adapter this printer uses. Kept apart from `installedVersions` because the machinery is not in

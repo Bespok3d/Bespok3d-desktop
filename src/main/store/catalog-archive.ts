@@ -6,31 +6,28 @@ import { userDataPath } from '../app-paths'
 import { readReleaseAsset } from '../registry/asset-read'
 import type { ReleaseChannel } from '../settings'
 import type { MergedEntry } from '../registry/model'
+import { catalogVariantOrNone } from './catalog-variant'
 
 export function findCatalogEntry(plugins: readonly MergedEntry[], pluginId: string): MergedEntry {
-  const entry = plugins.find((candidate) => candidate.name === pluginId)
-  if (!entry) throw new Error(`bundled plugin not found: ${pluginId}`)
-
-  return entry
+  return listedOrRefused(catalogVariantOrNone(plugins, pluginId), pluginId)
 }
 
 // The catalog entry for a plugin from a specific source (registry url) and/or channel, or the winner
-// when neither is named or no variant matches. A variant's identity is registry_url x channel, so
-// both narrow the pick: lets the user install/switch a plugin from a chosen source AND channel (e.g.
-// the experiment build vs the published stable copy of the same plugin name).
+// when neither is named or no variant matches. Lets the user install/switch a plugin from a chosen
+// source AND channel (e.g. the experiment build vs the published stable copy of the same plugin name).
 export function findCatalogVariant(
   plugins: readonly MergedEntry[],
   pluginId: string,
   sourceUrl?: string,
   channel?: ReleaseChannel,
 ): MergedEntry {
-  const winner = findCatalogEntry(plugins, pluginId)
-  if (!sourceUrl && !channel) return winner
-  const match = (winner.variants ?? []).find(
-    (variant) => (!sourceUrl || variant.registry_url === sourceUrl) && (!channel || variant.channel === channel),
-  )
+  return listedOrRefused(catalogVariantOrNone(plugins, pluginId, { sourceUrl, channel }), pluginId)
+}
 
-  return match ?? winner
+function listedOrRefused(entry: MergedEntry | undefined, pluginId: string): MergedEntry {
+  if (!entry) throw new Error(`bundled plugin not found: ${pluginId}`)
+
+  return entry
 }
 
 function pluginCachePath(entry: MergedEntry): string {

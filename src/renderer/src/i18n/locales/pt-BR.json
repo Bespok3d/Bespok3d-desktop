@@ -76,6 +76,7 @@
   "btn.remove": "Remover",
   "btn.manage": "Gerenciar",
   "btn.retry": "Tentar de novo",
+  "btn.fix": "Corrigir",
   "btn.close": "Fechar",
   "explainer.show": "Mostrar detalhes técnicos",
   "explainer.hide": "Ocultar detalhes",
@@ -577,6 +578,9 @@
   "collection.all_installed": "Todos os itens estão instalados",
   "collection.needs_printer": "Selecione uma impressora gerenciada para instalar",
   "collection.install_all": "Instalar todos ({count})",
+  "collection.migrate_button": "Atualizar para coleção",
+  "collection.migrate_explain": "Isto estava instalado como plugin. Atualizar instala os plugins acima e remove o plugin antigo.",
+  "collection.migrated_note": "Isto agora é uma coleção. Seus recursos agora vêm dos plugins listados acima.",
   "store.endpoints": "Arquivos e endpoints",
   "store.daemon_unknown.title": "Versão do daemon desconhecida",
   "store.daemon_unknown.summary": "{plugin} precisa do daemon da impressora na v{required} ou mais recente, e esta impressora não informou qual versão está executando.",
@@ -1117,5 +1121,6 @@
   "store.update_confirm.versions": "{from} vira {to}",
   "store.update_confirm.other_versions": "Outras versões",
   "store.update_confirm.confirm": "Atualizar",
+  "store.update_confirm.replaced": "Esse não é mais um plugin só: ele sai e os {count} plugins que assumiram o trabalho dele entram no lugar.",
   "store.update_confirm.moved_source": "O lugar que essa cópia veio não oferece mais."
 }

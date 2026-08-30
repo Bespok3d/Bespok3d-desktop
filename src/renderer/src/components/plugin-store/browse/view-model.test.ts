@@ -3,8 +3,9 @@
 import { describe, it, expect } from 'vitest'
 import { deriveStoreView } from './view-model'
 import { ALLOW_ALL_CHANNELS } from '../../../data/channels'
-import { makePlugin, makePrinter } from '../../../test/fixtures'
+import { makeCollection, makePlugin, makePrinter } from '../../../test/fixtures'
 import type { Printer } from '../../../data/types'
+import type { Collection } from '../../../data/collections'
 
 const NO_FILTERS = {
   query: '', channels: [], categories: [], trusts: [], statuses: [], printerOnly: false,
@@ -16,8 +17,8 @@ const NOTHING_LIVE = { installedIds: null, installedVersions: null, deactivatedI
 
 const MACHINERY = { 'bespok3d-daemon': '0.12.23', 'bespok3d-jinni-snapmaker-u1': '0.1.10' }
 
-function viewOf(printer: Printer, catalogPlugins = [makePlugin({ id: 'bespok3d-daemon', name: 'bespok3d-daemon' })]) {
-  return deriveStoreView({ printer, catalogPlugins, live: NOTHING_LIVE, filters: NO_FILTERS })
+function viewOf(printer: Printer, catalogPlugins = [makePlugin({ id: 'bespok3d-daemon', name: 'bespok3d-daemon' })], catalogCollections: Collection[] = []) {
+  return deriveStoreView({ printer, catalogPlugins, catalogCollections, live: NOTHING_LIVE, filters: NO_FILTERS })
 }
 
 describe('the printer machinery in the store view', () => {
@@ -74,5 +75,26 @@ describe('the store never shows a card for the daemon or the jinni', () => {
     const view = viewOf(makePrinter({ machineryVersions: MACHINERY }), STORE_CATALOG)
 
     expect(view.installedVersions['bespok3d-daemon']).toBe('0.12.23')
+  })
+})
+
+// klipper-motion was installed as a plugin through 0.1.3 and the same id is a catalog collection since
+// 0.1.4. An orphan card could only offer a bare uninstall; the collection detail page owns that
+// migration, so no orphan card appears for it.
+describe('an installed plugin whose id is now a catalog collection', () => {
+  const MOTION_COLLECTION = makeCollection({ id: 'klipper-motion', name: 'klipper-motion' })
+
+  it('gets no remove-only orphan card', () => {
+    const printer = makePrinter({ installedIds: ['klipper-motion'], installedVersions: { 'klipper-motion': '0.1.3' } })
+    const view = viewOf(printer, [makePlugin({ id: 'spoolman', name: 'spoolman' })], [MOTION_COLLECTION])
+
+    expect(view.orphans).toEqual([])
+  })
+
+  it('leaves a catalog-less installed plugin that matches no collection as an orphan', () => {
+    const printer = makePrinter({ installedIds: ['ghost-plugin'], installedVersions: { 'ghost-plugin': '0.1.0' } })
+    const view = viewOf(printer, [makePlugin({ id: 'spoolman', name: 'spoolman' })], [MOTION_COLLECTION])
+
+    expect(view.orphans.map((plugin) => plugin.id)).toEqual(['ghost-plugin'])
   })
 })

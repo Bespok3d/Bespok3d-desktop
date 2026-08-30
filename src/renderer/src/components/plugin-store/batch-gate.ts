@@ -6,6 +6,7 @@ import { configAddressError } from '../../data/address'
 import { installedConflicts } from '../../data/deps'
 import { httpPortError } from '../../data/ports'
 import { installBlockReason } from './panel/install-gate'
+import { daemonFloorVerdict } from './panel/derive'
 import type { InstallBlock } from './panel/install-gate'
 import { pluginInstallVars } from './update-all'
 
@@ -25,11 +26,16 @@ export interface BatchGateState {
 }
 
 // The above plus what a per-member check needs to read: the catalogue, what is already on the printer,
-// and the user's saved config values.
+// the user's saved config values, and what the printer answered it is running.
 export interface BatchMemberContext extends BatchGateState {
   catalogPlugins: Plugin[]
   installedIds: string[]
   savedVars: Record<string, string>
+  // The daemon version this printer reported. A plugin whose card is greyed out because this printer
+  // runs an older daemon than it declares has to be refused here too, or the batch offers what the
+  // card refuses and the install fails on the printer instead of before it. A printer that has not
+  // answered yet is not a refusal, which is the verdict daemonFloorVerdict already reaches.
+  daemonVersion?: string
 }
 
 export interface BlockedMember {
@@ -55,10 +61,10 @@ export function batchBlockReason(t: TFunction, state: BatchGateState): InstallBl
   })
 }
 
-// Why this one member cannot join the batch (it clashes with something already installed, or its web
-// UI wants a port nothing may use), or null. A port another UI holds is not a refusal: the batch gives
-// this member a free port instead (`buildInstallSpecs`). The batch-wide reasons answer first, exactly as they do
-// for a single install.
+// Why this one member cannot join the batch (it clashes with something already installed, its web UI
+// wants a port nothing may use, or this printer's daemon is older than the member needs), or null. A
+// port another UI holds is not a refusal: the batch gives this member a free port instead
+// (`buildInstallSpecs`). The batch-wide reasons answer first, exactly as they do for a single install.
 export function memberBlockReason(t: TFunction, plugin: Plugin, context: BatchMemberContext): InstallBlock | null {
   return installBlockReason(t, {
     printerId: context.printerId,
@@ -67,6 +73,7 @@ export function memberBlockReason(t: TFunction, plugin: Plugin, context: BatchMe
     conflicts: installedConflicts(context.catalogPlugins, plugin.id, context.installedIds),
     portProblem: httpPortError(plugin.config ?? [], pluginInstallVars(plugin, context.savedVars)),
     addressError: configAddressError(plugin.config ?? [], pluginInstallVars(plugin, context.savedVars)),
+    daemonFloorUnmet: daemonFloorVerdict(plugin, context.daemonVersion).floorUnmet,
     configReady: true,
     missingFields: [],
   })

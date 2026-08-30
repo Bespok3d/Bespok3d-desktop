@@ -16,12 +16,21 @@ const ENTRIES = (buildIndex(PLUGIN_MANIFESTS).plugins as IndexEntry[]).map((entr
 const PLUGINS = indexToPlugins(ENTRIES, [])
 
 describe.skipIf(NO_PLUGIN_SOURCES)('resolveMissingDeps', () => {
+  // Depth first, so what a dependency itself needs is installed before it: the base plugin that owns
+  // the Snapmaker print-task file comes before print-prefs-core, which is what asks for it.
   it('returns the core dependency when a force plugin needs it and it is absent', () => {
-    expect(resolveMissingDeps(PLUGINS, 'force-bed-mesh', [])).toEqual(['print-prefs-core'])
+    expect(resolveMissingDeps(PLUGINS, 'force-bed-mesh', []))
+      .toEqual(['u1-base-print-task-config', 'print-prefs-core'])
   })
 
-  it('returns nothing when the dependency is already installed', () => {
-    expect(resolveMissingDeps(PLUGINS, 'force-bed-mesh', ['print-prefs-core'])).toEqual([])
+  it('returns only what is still missing when the dependency is already installed', () => {
+    expect(resolveMissingDeps(PLUGINS, 'force-bed-mesh', ['print-prefs-core']))
+      .toEqual(['u1-base-print-task-config'])
+  })
+
+  it('returns nothing when every dependency is already installed', () => {
+    expect(resolveMissingDeps(PLUGINS, 'force-bed-mesh', ['print-prefs-core', 'u1-base-print-task-config']))
+      .toEqual([])
   })
 
   it('returns nothing for a plugin with no dependencies', () => {
@@ -32,8 +41,9 @@ describe.skipIf(NO_PLUGIN_SOURCES)('resolveMissingDeps', () => {
     expect(resolveMissingDeps(PLUGINS, 'webcam-builtin', [])).toEqual(['camera-hw-accel'])
   })
 
-  it('pulls in rfid-ntag for spoolman from its declared service dependency', () => {
-    expect(resolveMissingDeps(PLUGINS, 'spoolman', [])).toEqual(['rfid-ntag'])
+  it('pulls in rfid-ntag for spoolman, and the base plugins rfid-ntag itself needs', () => {
+    expect(resolveMissingDeps(PLUGINS, 'spoolman', []))
+      .toEqual(['u1-base-print-task-config', 'u1-base-fm175xx-reader', 'u1-base-filament-detect', 'rfid-ntag'])
   })
 })
 

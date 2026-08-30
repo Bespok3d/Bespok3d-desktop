@@ -44,7 +44,7 @@ declare global {
   type UpdatePrefs = Pick<AppSettings, 'appUpdateFrequency' | 'appUpdateAutoDownload' | 'appUpdateInstallOnQuit'>
   type CapabilitiesResult = import('@bespok3d/contract').CapabilitiesResult
   type PluginRecoveryResult = import('@bespok3d/contract').PluginRecoveryResult
-  type RecoverResult = import('@bespok3d/contract').RecoverResult
+  type BatchResult = import('../../main/daemon-client/batch-result').BatchResult
   type InstallLog = import('@bespok3d/contract').InstallLog
   type InstallLogItem = import('@bespok3d/contract').InstallLogItem
   type InstallLogPhase = import('@bespok3d/contract').InstallLogPhase

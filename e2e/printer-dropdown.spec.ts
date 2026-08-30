@@ -108,6 +108,9 @@ test.describe('header printer dropdown: real geometry + stacking canaries', () =
       if (win) win.setContentSize(size.width, size.height)
     }, WINDOW)
     await page.locator('.printer-trigger').waitFor({ timeout: 30_000 })
+    // The stacking canaries below assert the menu paints ON TOP of store content, so the store has to
+    // have finished loading its catalog first. A fixed settle races it and the canaries fail on an empty grid.
+    await page.locator('.plugin-grid .card').first().waitFor({ timeout: 30_000 })
     await page.waitForTimeout(300)
   })
 

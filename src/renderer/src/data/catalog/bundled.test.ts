@@ -93,6 +93,17 @@ describe('catalog collections', () => {
       expect(PLUGIN_IDS.has(manifest.name as string)).toBe(false)
     })
   })
+
+  // The publisher's takeover declaration: which installed versions it was written for, and the
+  // sentence the user reads before their plugin is taken off. Dropped here, an offline install has no
+  // way to tell the user what is about to happen to a plugin they already have.
+  it('carries a declared takeover into the bundled catalog', () => {
+    const migration = { from_version: '0.1.3', summary: 'The base layer does the patching now.' }
+    const manifest = { name: 'u1-example-set', title: 'Example Set', version: '0.2.0', kind: 'collection', members: [], migration }
+    const built = buildIndex([manifest]) as { collections: Array<{ migration?: unknown }> }
+
+    expect(built.collections[0].migration).toEqual(migration)
+  })
 })
 
 describe('BUNDLED_CATEGORIES integrity', () => {

@@ -55,7 +55,7 @@ export function unverifiedBundledPayload(packageName: string, payloadPath: strin
 // ships and the newer copy the daemon updater downloads, so both cross the same signing chain.
 export async function openVerifiedPackage(entry: MergedEntry, archiveBytes: Buffer): Promise<BundledPackage> {
   const trust = await verifiedPackageTrust(archiveBytes, entry)
-  const members = payloadMembers(archiveBytes)
+  const members = payloadMembers(archiveBytes, entry.name)
 
   return {
     name: entry.name,

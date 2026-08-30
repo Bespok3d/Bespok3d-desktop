@@ -188,3 +188,41 @@ describe('fetchReleaseInstallers', () => {
     expect(requested).toEqual([])
   })
 })
+
+// Everything about a release comes from an answer served over the network: which versions exist, where
+// each one's page is, and what each one's installer is called. The page address ends up at the machine
+// to be opened, and the installer name ends up as a path the machine is asked to run, so an answer that
+// has been tampered with picks both unless this module refuses first.
+describe('an update answer that says something it should not', () => {
+  function feedWithLink(href: string): Record<string, string> {
+    return { [FEED_URL]: atomFeed([`<entry><link href="${href}"/><title>0.1.0</title></entry>`]) }
+  }
+
+  it('does not list a version whose page is not a web address', async () => {
+    serveUrls(feedWithLink('file:///Applications/Anything.app/releases/tag/v0.1.0'))
+
+    await expect(readPublishedReleases(APP_REPO)).resolves.toEqual({ releases: [], problem: null })
+  })
+
+  it('lists the version when its page is an ordinary release page', async () => {
+    serveUrls(feedWithLink('https://github.com/Bespok3d/Bespok3d-desktop/releases/tag/v0.1.0'))
+    const published = await readPublishedReleases(APP_REPO)
+
+    expect(published.releases.map((release) => release.tag)).toEqual(['v0.1.0'])
+  })
+
+  it('offers no installer whose name is a path of its own', async () => {
+    const updateFile = releaseDownloadUrl(APP_REPO, 'v0.1.0', 'latest-mac.yml')
+    serveUrls({ [updateFile]: ['files:', '  - url: ../../../../Library/LaunchAgents/evil.plist', '  - url: Bespok3d-0.1.0.dmg'].join('\n') })
+    const installers = await fetchReleaseInstallers(APP_REPO, 'v0.1.0', 'darwin', 'arm64')
+
+    expect(installers.map((installer) => installer.name)).toEqual(['Bespok3d-0.1.0.dmg'])
+  })
+
+  it('offers no installer whose name cannot even be read', async () => {
+    const updateFile = releaseDownloadUrl(APP_REPO, 'v0.1.0', 'latest-mac.yml')
+    serveUrls({ [updateFile]: 'files:\n  - url: Bespok3d-100%.dmg\n' })
+
+    await expect(fetchReleaseInstallers(APP_REPO, 'v0.1.0', 'darwin', 'arm64')).resolves.toEqual([])
+  })
+})

@@ -33,11 +33,40 @@ export async function toFetchedRegistry(ref: RegistryRef, served: ServedIndex, f
 // connection sends him to fix something that is not broken.
 function parseIndex(bytes: string): RegistryIndex {
   if (bytes.trim().length === 0) throw new RegistryFetchError('empty', 'The list came back empty')
+  const parsed = jsonOrTransportFailure(bytes)
+  const notAList = whyThisIsNotAPluginList(parsed)
+  if (notAList) throw new RegistryFetchError('empty', notAList)
+
+  return parsed as RegistryIndex
+}
+
+function jsonOrTransportFailure(bytes: string): unknown {
   try {
-    return JSON.parse(bytes) as RegistryIndex
+    return JSON.parse(bytes)
   } catch {
     throw new RegistryFetchError('network', 'The list did not parse as JSON')
   }
+}
+
+// JSON that parsed is still not a plugin list. A source can serve any JSON it likes: the wrong file,
+// an error object, a bare number, or a shape built to break the reader. The plugins, the sub-lists and
+// the collections are read straight off this object by the walk that loads every source, so a plugins
+// field that is not a list threw in the middle of that walk instead of at this source, and one bad
+// answer took the whole store down with it: every other list the owner has, gone, over one. Refused
+// here, on the single path all three transports parse through, it costs that one source, which is
+// dropped with a reason beside its row.
+//
+// This is the publisher's end, not the machine's, so it is told the way an empty list is told. Only
+// the three fields the walk dereferences are demanded; the rest of a list's own description of itself
+// is text, and a list missing some of it still loads.
+function whyThisIsNotAPluginList(parsed: unknown): string | null {
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return 'The list is not in the shape of a plugin list'
+  const index = parsed as Partial<RegistryIndex>
+  if (!Array.isArray(index.plugins)) return 'The list has no plugins in it'
+  if (index.lists !== undefined && !Array.isArray(index.lists)) return 'The list gives its own sub-lists in a shape that cannot be read'
+  if (index.collections !== undefined && !Array.isArray(index.collections)) return 'The list gives its own collections in a shape that cannot be read'
+
+  return null
 }
 
 // Nothing enters the cache until it has parsed. Caching bytes that do not parse alongside their fresh

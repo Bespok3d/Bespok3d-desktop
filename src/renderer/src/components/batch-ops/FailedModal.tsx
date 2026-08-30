@@ -14,6 +14,8 @@ const FAILED_TITLE: Record<BatchVariant, string> = {
   update: 'update_failed.title',
   install: 'install_failed.title',
   uninstall: 'uninstall_failed.title',
+  migration: 'migration_failed.title',
+  'migration-in-place': 'migration_change_failed.title',
 }
 
 // The verdict a user meets is a sentence. A refusal while a print is running is already one (it names

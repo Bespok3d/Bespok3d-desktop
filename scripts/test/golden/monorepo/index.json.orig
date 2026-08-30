@@ -1,0 +1,1270 @@
+{
+  "schema_version": 1,
+  "name": "Bespok3d Official",
+  "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+  "updated": "2026-08-25",
+  "plugins": [
+    {
+      "name": "afc-lite",
+      "title": "AFC Lite (Automated Filament Changer)",
+      "version": "0.1.13+dev.local",
+      "description": "Lightweight Automated Filament Changer support for the Snapmaker U1's four toolheads. Ships the AFC, AFC_unit and AFC_lane Klipper extras plus an afc.cfg that maps the four lanes (E0-E3) to the U1 extruders and filament motion sensors, and adds gcode macros for color, material, vendor, map, spool id, weight, tool change and lane/tool unload. Per-lane state feeds the U1's SET_PRINT_FILAMENT_CONFIG so the slicer and screen track what is loaded.",
+      "tagline": "Four-lane filament tracking and tool-change macros for the U1.",
+      "category": "filament",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-06-08",
+      "updated_at": "2026-08-19",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "afc"
+      ],
+      "deps": [
+        "rfid-ntag"
+      ],
+      "conflicts": [],
+      "doc_url": "afc-lite/doc/README.md",
+      "download_url": "afc-lite-0.1.13.b3",
+      "config": [
+        {
+          "key": "AFC_TOOLMAP_ASK",
+          "label": "Filament to tools mapper",
+          "type": "select",
+          "options": [
+            "off",
+            "on"
+          ],
+          "default": "off",
+          "hint": "Off by default. On, a print started from the web interface or the slicer never starts until Fluidd or Mainsail has asked which lane feeds each tool, so a print sent straight from the slicer can be mapped without the printer's screen. It waits as long as it takes, and dismissing the question drops the print instead of starting it.",
+          "userEditable": true,
+          "scope": "printer"
+        },
+        {
+          "key": "AFC_TOOLMAP_FEED",
+          "label": "Filament auto loaders",
+          "type": "select",
+          "options": [
+            "off",
+            "on"
+          ],
+          "default": "off",
+          "hint": "Off by default. On, once you have said which lane feeds each tool, the printer loads filament into the lanes that print needs and have none, the same way it does for a print started from its own screen, instead of starting and stopping on a filament error. It only acts on a print it held for the question above, and it leaves a lane alone when there is no spool in its feeder.",
+          "userEditable": true,
+          "scope": "printer"
+        }
+      ],
+      "author": "bespoked",
+      "attributions": "# Attributions - afc-lite\n\n**Plugin author:** paxx12 (Extended Firmware overlay `31-feature-afc-lite`) and Bespok3d, extended from that overlay\n\nKlipper support for an AFC filament changer.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Extended Firmware overlay `31-feature-afc-lite` | paxx12 | GPL-3.0 | no | yes |\n\nThe Klipper extras in this package come from the Extended Firmware overlay `31-feature-afc-lite`\n(paxx12), GPL-3.0. `AFC_unit.py` ships unchanged. `AFC.py` and `AFC_lane.py` are that overlay's\nfiles extended here; about half of what this plugin ships is still that overlay's code.\n",
+      "migration": {
+        "until_version": "0.1.13",
+        "requires_daemon": "0.14.0",
+        "summary": "AFC Lite now needs a spool reader working alongside it, so this update also puts the RFID Spool Reader on your printer. What each lane already holds is kept."
+      },
+      "license_url": "https://github.com/Bespok3d/u1-afc-lite/blob/dev/afc-lite/doc/LICENSE",
+      "changelog_url": "afc-lite/doc/CHANGELOG.md"
+    },
+    {
+      "name": "bespok3d-daemon",
+      "title": "Bespok3d daemon",
+      "version": "0.14.0",
+      "description": "The on-printer daemon for the Bespok3d plugin manager: a small FastAPI service that installs, updates, and removes plugins, reports printer capabilities, refuses any operation mid-print, and self-heals a plugin that breaks a service so the printer is never left unusable. It is plugin zero: the adapter bootstraps it over SSH at enrollment (cert-pinned HTTPS, bearer-token auth), not through the normal plugin install pipeline, so the install block below is intentionally empty. This package is the publishable, versioned artifact the app reads to know when a newer daemon is available.",
+      "tagline": "The on-printer service that installs plugins and keeps the printer safe.",
+      "category": "system",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": false,
+      "published_at": "2026-06-14",
+      "updated_at": "2026-06-14",
+      "requires": {
+        "capabilities": []
+      },
+      "provides": [
+        "daemon"
+      ],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "bespok3d-daemon/doc/README.md",
+      "download_url": "bespok3d-daemon-0.14.0.b3",
+      "min_jinni_version": "0.1.10",
+      "changelog_url": "bespok3d-daemon/doc/CHANGELOG.md"
+    },
+    {
+      "name": "bespok3d-jinni-snapmaker-u1",
+      "title": "Snapmaker U1 jinni",
+      "version": "0.1.11",
+      "description": "The Snapmaker U1's jinni: the printer-side process that reads this device's board, service and module facts and actuates the daemon's install operations on it. Bundles the shared klipper jinni runtime it extends, so a printer needs only this one package. It is not independently startable: the daemon owns its lifecycle and picks up a new jinni on the restart its own install op already performs.",
+      "tagline": "The printer-side process that gives the daemon Snapmaker U1 device knowledge.",
+      "category": "system",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-08-10",
+      "updated_at": "2026-08-13",
+      "requires": {
+        "capabilities": [
+          "snapmaker-u1"
+        ]
+      },
+      "provides": [],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "bespok3d-jinni-snapmaker-u1/doc/README.md",
+      "download_url": "bespok3d-jinni-snapmaker-u1-0.1.11.b3",
+      "min_daemon_version": "0.12.22",
+      "changelog_url": "bespok3d-jinni-snapmaker-u1/doc/CHANGELOG.md"
+    },
+    {
+      "name": "camera-hw-accel",
+      "title": "Camera HW Accel",
+      "version": "0.1.11+dev.local",
+      "description": "Tap into the SoC's video pipeline instead of CPU-encoding every frame. MJPEG over HTTP at /webcam, WebRTC at /webrtc; works on any browser, smooth 30fps even with two cameras attached.\n\nTo have these auto-registered as cameras in Fluidd and Mainsail (so you don't have to add them by hand under Settings → Cameras), also install [webcam-builtin](b3d://bespok3d/webcam-builtin) for the built-in MIPI camera and [webcam-usb](b3d://bespok3d/webcam-usb) for the external USB camera.",
+      "tagline": "HW-accelerated MJPEG and WebRTC streaming for MIPI & USB cameras.",
+      "category": "camera",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2025-08-14",
+      "updated_at": "2026-08-25",
+      "requires": {
+        "capabilities": [
+          "rockchip-mpp"
+        ]
+      },
+      "provides": [
+        "camera-service"
+      ],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "camera-hw-accel/doc/README.md",
+      "download_url": "camera-hw-accel-0.1.11.b3",
+      "config": [
+        {
+          "key": "WEBRTC_ENABLED",
+          "label": "WebRTC stream",
+          "type": "toggle",
+          "onValue": "1",
+          "offValue": "0",
+          "default": "1",
+          "hint": "On by default: the Fluidd/Mainsail camera tile is registered for the WebRTC stream. Turning it off saves memory, but ONLY do so if your camera is set to the MJPEG stream, otherwise the tile goes blank.",
+          "userEditable": true
+        },
+        {
+          "key": "CAMERA_RESOLUTION",
+          "label": "Built-in camera resolution",
+          "type": "select",
+          "options": [
+            "1080p",
+            "720p"
+          ],
+          "default": "1080p",
+          "hint": "Capture resolution for the built-in (MIPI) camera. 720p uses less memory and CPU, handy on low-RAM boards. The external USB camera always uses its own native resolution.",
+          "userEditable": true
+        },
+        {
+          "key": "WEBRTC_SESSION_TIMEOUT_MIN",
+          "label": "Recycle WebRTC viewers after (minutes, 0 = off)",
+          "type": "number",
+          "default": "0",
+          "hint": "0 (recommended): a camera stays connected as long as you watch it. Set a number of minutes to periodically recycle each WebRTC viewer connection as a memory-safety backstop on a very constrained board; the tile reconnects on its own within a couple of seconds, so it no longer freezes. Dead or abandoned viewers are always cleaned up regardless of this setting.",
+          "userEditable": true
+        }
+      ],
+      "author": "bespoked",
+      "attributions": "# Attributions - camera-hw-accel\n\n**Plugin author:** Bespok3d, vendoring v4l2-mpp (paxx12), Rockchip MPP, libdatachannel (Paul-Louis Ageneau) and live555 (Live Networks); two helper programs come from the Extended Firmware camera overlay `60-app-camera` (paxx12)\n\nHardware-accelerated camera capture and streaming.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| v4l2-mpp | paxx12 | GPL-3.0-or-later | yes | yes |\n| Rockchip MPP (Media Process Platform) | Rockchip | Apache-2.0 | yes | no |\n| libdatachannel (WebRTC) | Paul-Louis Ageneau and contributors | MPL-2.0 | yes | no |\n| live555 streaming media (RTSP) | Live Networks, Inc. | LGPL-2.1 | yes | no |\n\nThe capture and streaming binaries are built from a fork of https://github.com/paxx12/v4l2-mpp at\npinned commit `10fc3b9d935d9c79bacc014839c05de4a004c4ac`; that tree lives in this repo under\n`src/v4l2-mpp/` and carries its own LICENSE. The web pages in `plugin/files/html/` and the two Python\nprograms `camera-stream.py` and `control-v4l2.py` are byte-identical copies from that same tree.\nRockchip MPP, libdatachannel and live555 are pulled and linked at build time by the toolchain.\n\nTwo smaller programs come from somewhere else: `fake-service` and `libv4l2-imposter.so` are derived\nfrom the `apps/fake-service` and `apps/v4l2-imposter` sources in the Extended Firmware overlay\n`60-app-camera`, GPL-3.0, written by paxx12. They live here under `src/fake-service/` and\n`src/v4l2-imposter/` and differ from the overlay's originals only in identifier naming.\n\nThat overlay was called `12-camera-v4l2-mpp` until it was renamed in March 2026, and other Extended\nFirmware contributors have commits in it. One of them made `fake-service` build under a cross\ncompiler, and that change is in the Makefile shipped here. @justinh-rahb added the V4L2 controls\nintegration and liberodark corrected a shebang; both of those touched the overlay's own firmware\nwiring, which this plugin does not ship, because it places its own init scripts through the Bespok3d\ndaemon. The Extended Firmware history names every one of them.\n\n## Copyright notices\n\nThe capture and streaming binaries this plugin ships are linked against Rockchip MPP, libdatachannel\nand live555. Their licences require the notices to travel with the shipped binaries, even though no\nsource from those three projects is in this repo. The full licence texts are in `LICENSES/` at the\nroot of this repo.\n\n| Component | Licence | Copyright notice, as the project states it |\n| --- | --- | --- |\n| v4l2-mpp fork | GPL-3.0-or-later | the project's `LICENSE` names no copyright holder line; the fork is paxx12's |\n| Rockchip MPP | Apache-2.0 | `Copyright 2015 Rockchip Electronics Co. LTD` |\n| libdatachannel | MPL-2.0 | the project's `LICENSE` is the MPL-2.0 text with no copyright line, which MPL-2.0 does not require |\n| live555 | LGPL-2.1 | `Copyright (c) 1996-2026 Live Networks, Inc.  All rights reserved.` |\n\nRead from `inc/rk_mpi.h` at MPP commit `437bfbeb9567cca9cd9080e3f6954aa9d6a94f18`, from `LICENSE` at\nlibdatachannel commit `222529eb2c8ae44f96462504ae38023f62809cec`, and from a live555 source header,\nall retrieved 2026-07-28. The live555 release the toolchain fetches is `live.2025.11.06.tar.gz`,\nsha256 `7614fa0a293e61b24bfd715a30a1c020fb4fe5490ebb02e71b0dadb5efc1d17c`, checked by\n`src/v4l2-mpp/deps/compile_livemedia.sh`.\n\nlive555 is LGPL-2.1, so a user is entitled to what is needed to relink the shipped binary against\ntheir own build of it. Bespok3d compiles live555 itself, so that material is ours to hand over: that\nrelease at the sha256 above, the build script `src/v4l2-mpp/deps/compile_livemedia.sh` with live555's\nown `linux-no-std-lib` config, the v4l2-mpp source in `src/v4l2-mpp/`, and the toolchain in\n`toolchain/`, all of which are public. libdatachannel is MPL-2.0, so its source is\navailable from the project at the commit named above.\n",
+      "license_url": "https://github.com/Bespok3d/u1-hw-camera/blob/main/plugin/doc/LICENSE",
+      "changelog_url": "camera-hw-accel/doc/CHANGELOG.md",
+      "endpoints": [
+        {
+          "label": "Camera 1",
+          "path": "/webcam/"
+        },
+        {
+          "label": "Camera 2",
+          "path": "/webcam2/"
+        }
+      ]
+    },
+    {
+      "name": "fluidd",
+      "title": "Fluidd",
+      "version": "0.1.6+dev.local",
+      "description": "Swaps SM's outdated Fluidd for the current upstream release. You get input-shaper graphs, integrated config/G-code editors, tool-colour preview, modern mesh viz. Uninstall restores the SM-shipped copy automatically; no nginx config touched.",
+      "tagline": "Modern Fluidd v1.37.3: replaces the stock SM build.",
+      "category": "ui",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2025-10-12",
+      "updated_at": "2026-08-01",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "fluidd-ui"
+      ],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "fluidd/doc/README.md",
+      "download_url": "fluidd-0.1.6.b3",
+      "homepage": "https://github.com/Bespok3d/fluidd-plugin",
+      "config": [
+        {
+          "key": "FLUIDD_PORT",
+          "label": "Fluidd port",
+          "type": "http-port",
+          "default": "80",
+          "hint": "Auto-assigned. Make Fluidd primary to serve it on port 80.",
+          "userEditable": true
+        },
+        {
+          "key": "FLUIDD_HIDE_VIRTUAL_TOOLS",
+          "label": "Hide unused tool buttons",
+          "type": "select",
+          "options": [
+            "off",
+            "on"
+          ],
+          "default": "off",
+          "hint": "Off by default. On, the tool row shows one button per lane the printer actually has, instead of all 32 the firmware keeps room for. The tools are still there and a macro can still call them. Reload the page after changing this.",
+          "userEditable": true,
+          "scope": "printer"
+        }
+      ],
+      "author": "bespoked",
+      "sw_version": "1.37.4",
+      "attributions": "# Attributions - fluidd\n\n**Plugin author:** the Fluidd project (fluidd-core), packaged by Bespok3d\n\nInstalls the Fluidd web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Fluidd | the Fluidd project (fluidd-core), started by Craig Bassett (cadriel) | GPL-3.0 | yes | yes |\n\nThe released Fluidd web bundle is shipped verbatim inside this plugin (currently v1.37.3). Upstream:\nhttps://github.com/fluidd-core/fluidd\n\nThe U1 packaging approach follows the Extended Firmware overlay `62-app-fluidd` (paxx12), GPL-3.0.\n",
+      "license_url": "https://github.com/Bespok3d/fluidd-plugin/blob/dev/fluidd/doc/LICENSE",
+      "changelog_url": "fluidd/doc/CHANGELOG.md",
+      "endpoints": [
+        {
+          "label": "Fluidd",
+          "path": "/"
+        }
+      ]
+    },
+    {
+      "name": "idle-timeout",
+      "title": "Idle Timeout",
+      "version": "0.1.0+dev.local",
+      "description": "Sets how long the printer waits, with no activity, before it powers down its motors and heaters (Klipper's idle timeout). The Snapmaker U1 ships with a short 5 minute (300 second) timeout, which can cut power mid-workflow while you swap filament or level by hand. Set the timeout you want, in seconds; the plugin overrides the printer's idle_timeout value so it sticks across prints. Default is 7200 seconds (2 hours).",
+      "tagline": "Choose how long the printer stays awake before it powers its motors down.",
+      "category": "tuning",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-07-04",
+      "updated_at": "2026-07-04",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "idle-timeout"
+      ],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "idle-timeout/doc/README.md",
+      "download_url": "idle-timeout-0.1.0.b3",
+      "min_daemon_version": "0.10.1",
+      "config": [
+        {
+          "key": "IDLE_TIMEOUT_SECONDS",
+          "label": "Idle timeout (seconds)",
+          "type": "number",
+          "default": "7200",
+          "hint": "Seconds of inactivity before the printer powers its motors and heaters down. 3600 = 1 hour, 7200 = 2 hours. Must be a positive whole number.",
+          "userEditable": true,
+          "scope": "global"
+        }
+      ],
+      "author": "bespoked",
+      "attributions": "# Attributions - idle-timeout\n\n**Plugin author:** Bespok3d\n\nSets how long the printer waits before going idle.\n\nNo third-party code ships in this package.\n",
+      "license_url": "https://github.com/Bespok3d/u1-klipper-config-enhancers/blob/dev/idle-timeout/doc/LICENSE",
+      "changelog_url": "idle-timeout/doc/CHANGELOG.md"
+    },
+    {
+      "name": "mainsail",
+      "title": "Mainsail",
+      "version": "0.1.9+dev.local",
+      "description": "Installs Mainsail v2.18.0 as a second web frontend. Runs on port 81 by default so Fluidd stays on port 80. Set port 80 to make Mainsail primary; Fluidd shifts to 81 automatically.",
+      "tagline": "Mainsail web interface alongside Fluidd, on your chosen port.",
+      "category": "ui",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-01-10",
+      "updated_at": "2026-07-03",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "mainsail-ui"
+      ],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "mainsail/doc/README.md",
+      "download_url": "mainsail-0.1.9.b3",
+      "config": [
+        {
+          "key": "MAINSAIL_PORT",
+          "label": "Mainsail port",
+          "type": "http-port",
+          "default": "81",
+          "hint": "Auto-assigned. Make Mainsail primary to serve it on port 80.",
+          "required": true,
+          "userEditable": true
+        },
+        {
+          "key": "MAINSAIL_HIDE_VIRTUAL_TOOLS",
+          "label": "Hide unused tool buttons",
+          "type": "select",
+          "options": [
+            "off",
+            "on"
+          ],
+          "default": "off",
+          "hint": "Off by default. On, the Extruder panel shows one button per lane the printer actually has, instead of all 32 the firmware keeps room for and the saved copy the printer keeps of each. The tools are still there and a macro can still call them. Reload the page after changing this.",
+          "userEditable": true,
+          "scope": "printer"
+        }
+      ],
+      "author": "bespoked",
+      "sw_version": "2.18.0",
+      "attributions": "# Attributions - mainsail\n\n**Plugin author:** the mainsail-crew, packaged by Bespok3d\n\nInstalls the Mainsail web interface.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Mainsail | the mainsail-crew | GPL-3.0 | yes | yes |\n\nThe released Mainsail web bundle is shipped verbatim inside this plugin (currently v2.18.0).\nUpstream: https://github.com/mainsail-crew/mainsail\n\nThe U1 packaging approach follows the Extended Firmware overlay `63-app-mainsail` (paxx12), GPL-3.0.\n",
+      "license_url": "https://github.com/Bespok3d/mainsail-plugin/blob/main/mainsail/doc/LICENSE",
+      "changelog_url": "mainsail/doc/CHANGELOG.md",
+      "endpoints": [
+        {
+          "label": "Mainsail",
+          "path": ":81/"
+        }
+      ]
+    },
+    {
+      "name": "moonraker-notify",
+      "title": "Print Notifications",
+      "version": "0.1.0+dev.local",
+      "description": "Sends a push notification when a print finishes, fails, or errors, using Moonraker's [notifier] and the Apprise library. Apprise speaks to about a hundred services from one address: Telegram, Discord, Slack, ntfy, Pushover, email, Matrix, Home Assistant, and more. Paste the Apprise URL for your service (e.g. ntfy://ntfy.sh/your-topic or tgram://bottoken/chatid) and pick which events to be told about. The Apprise library is baked into the package and linked into Moonraker's interpreter at install; no pip ever runs on the printer.",
+      "tagline": "Get a ping on your phone or chat when a print finishes or fails.",
+      "category": "system",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": false,
+      "published_at": "2026-06-09",
+      "updated_at": "2026-06-09",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "moonraker-notify"
+      ],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "moonraker-notify/doc/README.md",
+      "download_url": "moonraker-notify-0.1.0.b3",
+      "min_daemon_version": "0.10.33",
+      "config": [
+        {
+          "key": "NOTIFY_NAME",
+          "label": "Notifier name",
+          "type": "text",
+          "default": "phone",
+          "hint": "A label for this destination; you can install more than one.",
+          "userEditable": true
+        },
+        {
+          "key": "APPRISE_URL",
+          "label": "Apprise URL",
+          "type": "text",
+          "default": "ntfy://ntfy.sh/your-topic",
+          "hint": "Your service's Apprise URL. See github.com/caronc/apprise for the format per service.",
+          "userEditable": true
+        },
+        {
+          "key": "NOTIFY_EVENTS",
+          "label": "Notify on",
+          "type": "select",
+          "options": [
+            "complete,error,cancelled",
+            "error,cancelled",
+            "*"
+          ],
+          "default": "complete,error,cancelled",
+          "hint": "Which print events trigger a notification.",
+          "userEditable": true
+        }
+      ],
+      "author": "bespoked",
+      "attributions": "# Attributions - moonraker-notify\n\n**Plugin author:** Bespok3d, vendoring Apprise (Chris Caron) and its dependencies; Apprise on the U1 was first done in the Extended Firmware overlay `12-patch-moonraker` (paxx12)\n\nSends print notifications through Moonraker's notifier.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Apprise | Chris Caron (caronc) and contributors | BSD-2-Clause | yes | yes |\n| Python-Markdown | the Python-Markdown project | BSD-3-Clause | yes | yes |\n| Click | the Pallets project | BSD-3-Clause | yes | yes |\n| Requests | Kenneth Reitz and the Requests contributors | Apache-2.0 | yes | yes |\n| urllib3 | Andrey Petrov and the urllib3 contributors | MIT | yes | yes |\n| charset-normalizer | Ahmed Tahri and contributors | MIT | yes | yes |\n| idna | Kim Davies and contributors | BSD-3-Clause | yes | yes |\n| certifi | Kenneth Reitz and the certifi contributors | MPL-2.0 | yes | yes |\n| PyYAML | Ingy dot Net, Kirill Simonov and contributors | MIT | yes | yes |\n| OAuthLib | the OAuthLib contributors | BSD-3-Clause | yes | yes |\n| Requests-OAuthlib | the Requests-OAuthlib contributors | ISC | yes | yes |\n\nApprise and its dependencies are shipped inside this plugin so Moonraker's `[notifier]` can import\nthem. Upstream: https://github.com/caronc/apprise\n\nPorted from the Extended Firmware overlay `12-patch-moonraker` (paxx12), GPL-3.0.\n\n## Copyright notices\n\nReproduced because these licences require the notice to travel with the code. The full licence texts\nare in `LICENSES/` at the root of this repo. Each line is read from the package's own licence file\ninside `files/site-packages/*.dist-info/`.\n\n| Component | Licence | Copyright notice, as the component states it |\n| --- | --- | --- |\n| Apprise | BSD-2-Clause | `Copyright (c) 2026, Chris Caron <lead2gold@gmail.com>` |\n| Python-Markdown | BSD-3-Clause | `Copyright 2004 Manfred Stienstra (the original version)`, `Copyright 2004, 2005, 2006 Yuri Takhteyev (v. 0.2-1.6b)`, `Copyright 2007, 2008 The Python Markdown Project (v. 1.7 and later)` |\n| Click | BSD-3-Clause | `Copyright 2014 Pallets` |\n| Requests | Apache-2.0 | `Copyright 2019 Kenneth Reitz` |\n| urllib3 | MIT | `Copyright (c) 2008-2020 Andrey Petrov and contributors.` |\n| charset-normalizer | MIT | `Copyright (c) 2025 TAHRI Ahmed R.` |\n| idna | BSD-3-Clause | `Copyright (c) 2013-2026, Kim Davies and contributors.` |\n| certifi | MPL-2.0 | the package states no copyright line, and MPL-2.0 does not require one |\n| PyYAML | MIT | `Copyright (c) 2006-2016 Kirill Simonov`, `Copyright (c) 2017-2021 Ingy döt Net` |\n| OAuthLib | BSD-3-Clause | `Copyright (c) The OAuthlib Community` |\n| Requests-OAuthlib | ISC | `Copyright (c) 2014 Kenneth Reitz.` |\n",
+      "license_url": "https://github.com/Bespok3d/u1-extras/blob/dev/moonraker-notify/doc/LICENSE",
+      "changelog_url": "moonraker-notify/doc/CHANGELOG.md"
+    },
+    {
+      "name": "remote-screen",
+      "title": "Remote Screen",
+      "version": "0.1.22+dev.local",
+      "description": "Mirror the printer's on-device touchscreen to a browser. Low-overhead framebuffer capture, no UI changes on the device side.\n\nThe screen also appears as a tile inside Fluidd and Mainsail, alongside your cameras, with no manual setup: the plugin registers the mirror as a Moonraker [webcam] iframe entry sized for the U1's 480:320 display. You pick the name it shows under when you install it.",
+      "tagline": "Stream your printer's framebuffer as MJPEG.",
+      "category": "screen",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2025-07-30",
+      "updated_at": "2026-07-28",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "screen-service"
+      ],
+      "deps": [],
+      "conflicts": [
+        "webcam-screen"
+      ],
+      "doc_url": "remote-screen/doc/README.md",
+      "download_url": "remote-screen-0.1.22.b3",
+      "min_daemon_version": "0.10.1",
+      "config": [
+        {
+          "key": "REMOTE_SCREEN_NAME",
+          "label": "Screen name in Fluidd/Mainsail",
+          "type": "text",
+          "placeholder": "Printer Screen",
+          "default": "Printer Screen",
+          "hint": "Letters, numbers, spaces, and . - : / _ @ only.",
+          "required": true,
+          "userEditable": true
+        }
+      ],
+      "author": "bespoked",
+      "attributions": "# Attributions - remote-screen\n\n**Plugin author:** Bespok3d, with the web app from the Extended Firmware overlay `61-app-remote-screen` by @horzadome; the framebuffer server here is written from scratch\n\nMirrors and controls the printer's screen from a browser.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Extended Firmware overlay `61-app-remote-screen` | the PWA by @horzadome, packaged by paxx12 | GPL-3.0 | no | yes |\n\nThe web app in this package comes from the Extended Firmware overlay `61-app-remote-screen`,\nGPL-3.0, whose PWA is credited to @horzadome and whose framebuffer double-buffering in\n`fb-http-server.py` is credited to @suchmememanyskill; packaging by paxx12. `html/manifest.json`\nships with one value changed (`start_url`) and `html/icon.svg` with its comments removed, and parts\nof `html/index.html`, `html/auth.js` and the nginx location file match that overlay. Each of those\nfiles carries a dated note of what changed, except `manifest.json`, which is JSON and cannot hold a\ncomment.\n\nThe framebuffer server, the touch input path and the watchdog are written from scratch.\n",
+      "license_url": "https://github.com/Bespok3d/u1-remote-screen/blob/dev/remote-screen/doc/LICENSE",
+      "log": {},
+      "changelog_url": "remote-screen/doc/CHANGELOG.md",
+      "endpoints": [
+        {
+          "label": "Remote screen",
+          "path": "/screen/"
+        }
+      ]
+    },
+    {
+      "name": "rfid-anycubic",
+      "title": "Anycubic ACE Filament Tag",
+      "version": "0.1.0+dev.local",
+      "description": "Reads Anycubic ACE filament tags (plaintext NTAG21x, no key) and decodes the dispute-free fields - brand, material, and nozzle/bed temperatures - into the shared rfid_data.json. PARTIAL by design: the public reverse engineering disagrees on three fields (the SKU length, the color byte order, and whether page 31 is weight), and no real tag dump has been published to settle them, so this decoder does NOT decode color, diameter, or weight yet rather than guess. One captured tag from a tester pins those, then they are added. Installs the RFID Spool Reader automatically. Read-only. Experiment channel.",
+      "tagline": "Decode Anycubic ACE brand/material/temps (color+weight pending a tag dump).",
+      "category": "filament",
+      "channel": "testing",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-06-30",
+      "updated_at": "2026-06-30",
+      "requires": {
+        "capabilities": [
+          "rfid-spi"
+        ]
+      },
+      "provides": [],
+      "deps": [
+        "rfid-ntag"
+      ],
+      "conflicts": [],
+      "doc_url": "rfid-anycubic/doc/README.md",
+      "download_url": "rfid-anycubic-0.1.0.b3",
+      "homepage": "https://github.com/DnG-Crafts/ACE-RFID",
+      "author": "bespoked",
+      "attributions": "# Attributions - rfid-anycubic\n\n**Plugin author:** Bespok3d, tag format documented by DnG-Crafts\n\nReads Anycubic ACE filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| ACE-RFID tag-format research | DnG-Crafts and contributors | see the project | no | no |\n\nField layout follows the community reverse-engineering write-up at\nhttps://github.com/DnG-Crafts/ACE-RFID. No code from that project is used here.\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-anycubic/doc/LICENSE",
+      "changelog_url": "rfid-anycubic/doc/CHANGELOG.md"
+    },
+    {
+      "name": "rfid-bambu",
+      "title": "Bambu Filament Tag",
+      "version": "0.2.0+dev.local",
+      "description": "Reads Bambu Lab filament spool tags (encrypted Mifare Classic) and decodes the full filament: material, color, diameter, weight, and nozzle/bed temperatures into the shared rfid_data.json. REQUIRES A KEY YOU SUPPLY: Bambu tags are encrypted, so you must paste the public Bambu master key into this plugin's config (see the documentation for where to get it) before the tag can be decoded. Without a key the spool is still tracked by its tag UID. Installs the RFID Spool Reader automatically. Read-only: it never writes a tag.",
+      "tagline": "Decode Bambu spools on stock firmware (you supply the key).",
+      "category": "filament",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-06-29",
+      "updated_at": "2026-07-26",
+      "requires": {
+        "capabilities": [
+          "rfid-spi"
+        ]
+      },
+      "provides": [],
+      "deps": [
+        "rfid-ntag"
+      ],
+      "conflicts": [],
+      "doc_url": "rfid-bambu/doc/README.md",
+      "download_url": "rfid-bambu-0.2.0.b3",
+      "homepage": "https://github.com/Bambu-Research-Group/RFID-Tag-Guide",
+      "config": [
+        {
+          "key": "BAMBU_KEY",
+          "label": "Bambu master key (hex)",
+          "type": "text",
+          "placeholder": "32 hex characters",
+          "hint": "The public Bambu master key. You paste it; we never ship it. See the plugin documentation for where to get it. Leave empty to track Bambu spools by UID only (no decode).",
+          "default": "",
+          "userEditable": true
+        }
+      ],
+      "author": "bespoked",
+      "attributions": "# Attributions - rfid-bambu\n\n**Plugin author:** Bespok3d, tag format documented by the Bambu Research Group\n\nReads Bambu Lab filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| RFID-Tag-Guide | the Bambu Research Group | MIT | no | no |\n\nKey derivation is written clean-room from the published HKDF-SHA256 description in\nhttps://github.com/Bambu-Research-Group/RFID-Tag-Guide. No code from that project is used here.\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-bambu/doc/LICENSE",
+      "changelog_url": "rfid-bambu/doc/CHANGELOG.md"
+    },
+    {
+      "name": "rfid-creality",
+      "title": "Creality Filament Tag",
+      "version": "0.1.0+dev.local",
+      "description": "Reads Creality CFS filament spool tags (encrypted Mifare Classic) and decodes the filament: color, weight, manufacture date, and material id into the shared rfid_data.json. REQUIRES TWO KEYS YOU SUPPLY: Creality tags are encrypted, so you must paste the public Creality master key and payload key into this plugin's config (see the documentation for where to get them) before a tag can be decoded. Without the keys the spool is still tracked by its tag UID. Creality's tag carries no diameter or temperatures (the printer resolves those from an unpublished material database), and the material id stays a numeric id. Installs the RFID Spool Reader automatically. Read-only: it never writes a tag. Experiment channel until verified on a real tag.",
+      "tagline": "Decode Creality CFS spools on stock firmware (you supply the keys).",
+      "category": "filament",
+      "channel": "testing",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-06-30",
+      "updated_at": "2026-06-30",
+      "requires": {
+        "capabilities": [
+          "rfid-spi"
+        ]
+      },
+      "provides": [],
+      "deps": [
+        "rfid-ntag"
+      ],
+      "conflicts": [],
+      "doc_url": "rfid-creality/doc/README.md",
+      "download_url": "rfid-creality-0.1.0.b3",
+      "homepage": "https://github.com/Bambu-Research-Group/RFID-Tag-Guide",
+      "config": [
+        {
+          "key": "CREALITY_KEY",
+          "label": "Creality master key (hex)",
+          "type": "text",
+          "placeholder": "32 hex characters",
+          "hint": "The public Creality master key (derives the card key from the tag UID). You paste it; we never ship it. See the plugin documentation. Leave empty to track Creality spools by UID only (no decode).",
+          "default": "",
+          "userEditable": true
+        },
+        {
+          "key": "CREALITY_ENCRYPTION_KEY",
+          "label": "Creality payload key (hex)",
+          "type": "text",
+          "placeholder": "32 hex characters",
+          "hint": "The public Creality payload key (decrypts the filament block). You paste it; we never ship it. See the plugin documentation. Both keys are needed to decode; leave empty for UID-only tracking.",
+          "default": "",
+          "userEditable": true
+        }
+      ],
+      "author": "bespoked",
+      "attributions": "# Attributions - rfid-creality\n\n**Plugin author:** Bespok3d, tag format documented by DnG-Crafts (K2-RFID) and the Bambu Research Group\n\nReads Creality filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| RFID-Tag-Guide and the K2-RFID community schema | DnG-Crafts (K2-RFID) and the Bambu Research Group | MIT | no | no |\n\nThe AES used to derive the sector key and decrypt the payload is a clean-room implementation of the\npublished FIPS-197 standard (`aes_min.py`), tested against the FIPS-197 known-answer vectors. It is\nnot taken from any third-party crypto library.\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-creality/doc/LICENSE",
+      "changelog_url": "rfid-creality/doc/CHANGELOG.md"
+    },
+    {
+      "name": "rfid-elegoo",
+      "title": "Elegoo Filament Tag",
+      "version": "0.1.2+dev.local",
+      "description": "EXPERIMENTAL. Decoder for Elegoo's published NTAG EPC-256 tag layout (material, color, diameter, weight), anchored on Elegoo's manufacturer signature in the raw page dump. IMPORTANT (verified on a real U1, 2026-06-29): the FACTORY Elegoo Centauri spool tags do NOT read on the U1 today. The cause is the U1 reader's antenna coupling with that specific tag, not this decoder and not a locked tag: the data is open NTAG213 memory, but the reader gets no RF wake-up response from the factory tag, across the entire register space and both coils, while M1/NTAG read fine and phones/Canvas read the Elegoo. The decoder is correct and ready for any Elegoo tag presenting the published layout (or the day the reader can wake the factory tag). Workaround: an OpenSpool NTAG on the opposite side of the spool ring. See the doc for full findings + a community call to action. Requires the RFID Spool Reader. Read-only.",
+      "tagline": "Elegoo NTAG EPC-256 decoder (factory U1 tags blocked by reader RF, see doc).",
+      "category": "filament",
+      "channel": "testing",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-06-29",
+      "updated_at": "2026-06-29",
+      "requires": {
+        "capabilities": [
+          "rfid-spi"
+        ]
+      },
+      "provides": [],
+      "deps": [
+        "rfid-ntag"
+      ],
+      "conflicts": [],
+      "doc_url": "rfid-elegoo/doc/README.md",
+      "download_url": "rfid-elegoo-0.1.2.b3",
+      "homepage": "https://github.com/ELEGOO-3D/ELEGOO-RFID-Tag-Guide",
+      "author": "bespoked",
+      "attributions": "# Attributions - rfid-elegoo\n\n**Plugin author:** Bespok3d, tag format published by ELEGOO\n\nReads Elegoo filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| ELEGOO-RFID-Tag-Guide | ELEGOO | see the project | no | no |\n\nField layout follows ELEGOO's published guide at https://github.com/ELEGOO-3D/ELEGOO-RFID-Tag-Guide.\nNo code from it is used here.\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-elegoo/doc/LICENSE",
+      "changelog_url": "rfid-elegoo/doc/CHANGELOG.md"
+    },
+    {
+      "name": "rfid-generic-ndef",
+      "title": "Generic NDEF Filament Tag",
+      "version": "0.1.0+dev.local",
+      "description": "Best-effort reader for filament NFC tags that store their data as plain JSON in an NDEF record but do not use a recognized protocol (OpenSpool and other protocol-keyed tags are handled by their own decoders). Maps common field names (brand, type, color_hex, min_temp/max_temp, bed_temp, diameter, weight) into the shared rfid_data.json. Requires the RFID Spool Reader, which it installs automatically. Read-only: it never writes a tag. Experiment channel until verified on a real tag.",
+      "tagline": "Read any plain-JSON NFC filament tag the U1 reader can see.",
+      "category": "filament",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-06-29",
+      "updated_at": "2026-06-29",
+      "requires": {
+        "capabilities": [
+          "rfid-spi"
+        ]
+      },
+      "provides": [],
+      "deps": [
+        "rfid-ntag"
+      ],
+      "conflicts": [],
+      "doc_url": "rfid-generic-ndef/doc/README.md",
+      "download_url": "rfid-generic-ndef-0.1.0.b3",
+      "homepage": "https://github.com/Bespok3d/material-tags",
+      "author": "bespoked",
+      "attributions": "# Attributions - rfid-generic-ndef\n\n**Plugin author:** Bespok3d, NDEF published by the NFC Forum\n\nReads any plain NDEF tag.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| NDEF specification | the NFC Forum | published specification | no | no |\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-generic-ndef/doc/LICENSE",
+      "changelog_url": "rfid-generic-ndef/doc/CHANGELOG.md"
+    },
+    {
+      "name": "rfid-ntag",
+      "title": "RFID Spool Reader",
+      "version": "0.1.14+dev.local",
+      "description": "USB RFID reader picks up OpenSpool-encoded NTAG215 cards. Writes the current spool's metadata to rfid_data.json on every card event so the rest of the stack just knows.",
+      "tagline": "NTAG215/OpenSpool RFID: your filament knows what it is.",
+      "category": "filament",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2025-09-02",
+      "updated_at": "2026-08-24",
+      "requires": {
+        "capabilities": [
+          "rfid-spi"
+        ]
+      },
+      "provides": [
+        "rfid-service"
+      ],
+      "deps": [
+        "u1-base-print-task-config",
+        "u1-base-fm175xx-reader",
+        "u1-base-filament-detect"
+      ],
+      "conflicts": [],
+      "doc_url": "rfid-ntag/doc/README.md",
+      "download_url": "rfid-ntag-0.1.14.b3",
+      "min_daemon_version": "0.14.0",
+      "homepage": "https://github.com/Bespok3d/u1-enhanced-rfid",
+      "config": [],
+      "author": "bespoked",
+      "attributions": "# Attributions - rfid-ntag\n\n**Plugin author:** Bespok3d, with parts of the Extended Firmware overlay `13-patch-rfid`, OpenRFID there by @suchmememanyskill and the OpenSpool `subtype` field by @morgendagen\n\nReads NTAG filament tags on the printer's built-in reader.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenSpool tag format | the OpenSpool project | published format | no | no |\n| Extended Firmware overlay `13-patch-rfid` | @suchmememanyskill and @morgendagen, packaged by paxx12 | GPL-3.0 | no | yes |\n\nThis plugin no longer changes Snapmaker's own firmware files. Those changes moved to the base layer\nplugins `u1-base-fm175xx-reader`, `u1-base-filament-detect` and `u1-base-print-task-config`, which\nthis plugin now requires and calls into. In `openspool_mapper.py`, 22 lines are the Extended\nFirmware overlay `13-patch-rfid`'s, GPL-3.0: they fill Snapmaker's own tray structure field by\nfield, with the same defaults. OpenRFID in that firmware is credited to @suchmememanyskill and the\nOpenSpool `subtype` field to @morgendagen.\n\nThe rest of the reader code (`bespok3d_rfid.py`, `ntag_reader.py`, `ndef_parser.py`,\n`mifare_classic.py`) is written from scratch.\n",
+<<<<<<< HEAD
+=======
+      "migration": {
+        "until_version": "0.1.14",
+        "requires_daemon": "0.14.0",
+        "summary": "RFID Spool Reader used to change your printer's Klipper files itself. From 0.1.14 the printer's base layer does that work instead, so this update also puts on the three base layer plugins that now hold those files. Your saved spool tags and your settings are kept."
+      },
+>>>>>>> base_layer
+      "license_url": "https://github.com/Bespok3d/u1-enhanced-rfid/blob/dev/rfid-ntag/doc/LICENSE",
+      "changelog_url": "rfid-ntag/doc/CHANGELOG.md"
+    },
+    {
+      "name": "rfid-openprinttag",
+      "title": "OpenPrintTag Filament Tag",
+      "version": "0.1.1+dev.local",
+      "description": "Decodes the OpenPrintTag (prusa3d) filament data format - an open CBOR payload - off any NTAG21x the reader can read, mapping material, brand, color, diameter, weight, manufacture date, and nozzle/bed/drying temperatures into the shared rfid_data.json. No key required. Note: Prusa's own factory spools use ISO-15693 tags the U1 reader cannot read; this targets OpenPrintTag payloads written onto a standard NTAG21x. Installs the RFID Spool Reader automatically. Read-only. Experiment channel until verified on a real tag.",
+      "tagline": "Decode the OpenPrintTag data format on NTAG (no key).",
+      "category": "filament",
+      "channel": "testing",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-06-30",
+      "updated_at": "2026-06-30",
+      "requires": {
+        "capabilities": [
+          "rfid-spi"
+        ]
+      },
+      "provides": [],
+      "deps": [
+        "rfid-ntag"
+      ],
+      "conflicts": [],
+      "doc_url": "rfid-openprinttag/doc/README.md",
+      "download_url": "rfid-openprinttag-0.1.1.b3",
+      "homepage": "https://specs.openprinttag.org",
+      "author": "bespoked",
+      "attributions": "# Attributions - rfid-openprinttag\n\n**Plugin author:** Bespok3d, tag format published by the OpenPrintTag project\n\nReads OpenPrintTag filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenPrintTag specification | the OpenPrintTag project | published specification | no | no |\n\nThe CBOR reader (`cbor_min.py`) is a clean-room implementation of the RFC 8949 subset OpenPrintTag\nuses, because Python's standard library has no CBOR codec. It is not taken from any third-party CBOR\nlibrary.\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-openprinttag/doc/LICENSE",
+      "changelog_url": "rfid-openprinttag/doc/CHANGELOG.md"
+    },
+    {
+      "name": "rfid-opentag",
+      "title": "OpenTag3D Filament Tag",
+      "version": "0.1.0+dev.local",
+      "description": "Reads OpenTag3D (queengooborg open standard) filament NFC tags: the big-endian binary payload carried in an NDEF application/opentag3d record (manufacturer, material, color, diameter, weight, nozzle and bed temperatures) is decoded into the shared rfid_data.json. Plaintext, no key needed. Requires the RFID Spool Reader, which it installs automatically. Read-only: it never writes a tag. Experiment channel until verified on a real tag.",
+      "tagline": "Read OpenTag3D open-standard filament tags on stock firmware.",
+      "category": "filament",
+      "channel": "testing",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-06-29",
+      "updated_at": "2026-06-29",
+      "requires": {
+        "capabilities": [
+          "rfid-spi"
+        ]
+      },
+      "provides": [],
+      "deps": [
+        "rfid-ntag"
+      ],
+      "conflicts": [],
+      "doc_url": "rfid-opentag/doc/README.md",
+      "download_url": "rfid-opentag-0.1.0.b3",
+      "homepage": "https://opentag3d.info/",
+      "author": "bespoked",
+      "attributions": "# Attributions - rfid-opentag\n\n**Plugin author:** Bespok3d, tag format published by the OpenTag3D project\n\nReads OpenTag filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenTag specification | the OpenTag3D project | published specification | no | no |\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-opentag/doc/LICENSE",
+      "changelog_url": "rfid-opentag/doc/CHANGELOG.md"
+    },
+    {
+      "name": "rfid-tigertag",
+      "title": "TigerTag Filament Tag",
+      "version": "0.1.0+dev.local",
+      "description": "Reads TigerTag filament tags (open NTAG21x, no key required) and decodes the physical filament data - color (RGBA), diameter, nozzle and bed temperatures, drying temperature, and weight - into the shared rfid_data.json. The brand and material are stored on a TigerTag as numeric ids whose human-name tables are GPLv3, so this decoder keeps them as ids rather than vendoring a GPL table; the product id is surfaced as the SKU. Works on the standard NTAG reader (no key, no reader change). Installs the RFID Spool Reader automatically. Read-only. Experiment channel until verified on a real tag.",
+      "tagline": "Decode open TigerTag NTAG spools (color, temps, diameter, weight).",
+      "category": "filament",
+      "channel": "testing",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-06-30",
+      "updated_at": "2026-06-30",
+      "requires": {
+        "capabilities": [
+          "rfid-spi"
+        ]
+      },
+      "provides": [],
+      "deps": [
+        "rfid-ntag"
+      ],
+      "conflicts": [],
+      "doc_url": "rfid-tigertag/doc/README.md",
+      "download_url": "rfid-tigertag-0.1.0.b3",
+      "homepage": "https://tigertag.io",
+      "author": "bespoked",
+      "attributions": "# Attributions - rfid-tigertag\n\n**Plugin author:** Bespok3d, tag format published by TigerTag\n\nReads TigerTag filament tags.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| TigerTag specification | TigerTag | published specification | no | no |\n",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/rfid-tigertag/doc/LICENSE",
+      "changelog_url": "rfid-tigertag/doc/CHANGELOG.md"
+    },
+    {
+      "name": "spoolman",
+      "title": "Spoolman Bridge",
+      "version": "0.1.36+dev.local",
+      "description": "Spoolman for the U1 multi-tool: the active spool follows the tag the printer reads or the spool you pick, color and material reach the screen and AFC panel, tags are matched by their hardware UID, and you can record which printer each spool is on. Filament length per print is logged automatically.",
+      "tagline": "Zero-config Spoolman: active spool always tracked.",
+      "category": "filament",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": false,
+      "published_at": "2025-09-20",
+      "updated_at": "2026-08-17",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "spoolman-service"
+      ],
+      "deps": [
+        "rfid-ntag"
+      ],
+      "conflicts": [],
+      "doc_url": "spoolman/doc/README.md",
+      "download_url": "spoolman-0.1.36.b3",
+      "min_daemon_version": "0.10.1",
+      "homepage": "https://github.com/Bespok3d/spoolman-klipper-helper",
+      "macros": [
+        {
+          "name": "SET_ACTIVE_SPOOL",
+          "params": "TOOL={0..3}",
+          "description": "Set the selected tool as the active spool."
+        },
+        {
+          "name": "CLEAR_ACTIVE_SPOOL",
+          "description": "Clear the current active spool."
+        },
+        {
+          "name": "CLEAR_ALL_SPOOLS",
+          "description": "Clear the selected spool for every tool."
+        },
+        {
+          "name": "DETECT_SPOOLS",
+          "description": "Re-detect the loaded spools. A handy reset when spool state looks wrong."
+        },
+        {
+          "name": "DUMP_SPOOLS",
+          "description": "Print what the bridge knows about the loaded spools."
+        },
+        {
+          "name": "READ_FILAMENT_ID",
+          "params": "TOOL={0..3}",
+          "description": "Read the selected lane's spool tag, if any."
+        },
+        {
+          "name": "GET_FILAMENT_ID",
+          "params": "TOOL={0..3}",
+          "description": "Print the currently read tag for the selected lane."
+        },
+        {
+          "name": "SH_BIND_CARD_UID",
+          "params": "CHANNEL={0..3} SPOOL=<id>",
+          "description": "Bind the tag UID currently on a lane to a Spoolman spool, so the next tap of that tag resolves to it directly."
+        },
+        {
+          "name": "SH_APPLY_TAG_TO_SPOOL",
+          "params": "CHANNEL={0..3} SPOOL=<id>",
+          "description": "Write what the lane's tag says onto a Spoolman spool you picked, and bind the tag to it."
+        },
+        {
+          "name": "SH_CONFIG",
+          "params": "MODE=<auto|manual> LOGS=<level>",
+          "description": "Change mode and logging at runtime, no restart."
+        },
+        {
+          "name": "SH_DEBUG",
+          "params": "[SKU=<sku>]",
+          "description": "Print the current configuration; with a SKU, show the spool it would track."
+        }
+      ],
+      "config": [
+        {
+          "key": "SPOOLMAN_SERVER",
+          "label": "Spoolman server address",
+          "type": "url",
+          "placeholder": "https://spoolman.example.org",
+          "hint": "The whole address of your Spoolman, protocol and all: a name over https, or http and a host and port.",
+          "required": true,
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
+          "key": "SPOOLMAN_MODE",
+          "label": "Selection mode",
+          "type": "select",
+          "options": [
+            "auto",
+            "manual"
+          ],
+          "default": "auto",
+          "hint": "auto: RFID is the source of truth, falls back to the manual spool. manual: the manual selection drives, tags are the fallback.",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
+          "key": "SPOOLMAN_LOGGING",
+          "label": "Log level",
+          "type": "select",
+          "options": [
+            "error",
+            "info",
+            "warn",
+            "verbose",
+            "debug"
+          ],
+          "default": "info",
+          "hint": "How chatty the logs are, from least to most.",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
+          "key": "CARD_UIDS_STRATEGY",
+          "label": "Spool resolution order",
+          "type": "text",
+          "placeholder": "spool_id,uid,sku",
+          "default": "spool_id,uid,sku",
+          "hint": "Comma-separated, first match wins. Options: spool_id (id on the tag), uid (the tag's hardware UID, bound in Spoolman), sku.",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
+          "key": "CARD_UIDS_AUTO_REGISTER",
+          "label": "Auto-bind tag UID on SKU match",
+          "type": "select",
+          "options": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "hint": "Opt-in (off by default). When on, a spool found by SKU that has no UID yet gets the current tag's UID written onto it in Spoolman, so the next tap is a direct UID match. Off means tags are only ever bound on your explicit request (SH_BIND_CARD_UID).",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
+          "key": "CARD_UIDS_WRITE_FORM",
+          "label": "How tag UIDs are stored in Spoolman",
+          "type": "select",
+          "options": [
+            "array",
+            "comma_separated"
+          ],
+          "default": "array",
+          "hint": "array: a proper list, the right shape and the default. comma_separated: the same UIDs flattened into one comma-separated value, for when another app reading this field cannot handle a list. Either form is read back correctly here.",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
+          "key": "SPOOLMAN_REGISTER_FROM_TAG",
+          "label": "Make a spool out of a tag Spoolman does not have",
+          "type": "select",
+          "options": [
+            "true",
+            "false"
+          ],
+          "default": "true",
+          "hint": "On by default. When a tag matches nothing and none of your spools came close, the spool is created in Spoolman from what the card carries and the card is bound to it. Diameter and density are not on the card, so they are copied from your own filaments of that material; if you have none of that material, nothing is created and the console says so. This also covers writing a card onto a spool you picked (SH_APPLY_TAG_TO_SPOOL).",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
+          "key": "SPOOLMAN_TRACK_LOCATION",
+          "label": "Track spool location in Spoolman",
+          "type": "select",
+          "options": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "hint": "When on, a spool loaded on this printer gets this printer's name written to its Spoolman location, and it is cleared when the spool is unloaded -- so you can see in Spoolman which printer a spool is on.",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
+          "key": "SPOOLMAN_LOCATION",
+          "label": "This printer's name (Spoolman location)",
+          "type": "text",
+          "placeholder": "e.g. unU1jr",
+          "default": "",
+          "hint": "The name written as a loaded spool's location in Spoolman (e.g. unU1jr). Location tracking is inactive until a name is set.",
+          "userEditable": true,
+          "scope": "printer"
+        },
+        {
+          "key": "SPOOLMAN_OVERRIDES_TAG",
+          "label": "Spoolman pick overrides a tagged lane",
+          "type": "select",
+          "options": [
+            "true",
+            "false"
+          ],
+          "default": "false",
+          "hint": "When a lane has both an RFID tag and a spool picked in Spoolman, this says which one the printer believes. Off, the tag wins. On, Spoolman wins. Turn it on if your spool profiles live in Spoolman, as they do on the extended firmware.",
+          "userEditable": true,
+          "scope": "global"
+        },
+        {
+          "key": "SPOOLMAN_SUBTYPE_SOURCES",
+          "label": "Where the sub-type comes from",
+          "type": "text",
+          "placeholder": "sub_type,variant,name_inferred",
+          "default": "sub_type,variant,name_inferred",
+          "hint": "The three places a sub-type can come from, tried in this order, first one with a value wins. sub_type: a sub_type field you added in Spoolman. variant: the variant field the extended firmware writes there. name_inferred: we read it out of the filament name, so Matte PLA Olive gives Matte. Reorder them to change which wins, remove one to stop reading it.",
+          "userEditable": true,
+          "scope": "global"
+        }
+      ],
+      "author": "bespoked",
+      "attributions": "# Attributions - spoolman\n\n**Plugin author:** Bespok3d (unlucio). This is a Klipper and Moonraker helper that talks to a Spoolman server; Spoolman itself is Daniel Hultgren (Donkie) and contributors, and none of its code is here\n\nConnects the printer to a Spoolman filament server.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Spoolman | Daniel Hultgren (Donkie) and contributors | AGPL-3.0 | yes | no |\n\nSpoolman runs on your own machine or server; nothing from it ships inside this plugin. The Moonraker\nproxy component here is written from scratch. Upstream: https://github.com/Donkie/Spoolman\n",
+      "license_url": "https://github.com/Bespok3d/spoolman-klipper-helper/blob/main/spoolman/doc/LICENSE",
+      "changelog_url": "spoolman/doc/CHANGELOG.md"
+    },
+    {
+      "name": "status-feed",
+      "title": "Status Feed",
+      "version": "0.1.0+dev.local",
+      "description": "A small sidecar that serves a human-readable print-status summary as JSON at /status-feed/. It runs as its own Python service in a per-plugin virtual environment, so its one dependency (humanize) is fully isolated from the system, Klipper, and Moonraker interpreters.\n\nThis is the reference plugin for the declarative Python-dependency mechanism (ADR-0036): the manifest declares its dependency as data and the daemon provisions and tears down the venv.",
+      "tagline": "Human-readable printer status as a JSON feed.",
+      "category": "sensors",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": false,
+      "published_at": "2026-06-08",
+      "updated_at": "2026-06-08",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "status-feed-service"
+      ],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "status-feed/doc/README.md",
+      "download_url": "status-feed-0.1.0.b3",
+      "min_daemon_version": "0.10.33",
+      "author": "bespoked",
+      "attributions": "# Attributions - status-feed\n\n**Plugin author:** Bespok3d\n\nA reference plugin: publishes a small printer-status feed.\n\nNo third-party code ships in this package.\n",
+      "license_url": "https://github.com/Bespok3d/reference-python-plugins/blob/dev/status-feed/doc/LICENSE",
+      "log": {},
+      "changelog_url": "status-feed/doc/CHANGELOG.md",
+      "endpoints": [
+        {
+          "label": "Status feed",
+          "path": "/status-feed/"
+        }
+      ]
+    },
+    {
+      "name": "tailscale",
+      "title": "Tailscale",
+      "version": "0.1.2+dev.local",
+      "description": "Joins the printer to your Tailscale mesh network (tailnet), so you can reach Fluidd/Mainsail, the camera, and SSH from anywhere without opening a port on your router. Bring your own account: generate an auth key at login.tailscale.com/admin/settings/keys, then paste it below. The printer authorizes itself the way any Tailscale device does; it appears in your tailnet's device list like a laptop or phone. Bespok3d hosts no coordination service and never sees your auth key or traffic. Runs tailscaled as a managed service on top of the tun-module base (a real /dev/net/tun the tailscale0 network interface needs).",
+      "tagline": "Reach your printer from anywhere over your Tailscale network.",
+      "category": "system",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": false,
+      "published_at": "2026-07-05",
+      "updated_at": "2026-07-05",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "tailscale"
+      ],
+      "deps": [
+        "tun-module"
+      ],
+      "conflicts": [],
+      "doc_url": "tailscale/doc/README.md",
+      "download_url": "tailscale-0.1.2.b3",
+      "config": [
+        {
+          "key": "TS_AUTHKEY",
+          "label": "Tailscale auth key",
+          "type": "text",
+          "placeholder": "tskey-auth-...",
+          "hint": "From your tailnet's admin console (login.tailscale.com/admin/settings/keys, then Generate auth key; a brand-new account lands on an 'add a device' wizard first, open the keys page directly). Turn on Reusable: a reusable key lets you reinstall without generating a new one, and one reusable key can join several printers (each appears as its own device). Bring your own account; Bespok3d hosts nothing.",
+          "required": true,
+          "scope": "global",
+          "userEditable": true
+        }
+      ],
+      "author": "bespoked",
+      "sw_version": "1.98.8",
+      "attributions": "# Attributions - tailscale\n\n**Plugin author:** Tailscale Inc., packaged by Bespok3d; the idea of a VPN on the U1 comes from the Extended Firmware overlay `66-app-vpn`, initial Tailscale support there by @mcristina422\n\nPuts the printer on a Tailscale network.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Tailscale client | Tailscale Inc. | BSD-3-Clause | yes | yes |\n\nThe official arm64 Tailscale build (currently 1.98.8) is downloaded from https://pkgs.tailscale.com\nat build time and shipped inside the package.\n\nThe binaries are Tailscale's own builds, shipped byte for byte as downloaded; nothing of\nTailscale's is stored in this repository. The licence text and the provenance note are in\n`vendor/tailscale/` at the root of this repository.\n\nPorted from the Extended Firmware overlay `66-app-vpn`, GPL-3.0, whose Tailscale work is credited to\n@mcristina422.\n",
+      "license_url": "https://github.com/Bespok3d/networking/blob/dev/tailscale/doc/LICENSE",
+      "log": {},
+      "changelog_url": "tailscale/doc/CHANGELOG.md"
+    },
+    {
+      "name": "tun-module",
+      "title": "TUN kernel module",
+      "version": "0.1.1+dev.local",
+      "description": "Loads the Linux `tun` kernel module so the printer has a working /dev/net/tun. Mesh-VPN plugins (ZeroTier needs it; Tailscale runs lighter with it) build a virtual network interface on top of it. The Snapmaker U1's stock kernel ships tun neither built in nor as a module, so this plugin carries a `tun.ko` cross-built against the exact running kernel (6.1.99 aarch64) and insmods it at boot, before the services that need it. Nothing to configure: install it (or install a VPN plugin that requires it) and /dev/net/tun is there.",
+      "tagline": "Adds /dev/net/tun to the printer, the base a mesh VPN builds on.",
+      "category": "system",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-07-05",
+      "updated_at": "2026-07-05",
+      "requires": {
+        "capabilities": [
+          "kernel-modules"
+        ]
+      },
+      "provides": [
+        "tun"
+      ],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "tun-module/doc/README.md",
+      "download_url": "tun-module-0.1.1.b3",
+      "config": [],
+      "author": "bespoked",
+      "attributions": "# Attributions - tun-module\n\n**Plugin author:** the Linux kernel contributors, built by Bespok3d from the printer kernel source\n\nLoads the kernel `tun` driver the VPN plugins need.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| Linux kernel `tun` driver 6.1.99 | the Linux kernel contributors | GPL-2.0-only | yes | yes |\n\nThe module is cross-built at build time from the Rockchip kernel tree at commit\n`8533b2249e1550b233a4836d039d64e3bb2fed7a`, against the stock Snapmaker U1 kernel configuration, and\nshipped as a `.ko`. The licence text and the provenance note are in `vendor/linux-tun/` at the root\nof this repository.\n\nBecause Bespok3d builds this binary, Bespok3d owes its Corresponding Source: the pinned upstream\ncommit plus the `Dockerfile` and `junior-6.1.99.config` in `tun-module/toolchain/`, both published\nwith every release. The inventory entry is in `Bespok3d_history/doc/gpl-source-inventory.md`.\n\nRelated Extended Firmware overlay: `10-patch-kernel-modules` (paxx12), GPL-3.0.\n",
+      "license_url": "https://github.com/Bespok3d/networking/blob/dev/tun-module/doc/LICENSE",
+      "changelog_url": "tun-module/doc/CHANGELOG.md"
+    },
+    {
+      "name": "u1-gcode-colors",
+      "title": "U1 G-code Preview Colors",
+      "version": "0.1.2+dev.local",
+      "description": "Fills Fluidd's G-code preview filament_colors array from the U1's live print_task state, so each tool line shows the color actually loaded on the extruder it maps to, instead of the fixed fallback palette. No Fluidd patch. Works with any color source the printer already has (RFID, screen picks, or the Spoolman helper if installed).",
+      "tagline": "Real per-tool colors in the G-code preview, from what is actually loaded.",
+      "category": "ui",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-07-04",
+      "updated_at": "2026-07-04",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "u1-gcode-colors"
+      ],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "u1-gcode-colors/doc/README.md",
+      "download_url": "u1-gcode-colors-0.1.2.b3",
+      "min_daemon_version": "0.10.1",
+      "config": [
+        {
+          "key": "GCODE_COLORS_ENABLED",
+          "label": "Fill real per-tool colors",
+          "type": "toggle",
+          "onValue": "true",
+          "offValue": "false",
+          "default": "true",
+          "hint": "On: the G-code preview shows each tool's actually loaded color. Off: Fluidd falls back to its default palette.",
+          "userEditable": true,
+          "scope": "global"
+        }
+      ],
+      "author": "bespoked",
+      "attributions": "# Attributions - u1-gcode-colors\n\n**Plugin author:** Bespok3d\n\nShows per-tool filament colours in the slicer preview.\n\nNo third-party code ships in this package.\n",
+      "license_url": "https://github.com/Bespok3d/u1-extras/blob/dev/u1-gcode-colors/doc/LICENSE",
+      "changelog_url": "u1-gcode-colors/doc/CHANGELOG.md"
+    },
+    {
+      "name": "zerotier",
+      "title": "ZeroTier",
+      "version": "0.1.2+dev.local",
+      "description": "Joins the printer to a ZeroTier mesh network, so you can reach Fluidd/Mainsail, the camera, and SSH from anywhere without opening a port on your router. Bring your own account: create a free network at my.zerotier.com, then paste its 16-hex-digit network id below. The printer authorizes itself the way any ZeroTier device does; approve it in ZeroTier Central like you would a laptop or phone. Bespok3d hosts no coordination service and never sees your network id or traffic. Runs zerotier-one as a managed service on top of the tun-module base (a real /dev/net/tun the ZeroTier virtual network interface needs).",
+      "tagline": "Reach your printer from anywhere over a ZeroTier mesh network.",
+      "category": "system",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": false,
+      "published_at": "2026-07-05",
+      "updated_at": "2026-07-05",
+      "requires": {
+        "capabilities": [
+          "klipper-generic"
+        ]
+      },
+      "provides": [
+        "zerotier"
+      ],
+      "deps": [
+        "tun-module"
+      ],
+      "conflicts": [],
+      "doc_url": "zerotier/doc/README.md",
+      "download_url": "zerotier-0.1.2.b3",
+      "config": [
+        {
+          "key": "ZT_NETWORK_ID",
+          "label": "ZeroTier network id",
+          "type": "text",
+          "placeholder": "a09acf02338597c4",
+          "hint": "16 hex digits, from your ZeroTier Central account (my.zerotier.com). Bring your own network; Bespok3d hosts nothing. After install, approve the printer's device in ZeroTier Central.",
+          "required": true,
+          "scope": "global",
+          "userEditable": true
+        }
+      ],
+      "author": "bespoked",
+      "sw_version": "1.16.2",
+      "attributions": "# Attributions - zerotier\n\n**Plugin author:** ZeroTier, Inc., packaged by Bespok3d\n\nPuts the printer on a ZeroTier network.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| ZeroTier One 1.16.2, agent | ZeroTier, Inc. | MPL-2.0 | yes | yes |\n| ZeroTier One 1.16.2, controller and related parts | ZeroTier, Inc. | ZeroTier SOURCE-AVAILABLE LICENSE Version 1.0, no SPDX identifier | yes | yes |\n\nThe official arm64 ZeroTier build (1.16.2) is downloaded from https://download.zerotier.com at build\ntime, pinned by URL and sha256, and shipped inside the package byte for byte as downloaded. Nothing\nof ZeroTier's is stored in this repository and Bespok3d modifies nothing in it.\n\nZeroTier's own notice states the software is source-available and is not open source as defined by\nthe Open Source Initiative, and that commercial use as its licence defines it requires a paid licence\nfrom ZeroTier, Inc. Both licence texts are reproduced verbatim in `vendor/zerotier-one/` at the root\nof this repository, with the provenance note.\n\nRelated Extended Firmware overlay: `66-app-vpn`, GPL-3.0.\n",
+      "license_url": "https://github.com/Bespok3d/networking/blob/dev/zerotier/doc/LICENSE",
+      "log": {},
+      "changelog_url": "zerotier/doc/CHANGELOG.md"
+    }
+  ],
+  "collections": [
+    {
+      "name": "all-the-tags",
+      "title": "All the Tags",
+      "version": "0.1.3",
+      "description": "Installs the whole RFID filament-tag reading stack in one click: the NFC reader and hub, every shipped tag-standard decoder, and Spoolman tracking, so almost any spool you tap is identified and tracked. Includes the open standards (OpenTag3D, OpenPrintTag, generic NDEF JSON, TigerTag) plus full payload decoders for the proprietary tags (Bambu and Creality, with your own keys pasted into their config; without a key they fall back to UID-only tracking). QIDI needs no key at all: its tags sit on the Mifare factory default key, so those spools read out of the box. Anycubic decodes the dispute-free fields today (a tester dump finishes it). The members install together with a single service restart.",
+      "tagline": "Every spool, identified: the whole RFID tag-reading stack in one install.",
+      "category": "filament",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-06-30",
+      "updated_at": "2026-08-15",
+      "members": [
+        {
+          "id": "rfid-ntag",
+          "version": ">=0.1.6"
+        },
+        {
+          "id": "rfid-generic-ndef",
+          "version": ">=0.1.0"
+        },
+        {
+          "id": "rfid-opentag",
+          "version": ">=0.1.0"
+        },
+        {
+          "id": "rfid-openprinttag",
+          "version": ">=0.1.0"
+        },
+        {
+          "id": "rfid-tigertag",
+          "version": ">=0.1.0"
+        },
+        {
+          "id": "rfid-anycubic",
+          "version": ">=0.1.0"
+        },
+        {
+          "id": "rfid-qidi",
+          "version": ">=0.1.0"
+        },
+        {
+          "id": "rfid-bambu",
+          "version": ">=0.2.0"
+        },
+        {
+          "id": "rfid-creality",
+          "version": ">=0.1.0"
+        },
+        {
+          "id": "rfid-elegoo",
+          "version": ">=0.1.2"
+        },
+        {
+          "id": "spoolman",
+          "version": ">=0.1.11"
+        }
+      ],
+      "doc_url": "all-the-tags/doc/README.md",
+      "author": "bespoked",
+      "attributions": "",
+      "license_url": "https://github.com/Bespok3d/material-tags/blob/dev/all-the-tags/doc/LICENSE",
+      "changelog_url": "all-the-tags/doc/CHANGELOG.md"
+    }
+  ],
+  "lists": []
+}
