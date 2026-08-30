@@ -9,7 +9,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, statSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -173,4 +173,35 @@ test('the landing page can only link downloads the cut produces', () => {
   websiteDownloads(VERSION).forEach(function (download) {
     assert.ok(served.includes(download.asset), `the page links ${download.asset}, which no cut produces`)
   })
+})
+
+// The 0.7.6-beta cut then lost the Flatpak a second way: the Linux runtimes the build sits on live
+// inside the builder image, and refreshing one from Flathub cannot write there, so the Flatpak stage
+// died the first time Flathub shipped a runtime release. Keeping them on their own volume is what
+// makes the stage survive that, and dropping the mount would lose the download again in silence.
+test('the Flatpak build keeps its Linux runtimes somewhere a refresh can write', () => {
+  const script = readFileSync(join(REPO_ROOT, 'scripts', 'flatpak-build.sh'), 'utf8')
+
+  assert.match(script, /-v "\$RUNTIME_VOLUME":\/var\/lib\/flatpak/)
+})
+
+// It lost it a third way waiting to happen: the build refreshed those runtimes from Flathub every
+// time, so a cut needed Flathub reachable and took whatever it was serving that day. The Flatpak is
+// built against the pinned runtimes only, which is what makes two cuts of the same source match.
+test('the Flatpak build takes its runtimes from the pin, not from Flathub that day', () => {
+  const script = readFileSync(join(REPO_ROOT, 'scripts', 'flatpak-build.sh'), 'utf8')
+
+  assert.match(script, /flatpak remote-modify --disable flathub/)
+})
+
+// Nothing fetches a runtime at build time any more, so a pin the builder image does not carry is no
+// longer quietly downloaded: it fails the cut. The two places that name the runtime version have to
+// say the same thing, and this is what says so before a release finds out.
+test('the runtime the app pins is the runtime the builder image carries', () => {
+  const pinned = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).build.flatpak
+  const dockerfile = readFileSync(join(REPO_ROOT, 'scripts', 'flatpak', 'Dockerfile'), 'utf8')
+
+  assert.ok(dockerfile.includes(`org.freedesktop.Platform//${pinned.runtimeVersion}`), `the image installs no org.freedesktop.Platform//${pinned.runtimeVersion}`)
+  assert.ok(dockerfile.includes(`org.freedesktop.Sdk//${pinned.runtimeVersion}`), `the image installs no org.freedesktop.Sdk//${pinned.runtimeVersion}`)
+  assert.ok(dockerfile.includes(`org.electronjs.Electron2.BaseApp//${pinned.baseVersion}`), `the image installs no org.electronjs.Electron2.BaseApp//${pinned.baseVersion}`)
 })

@@ -17,9 +17,26 @@ IMAGE=bespok3d-flatpak-builder
 # The Flatpak is for Linux desktops, which are x86_64; the host being an arm64 Mac does not change
 # what the artifact has to run on.
 PLATFORM=linux/amd64
+# The Linux runtimes this build sits on are installed in the image, but flatpak-builder refreshes them
+# from Flathub on every run and deploys a refreshed one by hard-linking it into place. A hard link out
+# of the image's own read-only layer is refused ("Invalid cross-device link"), so the first Flathub
+# runtime release after the image was built killed the Flatpak stage and the cut lost that download.
+# Keeping the runtimes on their own volume gives the refresh somewhere it can actually write.
+RUNTIME_VOLUME=bespok3d-flatpak-runtimes
+# The runtime version this app builds on is pinned in package.json and installed in the image, but
+# electron-builder refreshes it from Flathub before every build and a release cut then depends on
+# Flathub being reachable and on whatever it happens to be serving that day. Switching the remote off
+# builds against the pinned runtimes only, so the cut is the same offline as online. Moving to a newer
+# runtime means editing the pin and the image together, never something a build picks up on its own.
+BUILD_COMMAND="npx --no-install electron-builder --linux flatpak --publish never"
 
 command -v docker > /dev/null || {
   echo "Error: the Flatpak needs Docker on this machine (or flatpak-builder on a Linux host)." >&2
+  exit 1
+}
+
+docker info > /dev/null 2>&1 || {
+  echo "Error: Docker is installed but not running. Start Docker Desktop, then run this again." >&2
   exit 1
 }
 
@@ -46,8 +63,9 @@ docker run --rm --platform "$PLATFORM" \
   -v "$WORKSPACE":/src \
   -v "$ELECTRON_CACHE":/root/.cache/electron \
   -v bespok3d-flatpak-builder:/root/.cache/electron-builder \
+  -v "$RUNTIME_VOLUME":/var/lib/flatpak \
   -w /src/Bespok3d-desktop \
   "$IMAGE" \
-  npx --no-install electron-builder --linux flatpak --publish never
+  sh -c "flatpak remote-modify --disable flathub && $BUILD_COMMAND"
 
 echo "Flatpak written to $APP_DIR/dist/release/"
