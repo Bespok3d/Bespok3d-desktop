@@ -2,12 +2,12 @@
   "schema_version": 1,
   "name": "Bespok3d Official",
   "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
-  "updated": "2026-08-15",
+  "updated": "2026-08-25",
   "plugins": [
     {
       "name": "afc-lite",
       "title": "AFC Lite (Automated Filament Changer)",
-      "version": "0.1.12+dev.local",
+      "version": "0.1.13+dev.local",
       "description": "Lightweight Automated Filament Changer support for the Snapmaker U1's four toolheads. Ships the AFC, AFC_unit and AFC_lane Klipper extras plus an afc.cfg that maps the four lanes (E0-E3) to the U1 extruders and filament motion sensors, and adds gcode macros for color, material, vendor, map, spool id, weight, tool change and lane/tool unload. Per-lane state feeds the U1's SET_PRINT_FILAMENT_CONFIG so the slicer and screen track what is loaded.",
       "tagline": "Four-lane filament tracking and tool-change macros for the U1.",
       "category": "filament",
@@ -15,7 +15,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-06-08",
-      "updated_at": "2026-08-15",
+      "updated_at": "2026-08-19",
       "requires": {
         "capabilities": [
           "klipper-generic"
@@ -24,10 +24,12 @@
       "provides": [
         "afc"
       ],
-      "deps": [],
+      "deps": [
+        "rfid-ntag"
+      ],
       "conflicts": [],
       "doc_url": "afc-lite/doc/README.md",
-      "download_url": "afc-lite-0.1.12.b3",
+      "download_url": "afc-lite-0.1.13.b3",
       "config": [
         {
           "key": "AFC_TOOLMAP_ASK",
@@ -64,7 +66,7 @@
     {
       "name": "bespok3d-daemon",
       "title": "Bespok3d daemon",
-      "version": "0.12.25",
+      "version": "0.14.0",
       "description": "The on-printer daemon for the Bespok3d plugin manager: a small FastAPI service that installs, updates, and removes plugins, reports printer capabilities, refuses any operation mid-print, and self-heals a plugin that breaks a service so the printer is never left unusable. It is plugin zero: the adapter bootstraps it over SSH at enrollment (cert-pinned HTTPS, bearer-token auth), not through the normal plugin install pipeline, so the install block below is intentionally empty. This package is the publishable, versioned artifact the app reads to know when a newer daemon is available.",
       "tagline": "The on-printer service that installs plugins and keeps the printer safe.",
       "category": "system",
@@ -82,7 +84,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "bespok3d-daemon/doc/README.md",
-      "download_url": "bespok3d-daemon-0.12.25.b3",
+      "download_url": "bespok3d-daemon-0.14.0.b3",
       "min_jinni_version": "0.1.10",
       "changelog_url": "bespok3d-daemon/doc/CHANGELOG.md"
     },
@@ -114,7 +116,7 @@
     {
       "name": "camera-hw-accel",
       "title": "Camera HW Accel",
-      "version": "0.1.10+dev.local",
+      "version": "0.1.11+dev.local",
       "description": "Tap into the SoC's video pipeline instead of CPU-encoding every frame. MJPEG over HTTP at /webcam, WebRTC at /webrtc; works on any browser, smooth 30fps even with two cameras attached.\n\nTo have these auto-registered as cameras in Fluidd and Mainsail (so you don't have to add them by hand under Settings → Cameras), also install [webcam-builtin](b3d://bespok3d/webcam-builtin) for the built-in MIPI camera and [webcam-usb](b3d://bespok3d/webcam-usb) for the external USB camera.",
       "tagline": "HW-accelerated MJPEG and WebRTC streaming for MIPI & USB cameras.",
       "category": "camera",
@@ -122,7 +124,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2025-08-14",
-      "updated_at": "2026-07-28",
+      "updated_at": "2026-08-25",
       "requires": {
         "capabilities": [
           "rockchip-mpp"
@@ -134,7 +136,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "camera-hw-accel/doc/README.md",
-      "download_url": "camera-hw-accel-0.1.10.b3",
+      "download_url": "camera-hw-accel-0.1.11.b3",
       "config": [
         {
           "key": "WEBRTC_ENABLED",
@@ -639,7 +641,7 @@
     {
       "name": "rfid-ntag",
       "title": "RFID Spool Reader",
-      "version": "0.1.12+dev.local",
+      "version": "0.1.14+dev.local",
       "description": "USB RFID reader picks up OpenSpool-encoded NTAG215 cards. Writes the current spool's metadata to rfid_data.json on every card event so the rest of the stack just knows.",
       "tagline": "NTAG215/OpenSpool RFID: your filament knows what it is.",
       "category": "filament",
@@ -647,7 +649,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2025-09-02",
-      "updated_at": "2026-08-14",
+      "updated_at": "2026-08-24",
       "requires": {
         "capabilities": [
           "rfid-spi"
@@ -656,14 +658,19 @@
       "provides": [
         "rfid-service"
       ],
-      "deps": [],
+      "deps": [
+        "u1-base-print-task-config",
+        "u1-base-fm175xx-reader",
+        "u1-base-filament-detect"
+      ],
       "conflicts": [],
       "doc_url": "rfid-ntag/doc/README.md",
-      "download_url": "rfid-ntag-0.1.12.b3",
+      "download_url": "rfid-ntag-0.1.14.b3",
+      "min_daemon_version": "0.14.0",
       "homepage": "https://github.com/Bespok3d/u1-enhanced-rfid",
       "config": [],
       "author": "bespoked",
-      "attributions": "# Attributions - rfid-ntag\n\n**Plugin author:** Bespok3d, with parts of the Extended Firmware overlay `13-patch-rfid`, OpenRFID there by @suchmememanyskill and the OpenSpool `subtype` field by @morgendagen\n\nReads NTAG filament tags on the printer's built-in reader.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenSpool tag format | the OpenSpool project | published format | no | no |\n| Extended Firmware overlay `13-patch-rfid` | @suchmememanyskill and @morgendagen, packaged by paxx12 | GPL-3.0 | no | yes |\n\nThe patches in this plugin modify Snapmaker's own firmware files on the printer, and the Extended\nFirmware overlay `13-patch-rfid`, GPL-3.0, patches the same files. About a fifth of the lines our\nFM175xx reader patch adds are lines that overlay adds too. In `openspool_mapper.py`, 22 lines are\nthat overlay's: they fill Snapmaker's own tray structure field by field, with the same defaults.\nOpenRFID in that firmware is credited to @suchmememanyskill and the OpenSpool `subtype` field to\n@morgendagen.\n\nThe rest of the reader code (`bespok3d_rfid.py`, `ntag_reader.py`, `ndef_parser.py`,\n`mifare_classic.py`) is written from scratch.\n",
+      "attributions": "# Attributions - rfid-ntag\n\n**Plugin author:** Bespok3d, with parts of the Extended Firmware overlay `13-patch-rfid`, OpenRFID there by @suchmememanyskill and the OpenSpool `subtype` field by @morgendagen\n\nReads NTAG filament tags on the printer's built-in reader.\n\n| Upstream project | Author | Licence | Needed at runtime | Code ships in this package |\n| --- | --- | --- | --- | --- |\n| OpenSpool tag format | the OpenSpool project | published format | no | no |\n| Extended Firmware overlay `13-patch-rfid` | @suchmememanyskill and @morgendagen, packaged by paxx12 | GPL-3.0 | no | yes |\n\nThis plugin no longer changes Snapmaker's own firmware files. Those changes moved to the base layer\nplugins `u1-base-fm175xx-reader`, `u1-base-filament-detect` and `u1-base-print-task-config`, which\nthis plugin now requires and calls into. In `openspool_mapper.py`, 22 lines are the Extended\nFirmware overlay `13-patch-rfid`'s, GPL-3.0: they fill Snapmaker's own tray structure field by\nfield, with the same defaults. OpenRFID in that firmware is credited to @suchmememanyskill and the\nOpenSpool `subtype` field to @morgendagen.\n\nThe rest of the reader code (`bespok3d_rfid.py`, `ntag_reader.py`, `ndef_parser.py`,\n`mifare_classic.py`) is written from scratch.\n",
       "license_url": "https://github.com/Bespok3d/u1-enhanced-rfid/blob/dev/rfid-ntag/doc/LICENSE",
       "changelog_url": "rfid-ntag/doc/CHANGELOG.md"
     },
@@ -760,7 +767,7 @@
     {
       "name": "spoolman",
       "title": "Spoolman Bridge",
-      "version": "0.1.35+dev.local",
+      "version": "0.1.36+dev.local",
       "description": "Spoolman for the U1 multi-tool: the active spool follows the tag the printer reads or the spool you pick, color and material reach the screen and AFC panel, tags are matched by their hardware UID, and you can record which printer each spool is on. Filament length per print is logged automatically.",
       "tagline": "Zero-config Spoolman: active spool always tracked.",
       "category": "filament",
@@ -768,7 +775,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": false,
       "published_at": "2025-09-20",
-      "updated_at": "2026-08-15",
+      "updated_at": "2026-08-17",
       "requires": {
         "capabilities": [
           "klipper-generic"
@@ -782,7 +789,7 @@
       ],
       "conflicts": [],
       "doc_url": "spoolman/doc/README.md",
-      "download_url": "spoolman-0.1.35.b3",
+      "download_url": "spoolman-0.1.36.b3",
       "min_daemon_version": "0.10.1",
       "homepage": "https://github.com/Bespok3d/spoolman-klipper-helper",
       "macros": [

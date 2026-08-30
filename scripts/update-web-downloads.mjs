@@ -7,28 +7,15 @@
 //
 //   node scripts/update-web-downloads.mjs <index.html> <version> <build-dir> <owner/repo> [--dry-run]
 //
-// The asset names here must match what electron-builder produced and what release.sh uploaded.
-// GitHub replaces a space in an asset name with a dash, which is why the Windows installer is linked
-// as Bespok3d-Setup-<version>.exe while the file on disk still has its spaces.
+// The rows and the asset names come from scripts/release-manifest.mjs, the same list the build and
+// publish checks read, so the page can never link a name the cut did not produce.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { websiteDownloads } from './release-manifest.mjs'
 
 const DOWNLOADS_BLOCK = /(<!-- downloads:start -->\n)[\s\S]*?(\n[ \t]*<!-- downloads:end -->)/
 const SHOWN_VERSION = /(<b id="rel-version">)[^<]*(<\/b>)/
-
-// `built` is the name on disk when it differs from the name the release serves it under.
-function downloadablePlatforms(version) {
-  return [
-    { os: 'mac', arch: 'arm64', label: 'macOS', note: 'Apple Silicon', asset: `Bespok3d-${version}-arm64.dmg` },
-    { os: 'windows', arch: 'x64', label: 'Windows', note: 'Installer', asset: `Bespok3d-Setup-${version}.exe`, built: `Bespok3d Setup ${version}.exe` },
-    { os: 'linux', arch: 'x64', label: 'Linux', note: 'AppImage x86_64', asset: `Bespok3d-${version}.AppImage` },
-    { os: 'linux', arch: 'arm64', label: 'Linux', note: 'AppImage arm64', asset: `Bespok3d-${version}-arm64.AppImage` },
-    // The Flatpak is x86_64 only: it is assembled against the x86_64 Electron base app, which is what
-    // Linux desktops run. An arm64 Linux user takes the AppImage row above.
-    { os: 'linux', arch: 'x64', label: 'Linux', note: 'Flatpak x86_64', asset: `Bespok3d-${version}-x86_64.flatpak` },
-  ]
-}
 
 function downloadRow(platform, downloadBase) {
   const href = `${downloadBase}/${platform.asset}`
@@ -51,7 +38,7 @@ function downloadList(platforms, downloadBase) {
 function warnAboutUnbuiltPlatforms(platforms, buildDir) {
   platforms
     .filter(function (platform) {
-      return !existsSync(join(buildDir, platform.built || platform.asset))
+      return !existsSync(join(buildDir, platform.built))
     })
     .forEach(function (platform) {
       console.error(`Warning: ${platform.asset} is not in ${buildDir}; the page will link to a download this host never built.`)
@@ -60,7 +47,7 @@ function warnAboutUnbuiltPlatforms(platforms, buildDir) {
 
 function updateWebDownloads(indexPath, version, buildDir, publishRepo, dryRun) {
   const downloadBase = `https://github.com/${publishRepo}/releases/download/v${version}`
-  const platforms = downloadablePlatforms(version)
+  const platforms = websiteDownloads(version)
   const html = readFileSync(indexPath, 'utf8')
 
   if (!DOWNLOADS_BLOCK.test(html) || !SHOWN_VERSION.test(html)) {

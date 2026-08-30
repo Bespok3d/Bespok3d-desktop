@@ -239,6 +239,10 @@ if [ "$RUN_SHELL" -eq 1 ]; then
 
     # The landing page's download buttons are generated: if this breaks, the page offers four dead links.
     run_check "web downloads rail" node --test "$REPO_ROOT/scripts/test/web-downloads.test.mjs"
+
+    # v0.7.5-beta went out with no Linux Flatpak and nothing said so: a platform can go missing in
+    # silence, in the build and again on the release.
+    run_check "release completeness rail" node --test "$REPO_ROOT/scripts/test/release-artifacts.test.mjs"
 else
     echo "  skipped (no scripts/ changes; ./scripts/check.sh full runs it)"
 fi

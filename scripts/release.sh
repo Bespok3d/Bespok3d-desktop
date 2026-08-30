@@ -44,6 +44,11 @@ Notes:
   The Linux Flatpak is built by flatpak-builder, which runs only on Linux: a Linux host uses it
   directly, and every other host runs it in a Linux container, so a cut anywhere produces it.
 
+  Every build is checked against the list of what a cut is made of (macOS Apple Silicon + Intel,
+  Windows, Linux AppImage x86_64 + arm64, Linux Flatpak, and the updater files each one needs), and
+  publishing checks the same list again against the release GitHub ended up with. A missing or
+  half-uploaded platform stops the run and is named.
+
   'pre' decides what GitHub calls the release: a prerelease is kept off the repo's Latest
   pointer and off the download page people land on. The app's own updater does not read
   that flag, it reads the version's maturity label ('-beta'), so a release published
@@ -163,6 +168,36 @@ build_all() {
 
   echo ""
   [ "$DRY_RUN" = true ] && echo "DRY-RUN would build $version into $OUTPUT_DIR/" || echo "Built $version into $OUTPUT_DIR/"
+
+  verify_built "$version"
+}
+
+# A cut is only finished when every platform is in it. The list of what "every platform" means lives
+# in scripts/release-manifest.mjs, which the landing page reads too, and scripts/verify-release.mjs is
+# what holds the build to it: a missing installer, an empty file, or an updater feed left over from an
+# earlier cut stops the run here instead of going out as a release with a hole in it.
+verify_built() {
+  local version="$1"
+
+  echo ""
+  echo "Checking the build in $OUTPUT_DIR has every platform..."
+  run node "$REPO_ROOT/scripts/verify-release.mjs" built "$version" "$OUTPUT_DIR"
+}
+
+# And the same list again against what GitHub actually holds, because an upload that dies halfway
+# leaves a release that looks complete in the browser and serves a truncated file.
+verify_published() {
+  local version="$1" tag="v$1"
+
+  if [ "$DRY_RUN" = true ]; then
+    echo "DRY-RUN would check the $tag release carries every platform."
+    return 0
+  fi
+
+  echo ""
+  echo "Checking the $tag release carries every platform..."
+  gh release view "$tag" --repo "$PUBLISH_REPO" --json assets -q '.assets' \
+    | node "$REPO_ROOT/scripts/verify-release.mjs" published "$version" "$OUTPUT_DIR"
 }
 
 release_kind() {
@@ -316,8 +351,12 @@ fi
 
 if [ "$do_publish" = true ]; then
   export GH_TOKEN="$PUBLISH_TOKEN"
+  # 'publish' on its own reuses whatever is in dist/release, so what is there is checked before any of
+  # it is uploaded: half a build must never become a release.
+  [ "$do_bump" = true ] || verify_built "$VERSION"
   publish_artifacts "$VERSION"
   set_release_notes "$VERSION"
+  verify_published "$VERSION"
 fi
 
 if [ "$do_web" = true ]; then
