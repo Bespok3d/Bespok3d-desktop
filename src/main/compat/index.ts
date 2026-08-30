@@ -6,9 +6,8 @@ export { packageFloorRefusal, packageJinniFloorRefusal, pairRefusal } from './fl
 export type { ReportedPair, DeclaredFloors } from './floors'
 export { reportedDaemonVersion, askPrinterCompat } from './reported'
 export type { PrinterCompatFacts } from './reported'
-export { assertPrinterMeetsPackageFloors, PackageDoesNotFitPrinter } from './guard'
+export { assertPrinterMeetsPackageFloors, assertPackageFitsPair, PackageDoesNotFitPrinter } from './guard'
 export type { PackageFloors } from './guard'
-export { firstOverlapRefusal } from './overlap'
 export {
   DaemonMoveRefused,
   assertNotADaemonDowngrade,

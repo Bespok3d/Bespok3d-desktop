@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { BrowserWindow } from 'electron'
 import { updatePrinter } from '../printers'
-import type { RecoverResult } from '@bespok3d/contract'
+import type { BatchResult } from '../daemon-client/batch-result'
 import { fetchCapabilities, uninstallPlugin, uninstallBatch } from '../daemon-client/client'
 import { getManagedRecord, parseCaps, DAEMON_QUERY_TIMEOUT_MS } from '../daemon-client/status'
 import { daemonGuardMessage } from '../daemon-client/guard'
@@ -33,7 +33,7 @@ export async function runStoreUninstall(
 // Remove several plugins in one daemon batch (one deferred restart through the safety net), then prune
 // each removed plugin's provenance to the still-installed set. The renderer resolves cascade dependents
 // locally and passes cascade=true; the daemon's dependents 409 is the backstop, surfaced readably.
-export async function runStoreUninstallBatch(printerId: string, pluginIds: string[], cascade: boolean): Promise<RecoverResult> {
+export async function runStoreUninstallBatch(printerId: string, pluginIds: string[], cascade: boolean): Promise<BatchResult> {
   const record = getManagedRecord(printerId)
   const result = await uninstallBatch(record, pluginIds, cascade).catch((error) => {
     const message = daemonGuardMessage(error)

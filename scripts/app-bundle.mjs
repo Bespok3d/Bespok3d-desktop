@@ -41,6 +41,11 @@ const REGISTRY_NAME = 'Bespok3d Official'
 const REGISTRY_PUBLISHER = 'PLACEHOLDER'
 const INDEX_SCHEMA_VERSION = 1
 const BASE_DEPENDENCY = 'base'
+// Services the DAEMON serves, never a plugin. A manifest that requires one of these is asking for a
+// new-enough daemon build, not for another plugin to be installed, so it must never resolve to a
+// store dep: no plugin has that id and the install would chase a package that does not exist.
+// Mirrors daemon/core/packages/daemon_services.py, pinned to it by build-index.test.ts.
+export const DAEMON_SERVED_SERVICES = new Set(['migrate-patch'])
 
 // Plugin sources live in the sibling `plugins/` tree (the repo split: each plugin/co-repo is its own
 // dir, e.g. plugins/u1-hw-camera/plugin or plugins/u1-klipper-config-enhancers/cpu-temp). Discovery
@@ -60,12 +65,12 @@ function serviceName(provided) {
 }
 
 function requiredServices(manifest) {
-  if (manifest.require !== undefined) {
-    return manifest.require.map((requirement) => requirement.service)
-  }
-  return (manifest.depends ?? [])
-    .map(dependencyName)
-    .filter((service) => service !== BASE_DEPENDENCY)
+  const declared =
+    manifest.require !== undefined
+      ? manifest.require.map((requirement) => requirement.service)
+      : (manifest.depends ?? []).map(dependencyName).filter((service) => service !== BASE_DEPENDENCY)
+
+  return declared.filter((service) => !DAEMON_SERVED_SERVICES.has(service))
 }
 
 function providerByService(manifests) {
@@ -152,7 +157,10 @@ function buildCollectionEntry(manifest) {
     members: manifest.members ?? [],
     doc_url: `${manifest.name}/doc/README.md`,
   }
-  copyIfPresent(entry, manifest, ['icon', 'homepage', 'author', 'attributions'])
+  // `migration` is the publisher saying an installed plugin of this id is retiring into the set: the
+  // versions the takeover was written for and the sentence the user reads before it runs. Dropped here,
+  // an offline install has no way to tell the user their plugin is about to be taken off.
+  copyIfPresent(entry, manifest, ['icon', 'homepage', 'author', 'attributions', 'migration'])
   applyLicenseUrl(entry, manifest)
   if (manifest.changelog) entry.changelog_url = `${manifest.name}/${manifest.changelog}`
   return entry
@@ -189,7 +197,7 @@ function buildIndexEntry(manifest, providers, buildTags) {
     doc_url: `${manifest.name}/doc/README.md`,
     download_url: `${manifest.name}-${manifest.version}.b3`,
   }
-  copyIfPresent(entry, manifest, ['icon', 'min_daemon_version', 'min_jinni_version', 'homepage', 'macros', 'config', 'author', 'sw_version', 'attributions'])
+  copyIfPresent(entry, manifest, ['icon', 'min_daemon_version', 'min_jinni_version', 'homepage', 'macros', 'config', 'author', 'sw_version', 'attributions', 'migration'])
   applyLicenseUrl(entry, manifest)
   const log = logSource(manifest)
   if (log) entry.log = log
@@ -254,17 +262,31 @@ async function stageDocs(fsPromises, pathJoin, distDir, sources) {
 }
 
 // Recursively find every plugin source dir (one holding a manifest.json) under a root, bounded by
-// depth and skipping build/scaffold dirs. A plugin dir is a leaf: once a manifest is found we stop
-// descending (a plugin never nests another).
-async function findManifestDirs(readdir, join, root, depth) {
+// depth and skipping build/scaffold dirs. A plugin dir is a leaf: once its manifest is found we stop
+// descending (a plugin never nests another). A COLLECTION dir is NOT a leaf: a co-repo whose root
+// manifest is the collection keeps its member plugins in sub-dirs, so stopping at the root hid every
+// member from this bundler while pack-plugins.sh's own find still listed them, and the two sides must
+// answer the same. The collection root itself is still a source: it carries the index entry members
+// point at.
+export async function findManifestDirs(readFile, readdir, join, root, depth) {
   if (depth < 0) return []
   const entries = await readdir(root, { withFileTypes: true }).catch(() => [])
-  if (entries.some((entry) => entry.isFile() && entry.name === 'manifest.json')) return [root]
+  const rootManifest = entries.some((entry) => entry.isFile() && entry.name === 'manifest.json')
+    ? await readManifestOrNull(readFile, join, root)
+    : null
+  if (rootManifest && !isCollection(rootManifest)) return [root]
   const subdirs = entries
     .filter((entry) => entry.isDirectory() && !SKIP_DIRS.has(entry.name))
     .map((entry) => join(root, entry.name))
-  const nested = await Promise.all(subdirs.map((dir) => findManifestDirs(readdir, join, dir, depth - 1)))
-  return nested.flat()
+  const nested = await Promise.all(subdirs.map((dir) => findManifestDirs(readFile, readdir, join, dir, depth - 1)))
+
+  return rootManifest ? [root, ...nested.flat()] : nested.flat()
+}
+
+async function readManifestOrNull(readFile, join, dir) {
+  const text = await readFile(join(dir, 'manifest.json'), 'utf8').catch(() => null)
+
+  return text === null ? null : JSON.parse(text)
 }
 
 // A dir whose basename IS the plugin id owns that id. Two dirs can carry a manifest with the same id
@@ -302,7 +324,7 @@ async function pluginSources(readFile, readdir, join, repoDir, variantDirPaths) 
     join(repoDir, '..', 'daemon', 'dist', 'package'),
     join(repoDir, '..', 'adapters', 'dist', 'package'),
   ]
-  const dirLists = await Promise.all(roots.map((root) => findManifestDirs(readdir, join, root, DISCOVERY_MAX_DEPTH)))
+  const dirLists = await Promise.all(roots.map((root) => findManifestDirs(readFile, readdir, join, root, DISCOVERY_MAX_DEPTH)))
   const found = await Promise.all(
     dirLists.flat().filter((dir) => !variantDirPaths.has(dir)).map(async (dir) => {
       const manifest = JSON.parse(await readFile(join(dir, 'manifest.json'), 'utf8'))
@@ -429,6 +451,18 @@ function packBakedSource(builder, source, outputDir, version) {
   return builder.packIfChanged(source.manifest, source.dir, outputDir, version)
 }
 
+// A bundle-list id that matches no discovered source is refused rather than dropped, for the same
+// reason variantSource refuses a missing dir: a pack that exits 0 with a listed plugin quietly
+// missing is how a bundle shrinks without anyone deciding to shrink it, and the next golden refresh
+// would write the smaller claim back as correct.
+function assertBundleResolved(bundledIds, idSources) {
+  const resolvedNames = new Set(idSources.map((source) => source.name))
+  const unresolved = [...bundledIds].filter((id) => !resolvedNames.has(id))
+  if (unresolved.length === 0) return
+
+  throw new Error(`the bundle list names ${unresolved.join(', ')}, which match no plugin source in the tree`)
+}
+
 // A release build ships what enrollment and the store install directly, so an unsigned package inside
 // one is not a warning-worthy state the way a dev build's is (bundle-signing.mjs peels a stale
 // signature there on purpose): it is a package the app can only ever rate 'unknown', shipped from the
@@ -473,6 +507,7 @@ export async function buildBundle(request) {
   const variantDirPaths = new Set(variantRelDirs.map((relDir) => join(pluginsRoot, relDir)))
 
   const idSources = (await pluginSources(readFile, readdir, join, sourceRoot, variantDirPaths)).filter((source) => bundled.has(source.name))
+  assertBundleResolved(bundled, idSources)
   if (channel === 'dev') {
     process.env.B3D_INCLUDE_DEV_BUNDLE = '1'
   } else {

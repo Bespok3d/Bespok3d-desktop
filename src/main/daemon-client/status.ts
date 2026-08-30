@@ -59,6 +59,10 @@ export function parseCaps(caps: CapabilitiesResult, printer: CapabilitiesHost) {
 
   return {
     installedIds: Object.keys(installedVersions),
+    // The plugins the printer has switched off. They stay in `installed` and keep their version, but
+    // they serve nothing: the printer counts only an active plugin as the provider of a service. Any
+    // question of the form "is this dependency already on the printer?" has to read this list too.
+    deactivatedIds: caps.deactivated ?? [],
     installedVersions,
     machineryVersions: runningMachineryVersions(machinery, listAdapters()),
     endpoints: dedupeEndpoints(reachableEndpoints),

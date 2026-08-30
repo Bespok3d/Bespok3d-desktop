@@ -1,24 +1,13 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import type { Printer, ConnectionReach } from '../data/types'
 import { jinniLags } from '../data/printers'
 import { useI18n } from '../i18n/context'
-import { Button } from './common/Button'
-import './printer-banners.css'
+import { PrinterBanner } from './common/PrinterBanner'
 
 export const EXPECTED_RESTART_GRACE_MS = 5 * 60 * 1000
 export const POST_OPERATION_GRACE_MS = 30 * 1000
-
-function PrinterBanner({ message, actionLabel, onAction }: { message: ReactNode; actionLabel?: string; onAction?: () => void }) {
-  return (
-    <div className="printer-banner">
-      <span className="printer-banner-msg">{message}</span>
-      {actionLabel && onAction && <Button size="sm" className="printer-banner-action" onClick={onAction}>{actionLabel}</Button>}
-    </div>
-  )
-}
 
 export function isWithinExpectedRestart(printer: Printer, now: number): boolean {
   const until = printer.expectedRestartUntil

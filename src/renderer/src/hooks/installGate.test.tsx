@@ -35,7 +35,7 @@ function GatedBatchHarness({ updates }: { updates: PluginUpdateSpec[] }) {
 
   return (
     <>
-      <button type="button" onClick={() => batchOps.runUpdateAll('printer-1', updates)}>update all</button>
+      <button type="button" onClick={() => batchOps.runUpdateAll('printer-1', { updates, migrations: [] })}>update all</button>
       <InstallGateModals gate={gate} />
     </>
   )
@@ -253,7 +253,7 @@ function BatchHarness({ gate }: { gate: GatedInstall }) {
 
   return (
     <>
-      <button type="button" onClick={() => batchOps.runUpdateAll('printer-1', [{ pluginId: 'spoolman' }])}>update all</button>
+      <button type="button" onClick={() => batchOps.runUpdateAll('printer-1', { updates: [{ pluginId: 'spoolman' }], migrations: [] })}>update all</button>
       <button type="button" onClick={() => batchOps.runInstallBatch('printer-1', [{ pluginId: 'spoolman' }])}>install selected</button>
     </>
   )

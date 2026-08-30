@@ -1,0 +1,20 @@
+.migration-lists {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.migration-heading {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semi);
+  color: var(--ink-2);
+}
+
+.migration-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}

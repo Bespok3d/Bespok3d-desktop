@@ -8,6 +8,7 @@
 import WebSocket from 'ws'
 
 import { makeAgent } from '../client'
+import { MAX_FRAME_BYTES } from './feed-pool'
 import type { InstallLogPhase } from '@bespok3d/contract'
 
 interface ProgressTarget {
@@ -57,7 +58,7 @@ export function watchInstallProgress(record: ProgressTarget, onEvent: (event: In
   return new Promise((resolve) => {
     if (!record.daemonCert || !record.daemonToken) return resolve(() => {})
     const url = `wss://${record.ip}:${DAEMON_PORT}/ws/install-progress?token=${encodeURIComponent(record.daemonToken)}`
-    const socket = new WebSocket(url, { agent: makeAgent(record.daemonCert) })
+    const socket = new WebSocket(url, { agent: makeAgent(record.daemonCert), maxPayload: MAX_FRAME_BYTES })
     function close(): void { try { socket.close() } catch { /* already closing */ } }
     socket.on('open', () => resolve(close))
     socket.on('message', (data) => relay(data, onEvent))
@@ -65,9 +66,18 @@ export function watchInstallProgress(record: ProgressTarget, onEvent: (event: In
   })
 }
 
+// Same boundary the shared feed pool puts around a frame: this runs inside the socket's own message
+// event, where a throw is caught by nobody and would take the whole app down mid-install. One frame
+// nothing could be done with costs that frame, and the install carries on reporting the next one.
 function relay(data: WebSocket.RawData, onEvent: (event: InstallProgressEvent) => void): void {
   const parsed = parseEvent(data)
-  if (parsed) onEvent(parsed)
+  if (!parsed) return
+
+  try {
+    onEvent(parsed)
+  } catch (unreadable) {
+    console.warn(`[feed] an install-progress frame was dropped: ${String(unreadable)}`)
+  }
 }
 
 export function parseEvent(data: WebSocket.RawData): InstallProgressEvent | null {

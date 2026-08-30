@@ -14,6 +14,7 @@ export async function capsOrFallback(record: PrinterRecord, extraVersions: Recor
 
     return {
       installedIds: Object.keys(installedVersions),
+      deactivatedIds: record.deactivatedIds ?? [],
       installedVersions,
       machineryVersions: record.machineryVersions ?? {},
       endpoints: record.endpoints ?? [],

@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Plugin, IndexEntry, CatalogPayload, Repository, PluginSource, SourceRow } from '../types'
+import type { Plugin, IndexEntry, CatalogPayload, Repository, PluginSource, SourceRow, MigrationTerms } from '../types'
 import type { Collection, CollectionEntry } from '../collections'
 import type { Catalog } from '../../env'
 import { withExplicitScope } from '../plugin-config'
@@ -115,6 +115,20 @@ function entryToSource(variant: IndexEntry, labels: Record<string, string>): Plu
     publishedAt: variant.published_at,
     downloadUrl: variant.download_url,
     config: variant.config?.map(withExplicitScope),
+    migration: migrationTermsOf(variant),
+  }
+}
+
+// A plugin and a collection declare a change of shape the same way, so the same mapping serves both:
+// a plugin that keeps its id and changes what it does, and a plugin that retires into a collection.
+function migrationTermsOf(entry: IndexEntry | CollectionEntry): MigrationTerms | undefined {
+  if (!entry.migration) return undefined
+
+  return {
+    fromVersion: entry.migration.from_version,
+    untilVersion: entry.migration.until_version,
+    summary: entry.migration.summary,
+    requiresDaemon: entry.migration.requires_daemon,
   }
 }
 
@@ -141,6 +155,7 @@ function entryToCatalogBase(entry: IndexEntry | CollectionEntry) {
     publishedAt: entry.published_at,
     updatedAt: entry.updated_at,
     homepage: entry.homepage,
+    migration: migrationTermsOf(entry),
     doc: docFor(entry.name),
     docUrl: fetchableDocUrl(entry.doc_url),
     changelog: entry.changelog_url ? changelogFor(entry.name) : undefined,

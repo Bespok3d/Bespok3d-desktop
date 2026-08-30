@@ -28,7 +28,7 @@ function UpdateAllHarness({ onRepairPrinter = ignoreRepair }: { onRepairPrinter?
 
   return (
     <>
-      <button type="button" onClick={() => batchOps.runUpdateAll('printer-1', [{ pluginId: 'spoolman' }])}>run</button>
+      <button type="button" onClick={() => batchOps.runUpdateAll('printer-1', { updates: [{ pluginId: 'spoolman' }], migrations: [] })}>run</button>
       <BatchOpModal
         variant="update"
         busy={batchOps.updatingAll}
@@ -62,6 +62,28 @@ function RecoverHarness({ onRestart }: { onRestart: (printerId: string) => Promi
         onRepairPrinter={ignoreRepair}
         onOpenPlugin={() => {}}
         onClose={() => batchOps.setRecoveryResults(null)}
+        onDismissFailure={batchOps.dismissBatchFailure}
+      />
+    </>
+  )
+}
+
+// A plugin that became a collection migrates in one run: the retired plugin comes off the printer
+// first, then the member plugins go on. Wired the way the app wires it, uninstall report included.
+function MigrateHarness({ specs }: { specs: PluginUpdateSpec[] }) {
+  const batchOps = useBatchOps([], () => {}, (startInstall) => startInstall(), ignoreRestart)
+
+  return (
+    <>
+      <button type="button" onClick={() => batchOps.runMigrateBatch('printer-1', { migratingPluginId: 'klipper-motion', comingOffThePrinter: true, arrivingSpecs: specs })}>migrate</button>
+      <BatchOpModal
+        variant={batchOps.installBatchVariant}
+        busy={false}
+        result={batchOps.installBatchResult}
+        failure={batchOps.batchFailure}
+        onRepairPrinter={ignoreRepair}
+        onOpenPlugin={() => {}}
+        onClose={() => batchOps.setInstallBatchResult(null)}
         onDismissFailure={batchOps.dismissBatchFailure}
       />
     </>
@@ -210,5 +232,40 @@ describe('recovery while it is putting the plugins back', () => {
     expect(container.querySelector('.batch-row.done')?.textContent).toContain('rfid-ntag')
     expect(container.querySelector('.batch-row.installing')?.textContent).toContain('spoolman')
     expect(screen.getByText('Place config')).toBeInTheDocument()
+  })
+})
+
+describe('migrating a plugin that became a collection', () => {
+  it('takes the old plugin off the printer first, then installs the members, never cascading the removal', async () => {
+    const uninstallBatch = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const installBatch = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const { user } = setup(<MigrateHarness specs={[{ pluginId: 'input-shaper' }]} />, { b3d: { store: { uninstallBatch, installBatch } } })
+
+    await user.click(screen.getByRole('button', { name: 'migrate' }))
+
+    expect(uninstallBatch).toHaveBeenCalledWith('printer-1', ['klipper-motion'], false)
+    await waitFor(() => expect(installBatch).toHaveBeenCalledWith('printer-1', [{ pluginId: 'input-shaper' }]))
+  })
+
+  it('stops on a removal the printer refused and shows its report, instead of installing on top of the old plugin', async () => {
+    const uninstallBatch = vi.fn().mockResolvedValue({ ok: false, results: [{ pluginId: 'klipper-motion', ok: false, skipped: false, reason: 'uninstall failed' }] })
+    const installBatch = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const { user } = setup(<MigrateHarness specs={[{ pluginId: 'input-shaper' }]} />, { b3d: { store: { uninstallBatch, installBatch } } })
+
+    await user.click(screen.getByRole('button', { name: 'migrate' }))
+
+    await waitFor(() => expect(screen.getByText(en('migration_results.title_errors'))).toBeInTheDocument())
+    expect(installBatch).not.toHaveBeenCalled()
+  })
+
+  it('tells the user their plugin moved even when every member was already installed', async () => {
+    const uninstallBatch = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const installBatch = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const { user } = setup(<MigrateHarness specs={[]} />, { b3d: { store: { uninstallBatch, installBatch } } })
+
+    await user.click(screen.getByRole('button', { name: 'migrate' }))
+
+    await waitFor(() => expect(screen.getByText(en('migration_results.title_ok'))).toBeInTheDocument())
+    expect(installBatch).not.toHaveBeenCalled()
   })
 })

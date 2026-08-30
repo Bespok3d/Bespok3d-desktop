@@ -114,7 +114,8 @@
           "files/fluidd/index.html"
         ]
       }
-    ]
+    ],
+    "manifest_warnings": []
   },
   "capabilities": {
     "adapter": "snapmaker-u1",

@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { useState } from 'react'
 import type { Plugin } from '../../../data/types'
 import type { PluginVarsSave } from '../../../data/plugin-vars'
 import type { Collection, CollectionMember } from '../../../data/collections'
-import { collectionMembers, splitMembers } from '../../../data/collections'
+import { collectionMembers, splitMembers, pluginBecameCollection } from '../../../data/collections'
+import type { PluginMigration } from '../migrations'
 import type { TFunction } from '../../../i18n'
 import { useI18n } from '../../../i18n/context'
 import type { B3dEntityRef } from '../../../data/b3d-ref'
@@ -83,18 +85,57 @@ function CollectionFoot({ installableCount, fullyInstalled, hasPrinter, installi
   )
 }
 
+// While the collection's id is still installed as the retired plugin, the foot offers the migration
+// instead of "Install all": one run that takes the old plugin off and puts the members on. A member
+// the gate refuses would take the old plugin's features off the printer without putting that member's
+// back, so any blocked member disables the whole migration. Once the old plugin is gone, only the
+// plain-terms explanation of what happened remains.
+function MigrationFoot({ migrated, hasPrinter, installing, blockedCount, block, onMigrate, onClose, t }: {
+  migrated: boolean; hasPrinter: boolean; installing: boolean; blockedCount: number; block: InstallBlock | null
+  onMigrate: () => void; onClose: () => void; t: TFunction
+}) {
+  return (
+    <div className="panel-foot">
+      <span className="panel-foot-note">{t(migrated ? 'collection.migrated_note' : 'collection.migrate_explain')}</span>
+      <Button variant="outline" onClick={onClose}>{t('btn.close')}</Button>
+      {!migrated && (
+        <Button variant="primary" disabled={!hasPrinter || installing || blockedCount > 0 || !!block} title={block?.detail} onClick={onMigrate}>
+          <IconDownload size={14} />
+          {t('collection.migrate_button')}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+// Member installs route through the migration while the retired plugin is on the printer: the exact
+// specs a plain "Install all" would send, prefixed by the old plugin's removal. Standing where
+// onInstallSelected stands keeps the config capture flow identical.
+function migrateTarget(collection: Collection, onMigrateSelected: (printerId: string, migration: PluginMigration) => void) {
+  return function installThroughMigration(printerId: string, specs: PluginUpdateSpec[]) {
+    onMigrateSelected(printerId, { migratingPluginId: collection.id, comingOffThePrinter: true, arrivingSpecs: specs })
+  }
+}
+
 interface CollectionDetailProps {
   collection: Collection
   plugins: Plugin[]
+  // The full catalog collection pool, so a member that is itself a collection resolves to its plugins.
+  collections: Collection[]
   installedIds: string[]
   printerId?: string
   installing: boolean
   // Live print state, so installing a whole collection answers to the same gate a single install does.
   printActive: boolean
   blockedActions: string[]
+  // What this printer answered it is running, so a member needing a newer daemon is refused here for
+  // the same reason its own card greys it out.
+  daemonVersion?: string
   savedPluginVars?: Record<string, string>
   onSaveVars?: (save: PluginVarsSave) => void
   onInstallSelected?: (printerId: string, specs: PluginUpdateSpec[]) => void
+  // Migrates a plugin that became a collection: the retired plugin off the printer, then the members on.
+  onMigrateSelected?: (printerId: string, migration: PluginMigration) => void
   // Open a member plugin's own detail (the store closes this modal and opens the plugin panel).
   onOpenPlugin: (plugin: Plugin) => void
   onClose: () => void
@@ -103,20 +144,37 @@ interface CollectionDetailProps {
 // The collection detail modal: a brief readme, the member list with installed members marked, and one
 // "Install all" that batches the missing members (single restart). The collection itself is never an
 // installed entity - there is no uninstall, no persisted state; the view reflects live member state.
-export function CollectionDetailPanel({ collection, plugins, installedIds, printerId, installing, printActive, blockedActions, savedPluginVars, onSaveVars, onInstallSelected, onOpenPlugin, onClose }: CollectionDetailProps) {
+export function CollectionDetailPanel({ collection, plugins, collections, installedIds, printerId, installing, printActive, blockedActions, daemonVersion, savedPluginVars, onSaveVars, onInstallSelected, onMigrateSelected, onOpenPlugin, onClose }: CollectionDetailProps) {
   const { t } = useI18n()
-  const members = collectionMembers(collection, plugins)
-  const split = splitMembers(collection, plugins, installedIds)
+  const members = collectionMembers(collection, plugins, collections)
+  const split = splitMembers(collection, plugins, collections, installedIds)
   const total = split.installed.length + split.missing.length
   const fullyInstalled = total > 0 && split.missing.length === 0
-  const gateContext = { catalogPlugins: plugins, installedIds, savedVars: savedPluginVars ?? {}, printerId, printActive, blockedActions }
-  const install = useCollectionInstall({ ...gateContext, onSaveVars, onInstallSelected })
+  const became = !!onMigrateSelected && pluginBecameCollection(collection, installedIds)
+  const [migrationStarted, setMigrationStarted] = useState(false)
+  const migrated = migrationStarted && !became
+  const gateContext = { catalogPlugins: plugins, installedIds, savedVars: savedPluginVars ?? {}, printerId, printActive, blockedActions, daemonVersion }
+  const migrateAdapter = became && onMigrateSelected ? migrateTarget(collection, onMigrateSelected) : undefined
+  const install = useCollectionInstall({ ...gateContext, onSaveVars, onInstallSelected: migrateAdapter ?? onInstallSelected })
   const gated = splitByBatchGate(t, split.missing, gateContext)
   const blockedMembers = new Map(gated.blocked.map((row) => [row.plugin.id, row.block]))
 
   function openRef(ref: B3dEntityRef) {
     const target = plugins.find((plugin) => plugin.id === ref.name)
     if (target) onOpenPlugin(target)
+  }
+
+  // Every member already installed leaves nothing to install: the migration is the removal alone, so
+  // it skips the install builder (which refuses an empty batch) and posts the empty spec list itself.
+  function startMigration() {
+    if (!printerId || !onMigrateSelected) return
+    setMigrationStarted(true)
+    if (gated.eligible.length === 0) {
+      onMigrateSelected(printerId, { migratingPluginId: collection.id, comingOffThePrinter: true, arrivingSpecs: [] })
+
+      return
+    }
+    install.installMembers(gated.eligible)
   }
 
   return (
@@ -141,11 +199,19 @@ export function CollectionDetailPanel({ collection, plugins, installedIds, print
             </div>
           </div>
         </div>
-        <CollectionFoot
-          installableCount={gated.eligible.length} fullyInstalled={fullyInstalled} hasPrinter={!!printerId} installing={installing}
-          block={batchBlockReason(t, { printerId, printActive, blockedActions })}
-          onInstallAll={() => install.installMembers(gated.eligible)} onClose={onClose} t={t}
-        />
+        {became || migrated ? (
+          <MigrationFoot
+            migrated={migrated} hasPrinter={!!printerId} installing={installing} blockedCount={gated.blocked.length}
+            block={batchBlockReason(t, { printerId, printActive, blockedActions })}
+            onMigrate={startMigration} onClose={onClose} t={t}
+          />
+        ) : (
+          <CollectionFoot
+            installableCount={gated.eligible.length} fullyInstalled={fullyInstalled} hasPrinter={!!printerId} installing={installing}
+            block={batchBlockReason(t, { printerId, printActive, blockedActions })}
+            onInstallAll={() => install.installMembers(gated.eligible)} onClose={onClose} t={t}
+          />
+        )}
       </Modal>
       {install.configPlugins && (
         <BatchConfigModal plugins={install.configPlugins} savedVars={savedPluginVars ?? {}} busy={installing} scopes={install.configScopes} onScopeChange={install.setConfigScope} onCancel={install.cancelConfig} onConfirm={install.confirmConfig} />

@@ -253,10 +253,8 @@ describe('dependency package verification', () => {
   })
 })
 
-// Two packages that both place a directory of the same name land on the same tree, and the second one
-// to arrive replaces what the first one put there: the printer ends up running part of each, with every
-// version floor satisfied. The clash is in the packages, so it is caught while both are still files on
-// this machine and neither is sent.
+// What a package carries under files/ is unpacked into a directory named for its own plugin, so two
+// plugins shipping a folder of the same name are not writing over each other's copy of anything.
 function packageDeploying(manifest: Record<string, unknown>, deployedPaths: readonly string[]): Buffer {
   const archive = new AdmZip()
   archive.addFile('manifest.json', Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8'))
@@ -265,23 +263,15 @@ function packageDeploying(manifest: Record<string, unknown>, deployedPaths: read
   return archive.toBuffer()
 }
 
-describe('packages that would write over each other', () => {
+describe('a plugin and its dependency carrying a folder of the same name', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('refuses the install when a plugin and its dependency deploy the same entry, before either is sent', async () => {
-    const contested = ['idle-timeout/main.cfg']
+  // Every base-layer plugin ships its patches under patches/, so reading a shared folder name as a
+  // clash refused the whole family: rfid-ntag could not be installed beside the plugins it now needs.
+  it('installs both, because each package is unpacked into a directory of its own', async () => {
     stubADependencyResolvingTo(
-      packageDeploying({ ...HONEST_MANIFEST, name: DEP_ID }, contested),
-      packageDeploying(HONEST_MANIFEST, contested),
-    )
-    await expect(installWithDependency()).rejects.toThrow(/both install idle-timeout/)
-    expect(installPlugin).not.toHaveBeenCalled()
-  })
-
-  it('installs both when they deploy entries of their own', async () => {
-    stubADependencyResolvingTo(
-      packageDeploying({ ...HONEST_MANIFEST, name: DEP_ID }, ['print-prefs-core/main.cfg']),
-      packageDeploying(HONEST_MANIFEST, ['idle-timeout/main.cfg']),
+      packageDeploying({ ...HONEST_MANIFEST, name: DEP_ID }, ['patches/fm175xx_reader-v1.4.patch']),
+      packageDeploying(HONEST_MANIFEST, ['patches/print_task_config-v1.6.patch']),
     )
     await installWithDependency()
     expect(vi.mocked(installPlugin).mock.calls.map((call) => call[2])).toEqual([DEP_ID, 'idle-timeout'])

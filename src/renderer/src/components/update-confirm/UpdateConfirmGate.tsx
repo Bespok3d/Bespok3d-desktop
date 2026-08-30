@@ -5,6 +5,7 @@ import { useChannelPrefs } from '../common/hooks/useChannelPrefs'
 import { installedOnPrinter } from '../../data/channels/updates'
 import type { Printer } from '../../data/types'
 import type { PendingUpdate } from '../batch-ops/pending-update'
+import { replacedRows } from './rows'
 import { UpdateConfirmDialog } from './index'
 
 // The dialog needs the catalog and the user's channel ceiling to read a batch back to them, and those
@@ -16,16 +17,18 @@ export function UpdateConfirmGate({ pending, printers, onConfirm, onCancel }: {
   onConfirm: (specs: PluginUpdateSpec[]) => void
   onCancel: () => void
 }) {
-  const { plugins } = useCatalog()
+  const { plugins, collections } = useCatalog()
   const { ceilingFor, disabledChannels } = useChannelPrefs()
   const printer = printers.find((candidate) => candidate.id === pending?.printerId)
   if (!pending || !printer) return null
+  const installed = installedOnPrinter(printer, ceilingFor, disabledChannels)
 
   return (
     <UpdateConfirmDialog
-      specs={pending.specs}
+      specs={pending.plan.updates}
+      replaced={replacedRows(pending.plan.migrations, collections, plugins, installed)}
       plugins={plugins}
-      installed={installedOnPrinter(printer, ceilingFor, disabledChannels)}
+      installed={installed}
       onConfirm={onConfirm}
       onCancel={onCancel}
     />

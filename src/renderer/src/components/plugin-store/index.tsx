@@ -18,6 +18,7 @@ import { SelectModeBars } from './select/ModeBars'
 import { SafetyNoticeOverlay } from './safety/RecoveryModal'
 import { Toolbar, FilterShoulder, useFacetState } from './browse/Toolbar'
 import type { SortKey, SortDir } from './browse/filters'
+import type { PluginMigration, UpdateAllPlan } from './migrations'
 import { useInstallState, useUpdateAll, useFocusPanel } from './state'
 import { useChannelPrefs } from '../common/hooks/useChannelPrefs'
 import { deriveStoreView, activeSelection } from './browse/view-model'
@@ -39,12 +40,14 @@ interface PluginStoreProps {
   savedPluginVars?: Record<string, string>
   onSaveVars?: (save: PluginVarsSave) => void
   scopeFor?: (field: PluginConfigField) => ScopeChoice
-  onUpdateAll?: (printerId: string, updates: PluginUpdateSpec[]) => void
+  onUpdateAll?: (printerId: string, plan: UpdateAllPlan) => void
   updatingAll?: boolean
   onInstallSelected?: (printerId: string, specs: PluginUpdateSpec[]) => void
   installingSelected?: boolean
   onUninstallSelected?: (printerId: string, pluginIds: string[], cascade: boolean) => void
   uninstallingSelected?: boolean
+  // Migrates a plugin that became a collection: the retired plugin off the printer, then the members on.
+  onMigrateSelected?: (printerId: string, migration: PluginMigration) => void
   // When set (e.g. after a drag-drop "install now"), open that plugin's detail panel, then clear it.
   focusPluginId?: string | null
   onFocusHandled?: () => void
@@ -87,7 +90,7 @@ function StoreLoading() {
 }
 
 // gate-allow components_without_story: the store shell; its surfaces (browse cards, the detail/config/collection panels) each have their own catalog stories, and a full-store story needs live catalog+printer+install providers that just re-render the running app.
-export function PluginStore({ printer, density, grouped = false, onPrinterUpdate, savedPluginVars, onSaveVars, scopeFor, onUpdateAll, updatingAll = false, onInstallSelected, installingSelected = false, onUninstallSelected, uninstallingSelected = false, focusPluginId, onFocusHandled, onConnectGitHub }: PluginStoreProps) {
+export function PluginStore({ printer, density, grouped = false, onPrinterUpdate, savedPluginVars, onSaveVars, scopeFor, onUpdateAll, updatingAll = false, onInstallSelected, installingSelected = false, onUninstallSelected, uninstallingSelected = false, onMigrateSelected, focusPluginId, onFocusHandled, onConnectGitHub }: PluginStoreProps) {
   const managedId = printer?.status === 'managed' ? printer.id : undefined
   const [query, setQuery] = useState('')
   const facets = useFacetState()
@@ -105,15 +108,15 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
   const { liveInstalledIds, liveInstalledVersions, liveDeactivatedIds, pluginHistory, onOperationDone, safetyNotice, dismissSafetyNotice } = useInstallState(printer, onPrinterUpdate, installingSelected || uninstallingSelected || updatingAll)
   const { printActive, blockedActions } = usePrintState(printer)
   const { installedIds, installedVersions, installedSources, deactivatedIds, orphans, displayPlugins, matchOpts, showFlat, matchingPlugins, flatPlugins } = deriveStoreView({
-    printer, catalogPlugins,
+    printer, catalogPlugins, catalogCollections: collections,
     live: { installedIds: liveInstalledIds, installedVersions: liveInstalledVersions, deactivatedIds: liveDeactivatedIds },
     filters: { query, channels: facets.channels, categories: facets.categories, trusts: facets.trusts, statuses: facets.statuses, printerOnly: facets.printerOnly, grouped, sortKey, sortDir, ceilingFor, disabledChannels },
   })
-  const batch = useBatchInstall({ catalogPlugins, installedIds, deactivatedIds, savedVars: savedPluginVars ?? {}, printerId: managedId, printActive, blockedActions, onSaveVars, onInstallSelected })
+  const batch = useBatchInstall({ catalogPlugins, installedIds, deactivatedIds, savedVars: savedPluginVars ?? {}, printerId: managedId, printActive, blockedActions, daemonVersion: printer?.daemonVersion, onSaveVars, onInstallSelected })
   const uninstall = useBatchUninstall({ plugins: catalogPlugins, installedIds, printerId: managedId, onUninstallSelected })
   const selection = activeSelection(batch, uninstall)
   const cardCtx: StoreCardContext = { installedIds, installedVersions, installedSources, installedChannels: printer?.installedChannels ?? {}, deactivatedIds, ceilingFor, disabledChannels, selection }
-  const { updatableCount, updateBlock, updateAll } = useUpdateAll({ printerId: managedId, plugins: catalogPlugins, installedIds, installedVersions, installedSources, savedVars: savedPluginVars ?? {}, ceilingFor, disabledChannels, printActive, blockedActions, onUpdateAll })
+  const { updatableCount, updateBlock, updateAll } = useUpdateAll({ printerId: managedId, plugins: catalogPlugins, installedIds, installedVersions, installedSources, savedVars: savedPluginVars ?? {}, ceilingFor, disabledChannels, printActive, blockedActions, collections, onUpdateAll })
 
   // A b3d:// link or a dropped file names a package by id, and only what the store shows may be opened
   // that way. The daemon and the jinni are not in that set: their update belongs to the printer.
@@ -164,9 +167,9 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
       )}
       {panelCollection && (
         <CollectionDetailPanel
-          collection={panelCollection} plugins={catalogPlugins} installedIds={installedIds} printerId={managedId} installing={installingSelected}
-          printActive={printActive} blockedActions={blockedActions}
-          savedPluginVars={savedPluginVars} onSaveVars={onSaveVars} onInstallSelected={onInstallSelected}
+          collection={panelCollection} plugins={catalogPlugins} collections={collections} installedIds={installedIds} printerId={managedId} installing={installingSelected}
+          printActive={printActive} blockedActions={blockedActions} daemonVersion={printer?.daemonVersion}
+          savedPluginVars={savedPluginVars} onSaveVars={onSaveVars} onInstallSelected={onInstallSelected} onMigrateSelected={onMigrateSelected}
           onOpenPlugin={setPanelPlugin} onClose={() => setPanelCollection(null)}
         />
       )}

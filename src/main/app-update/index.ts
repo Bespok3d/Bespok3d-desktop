@@ -8,7 +8,7 @@ import { reportEvent } from '../analytics'
 import { loadSettings, saveSettings, type RepoCoords } from '../settings'
 import { autoUpdateFeed } from './feed'
 import { updateProblemFromError, type UpdateProblem } from './problem'
-import { readPublishedReleases, fetchReleaseInstallers, downloadPublicAsset } from './public-releases'
+import { readPublishedReleases, fetchReleaseInstallers, downloadPublicAsset, isReleasePageUrl } from './public-releases'
 import { checkIntervalMs, pickPlatformAsset, type UpdateFrequency } from './schedule'
 import {
   updateStrategyForPlatform,
@@ -183,7 +183,16 @@ export function installAppUpdate(): void {
   autoUpdater.quitAndInstall()
 }
 
+// The address of a release page is read out of the release feed, so it is a remote answer and this is
+// where it reaches the machine. Anything but a web page is refused here as well as where the feed is
+// read, because this is the door: the machine opens whatever it has registered for the scheme it is
+// handed, and a download button is not allowed to be a way to start something on the owner's machine.
 export function openAppDownloadPage(url: string): void {
+  if (!isReleasePageUrl(url)) {
+    console.warn(`[updater] refused to open "${url}": that is not the address of a release page`)
+
+    return
+  }
   shell.openExternal(url)
 }
 
@@ -208,7 +217,7 @@ export async function rollbackToRelease(tag: string): Promise<RollbackResult> {
   const installers = await fetchReleaseInstallers(appRepo, tag, process.platform, process.arch)
   const asset = pickPlatformAsset(installers, process.platform, process.arch)
   if (!asset) {
-    await shell.openExternal(release.url)
+    openAppDownloadPage(release.url)
 
     return { outcome: 'page' }
   }

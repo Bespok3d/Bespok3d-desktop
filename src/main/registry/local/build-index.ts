@@ -10,6 +10,11 @@ const INDEX_SCHEMA_VERSION = 1
 const LOCAL_REGISTRY_NAME = 'Sideloaded'
 const LOCAL_REGISTRY_PUBLISHER = 'LOCAL'
 const BASE_DEPENDENCY = 'base'
+// Services the DAEMON serves, never a plugin. A manifest that requires one of these is asking for a
+// new-enough daemon build, not for another plugin to be installed, so it must never resolve to a
+// store dep: no plugin has that id and the install would chase a package that does not exist.
+// Mirrors daemon/core/packages/daemon_services.py, pinned to it by build-index.test.ts.
+export const DAEMON_SERVED_SERVICES = new Set(['migrate-patch'])
 
 function serviceName(provided: unknown): string {
   return typeof provided === 'string' ? provided : (provided as { service: string }).service
@@ -17,10 +22,13 @@ function serviceName(provided: unknown): string {
 
 function requiredServices(manifest: StoredManifest): string[] {
   const require = manifest.require as { service: string }[] | undefined
-  if (require !== undefined) return require.map((entry) => entry.service)
   const depends = (manifest.depends as string[] | undefined) ?? []
+  const declared =
+    require !== undefined
+      ? require.map((entry) => entry.service)
+      : depends.map((dependency) => dependency.split('@')[0]).filter((service) => service !== BASE_DEPENDENCY)
 
-  return depends.map((dependency) => dependency.split('@')[0]).filter((service) => service !== BASE_DEPENDENCY)
+  return declared.filter((service) => !DAEMON_SERVED_SERVICES.has(service))
 }
 
 function providerByService(manifests: StoredManifest[]): Record<string, string> {

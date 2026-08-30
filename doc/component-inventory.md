@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-282 exported components + hooks across 21 areas.
+286 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -26,6 +26,7 @@ as you touch the file.
 - `Markdown` (component) - [components/common/content/Markdown.tsx](../src/renderer/src/components/common/content/Markdown.tsx)
 - `Modal` (component) - [components/common/overlay/Modal.tsx](../src/renderer/src/components/common/overlay/Modal.tsx) - The one modal scaffold: a dismiss-aware backdrop wrapping a focus-trapped dialog surface. Callers
 - `PanelSpinner` (component) - [components/common/feedback/PanelSpinner.tsx](../src/renderer/src/components/common/feedback/PanelSpinner.tsx)
+- `PrinterBanner` (component) - [components/common/PrinterBanner.tsx](../src/renderer/src/components/common/PrinterBanner.tsx) - The one bar across the top of the window that tells the user something about the selected printer
 - `RebootProgress` (component) - [components/common/feedback/RebootProgress.tsx](../src/renderer/src/components/common/feedback/RebootProgress.tsx)
 - `Row` (component) - [components/common/Row.tsx](../src/renderer/src/components/common/Row.tsx)
 - `Segmented` (component) - [components/common/Segmented.tsx](../src/renderer/src/components/common/Segmented.tsx) - A single-choice control: a row of mutually-exclusive segments, one active. Labels/icons are passed
@@ -189,6 +190,12 @@ as you touch the file.
 - `InstallGateModals` (component) - [components/install-gate/index.tsx](../src/renderer/src/components/install-gate/index.tsx) - The two dialogs the install gate puts up, mounted once for the whole app. It sits here rather than at
 - `MovedVersionsDialog` (component) - [components/install-gate/MovedVersionsDialog.tsx](../src/renderer/src/components/install-gate/MovedVersionsDialog.tsx) - What the refresh found, shown before the install goes ahead: which plugins have released something
 - `RefreshOfferDialog` (component) - [components/install-gate/RefreshOfferDialog.tsx](../src/renderer/src/components/install-gate/RefreshOfferDialog.tsx) - The question an install asks first: the plugin list is an hour old or older, so refresh it now or go
+
+## Feature: migration
+
+- `MigrationBanner` (component) - [components/migration/MigrationBanner.tsx](../src/renderer/src/components/migration/MigrationBanner.tsx) - The change, put in front of the user instead of left behind a badge they can ignore. A plugin
+- `MigrationDialog` (component) - [components/migration/MigrationDialog.tsx](../src/renderer/src/components/migration/MigrationDialog.tsx) - What the change is, before it runs, in the publisher's own words: the plugin it is about, whatever
+- `PrinterNotices` (component) - [components/migration/PrinterNotices.tsx](../src/renderer/src/components/migration/PrinterNotices.tsx) - The one notice line above the panes. A plugin caught mid-takeover outranks the standing banners
 
 ## Feature: notifications
 

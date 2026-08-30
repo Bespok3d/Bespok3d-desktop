@@ -5,12 +5,15 @@ import { updatePrinter } from '../printers'
 import type { PrinterRecord } from '../printers'
 import type { MergedEntry, PackageTrust } from '../registry/model'
 import type { ReleaseChannel } from '../settings'
-import type { PluginRecoveryResult, RecoverResult } from '@bespok3d/contract'
+import type { PluginRecoveryResult } from '@bespok3d/contract'
+import type { BatchResult } from '../daemon-client/batch-result'
 import type { BatchUpdatePackage, UploadProgressFn } from '../daemon-client/client'
 import { updateBatchPackages, installBatchPackages } from '../daemon-client/client'
 import { loadCatalog } from '../registry'
 import { getManagedRecord } from '../daemon-client/status'
 import { daemonGuardMessage } from '../daemon-client/guard'
+import type { ReportedPair } from '../compat'
+import { askPrinterCompat, assertPackageFitsPair } from '../compat'
 import { findCatalogVariant, resolveArchiveBytes } from './catalog-archive'
 import { verifiedPackageTrustOrDiscard } from './package-check'
 import { streamBatchProgress } from './batch-progress'
@@ -20,11 +23,13 @@ import type { UnsentPackage } from './batch-settlement'
 import { failedLogsAfter, refusalSentence, refusedAttempt } from './failed-installs'
 import { sendUpload } from './progress'
 import { capsOrFallback } from './record-sync'
+import { missingDependencyIds } from './missing-deps'
+import type { PackageOrigin } from './catalog-variant'
 import { reportEvent } from '../analytics'
 
 // One batch daemon call: update-batch or install-batch. Both take the resolved packages and an upload
 // callback and return per-plugin results; the store orchestration around them is identical.
-type BatchPoster = (record: PrinterRecord, packages: BatchUpdatePackage[], onUploadProgress?: UploadProgressFn) => Promise<RecoverResult>
+type BatchPoster = (record: PrinterRecord, packages: BatchUpdatePackage[], onUploadProgress?: UploadProgressFn) => Promise<BatchResult>
 
 export interface PluginUpdateSpec {
   pluginId: string
@@ -37,16 +42,31 @@ export interface PluginUpdateSpec {
   channel?: ReleaseChannel
 }
 
+// The source and channel this update was offered from, which is what the catalog has to be asked
+// about: the package that goes to the printer and the requirements it is weighed against must come
+// from the same entry.
+function originOf(spec: PluginUpdateSpec): PackageOrigin {
+  return { sourceUrl: spec.sourceUrl, channel: spec.channel }
+}
+
 // Ordered, deduped plugin ids for a batch update: each update's still-missing deps (a new version
 // may add one) come first, then the target. Deps-first matters because update_batch applies in order
 // and does not topo-sort.
-export function orderedBatchPluginIds(updates: PluginUpdateSpec[], installed: string[]): string[] {
+//
+// The dependencies are worked out from the catalog by the same resolver a single install uses, not
+// from the list the window sent: a new version can require a service the copy on the printer never
+// needed, and the window built its list around the plugin the user was looking at.
+export function orderedBatchPluginIds(
+  catalog: readonly MergedEntry[],
+  updates: PluginUpdateSpec[],
+  installed: string[],
+): string[] {
   const ids: string[] = []
   function add(pluginId: string) {
     if (!ids.includes(pluginId)) ids.push(pluginId)
   }
   function addWithMissingDeps(update: PluginUpdateSpec) {
-    (update.depIds ?? []).filter((depId) => !installed.includes(depId)).forEach(add)
+    missingDependencyIds(catalog, update.pluginId, update.depIds ?? [], installed, originOf(update)).forEach(add)
     add(update.pluginId)
   }
   updates.forEach(addWithMissingDeps)
@@ -63,11 +83,19 @@ interface VerifiedBatchPackage {
   trust: PackageTrust
 }
 
-async function resolveVerifiedPackage(catalog: readonly MergedEntry[], spec: PluginUpdateSpec): Promise<VerifiedBatchPackage> {
+async function resolveVerifiedPackage(
+  catalog: readonly MergedEntry[],
+  spec: PluginUpdateSpec,
+  pair: ReportedPair,
+): Promise<VerifiedBatchPackage> {
   const { pluginId, vars } = spec
   // Resolved from the source the update was offered from: a plugin running a locally packed build is
   // updated from that same local source, never from the published copy that carries a higher number.
   const entry = findCatalogVariant(catalog, pluginId, spec.sourceUrl, spec.channel)
+  // An update faces the compatibility floors a first install faces. A new version can raise the
+  // daemon it needs, and the printer being updated is the one running the old one: without this the
+  // batch posts a package the printer cannot run, and the plugin comes back broken rather than newer.
+  assertPackageFitsPair(entry, pair)
   const bytes = await resolveArchiveBytes(entry)
 
   return { archive: { pluginId, bytes, vars }, entry, trust: await verifiedPackageTrustOrDiscard(bytes, entry) }
@@ -78,8 +106,9 @@ async function resolveVerifiedPackage(catalog: readonly MergedEntry[], spec: Plu
 function settlePackage(
   catalog: readonly MergedEntry[],
   spec: PluginUpdateSpec,
+  pair: ReportedPair,
 ): Promise<VerifiedBatchPackage | UnsentPackage> {
-  return resolveVerifiedPackage(catalog, spec).catch((error) => ({ pluginId: spec.pluginId, reason: refusalSentence(error) }))
+  return resolveVerifiedPackage(catalog, spec, pair).catch((error) => ({ pluginId: spec.pluginId, reason: refusalSentence(error) }))
 }
 
 function isVerified(settled: VerifiedBatchPackage | UnsentPackage): settled is VerifiedBatchPackage {
@@ -90,6 +119,28 @@ function isUnsent(settled: VerifiedBatchPackage | UnsentPackage): settled is Uns
   return !isVerified(settled)
 }
 
+// What this printer already has and what it is running, read once for the whole batch: asking it per
+// package would be the same two reads over and over. Both halves are allowed to fail, the way the
+// single install's reads are, because they happen before a byte is sent: a printer that will not say
+// what it has must not abort a batch that has not started, and a version it will not report refuses
+// nothing.
+interface PrinterAsItStands {
+  // The plugins that already answer a dependency: installed AND switched on. A deactivated plugin is
+  // on the printer serving nothing, and the printer refuses a package whose requirement only a
+  // deactivated plugin would meet, so counting one as present is how an update strands the user with
+  // a plugin that cannot be installed and a printer that will not accept it. Sending its package
+  // again is the way back: a clean apply switches it on.
+  serving: string[]
+  pair: ReportedPair
+}
+
+async function printerAsItStands(record: PrinterRecord): Promise<PrinterAsItStands> {
+  const [caps, compat] = await Promise.all([capsOrFallback(record, {}), askPrinterCompat(record)])
+  const switchedOff = new Set(caps.deactivatedIds)
+
+  return { serving: caps.installedIds.filter((pluginId) => !switchedOff.has(pluginId)), pair: compat.pair }
+}
+
 // What the batch will post, and what it is leaving behind. Every package is verified on its own first;
 // then the plugins that need one that was left behind are pulled out too, because installing a plugin
 // whose dependency never arrived is worse than not installing it.
@@ -98,16 +149,26 @@ interface SettledBatch {
   unsentRows: PluginRecoveryResult[]
 }
 
-async function settleBatch(catalog: readonly MergedEntry[], specs: PluginUpdateSpec[], installed: string[]): Promise<SettledBatch> {
-  const specById = new Map(specs.map((spec) => [spec.pluginId, spec]))
-  const pluginIds = orderedBatchPluginIds(specs, installed)
-  const settled = await Promise.all(pluginIds.map((pluginId) => settlePackage(catalog, specById.get(pluginId) ?? { pluginId })))
-  const leftOutIds = pluginsLeftOut(specs, new Set(settled.filter(isUnsent).map((item) => item.pluginId)))
-  const stillSentIds = pluginsStillSent(specs, leftOutIds)
+// Each request as the batch will actually carry it: the dependencies the catalog says this plugin needs
+// and the printer is not serving, not just the ones the window happened to ask with. Settlement decides
+// what is still wanted from this list, so a dependency the batch worked out for itself has to be in it:
+// otherwise that package is fetched, verified, dropped without a word, and the printer refuses the
+// plugin that needed it.
+function requestsWithTheirDependencies(catalog: readonly MergedEntry[], specs: PluginUpdateSpec[], serving: string[]): PluginUpdateSpec[] {
+  return specs.map((spec) => ({ ...spec, depIds: missingDependencyIds(catalog, spec.pluginId, spec.depIds ?? [], serving, originOf(spec)) }))
+}
+
+async function settleBatch(catalog: readonly MergedEntry[], specs: PluginUpdateSpec[], printer: PrinterAsItStands): Promise<SettledBatch> {
+  const requests = requestsWithTheirDependencies(catalog, specs, printer.serving)
+  const specById = new Map(requests.map((spec) => [spec.pluginId, spec]))
+  const pluginIds = orderedBatchPluginIds(catalog, requests, printer.serving)
+  const settled = await Promise.all(pluginIds.map((pluginId) => settlePackage(catalog, specById.get(pluginId) ?? { pluginId }, printer.pair)))
+  const leftOutIds = pluginsLeftOut(requests, new Set(settled.filter(isUnsent).map((item) => item.pluginId)))
+  const stillSentIds = pluginsStillSent(requests, leftOutIds)
 
   return {
     toSend: settled.filter(isVerified).filter((item) => stillSentIds.has(item.archive.pluginId)),
-    unsentRows: unsentPluginRows(specs, settled.filter(isUnsent)),
+    unsentRows: unsentPluginRows(requests, settled.filter(isUnsent)),
   }
 }
 
@@ -132,7 +193,7 @@ function recordPluginsNeverSent(printerId: string, unsentRows: PluginRecoveryRes
 // The printer refused the call itself (busy printing, off the network), so every package that was sent
 // is a plugin that did not install and keeps that reason. Written here because the failure skips the
 // write that follows the call: installing these one at a time, each would have kept the same reason.
-function keptIfTheCallFails(printerId: string, sentPluginIds: string[], posting: Promise<RecoverResult>): Promise<RecoverResult> {
+function keptIfTheCallFails(printerId: string, sentPluginIds: string[], posting: Promise<BatchResult>): Promise<BatchResult> {
   return posting.catch((error: unknown) => {
     const attempts = sentPluginIds.map((pluginId) => refusedAttempt(pluginId, refusalSentence(error)))
 
@@ -154,15 +215,13 @@ function guardedPoster(post: BatchPoster): BatchPoster {
   }
 }
 
-async function runStoreBatch(win: BrowserWindow, printerId: string, specs: PluginUpdateSpec[], post: BatchPoster): Promise<RecoverResult> {
+async function runStoreBatch(win: BrowserWindow, printerId: string, specs: PluginUpdateSpec[], post: BatchPoster): Promise<BatchResult> {
   const record = getManagedRecord(printerId)
   const catalog = (await loadCatalog()).plugins
-  // Read before anything is sent, and allowed to fail the same way the single install's read is: a
-  // printer that will not say what it already has must not abort a batch that has not started yet.
-  const installed = (await capsOrFallback(record, {})).installedIds
+  const printer = await printerAsItStands(record)
   // The ordered plan (deps first) is decided here; the renderer renders every row up front, then ticks
   // each as streamBatchProgress mirrors the daemon's live feed, so a batch is never an opaque spinner.
-  const { toSend, unsentRows } = await settleBatch(catalog, specs, installed)
+  const { toSend, unsentRows } = await settleBatch(catalog, specs, printer)
   recordPluginsNeverSent(printerId, unsentRows)
   if (toSend.length === 0) return batchResultWithUnsent(null, unsentRows)
   const packages = toSend.map((item) => item.archive)
@@ -192,7 +251,7 @@ async function runStoreBatch(win: BrowserWindow, printerId: string, specs: Plugi
   return batchResultWithUnsent(result, unsentRows)
 }
 
-export function runStoreUpdateBatch(win: BrowserWindow, printerId: string, updates: PluginUpdateSpec[]): Promise<RecoverResult> {
+export function runStoreUpdateBatch(win: BrowserWindow, printerId: string, updates: PluginUpdateSpec[]): Promise<BatchResult> {
   return runStoreBatch(win, printerId, updates, guardedPoster(updateBatchPackages))
 }
 
@@ -200,14 +259,14 @@ export function runStoreUpdateBatch(win: BrowserWindow, printerId: string, updat
 // "install selected" here instead of N sequential single installs is the Bug A fix: on the U1 it bounces
 // the display compositor once for the whole set, not once per display plugin. A daemon conflict 409 is
 // surfaced readably (the renderer pre-checks, the daemon backstops two mutually-exclusive picks).
-export function runStoreInstallBatch(win: BrowserWindow, printerId: string, specs: PluginUpdateSpec[]): Promise<RecoverResult> {
+export function runStoreInstallBatch(win: BrowserWindow, printerId: string, specs: PluginUpdateSpec[]): Promise<BatchResult> {
   return runStoreBatch(win, printerId, specs, guardedPoster(installBatchPackages)).then(countPluginsInstalled)
 }
 
 // Counted here and not inside runStoreBatch, which the update batch shares: an update is not an
 // install. Neither is the OTA recovery that puts twelve plugins back after a firmware update, and
 // that one is its own daemon call which passes nowhere near this file.
-function countPluginsInstalled(batch: RecoverResult): RecoverResult {
+function countPluginsInstalled(batch: BatchResult): BatchResult {
   // A skipped row is the printer saying it already had that plugin. It counts as a success everywhere
   // else in this file, and it is not somebody installing anything.
   const newlyInstalled = batch.results.filter((row) => row.ok && !row.skipped)

@@ -21,7 +21,7 @@ vi.mock('./record-sync', () => ({ capsOrFallback: vi.fn() }))
 vi.mock('../daemon-client/client', async () => {
   const { DaemonHttpError } = await vi.importActual<typeof import('../daemon-client/transport')>('../daemon-client/transport')
 
-  return { DaemonHttpError, fetchCapabilities: vi.fn(), updateBatchPackages: vi.fn(), installBatchPackages: vi.fn() }
+  return { DaemonHttpError, fetchCapabilities: vi.fn(), fetchDaemonStatus: vi.fn(), updateBatchPackages: vi.fn(), installBatchPackages: vi.fn() }
 })
 vi.mock('../daemon-client/status', () => ({ getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }) }))
 vi.mock('../analytics', () => ({ reportEvent: vi.fn() }))
@@ -33,7 +33,7 @@ import type { PrinterRecord } from '../printers'
 import { findCatalogVariant, resolveArchiveBytes, discardCachedArchive } from './catalog-archive'
 import { streamBatchProgress } from './batch-progress'
 import { capsOrFallback } from './record-sync'
-import { DaemonHttpError, fetchCapabilities, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
+import { DaemonHttpError, fetchCapabilities, fetchDaemonStatus, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
 import { getManagedRecord } from '../daemon-client/status'
 import { reportEvent } from '../analytics'
 
@@ -66,6 +66,7 @@ function stubTheBatchAround(archiveBytes: Buffer): void {
   vi.mocked(findCatalogVariant).mockReturnValue(LISTED_ENTRY)
   vi.mocked(resolveArchiveBytes).mockResolvedValue(archiveBytes)
   vi.mocked(fetchCapabilities).mockResolvedValue({} as never)
+  vi.mocked(fetchDaemonStatus).mockResolvedValue({ version: '0.13.0' } as never)
   vi.mocked(streamBatchProgress).mockResolvedValue(() => undefined)
   vi.mocked(updateBatchPackages).mockResolvedValue(IDLE_TIMEOUT_INSTALLED as never)
   vi.mocked(installBatchPackages).mockResolvedValue(IDLE_TIMEOUT_INSTALLED as never)
@@ -78,15 +79,21 @@ function updateBatch(): Promise<RecoverResult> {
   return runStoreUpdateBatch({} as BrowserWindow, 'printer-1', ONE_SPEC)
 }
 
+const NO_CATALOG: MergedEntry[] = []
+
+function reasonFor(result: RecoverResult, pluginId: string): string {
+  return result.results.find((row) => row.pluginId === pluginId)?.reason ?? ''
+}
+
 describe('orderedBatchPluginIds', () => {
   it('places a still-missing dependency before the plugin that needs it', () => {
     const updates = [{ pluginId: 'force-bed-mesh', depIds: ['print-prefs-core'] }]
-    expect(orderedBatchPluginIds(updates, [])).toEqual(['print-prefs-core', 'force-bed-mesh'])
+    expect(orderedBatchPluginIds(NO_CATALOG, updates, [])).toEqual(['print-prefs-core', 'force-bed-mesh'])
   })
 
   it('skips a dependency that is already installed', () => {
     const updates = [{ pluginId: 'force-bed-mesh', depIds: ['print-prefs-core'] }]
-    expect(orderedBatchPluginIds(updates, ['print-prefs-core'])).toEqual(['force-bed-mesh'])
+    expect(orderedBatchPluginIds(NO_CATALOG, updates, ['print-prefs-core'])).toEqual(['force-bed-mesh'])
   })
 
   it('dedupes a dependency shared by several updated plugins', () => {
@@ -94,11 +101,41 @@ describe('orderedBatchPluginIds', () => {
       { pluginId: 'force-bed-mesh', depIds: ['print-prefs-core'] },
       { pluginId: 'force-timelapse', depIds: ['print-prefs-core'] },
     ]
-    expect(orderedBatchPluginIds(updates, [])).toEqual(['print-prefs-core', 'force-bed-mesh', 'force-timelapse'])
+    expect(orderedBatchPluginIds(NO_CATALOG, updates, [])).toEqual(['print-prefs-core', 'force-bed-mesh', 'force-timelapse'])
   })
 
   it('returns just the plugin when it has no deps', () => {
-    expect(orderedBatchPluginIds([{ pluginId: 'cpu-temp' }], [])).toEqual(['cpu-temp'])
+    expect(orderedBatchPluginIds(NO_CATALOG, [{ pluginId: 'cpu-temp' }], [])).toEqual(['cpu-temp'])
+  })
+
+  // R-APP-2. The new version of a plugin can need a service the copy on the printer never needed, and
+  // the window that offered the update built its list around the old one. Install asks the catalog;
+  // the update path has to ask the same question or the plugin lands with nothing to talk to.
+  it('adds the provider of a newly required service the window never asked for', () => {
+    const catalog = [{ ...LISTED_ENTRY, name: 'force-bed-mesh', deps: ['print-prefs-core'] }] as MergedEntry[]
+    expect(orderedBatchPluginIds(catalog, [{ pluginId: 'force-bed-mesh' }], [])).toEqual(['print-prefs-core', 'force-bed-mesh'])
+  })
+
+  // The user's printer runs a locally packed build of a plugin whose published copy is an older
+  // release that needs nothing. The batch sends the local build's bytes, so the base plugin that build
+  // needs has to go into the same batch. Reading the published copy's requirements instead sent the
+  // plugin alone, the printer refused it for a base plugin nobody had added, and the update ended in
+  // "finished with errors" with the user stranded.
+  it('adds the base plugin the build being sent needs, not the one the published copy needs', () => {
+    const published = { ...LISTED_ENTRY, name: 'rfid-ntag', version: '0.1.12', deps: [] } as MergedEntry
+    const localBuild = { ...published, version: '0.1.14', registry_url: 'local:test-bundle', deps: ['u1-base-print-task-config'] } as MergedEntry
+    const catalog = [{ ...published, variants: [published, localBuild] }] as MergedEntry[]
+    const updates = [{ pluginId: 'rfid-ntag', sourceUrl: 'local:test-bundle', channel: 'stable' as const }]
+
+    expect(orderedBatchPluginIds(catalog, updates, [])).toEqual(['u1-base-print-task-config', 'rfid-ntag'])
+  })
+
+  it('walks a dependency of a dependency, deepest first', () => {
+    const catalog = [
+      { ...LISTED_ENTRY, name: 'force-bed-mesh', deps: ['print-prefs-core'] },
+      { ...LISTED_ENTRY, name: 'print-prefs-core', deps: ['u1-tools'] },
+    ] as MergedEntry[]
+    expect(orderedBatchPluginIds(catalog, [{ pluginId: 'force-bed-mesh' }], [])).toEqual(['u1-tools', 'print-prefs-core', 'force-bed-mesh'])
   })
 })
 
@@ -133,6 +170,32 @@ describe('store batch package verification', () => {
 
   it('posts a batch whose packages verify', async () => {
     stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    await updateBatch()
+    expect(updateBatchPackages).toHaveBeenCalled()
+  })
+})
+
+// R-APP-1. A new version of a plugin can raise the daemon version it needs, and the printer being
+// updated is the one still running the old daemon. The single-install button refused that pair;
+// "Update all" posted it, and the printer failed the install with the bytes already on it.
+describe('store batch weighs the daemon an update needs against the daemon the printer runs', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('does not send an update the daemon on this printer is too old to run, and says which side to move', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(findCatalogVariant).mockReturnValue({ ...LISTED_ENTRY, min_daemon_version: '0.14.0' } as MergedEntry)
+    vi.mocked(fetchDaemonStatus).mockResolvedValue({ version: '0.13.0' } as never)
+    const result = await updateBatch()
+    expect(updateBatchPackages).not.toHaveBeenCalled()
+    expect(reasonFor(result, 'idle-timeout')).toMatch(/needs the Bespok3d daemon at 0\.14\.0 or newer/)
+  })
+
+  // A printer that will not say what it is running is not a printer that fails the floor. Refusing an
+  // unanswerable read would make a daemon mid-restart look like an incompatible package.
+  it('sends the update when the printer does not report its daemon version', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(findCatalogVariant).mockReturnValue({ ...LISTED_ENTRY, min_daemon_version: '0.14.0' } as MergedEntry)
+    vi.mocked(fetchDaemonStatus).mockRejectedValue(new Error('printer is not answering'))
     await updateBatch()
     expect(updateBatchPackages).toHaveBeenCalled()
   })
@@ -180,9 +243,6 @@ function pluginIdsSentToThePrinter(): string[] {
   return (firstCall?.[1] ?? []).map((sent) => sent.pluginId)
 }
 
-function reasonFor(result: RecoverResult, pluginId: string): string {
-  return result.results.find((row) => row.pluginId === pluginId)?.reason ?? ''
-}
 
 describe('store batch installs the plugins it can and reports the ones it cannot', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -430,16 +490,20 @@ describe('a printer that refuses the batch because it is printing', () => {
 })
 
 // The same read that used to abort a single install aborted a whole batch: it happens before anything
-// is sent, and a printer whose jinni is mid-restart answers it with a 500. It now goes through the read
-// that is allowed to fail (record-sync's own test covers what that read does when it fails).
+// is sent, and a printer whose jinni is mid-restart answers it with a 500. Every read a batch makes
+// before it posts is now allowed to fail: what the printer already has falls back to the set last
+// known (record-sync's own test covers that), and the versions it is running fall back to not knowable,
+// which refuses nothing.
 describe('a printer that will not say what it already has', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('does not stop the batch being sent', async () => {
     stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(fetchCapabilities).mockRejectedValue(new Error('jinni is restarting'))
+    vi.mocked(fetchDaemonStatus).mockRejectedValue(new Error('jinni is restarting'))
     await updateBatch()
-    expect(fetchCapabilities).not.toHaveBeenCalled()
     expect(capsOrFallback).toHaveBeenCalled()
+    expect(updateBatchPackages).toHaveBeenCalled()
   })
 })
 
@@ -490,5 +554,49 @@ describe('what a batch counts as a plugin someone installed', () => {
     const recoveryCallers = ['./handlers.ts', '../ops/printer-ops.ts'].map((path) => readFileSync(join(__dirname, path), 'utf-8'))
 
     expect(recoveryCallers.some((source) => source.includes('reportEvent'))).toBe(false)
+  })
+})
+
+const PREFS_ENTRY = { ...LISTED_ENTRY, name: 'print-prefs-core', version: '0.1.0' } as MergedEntry
+const NEEDS_PREFS = { ...LISTED_ENTRY, deps: ['print-prefs-core'] } as MergedEntry
+
+function stubBatchWhereTheUpdateNeedsPrefs(caps: { installedIds: string[]; deactivatedIds?: string[] }): void {
+  stubTheBatchAround(packageWith(HONEST_MANIFEST))
+  const byName = new Map([NEEDS_PREFS, PREFS_ENTRY].map((entry) => [entry.name, entry]))
+  vi.mocked(loadCatalog).mockResolvedValue({ plugins: [NEEDS_PREFS, PREFS_ENTRY] } as never)
+  vi.mocked(findCatalogVariant).mockImplementation((_plugins, pluginId) => byName.get(pluginId) as MergedEntry)
+  vi.mocked(resolveArchiveBytes).mockImplementation((entry) => Promise.resolve(packageWith({ ...HONEST_MANIFEST, name: entry.name, version: entry.version })))
+  vi.mocked(capsOrFallback).mockResolvedValue(caps as never)
+}
+
+// The window offers the updates it can see and asks with the dependencies IT knew about; the batch
+// then works out the rest from the catalog. Both halves have to reach the printer in the same call:
+// what the batch adds for itself is exactly what the window could not have known, which is the case of
+// a new version needing a service the copy on the printer never needed.
+describe('a batch sends the dependencies it worked out for itself, not only the ones it was asked with', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  // The failure a user actually hit on the base-layer update: the dependency was fetched, verified,
+  // then dropped on the way out without a word, and the printer refused the plugin that needed it as
+  // requiring a service nothing on it provides.
+  it('sends a dependency the catalog names even when the window never asked for it', async () => {
+    stubBatchWhereTheUpdateNeedsPrefs({ installedIds: [] })
+    await updateBatch()
+    expect(pluginIdsSentToThePrinter()).toEqual(['print-prefs-core', 'idle-timeout'])
+  })
+
+  // A plugin the printer has switched off provides nothing, and the printer refuses a package whose
+  // requirement only a switched-off plugin would meet. Sending its package again is the way back: a
+  // clean apply switches it on.
+  it('sends a dependency the printer has but has switched off', async () => {
+    stubBatchWhereTheUpdateNeedsPrefs({ installedIds: ['print-prefs-core'], deactivatedIds: ['print-prefs-core'] })
+    await updateBatch()
+    expect(pluginIdsSentToThePrinter()).toContain('print-prefs-core')
+  })
+
+  it('leaves out a dependency the printer already runs', async () => {
+    stubBatchWhereTheUpdateNeedsPrefs({ installedIds: ['print-prefs-core'], deactivatedIds: [] })
+    await updateBatch()
+    expect(pluginIdsSentToThePrinter()).toEqual(['idle-timeout'])
   })
 })
