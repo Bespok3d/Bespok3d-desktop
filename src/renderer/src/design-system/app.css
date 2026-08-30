@@ -62,6 +62,9 @@ textarea {
      scrim (200) and the file-drop overlay (9999), which are intentional whole-window layers. */
   z-index: 120;
   flex-shrink: 0;
+  /* The window's only drag handle. A full-window scrim must NOT set no-drag: Chromium builds the
+     drag region in element order, not by z-index, so a later full-window no-drag rectangle erases
+     this one and the window stops moving while a dialog is open. */
   -webkit-app-region: drag;
 }
 
@@ -1126,7 +1129,6 @@ textarea {
   background: var(--bg-overlay);
   z-index: 60;
   animation: scrimIn 200ms var(--ease-out);
-  -webkit-app-region: no-drag;
 }
 @keyframes scrimIn {
   from {
@@ -1428,7 +1430,6 @@ textarea {
   /* Top pad clears the app header so a centered modal never slips beneath it. The stacking level is
      assigned per open by the Modal scaffold (overlay/modal-stack.ts), kept below the header's z 120. */
   padding: calc(var(--header-h) + var(--space-6)) var(--space-6) var(--space-6);
-  -webkit-app-region: no-drag;
 }
 .modal {
   background: var(--bg-elev);

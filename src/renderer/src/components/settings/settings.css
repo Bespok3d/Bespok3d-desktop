@@ -284,7 +284,6 @@
      header (so the window + Close button stay below the header bar) and its stacking level is assigned
      by open order (overlay/modal-stack.ts), so a modal opened FROM settings still lands on top of it. */
   padding: calc(var(--header-h) + var(--space-6)) var(--space-6) var(--space-6);
-  -webkit-app-region: no-drag;
 }
 
 .settings-window {
