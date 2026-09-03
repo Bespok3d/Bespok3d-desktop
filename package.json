@@ -41,7 +41,7 @@
     "@types/ssh2": "^1.15.5",
     "adm-zip": "^0.5.17",
     "bonjour-service": "^1.4.0",
-    "electron-updater": "^6.4.0",
+    "electron-updater": "^6.8.9",
     "openpgp": "^6.3.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
