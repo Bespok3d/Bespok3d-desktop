@@ -17,7 +17,13 @@ class MockSocket extends EventEmitter {
   close(): void {}
 }
 
-vi.mock('ws', () => ({ default: vi.fn((url: string, options: Record<string, unknown>) => new MockSocket(url, options)) }))
+// vitest 4 calls a vi.fn implementation with `new` when the mocked function is constructed, and an
+// arrow is not constructible. A declaration is, and it records the socket exactly as before.
+function openMockSocket(url: string, options: Record<string, unknown>): MockSocket {
+  return new MockSocket(url, options)
+}
+
+vi.mock('ws', () => ({ default: vi.fn(openMockSocket) }))
 vi.mock('../client', () => ({ makeAgent: vi.fn(() => ({})) }))
 vi.mock('../../printers', () => ({
   loadPrinters: vi.fn(() => [{ id: 'p1', ip: '10.0.0.1', daemonCert: 'CERT', daemonToken: 'TOK' }]),

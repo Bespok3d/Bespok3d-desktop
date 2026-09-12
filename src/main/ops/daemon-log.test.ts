@@ -3,11 +3,9 @@
 import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('../printers', () => ({ checkDaemon: vi.fn() }))
-vi.mock('../ssh', () => ({ shellQuote: (value: string) => `'${value}'` }))
 
-import { formatDaemonStartFailure, tailDaemonLog, waitForDaemon } from './daemon-log'
+import { formatDaemonStartFailure, waitForDaemon } from './daemon-log'
 import { checkDaemon } from '../printers'
-import type { SshSession } from '../ssh'
 
 describe('formatDaemonStartFailure', () => {
   it('returns the bare message when the log tail is empty', () => {
@@ -25,27 +23,6 @@ describe('formatDaemonStartFailure', () => {
     expect(formatted).toContain('--- daemon.log (last 200 lines) ---')
     expect(formatted).toContain('ImportError: missing module')
     expect(formatted).not.toMatch(/---\n\n/)
-  })
-})
-
-describe('tailDaemonLog', () => {
-  it('asks for the last 200 lines of the standard daemon log path', async () => {
-    const execMock = vi.fn().mockResolvedValue('log lines')
-    const fakeSession = { exec: execMock } as unknown as SshSession
-    const result = await tailDaemonLog(fakeSession)
-    expect(execMock).toHaveBeenCalledTimes(1)
-    const commandIssued = execMock.mock.calls[0][0] as string
-    expect(commandIssued).toContain('tail -200')
-    expect(commandIssued).toContain('/userdata/bespok3d/var/log/daemon.log')
-    expect(commandIssued).toContain('|| true')
-    expect(result).toBe('log lines')
-  })
-
-  it('respects a custom log path when supplied', async () => {
-    const execMock = vi.fn().mockResolvedValue('')
-    const fakeSession = { exec: execMock } as unknown as SshSession
-    await tailDaemonLog(fakeSession, '/somewhere/else/daemon.log')
-    expect(execMock.mock.calls[0][0]).toContain('/somewhere/else/daemon.log')
   })
 })
 

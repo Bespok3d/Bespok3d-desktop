@@ -280,13 +280,3 @@ export interface Channel {
   tone: string
   defaultOn: boolean
 }
-
-export interface PrinterAdapter {
-  id: string
-  title: string
-  vendor: string
-  version: string
-  channel: ReleaseChannel
-  trust: TrustTier
-  description: string
-}

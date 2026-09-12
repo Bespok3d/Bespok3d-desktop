@@ -241,9 +241,10 @@ test('the golden describes the plugin set its own fixture names', () => {
 
 // The golden rails above need the sibling plugins/ tree and stand down without it, so a bare app-only
 // checkout has nothing guarding the one pair of packages enrollment cannot run without. This needs only
-// the daemon and adapters siblings staged (not the plugins/ tree), builds the release channel alone (2
-// packages, no plugin sources), and fails the moment either drops out of bundle.json or discovery stops
-// finding its staged source: the two ways "the bundled set loses a package" happens in practice.
+// the daemon and adapters siblings staged (not the plugins/ tree), builds the release channel alone (the
+// daemon plus one jinni per adapter, no plugin sources), and fails the moment one drops out of
+// bundle.json or discovery stops finding its staged source: the two ways "the bundled set loses a
+// package" happens in practice.
 const DAEMON_PACKAGE_DIR = join(WORKSPACE_DIR, 'daemon', 'dist', 'package')
 const ADAPTERS_PACKAGE_DIR = join(WORKSPACE_DIR, 'adapters', 'dist', 'package')
 const NEEDS_STAGED_SYSTEM_PACKAGES =
@@ -256,7 +257,7 @@ test(
   { timeout: 120_000, ...NEEDS_STAGED_SYSTEM_PACKAGES },
   async () => {
     const bundleList = JSON.parse(readFileSync(join(APP_REPO_DIR, 'scripts', 'bundle.json'), 'utf8')).bundle
-    assert.deepEqual([...bundleList].sort(), ['bespok3d-daemon', 'bespok3d-jinni-snapmaker-u1'])
+    assert.deepEqual([...bundleList].sort(), ['bespok3d-daemon', 'bespok3d-jinni-klipper-linux', 'bespok3d-jinni-snapmaker-u1'])
 
     ensureBuilderBuilt()
     const openpgp = builderDependency('openpgp')
@@ -274,12 +275,16 @@ test(
       assert.ok(shippedNames.includes('bespok3d-daemon'), 'release bundle lost the daemon package enrollment needs')
       assert.ok(
         shippedNames.includes('bespok3d-jinni-snapmaker-u1'),
-        'release bundle lost the jinni package enrollment needs',
+        'release bundle lost the U1 jinni package enrollment needs',
+      )
+      assert.ok(
+        shippedNames.includes('bespok3d-jinni-klipper-linux'),
+        'release bundle lost the Klipper on Linux jinni package enrollment needs',
       )
       assert.equal(
         packages.length,
-        2,
-        `release bundle should pack exactly the daemon and the jinni, got: ${shippedNames.join(', ')}`,
+        3,
+        `release bundle should pack exactly the daemon and both jinnis, got: ${shippedNames.join(', ')}`,
       )
     } finally {
       if (savedKey === undefined) delete process.env[SIGNING_KEY_VAR]
@@ -331,7 +336,7 @@ test(
         devCuration: { bundle: [], variantDirs: [] },
       })
 
-      assert.equal(packages.length, 2, 'keyless dev build should still pack the two staged system packages')
+      assert.equal(packages.length, 3, 'keyless dev build should still pack the three staged system packages')
     } finally {
       if (savedKey === undefined) delete process.env[SIGNING_KEY_VAR]
       else process.env[SIGNING_KEY_VAR] = savedKey

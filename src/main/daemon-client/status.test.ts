@@ -17,6 +17,10 @@ vi.mock('../printers', () => ({
   },
 }))
 vi.mock('../mdns/arp', () => ({ macForIp: vi.fn().mockReturnValue(undefined) }))
+// The adapters this build registers, as parseCaps sees them when it keys the jinni version by package.
+vi.mock('../adapter-loader', () => ({
+  listAdapters: () => [{ id: 'klipper-generic', jinniPackage: 'bespok3d-jinni-klipper-linux' }],
+}))
 
 import {
   summarizeDrift, dedupeEndpoints, parseCaps, daemonNeedsUpdate, assertDaemonVersion,
@@ -91,6 +95,16 @@ describe('parseCaps', () => {
     const parsed = parseCaps({ installed: {}, adapter: 'snapmaker-u1' } as never, { ip: '10.0.0.5', daemonVersion: '0.12.23' })
 
     expect(parsed.machineryVersions).toEqual({ 'bespok3d-daemon': '0.12.23' })
+  })
+
+  // The klipper-linux jinni answers 'klipper-linux' (its code base, not a registered id) if its layout
+  // file is ever missing. The record still knows what the printer was enrolled as, and that is what
+  // keys the jinni version; without it the store would offer to install the jinni already running.
+  it('keys the jinni version by the adapter the record was enrolled under when the printer names an unregistered one', () => {
+    const caps = { installed: {}, adapter: 'klipper-linux', jinni_version: '0.2.0' } as never
+    const parsed = parseCaps(caps, { ip: '10.0.0.5', daemonVersion: '0.14.1', adapter: 'klipper-generic' })
+
+    expect(parsed.machineryVersions).toEqual({ 'bespok3d-daemon': '0.14.1', 'bespok3d-jinni-klipper-linux': '0.2.0' })
   })
 
   it('reports no machinery version for a printer whose daemon version is not known yet', () => {

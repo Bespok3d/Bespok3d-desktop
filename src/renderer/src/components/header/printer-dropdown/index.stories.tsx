@@ -9,9 +9,11 @@ import type { Printer } from '../../../data/types'
 export default { title: 'Header / Printer dropdown' }
 
 const ADAPTER_JINNI = '0.1.6'
-const ADAPTER_JINNI_VERSIONS = { 'snapmaker-u1': ADAPTER_JINNI }
+// Every adapter id this build registers, so a story shows the maps as the app builds them rather than
+// as a single-adapter special case. The klipper-linux code base registers two of them.
+const ADAPTER_JINNI_VERSIONS = { 'snapmaker-u1': ADAPTER_JINNI, 'voron-24': '0.2.0', 'klipper-generic': '0.2.0' }
 const ADAPTER_TITLE = 'Snapmaker U1'
-const ADAPTER_TITLES = { 'snapmaker-u1': ADAPTER_TITLE }
+const ADAPTER_TITLES = { 'snapmaker-u1': ADAPTER_TITLE, 'voron-24': 'Voron 2.4', 'klipper-generic': 'Klipper: generic' }
 
 const ENDPOINTS = [
   { label: 'Fluidd', url: 'http://192.0.2.108' },

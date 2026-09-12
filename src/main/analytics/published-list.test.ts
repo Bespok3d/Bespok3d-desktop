@@ -30,8 +30,17 @@ function namesInTheTaxonomyTable(document: string): string[] {
   return [...taxonomy.matchAll(/^\|\s*`([a-z0-9_]+)`\s*\|/gm)].map((row) => row[1])
 }
 
-describe.skipIf(!existsSync(publishedListPath))('the list users read and the list the app sends', () => {
-  const published = readFileSync(publishedListPath, 'utf8')
+// True where the sibling bespok3d-server tree is absent: there is no published list to read.
+const NO_PUBLISHED_LIST = !existsSync(publishedListPath)
+
+// A skipped describe still runs its body to collect the cases inside it, so the read belongs behind
+// the same flag the skip is on, not merely behind the skip.
+function publishedList(): string {
+  return NO_PUBLISHED_LIST ? '' : readFileSync(publishedListPath, 'utf8')
+}
+
+describe.skipIf(NO_PUBLISHED_LIST)('the list users read and the list the app sends', () => {
+  const published = publishedList()
   const listed = namesInTheTaxonomyTable(published)
 
   it('has a row for every event, so nothing is collected that nobody was told about', () => {

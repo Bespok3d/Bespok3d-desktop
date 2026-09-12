@@ -3,6 +3,7 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 import { screen, act, waitFor, fireEvent } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makePrinter, makeEnrollEvent } from '../../test/fixtures'
@@ -10,12 +11,21 @@ import { Enrollment } from './index'
 import type { EnrollMode } from './index'
 import type { Printer } from '../../data/types'
 
-function renderEnroll(mode: EnrollMode, printerOverrides = {}, handlers: Record<string, ReturnType<typeof vi.fn>> = {}) {
+// Each spy carries the signature of the prop it stands in for, so the mock is a real substitute for
+// the callback the component calls rather than something only a cast makes fit.
+interface EnrollHandlers {
+  onEnrolled?: Mock<(updated: Printer) => void>
+  onEscalateRecovery?: Mock<() => void>
+  onRebuildPrinter?: Mock<() => void>
+  onExpectedRestart?: Mock<(printerId: string) => void>
+}
+
+function renderEnroll(mode: EnrollMode, printerOverrides = {}, handlers: EnrollHandlers = {}) {
   var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online', ...printerOverrides })
-  var onEnrolled = handlers.onEnrolled ?? vi.fn()
-  var onEscalateRecovery = handlers.onEscalateRecovery ?? vi.fn()
-  var onRebuildPrinter = handlers.onRebuildPrinter ?? vi.fn()
-  var onExpectedRestart = handlers.onExpectedRestart ?? vi.fn()
+  var onEnrolled = handlers.onEnrolled ?? vi.fn<(updated: Printer) => void>()
+  var onEscalateRecovery = handlers.onEscalateRecovery ?? vi.fn<() => void>()
+  var onRebuildPrinter = handlers.onRebuildPrinter ?? vi.fn<() => void>()
+  var onExpectedRestart = handlers.onExpectedRestart ?? vi.fn<(printerId: string) => void>()
   var rendered = setup(
     <Enrollment printer={printer} mode={mode} onEnrolled={onEnrolled} onClose={vi.fn()} onEscalateRecovery={onEscalateRecovery} onRebuildPrinter={onRebuildPrinter} onExpectedRestart={onExpectedRestart} />,
   )
@@ -34,7 +44,7 @@ const GO_AHEAD_BUTTON: Partial<Record<EnrollMode, string>> = {
   'reboot': 'Restart the printer',
 }
 
-async function renderAndSayGo(mode: EnrollMode, printerOverrides = {}, handlers: Record<string, ReturnType<typeof vi.fn>> = {}) {
+async function renderAndSayGo(mode: EnrollMode, printerOverrides = {}, handlers: EnrollHandlers = {}) {
   var rendered = renderEnroll(mode, printerOverrides, handlers)
   var goAhead = GO_AHEAD_BUTTON[mode]
   if (goAhead) await rendered.user.click(screen.getByRole('button', { name: goAhead }))
@@ -261,7 +271,8 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
 
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing bespok3d from the printer', stepIndex: 1, totalSteps: 2 })))
 
-    await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22))
+    // The record is gone by the time this reboot runs, so the call carries the adapter id itself.
+    await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22, 'snapmaker-u1'))
     expect(screen.getByText('Bespok3d removed')).toBeInTheDocument()
     expect(screen.getByText('Your printer is rebooting.')).toBeInTheDocument()
   })

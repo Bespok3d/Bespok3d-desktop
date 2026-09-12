@@ -143,11 +143,22 @@ function mockKeys(override: Partial<B3d['keys']> = {}): B3d['keys'] {
   }
 }
 
+// Every adapter id this build registers, because one alone is the shape that hid the defect: a picker
+// fed from a hand-written list happily offered adapters no build had registered. Anything reading this
+// list sees more than one id, and the two klipper-linux ids show that one code base can register two.
+function registeredAdapters(): AdapterInfo[] {
+  return [
+    makeAdapterInfo(),
+    makeAdapterInfo({ id: 'voron-24', title: 'Voron 2.4', vendor: 'Voron Design', description: 'Stock Klipper adapter for a Voron 2.4.' }),
+    makeAdapterInfo({ id: 'klipper-generic', title: 'Klipper: generic', vendor: 'Any maker', description: 'Stock Klipper adapter for any Klipper on Linux printer.' }),
+  ]
+}
+
 function mockPrinters(channels: Channels, override: Partial<B3d['printers']> = {}): B3d['printers'] {
   return {
     load: resolved([]), save: voidFn(), patch: voidFn(), remove: voidFn(), ping: resolved(true),
     checkSshOpen: resolved(true), checkWriteLayer: resolved(null), checkDaemon: resolved({ isManaged: false, reach: 'offline', sshOpen: false }),
-    adapterGet: resolved(makeAdapterInfo()), adaptersList: resolved([makeAdapterInfo()]),
+    adapterGet: resolved(makeAdapterInfo()), adaptersList: resolved(registeredAdapters()),
     checkSsh: resolved({ ok: true }), enroll: voidFn(), cancelOp: voidFn(), onEnrollProgress: sub(channels.enrollProgress),
     watchPrintState: voidFn(), unwatchPrintState: voidFn(), onPrintState: sub(channels.printState),
     deactivate: voidFn(), reactivate: voidFn(), uninstall: voidFn(), reboot: voidFn(), repair: voidFn(),

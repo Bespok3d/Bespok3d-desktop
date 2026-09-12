@@ -7,6 +7,7 @@ import { Modal } from '../common/overlay/Modal'
 import { Button } from '../common/Button'
 import { TabBar } from './TabBar'
 import type { Tab } from './TabBar'
+import { useAdaptersList } from '../settings/state'
 import { ScanBody } from './discovery/ScanBody'
 import { ManualBody } from './ManualBody'
 import { useAddPrinterForm } from './useAddPrinterForm'
@@ -57,7 +58,10 @@ export function AddPrinter({
   onClose,
 }: AddPrinterProps) {
   const { t } = useI18n()
-  const form = useAddPrinterForm(initialTab, initialPickedId, discovered)
+  // The adapters this build registered, straight from the main process: the picker can then never
+  // offer one that is not there to enroll with.
+  const adapters = useAdaptersList()
+  const form = useAddPrinterForm(initialTab, initialPickedId, discovered, adapters)
 
   function isAlreadyAdded(device: DiscoveredPrinterRecord) {
     return existingPrinters.some((existing) => existing.ip === device.ip)
@@ -82,6 +86,7 @@ export function AddPrinter({
 
       {form.tab === 'scan' && (
         <ScanBody
+          adapters={adapters}
           scanning={form.scanning}
           discovered={discovered}
           picked={form.picked}
@@ -97,6 +102,7 @@ export function AddPrinter({
 
       {form.tab === 'manual' && (
         <ManualBody
+          adapters={adapters}
           manualIp={form.manualIp}
           nick={form.nick}
           adapterId={form.adapterId}

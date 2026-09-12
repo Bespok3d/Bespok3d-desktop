@@ -54,7 +54,15 @@ interface EnrollmentProgressProps {
   restartSeconds?: number
 }
 
-const REBOOT_STEP_ID = 'reboot-and-reconnect'
+// The steps during which the printer is down and coming back, so the bar that counts a restart out
+// knows to appear. Enrolment reboots the printer as one step of its own; the standalone Reboot op
+// splits the ask (the adapter's, it knows how this printer is told to go down) from the wait (the
+// app's), and it is the waiting half the bar belongs to.
+const RESTART_STEP_IDS = new Set(['reboot-and-reconnect', 'wait-for-reconnect'])
+
+export function isRestartStep(stepId: string): boolean {
+  return RESTART_STEP_IDS.has(stepId)
+}
 
 function StepIcon({ status }: { status: 'done' | 'running' | 'failed' }) {
   if (status === 'done') return <span className="enroll-step-icon done"><IconCheck size={13} /></span>
@@ -242,7 +250,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
           <div className="progress">
             <div className={cx('progress-bar', !showFailed && event.stepFraction === undefined && 'indeterminate')} style={{ width: `${pct}%` }} />
           </div>
-          {event.stepId === REBOOT_STEP_ID && !showFailed && restartSeconds !== undefined && <RebootProgress restartSeconds={restartSeconds} />}
+          {isRestartStep(event.stepId) && !showFailed && restartSeconds !== undefined && <RebootProgress restartSeconds={restartSeconds} />}
           {event.hint && <div className="enroll-hint">{event.hint}</div>}
           <div className="enroll-current-step">
             <div

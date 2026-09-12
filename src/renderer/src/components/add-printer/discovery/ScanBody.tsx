@@ -10,6 +10,7 @@ import { PickedDeviceView } from './PickedDeviceView'
 import '../add-printer.css'
 
 export interface ScanBodyProps {
+  adapters: AdapterInfo[]
   scanning: boolean
   discovered: DiscoveredPrinterRecord[]
   picked: DiscoveredPrinterRecord | null
@@ -23,6 +24,7 @@ export interface ScanBodyProps {
 }
 
 export function ScanBody({
+  adapters,
   scanning,
   discovered,
   picked,
@@ -61,6 +63,7 @@ export function ScanBody({
 
       {picked ? (
         <PickedDeviceView
+          adapters={adapters}
           picked={picked}
           nick={nick}
           adapterId={adapterId}

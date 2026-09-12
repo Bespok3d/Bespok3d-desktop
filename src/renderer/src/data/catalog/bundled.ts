@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Category, Channel, PrinterAdapter } from '../types'
+import type { Category, Channel } from '../types'
 
-// Static UI config that is NOT registry-published plugin data: release channels, the catalog
-// category list, and the local printer adapters. The plugin catalog itself now loads from the
-// generated index.json via data/catalog-context.tsx (useCatalog); the doc-asset glob and the
-// snake -> camel mapping live in data/catalog.ts.
+// Static UI config that is NOT registry-published plugin data: release channels and the catalog
+// category list. The plugin catalog itself now loads from the generated index.json via
+// data/catalog-context.tsx (useCatalog); the doc-asset glob and the snake -> camel mapping live in
+// data/catalog.ts. The adapter list is NOT here: it is whatever the main process registered, read
+// over printers.adaptersList, so the picker can never offer an adapter this build does not carry.
 
 export const CHANNELS: Channel[] = [
   { id: 'lts',        label: 'LTS',        short: 'LTS',    description: 'Long-term support. Thoroughly tested, quarterly cadence.',   cadence: 'Quarterly', tone: 'lts',        defaultOn: true  },
@@ -24,34 +25,4 @@ export const BUNDLED_CATEGORIES: Category[] = [
   { id: 'sensors', title: 'Sensors', sub: 'Temperatures and monitoring',    icon: '🌡' },
   { id: 'system',  title: 'System',  sub: 'Access and server settings',     icon: '⚙️' },
   { id: 'printing', title: 'Printing', sub: 'Print-start and slicing behavior', icon: '🧱' },
-]
-
-export const BUNDLED_ADAPTERS: PrinterAdapter[] = [
-  {
-    id: 'snapmaker-u1',
-    title: 'Snapmaker U1',
-    vendor: 'Snapmaker',
-    version: '1.2.0',
-    channel: 'stable',
-    trust: 'manufacturer',
-    description: 'Klipper + Snapmaker firmware bridge.',
-  },
-  {
-    id: 'voron-24',
-    title: 'Voron 2.4',
-    vendor: 'Voron Design',
-    version: '0.8.4',
-    channel: 'stable',
-    trust: 'community',
-    description: 'Generic Klipper bridge for stock Voron 2.4 builds.',
-  },
-  {
-    id: 'klipper-generic',
-    title: 'Klipper: generic',
-    vendor: 'Bespok3d',
-    version: '0.4.0',
-    channel: 'lts',
-    trust: 'project',
-    description: 'Bare Klipper bridge with no vendor-specific bits.',
-  },
 ]

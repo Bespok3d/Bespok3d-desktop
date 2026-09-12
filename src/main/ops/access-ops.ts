@@ -52,11 +52,17 @@ async function runResetAccess(printerId: string, ip: string, user: string, passw
     keys: [identity], roles: { [identity]: 'admin' }, labels: { [identity]: hostname() },
     tokens: [token], token_identity: { [token]: identity },
   }
-  const bespok3d = getAdapter(record.adapter)?.envVars.find((envVar) => envVar.name === 'BESPOK3D')?.value || '/userdata/bespok3d'
+  // Where the workspace is on this printer is the adapter's fact, and on some adapters it is only
+  // known once logged in, so it is asked of the open session rather than read off a static value.
+  const adapter = getAdapter(record.adapter)
+  if (!adapter) throw new Error('adapter not found')
   const ssh = await connect({ host: ip, port, user, password })
   try {
+    const bespok3d = await adapter.workspaceRoot(ssh)
     await ssh.exec(`mkdir -p ${shellQuote(`${bespok3d}/auth`)}`)
     await ssh.putContent(`${bespok3d}/auth/acl.json`, JSON.stringify(acl, null, 2))
+    // The list holds the bearer token, so it is readable by the printer's own account and nobody else.
+    await ssh.exec(`chmod 600 ${shellQuote(`${bespok3d}/auth/acl.json`)}`)
     await ssh.exec(`rm -f ${shellQuote(`${bespok3d}/auth/pending.json`)}`)
   } finally {
     ssh.close()

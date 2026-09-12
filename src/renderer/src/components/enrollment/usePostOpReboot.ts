@@ -36,7 +36,7 @@ export function postOpRebootCalls(printer: Printer, startReboot: (creds: SshCred
   }
   function rebootWithoutTakingOverTheScreen(creds: SshCredentials) {
     if (onExpectedRestart) onExpectedRestart(printer.id)
-    window.b3d.printers.reboot(printer.id, printer.ip, creds.user, creds.password, creds.port)
+    window.b3d.printers.reboot(printer.id, printer.ip, creds.user, creds.password, creds.port, printer.adapter)
       .catch((error) => console.error('[enroll] the reboot after removing bespok3d failed', error))
   }
 

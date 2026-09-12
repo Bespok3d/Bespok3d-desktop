@@ -2,125 +2,102 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ipcMain, type BrowserWindow } from 'electron'
 import { updatePrinter, removePrinter, resolveLiveAddress } from '../printers'
-import { getAdapter } from '../adapter-loader'
-import {
-  bespok3dIncludeCommand,
-  KLIPPER_INCLUDE,
-  MOONRAKER_INCLUDE,
-  patchS90lmd,
-} from '@adapters/snapmaker-u1/client/snapmaker-u1'
-import type { SshSession } from '../ssh'
+import type { PrinterRecord } from '../printers'
+import type { AdapterLifecycle, EnrollStep } from '../adapter-loader'
 import { runSshOp } from './op-runner'
-import { waitForDaemon, tailDaemonLog } from './daemon-log'
-import { getManagedRecord, recordOrThrow } from '../daemon-client/status'
+import type { OpStep } from './op-runner'
+import { adapterOpContext, adapterOpSteps, daemonOpContext, rebootOpContext } from './adapter-context'
+import { waitForDaemon } from './daemon-log'
+import { getManagedRecord } from '../daemon-client/status'
 import { deactivateAll, teardownDaemon, recoverPackages } from '../daemon-client/client'
 import { runRepair, runUpdateDaemon, runUpdateJinni } from './daemon-ops'
 import { waitForThePrinterToComeBack } from './reboot-wait'
 
-async function runDeactivate(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
+// Every op below is the same sandwich: what the DAEMON has to do (stop the plugins, tear them down,
+// put them back) is the app's, and what has to change on the printer's own filesystem is the
+// adapter's, read off its lifecycle. Nothing here knows what a printer's boot sequence looks like.
+interface SshTarget { host: string; port: number; user: string; password: string }
+
+// Deactivate and uninstall are that sandwich in the same order, so they are one named flow: the daemon
+// does its half to the plugins, then the adapter does its half to the printer's own files. Each caller
+// supplies only the daemon step it needs and which lifecycle list follows it.
+async function runDaemonThenDevice(
+  win: BrowserWindow,
+  printerId: string,
+  target: SshTarget,
+  daemonStep: (record: PrinterRecord) => OpStep,
+  deviceSteps: (lifecycle: AdapterLifecycle) => EnrollStep[],
+): Promise<void> {
   const record = getManagedRecord(printerId)
-  await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
-    {
+  const { adapter, ctx } = adapterOpContext(record, target.host, { user: target.user, password: target.password, port: target.port })
+
+  await runSshOp(win, printerId, target, (ssh) => [
+    daemonStep(record),
+    ...adapterOpSteps(deviceSteps(adapter.lifecycle), ssh, ctx),
+  ])
+}
+
+async function runDeactivate(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
+  await runDaemonThenDevice(
+    win, printerId, { host: ip, port, user, password },
+    (record) => ({
       id: 'stop-plugins',
       label: 'Stopping plugin services',
       detail: 'Daemon stops all plugin services and removes autostart links',
       run: async () => { await deactivateAll(record) },
-    },
-    {
-      id: 'remove-boot-hook',
-      label: 'Removing boot hook',
-      detail: 'Removes the S99bespok3d call from the firmware boot script',
-      run: async () => { await ssh.exec("sed -i '/S99bespok3d/d' /etc/init.d/S90lmd") },
-    },
-  ])
+    }),
+    (lifecycle) => lifecycle.deactivate,
+  )
   updatePrinter(printerId, { deactivated: true, status: 'deactivated', deactivatedAt: new Date().toISOString() })
 }
 
-async function reactivateRestoreIncludes(ssh: SshSession, printerData: string): Promise<void> {
-  await ssh.exec(bespok3dIncludeCommand(`${printerData}/config/printer.cfg`, KLIPPER_INCLUDE))
-  await ssh.exec(bespok3dIncludeCommand(`${printerData}/config/moonraker.conf`, MOONRAKER_INCLUDE))
-}
-
-async function reactivateBootHook(ssh: SshSession): Promise<void> {
-  const s90lmdContent = await ssh.getContent('/etc/init.d/S90lmd')
-  const patched = patchS90lmd(s90lmdContent)
-  if (patched !== s90lmdContent) await ssh.putContent('/etc/init.d/S90lmd', patched)
-}
-
 async function runReactivate(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
-  const record = recordOrThrow(printerId)
-  const adapter = getAdapter(record.adapter)
-  const bespok3d = adapter?.envVars.find((envVar) => envVar.name === 'BESPOK3D')?.value ?? '/userdata/bespok3d'
-  const printerData = adapter?.envVars.find((envVar) => envVar.name === 'PRINTER_DATA')?.value ?? '/oem/printer_data'
+  const { record, adapter, ctx } = daemonOpContext(printerId, ip, { user, password, port })
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
-    { id: 'remove-marker', label: 'Removing deactivated marker', detail: 'Clears the deactivated flag from the printer workspace', run: async () => { await ssh.exec(`rm -f ${bespok3d}/etc/deactivated`) } },
-    { id: 'restore-includes', label: 'Restoring plugin includes', detail: 'Re-adds Klipper and Moonraker include lines above the SAVE_CONFIG boundary', run: () => reactivateRestoreIncludes(ssh, printerData) },
-    { id: 'restore-boot-hook', label: 'Restoring boot hook', detail: 'Re-patches S90lmd to invoke S99bespok3d at boot', run: () => reactivateBootHook(ssh) },
-    { id: 'start-daemon', label: 'Starting the daemon', detail: 'Starts the bespok3d daemon process', run: async () => { await ssh.exec(`${bespok3d}/etc/init.d/autostart/s10bespok3d-daemon start`) } },
-    { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => tailDaemonLog(ssh, `${bespok3d}/var/log/daemon.log`)) },
-    { id: 're-apply-plugins', label: 'Re-applying plugins', detail: 'Rebuilds plugin links and dependencies, then restarts services once', run: async () => { await recoverPackages(record) } },
+    ...adapterOpSteps(adapter.lifecycle.reactivate, ssh, ctx),
+    {
+      id: 'verify-daemon',
+      label: 'Verifying the daemon',
+      detail: 'Waits for the daemon to accept connections on port 4269',
+      run: () => waitForDaemon(ip, () => adapter.readDaemonLog(ssh)),
+    },
+    {
+      id: 're-apply-plugins',
+      label: 'Re-applying plugins',
+      detail: 'Rebuilds plugin links and dependencies, then restarts services once',
+      run: async () => { await recoverPackages(record) },
+    },
   ])
   updatePrinter(printerId, { deactivated: false, status: 'managed', deactivatedAt: undefined })
 }
 
-// The SSH-side reversal of enrollment for a clean removal. Kept as one named, testable string because a
-// regression here strands the printer: the dhcpcd state dir must be RECREATED (a dangling symlink leaves
-// it with no lease and no network on the next boot), and /oem/.debug must be REMOVED (re-locking the
-// overlay so the next boot resets the write layer to stock). Mirrors reset-to-stock.invitro.ts.
-export function bespok3dRemovalCommand(): string {
-  return (
-    `sed -i '/S99bespok3d/d' /etc/init.d/S90lmd` +
-    ` && sed -i '/bespok3d\\/etc\\/nginx\\/locations/d' /etc/nginx/sites-enabled/fluidd` +
-    ` && rm -f /etc/init.d/S99bespok3d` +
-    ` && rm -f /etc/udev/rules.d/70-wlan0-mac.rules` +
-    ` ; rm -f /var/db/dhcpcd ; mkdir -p /var/db/dhcpcd` +
-    ` ; rm -rf /userdata/bespok3d` +
-    ` ; rm -f /oem/.debug`
-  )
-}
-
 async function runUninstall(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
-  const record = getManagedRecord(printerId)
-  await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
-    {
+  await runDaemonThenDevice(
+    win, printerId, { host: ip, port, user, password },
+    (record) => ({
       id: 'teardown-daemon',
       label: 'Uninstalling plugins',
       detail: 'Daemon uninstalls all plugins and reverts applied patches',
       run: async () => { await teardownDaemon(record) },
-    },
-    {
-      id: 'remove-files',
-      label: 'Removing bespok3d from the printer',
-      detail: 'Removes all bespok3d files and system configuration changes',
-      run: async () => { await ssh.exec(bespok3dRemovalCommand()) },
-    },
-  ])
+    }),
+    (lifecycle) => lifecycle.remove,
+  )
   removePrinter(printerId)
 }
 
-// The printer drops the link the moment it starts going down, so the exec never returns cleanly:
-// that dropped connection IS the reboot happening, not a failure to report to the user.
-async function askForThePowerCycle(ssh: SshSession): Promise<void> {
-  try {
-    await ssh.exec('reboot')
-  } catch {
-    /* the connection dies as the printer goes down; expected */
-  }
-}
-
 // Some states clear only on a power cycle, and stopping, restarting or removing bespok3d leaves the
-// printer running something other than what is now on disk. The step only reports done once the printer
-// is answering again, so the screen never says it is back while it is still down.
-async function runReboot(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
+// printer running something other than what is now on disk. The adapter asks for the power cycle (it
+// knows how this printer is told to go down, and that the connection dying IS the reboot happening);
+// the wait is the app's, so the screen never says the printer is back while it is still down.
+async function runReboot(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number, adapterId = ''): Promise<void> {
+  const { adapter, ctx } = rebootOpContext(printerId, adapterId, ip, { user, password, port })
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
+    ...adapterOpSteps(adapter.lifecycle.reboot, ssh, ctx),
     {
-      id: 'reboot-and-reconnect',
-      label: 'Rebooting your printer',
-      detail: 'Asks the printer to power cycle, then waits for it to come back and rejoin the network',
-      run: async () => {
-        await askForThePowerCycle(ssh)
-        await waitForThePrinterToComeBack(ip)
-      },
+      id: 'wait-for-reconnect',
+      label: 'Waiting for your printer',
+      detail: 'Waits for the printer to come back and rejoin the network',
+      run: () => waitForThePrinterToComeBack(ip),
     },
   ])
 }
@@ -149,8 +126,8 @@ export function registerPrinterOperationHandlers(getMainWindow: () => BrowserWin
   ipcMain.handle('printer:uninstall', async (_ev, printerId: string, ip: string, user: string, password: string, port: number) =>
     runUninstall(getMainWindow(), printerId, await opAddress(printerId, ip), user, password, port)
   )
-  ipcMain.handle('printer:reboot', async (_ev, printerId: string, ip: string, user: string, password: string, port: number) =>
-    runReboot(getMainWindow(), printerId, await opAddress(printerId, ip), user, password, port)
+  ipcMain.handle('printer:reboot', async (_ev, printerId: string, ip: string, user: string, password: string, port: number, adapterId?: string) =>
+    runReboot(getMainWindow(), printerId, await opAddress(printerId, ip), user, password, port, adapterId)
   )
   ipcMain.handle('printer:repair', async (_ev, printerId: string, ip: string, user: string, password: string, port: number, forced?: boolean) =>
     runRepair(getMainWindow(), printerId, await opAddress(printerId, ip), user, password, port, forced)

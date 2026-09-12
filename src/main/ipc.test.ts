@@ -29,7 +29,6 @@ vi.mock('electron', () => ({
 vi.mock('@electron-toolkit/utils', () => ({ is: { dev: false } }))
 vi.mock('./enrollment', () => ({ checkSsh: vi.fn(), enrollPrinter: vi.fn() }))
 vi.mock('./adapter-loader', () => ({ getAdapter: vi.fn(), listAdapters: vi.fn().mockReturnValue([]) }))
-vi.mock('@adapters/snapmaker-u1/client/snapmaker-u1', () => ({ patchS90lmd: vi.fn() }))
 vi.mock('./keys', () => ({
   generateKey: vi.fn(), listKeys: vi.fn(), removeKey: vi.fn(), exportPublicKey: vi.fn(),
   exportPrivateKey: vi.fn(), setDefault: vi.fn(), setAssignments: vi.fn(), setKeyIcon: vi.fn(), setPublishedAt: vi.fn(),

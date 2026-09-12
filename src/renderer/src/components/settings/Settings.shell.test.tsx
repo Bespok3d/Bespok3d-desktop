@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { Mock } from 'vitest'
 import { screen } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makeT } from '../../i18n'
@@ -14,7 +15,7 @@ beforeEach(() => { vi.mocked(showsUnreleasedFeatures).mockReturnValue(true) })
 
 const en = makeT('en')
 
-function settingsProps(onClose: ReturnType<typeof vi.fn>) {
+function settingsProps(onClose: Mock<() => void>) {
   return {
     onClose, printers: [], onAddPrinter: vi.fn(), onRemovePrinter: vi.fn(), onUpdatePrinterIcon: vi.fn(),
     onEnrollPrinter: vi.fn(), onRepairPrinter: vi.fn(), onRecoverPrinter: vi.fn(), onReinstallPlugins: vi.fn(), onViewEnrollmentLog: vi.fn(), onUpdateDaemon: vi.fn(), onUpdateJinni: vi.fn(), onDeactivatePrinter: vi.fn(),
@@ -27,7 +28,7 @@ function settingsProps(onClose: ReturnType<typeof vi.fn>) {
 
 describe('Settings shell', () => {
   it('switches panes from the nav and closes', async () => {
-    var onClose = vi.fn()
+    var onClose = vi.fn<() => void>()
     var { user } = setup(<Settings {...settingsProps(onClose)} />, { withCatalog: true, catalog: [] })
 
     await user.click(screen.getByRole('button', { name: en('set.printers') }))
@@ -38,21 +39,21 @@ describe('Settings shell', () => {
   })
 
   it('a dev run lists Keys and Labs', () => {
-    setup(<Settings {...settingsProps(vi.fn())} />, { withCatalog: true, catalog: [] })
+    setup(<Settings {...settingsProps(vi.fn<() => void>())} />, { withCatalog: true, catalog: [] })
     expect(screen.getByRole('button', { name: en('set.keys') })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: en('set.labs') })).toBeInTheDocument()
   })
 
   it('a released build leaves Keys and Labs out and keeps the rest', () => {
     vi.mocked(showsUnreleasedFeatures).mockReturnValue(false)
-    setup(<Settings {...settingsProps(vi.fn())} />, { withCatalog: true, catalog: [] })
+    setup(<Settings {...settingsProps(vi.fn<() => void>())} />, { withCatalog: true, catalog: [] })
     expect(screen.queryByRole('button', { name: en('set.keys') })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: en('set.labs') })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: en('set.printers') })).toBeInTheDocument()
   })
 
   it('filters the nav with the search box', async () => {
-    var { user } = setup(<Settings {...settingsProps(vi.fn())} />, { withCatalog: true, catalog: [] })
+    var { user } = setup(<Settings {...settingsProps(vi.fn<() => void>())} />, { withCatalog: true, catalog: [] })
     await user.type(screen.getByPlaceholderText(en('set.search')), 'Printers')
     expect(screen.getByRole('button', { name: en('set.printers') })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: en('set.general') })).not.toBeInTheDocument()

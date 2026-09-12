@@ -4,12 +4,13 @@ import type { BrowserWindow } from 'electron'
 import { updatePrinter, loadPrinters } from '../printers'
 import type { PrinterRecord } from '../printers'
 import { getAdapter } from '../adapter-loader'
-import type { AdapterDefinition, EnrollContext, SshCredentials } from '../adapter-loader'
+import type { AdapterDefinition, EnrollContext } from '../adapter-loader'
 import { connect } from '../ssh'
 import type { SshSession } from '../ssh'
 import { runSshOp } from './op-runner'
-import { waitForDaemon, tailDaemonLog } from './daemon-log'
-import { recordOrThrow, verifyDaemonVersion } from '../daemon-client/status'
+import { daemonOpContext } from './adapter-context'
+import { waitForDaemon } from './daemon-log'
+import { verifyDaemonVersion } from '../daemon-client/status'
 import { expectedDaemonVersion } from '../daemon-client/expected-version'
 import { offeredJinniVersion } from '../compat/jinni-baseline'
 import { assertNotADaemonDowngrade, assertPairLandedTogether, assertPrinterNotPrinting } from '../compat'
@@ -24,28 +25,6 @@ async function assertSafeToMoveDaemon(record: PrinterRecord, forced: boolean): P
   await assertNotADaemonDowngrade(record, forced)
 }
 
-function repairContext(record: PrinterRecord, ip: string, credentials: SshCredentials, runtimeUser: string): EnrollContext {
-  return {
-    printerId: record.id,
-    ip,
-    credentials,
-    runtimeUser,
-    daemonToken: record.daemonToken,
-    daemonCert: record.daemonCert,
-  }
-}
-
-// The record + adapter + enroll context the three daemon-maintenance ops all open with; throws the
-// same way each did inline so a missing record or adapter still fails loudly before any SSH work.
-function daemonOpContext(printerId: string, ip: string, credentials: SshCredentials) {
-  const record = recordOrThrow(printerId)
-  const adapter = getAdapter(record.adapter)
-  if (!adapter) throw new Error('adapter not found')
-  const ctx = repairContext(record, ip, credentials, adapter.defaults.runtimeUser)
-
-  return { record, adapter, ctx }
-}
-
 function runAdapterStep(adapter: AdapterDefinition, stepId: string, ssh: SshSession, ctx: EnrollContext): Promise<void> {
   const step = [...adapter.enrollSteps, ...(adapter.opSteps ?? [])].find((candidate) => candidate.id === stepId)
   if (!step) throw new Error(`adapter ${adapter.id} has no step ${stepId}`)
@@ -53,16 +32,11 @@ function runAdapterStep(adapter: AdapterDefinition, stepId: string, ssh: SshSess
   return step.run(ssh, ctx)
 }
 
-function diagnoseDaemon(ssh: SshSession): Promise<string> {
-  return ssh.exec(
-    `out=""; ` +
-    `[ -d /userdata/bespok3d/var/lib/demon ] && out="$out stale-demon-dir"; ` +
-    `[ -f /userdata/bespok3d/var/lib/daemon/daemon.py ] || out="$out missing-daemon.py"; ` +
-    `grep -q 'var/lib/demon' /userdata/bespok3d/etc/init.d/autostart/s10bespok3d-daemon 2>/dev/null && out="$out wrong-autostart-path"; ` +
-    `netstat -ltnp 2>/dev/null | grep -q ':4269 ' && out="$out port-4269-occupied"; ` +
-    `[ -z "$out" ] && out=" no-issues-detected"; ` +
-    `echo "Diagnosis:$out"`
-  )
+// What is wrong with this daemon, in one line, asked of the adapter: which files and which service
+// manager a broken install looks broken in is the printer's own fact. An adapter that offers no
+// diagnosis says so rather than having the app guess with somebody else's paths.
+function diagnoseDaemon(adapter: AdapterDefinition, ssh: SshSession): Promise<string> {
+  return adapter.diagnoseDaemon ? adapter.diagnoseDaemon(ssh) : Promise.resolve('no diagnosis available for this adapter')
 }
 
 // A repair only redeploys the daemon; it does NOT unlock the overlay or reboot (those are enroll-only
@@ -72,7 +46,7 @@ function diagnoseDaemon(ssh: SshSession): Promise<string> {
 // recovery" escalation, which is the operation this printer actually needs.
 async function guardWriteLayer(adapter: AdapterDefinition, ssh: SshSession): Promise<void> {
   if (!(await adapter.verifyEnrolled(ssh))) {
-    throw new Error('This printer\'s write layer was reset, which happens after a firmware update, so a daemon repair will not stick. Run full recovery to rebuild it.')
+    throw new Error('This printer\'s Bespok3d setup is no longer in place (on some printers a firmware update does this), so a daemon repair would not stick. Run full recovery to rebuild it.')
   }
 }
 
@@ -107,11 +81,11 @@ export async function runRepair(win: BrowserWindow, printerId: string, ip: strin
   const { record, adapter, ctx } = daemonOpContext(printerId, ip, { user, password, port })
   await assertSafeToMoveDaemon(record, forced)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
-    { id: 'check-write-layer', label: 'Checking the write layer', detail: 'A firmware update resets the printer overlay; when that happens a daemon repair would not survive a reboot, so the printer needs full recovery instead', run: async () => { await guardWriteLayer(adapter, ssh) } },
-    { id: 'diagnose', label: 'Diagnosing the daemon', detail: 'Checks for a stale demon directory, a wrong autostart path, a missing daemon, or an occupied port', run: async (progress) => { progress((await diagnoseDaemon(ssh)).trim()) } },
-    { id: 'redeploy-daemon', label: 'Re-deploying a fresh daemon', detail: 'Uploads fresh daemon source and removes the stale demon directory', run: (progress) => runAdapterStep(adapter, 'deploy-daemon', ssh, { ...ctx, onProgress: progress }) },
-    { id: 'start-daemon', label: 'Starting the daemon', detail: 'Deploys the corrected autostart script, frees port 4269, and starts the daemon', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
-    { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
+    { id: 'check-write-layer', label: 'Checking the Bespok3d setup', detail: 'Asks the adapter whether the setup on the printer is still in place and will survive a reboot; when it is not (a firmware update does this on some printers) a repair would not stick, so the printer needs full recovery instead', run: async () => { await guardWriteLayer(adapter, ssh) } },
+    { id: 'diagnose', label: 'Diagnosing the daemon', detail: 'Asks the adapter what is wrong with the daemon on this printer: missing files, a broken boot entry, or something else holding its port', run: async (progress) => { progress((await diagnoseDaemon(adapter, ssh)).trim()) } },
+    { id: 'redeploy-daemon', label: 'Re-deploying a fresh daemon', detail: 'Uploads fresh daemon source and the device adapter over what is there', run: (progress) => runAdapterStep(adapter, 'deploy-daemon', ssh, { ...ctx, onProgress: progress }) },
+    { id: 'start-daemon', label: 'Starting the daemon', detail: 'Puts the daemon back into the printer\'s boot sequence and starts it', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
+    { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => adapter.readDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
   await assertPairLandedTogether(record)
   updatePrinter(printerId, { status: 'managed', daemonVersion: expectedDaemonVersion(), daemonUpdateAvailable: false })
@@ -123,8 +97,8 @@ export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip:
   await assertSafeToMoveDaemon(record, false)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'deploy-daemon', label: 'Uploading fresh daemon code', detail: 'Uploads the latest daemon source and adapter jinni; the cert and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-daemon', ssh, { ...ctx, onProgress: progress }) },
-    { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Deploys the autostart script, frees port 4269, and restarts the daemon', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
-    { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
+    { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Restarts the daemon through the printer\'s own boot entry', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
+    { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => adapter.readDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
   await assertPairLandedTogether(record)
   // deploy-daemon redeploys the jinni too, so record both at the version the app just installed: the
@@ -140,7 +114,7 @@ export async function runUpdateJinni(win: BrowserWindow, printerId: string, ip: 
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'deploy-jinni', label: 'Updating the adapter jinni', detail: 'Re-uploads only the device-side adapter; the daemon source, cert, and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-jinni', ssh, { ...ctx, onProgress: progress }) },
     { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Restarts the daemon so it loads the updated jinni', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
-    { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => tailDaemonLog(ssh)) },
+    { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => adapter.readDaemonLog(ssh)) },
   ])
   await assertPairLandedTogether(record)
   updatePrinter(printerId, { status: 'managed', jinniVersion: offeredJinniVersion(adapter) ?? adapter.jinniVersion })

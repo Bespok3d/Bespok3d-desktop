@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 import { screen, fireEvent, act } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makePrinter } from '../../test/fixtures'
 import { RequestAccessModal } from './RequestAccessModal'
 import type { B3dOverrides } from '../../test/b3d-mock'
 
-function renderModal(onGranted: ReturnType<typeof vi.fn>, b3d: B3dOverrides = {}) {
+function renderModal(onGranted: Mock<(printerId: string) => void>, b3d: B3dOverrides = {}) {
   return setup(<RequestAccessModal printer={makePrinter({ id: 'printer-1' })} onClose={vi.fn()} onGranted={onGranted} />, { b3d })
 }
 
@@ -18,7 +19,7 @@ describe('RequestAccessModal polling flow', () => {
 
   it('requests access, polls until granted, and reports the grant on Done', async () => {
     var status = vi.fn().mockResolvedValueOnce('pending').mockResolvedValue('granted')
-    var onGranted = vi.fn()
+    var onGranted = vi.fn<(printerId: string) => void>()
     var { b3d } = renderModal(onGranted, { access: { status } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Guide me' }))
@@ -39,7 +40,7 @@ describe('RequestAccessModal polling flow', () => {
 describe('RequestAccessModal failure', () => {
   it('shows a failure result when the request is rejected', async () => {
     var request = vi.fn().mockRejectedValue(new Error('pending cap reached'))
-    var { user } = renderModal(vi.fn(), { access: { request } })
+    var { user } = renderModal(vi.fn<(printerId: string) => void>(), { access: { request } })
     await user.click(screen.getByRole('button', { name: 'Just the steps' }))
     expect(await screen.findByText('Request failed')).toBeInTheDocument()
     expect(screen.getByText(/pending cap reached/)).toBeInTheDocument()

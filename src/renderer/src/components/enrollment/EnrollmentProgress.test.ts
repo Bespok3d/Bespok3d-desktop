@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
-import { successCopy, progressFill } from './EnrollmentProgress'
+import { successCopy, progressFill, isRestartStep } from './EnrollmentProgress'
 import type { EnrollMode } from './index'
 
 describe('successCopy', () => {
@@ -53,5 +53,23 @@ describe('progressFill', () => {
   it('never lets a step report past its own share of the bar', () => {
     expect(progressFill(1, 4, true, 3)).toBe(50)
     expect(progressFill(1, 4, true, -1)).toBe(25)
+  })
+})
+
+// The restart bar follows the step the printer is actually down for. Enrolment reboots in one step;
+// the Reboot op asks through the adapter and waits in the app, so both halves have to be known here
+// or the bar vanishes from the operation whose entire content is a wait.
+describe('isRestartStep', () => {
+  it('knows the enrolment reboot step', () => {
+    expect(isRestartStep('reboot-and-reconnect')).toBe(true)
+  })
+
+  it('knows the op-side wait that follows an adapter power cycle', () => {
+    expect(isRestartStep('wait-for-reconnect')).toBe(true)
+  })
+
+  it('leaves every other step without a restart bar', () => {
+    expect(isRestartStep('power-cycle')).toBe(false)
+    expect(isRestartStep('deploy-daemon')).toBe(false)
   })
 })

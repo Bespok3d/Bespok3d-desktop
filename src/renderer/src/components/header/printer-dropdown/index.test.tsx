@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { screen, fireEvent, act } from '@testing-library/react'
 import { setup } from '../../../test/harness'
 import { makeT } from '../../../i18n'
@@ -11,7 +12,19 @@ import type { ConnectionReach, Printer } from '../../../data/types'
 
 const en = makeT('en')
 
-function renderDropdown(fns: { onSelect: ReturnType<typeof vi.fn>; onAddPrinter: ReturnType<typeof vi.fn>; onOpenSettings: ReturnType<typeof vi.fn> }) {
+// Each spy carries the signature of the prop it stands in for, so the mock is a real substitute for
+// the callback the component calls rather than something only a cast makes fit.
+interface MenuFns {
+  onSelect: Mock<(id: string) => void>
+  onAddPrinter: Mock<() => void>
+  onOpenSettings: Mock<() => void>
+}
+
+function menuFns(): MenuFns {
+  return { onSelect: vi.fn<(id: string) => void>(), onAddPrinter: vi.fn<() => void>(), onOpenSettings: vi.fn<() => void>() }
+}
+
+function renderDropdown(fns: MenuFns) {
   var printers = [
     makePrinter({ id: 'printer-1', nick: 'Alpha', status: 'managed', endpoints: [{ label: 'Fluidd', url: 'http://10.0.0.1' }] }),
     makePrinter({ id: 'printer-2', nick: 'Beta', status: 'managed' }),
@@ -25,7 +38,7 @@ function renderDropdown(fns: { onSelect: ReturnType<typeof vi.fn>; onAddPrinter:
 
 describe('PrinterDropdown', () => {
   it('selects another printer and opens printer settings from the menu', async () => {
-    var fns = { onSelect: vi.fn(), onAddPrinter: vi.fn(), onOpenSettings: vi.fn() }
+    var fns = menuFns()
     var { user, container } = renderDropdown(fns)
 
     await user.click(container.querySelector('.printer-trigger') as HTMLElement)
@@ -38,7 +51,7 @@ describe('PrinterDropdown', () => {
   })
 
   it('opens an endpoint url from the flyout', async () => {
-    var fns = { onSelect: vi.fn(), onAddPrinter: vi.fn(), onOpenSettings: vi.fn() }
+    var fns = menuFns()
     var { user, container, b3d } = renderDropdown(fns)
 
     await user.click(container.querySelector('.printer-trigger') as HTMLElement)
@@ -134,8 +147,12 @@ describe('PrinterDropdown status dot (group 1: every connection condition)', () 
 })
 
 interface UpdateFns {
-  onUpdateDaemon: ReturnType<typeof vi.fn>
-  onUpdateJinni: ReturnType<typeof vi.fn>
+  onUpdateDaemon: Mock<(id: string) => void>
+  onUpdateJinni: Mock<(id: string) => void>
+}
+
+function updateFns(): UpdateFns {
+  return { onUpdateDaemon: vi.fn<(id: string) => void>(), onUpdateJinni: vi.fn<(id: string) => void>() }
 }
 
 function renderRow(printer: Printer, adapterJinniVersions: Record<string, string>, fns: UpdateFns) {
@@ -145,7 +162,7 @@ function renderRow(printer: Printer, adapterJinniVersions: Record<string, string
   )
 }
 
-function openRow(printer: Printer, adapterJinniVersions: Record<string, string> = {}, fns: UpdateFns = { onUpdateDaemon: vi.fn(), onUpdateJinni: vi.fn() }) {
+function openRow(printer: Printer, adapterJinniVersions: Record<string, string> = {}, fns: UpdateFns = updateFns()) {
   var rendered = renderRow(printer, adapterJinniVersions, fns)
 
   return { ...rendered, fns, open: () => rendered.user.click(rendered.container.querySelector('.printer-trigger') as HTMLElement) }

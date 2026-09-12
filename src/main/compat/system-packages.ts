@@ -25,6 +25,10 @@ interface RegisteredAdapter extends JinniCarrier {
 // jinni version off `/capabilities`, so the two halves are read separately and arrive here together.
 export interface MachineryReport {
   adapter: string
+  // The id the printer was ENROLLED under, off the app's own record. A jinni reports whatever its
+  // layout file says, and the klipper-linux one falls back to 'klipper-linux' (the name of the code
+  // base, not of a registered id) when that file is missing. The record is then the only truth left.
+  recordAdapter?: string
   daemonVersion?: string
   jinniVersion?: string
 }
@@ -43,12 +47,24 @@ function versionEntry(packageName: string | undefined, version: string | undefin
   return { [packageName]: reported }
 }
 
+// Which registered adapter's jinni the printer is running. The printer's own answer comes first: it
+// is the live truth, and a printer re-enrolled onto another adapter says so before the record does.
+// An answer that names no registered id is not the end of the road, because the id the printer was
+// enrolled under is on the record: without that second look the jinni version is silently dropped and
+// the store offers to install a jinni the printer already runs.
+function jinniPackageFor(reported: MachineryReport, adapters: readonly RegisteredAdapter[]): string | undefined {
+  const asReported = adapters.find((adapter) => adapter.id === reported.adapter)
+  if (asReported) return asReported.jinniPackage
+
+  return adapters.find((adapter) => adapter.id === reported.recordAdapter)?.jinniPackage
+}
+
 // The versions the printer's machinery is actually running, keyed by package name so the store can
 // read them exactly like a plugin's. The daemon's own package list covers the plugin tree, and the
 // machinery lives outside it, so without this the store has no version for either the daemon or the
 // jinni and offers to install a printer what it is already running.
 export function runningMachineryVersions(reported: MachineryReport, adapters: readonly RegisteredAdapter[]): Record<string, string> {
-  const jinniPackage = adapters.find((adapter) => adapter.id === reported.adapter)?.jinniPackage
+  const jinniPackage = jinniPackageFor(reported, adapters)
 
   return { ...versionEntry(DAEMON_PACKAGE, reported.daemonVersion), ...versionEntry(jinniPackage, reported.jinniVersion) }
 }

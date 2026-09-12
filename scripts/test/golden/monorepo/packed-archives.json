@@ -2,6 +2,7 @@
   "archives": [
     "afc-lite",
     "bespok3d-daemon",
+    "bespok3d-jinni-klipper-linux",
     "bespok3d-jinni-snapmaker-u1",
     "camera-hw-accel",
     "fluidd",

@@ -4,6 +4,9 @@ import { app, BrowserWindow, shell, nativeImage, screen } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
+// Side-effect only: every adapter this build ships registers itself here, before any IPC handler can
+// be asked for one.
+import './adapter-loader/registered'
 import { registerIpc } from './ipc'
 import { stopMdnsScan } from './mdns'
 import { closeAllPrintStateWatches } from './daemon-client/feeds/print-state'

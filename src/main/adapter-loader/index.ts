@@ -93,6 +93,20 @@ export interface EnrollStep {
   run: (ssh: SshSession, ctx: EnrollContext) => Promise<void>
 }
 
+// The SSH-side halves of the lifecycle operations the app offers an enrolled printer. The app owns the
+// daemon-side calls (stopping plugins, teardown, re-applying) and the waits; each adapter owns what
+// has to happen on the printer's own filesystem for the operation, because that is device knowledge.
+export interface AdapterLifecycle {
+  // After the daemon stopped every plugin: take bespok3d out of the boot sequence.
+  deactivate: EnrollStep[]
+  // Put it back and start the daemon; the app then waits and re-applies plugins.
+  reactivate: EnrollStep[]
+  // After the daemon tore every plugin down: remove every file and system change.
+  remove: EnrollStep[]
+  // Ask the printer to power cycle; the app waits for it to come back.
+  reboot: EnrollStep[]
+}
+
 export interface AdapterDefinition {
   id: string
   title: string
@@ -121,6 +135,19 @@ export interface AdapterDefinition {
   // intact and our workspace is present. Goes false after a firmware OTA wipes the overlay, which is
   // exactly when a daemon repair would not survive a reboot and the printer needs full recovery.
   verifyEnrolled: (ssh: SshSession) => Promise<boolean>
+  // What deactivate, reactivate, uninstall and reboot do on this printer's own filesystem. Required,
+  // so an adapter that ships without them fails tsc rather than at the first click of a menu item.
+  lifecycle: AdapterLifecycle
+  // The tail of the daemon's own log on this printer, for the screen that reports a daemon that did
+  // not come up.
+  readDaemonLog: (ssh: SshSession) => Promise<string>
+  // The absolute path of the bespok3d workspace on this printer, resolved on a live session: an
+  // adapter whose tree hangs off the login user's home cannot name it until it has logged in. The
+  // app uses it for the one file it writes there itself (the access list reset), over SFTP, which
+  // expands nothing.
+  workspaceRoot: (ssh: SshSession) => Promise<string>
+  // One line of what is wrong with the daemon, shown as a progress hint before a repair. Optional.
+  diagnoseDaemon?: (ssh: SshSession) => Promise<string>
 }
 
 const ADAPTERS = new Map<string, AdapterDefinition>()
