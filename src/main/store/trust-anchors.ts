@@ -10,14 +10,17 @@
 // bytes rather than a judgement made at the call site. A key absent from this list confers nothing:
 // its signature is not weaker proof, it is no proof, and the package is refused.
 import type { PackageTrust } from '../registry/model'
-import { OFFICIAL_LIST_PUBLIC_KEY } from '../registry/resolve/verify'
+import { LIXNIX_PUBLISHER_PUBLIC_KEY, OFFICIAL_LIST_PUBLIC_KEY } from '../registry/resolve/verify'
 
 export interface TrustAnchor {
   armoredKey: string
   tier: PackageTrust
 }
 
-// Seeded with the org key that already ships for index verification, because it is the only key the
-// app pins today. A dedicated package-signing key (and whether it replaces this one or joins it) is
-// settled where the org key material itself is settled, and lands here as another entry.
-export const TRUSTED_PACKAGE_ANCHORS: readonly TrustAnchor[] = [{ armoredKey: OFFICIAL_LIST_PUBLIC_KEY, tier: 'project' }]
+// The org's two keys: the registry key that signs the curated index, and the publisher key b3-builder
+// signs with when the org releases plugins of its own. Both are Bespok3d's, so both confer 'project';
+// a community publisher's key lands here as another entry at 'community', not as a second code path.
+export const TRUSTED_PACKAGE_ANCHORS: readonly TrustAnchor[] = [
+  { armoredKey: OFFICIAL_LIST_PUBLIC_KEY, tier: 'project' },
+  { armoredKey: LIXNIX_PUBLISHER_PUBLIC_KEY, tier: 'project' },
+]
