@@ -222,11 +222,16 @@ export function dedupeDevices(records: DiscoveredPrinterRecord[]): DiscoveredPri
   return Array.from(byHost.values())
 }
 
-export function guessAdapter(vendor: string, model: string): string {
+// Which adapter a discovered device most likely wants. The hostname counts as evidence: a Voron on
+// MainsailOS advertises a generic model and vendor, and the one place its identity shows up is the
+// name its owner gave it. The caller checks the answer against the adapters this build registered,
+// so a guess is only ever a pre-selection.
+export function guessAdapter(vendor: string, model: string, host = ''): string {
   const vendorLower = vendor.toLowerCase()
   const modelLower = model.toLowerCase()
+  const hostLower = host.toLowerCase()
   if (vendorLower.includes('snapmaker') || modelLower.includes('snapmaker')) return 'snapmaker-u1'
-  if (modelLower.includes('voron')) return 'voron-24'
+  if (modelLower.includes('voron') || hostLower.includes('voron')) return 'voron-24'
 
   return 'klipper-generic'
 }

@@ -1,15 +1,11 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { checkDaemon } from '../printers'
-import { shellQuote } from '../ssh'
-import type { SshSession } from '../ssh'
 
+// How much of the log an adapter is expected to hand back, named here because this is the file that
+// puts a number in front of the user. Reading it off the printer belongs to the adapter: where the
+// daemon writes its log is the printer's own fact, and the app used to hardcode the U1's path.
 const DAEMON_LOG_TAIL_LINES = 200
-const DAEMON_LOG_PATH = '/userdata/bespok3d/var/log/daemon.log'
-
-export function tailDaemonLog(ssh: SshSession, logPath: string = DAEMON_LOG_PATH, lineCount: number = DAEMON_LOG_TAIL_LINES): Promise<string> {
-  return ssh.exec(`tail -${Number(lineCount)} ${shellQuote(logPath)} 2>/dev/null || true`)
-}
 
 export function formatDaemonStartFailure(logTail: string): string {
   const trimmed = logTail.trim()

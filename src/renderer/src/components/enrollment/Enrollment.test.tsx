@@ -261,7 +261,8 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
 
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing bespok3d from the printer', stepIndex: 1, totalSteps: 2 })))
 
-    await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22))
+    // The record is gone by the time this reboot runs, so the call carries the adapter id itself.
+    await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22, 'snapmaker-u1'))
     expect(screen.getByText('Bespok3d removed')).toBeInTheDocument()
     expect(screen.getByText('Your printer is rebooting.')).toBeInTheDocument()
   })

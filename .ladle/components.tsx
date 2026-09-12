@@ -103,7 +103,7 @@ const catalogB3d = {
     return Promise.resolve()
   },
   printers: {
-    adaptersList: () => Promise.resolve([makeAdapterInfo()]),
+    adaptersList: () => Promise.resolve([makeAdapterInfo(), makeAdapterInfo({ id: 'voron-24', title: 'Voron 2.4', vendor: 'Voron Design', description: 'Stock Klipper adapter for a Voron 2.4.' })]),
     adapterGet: () => Promise.resolve(makeAdapterInfo()),
     load: () => Promise.resolve([]),
     enroll: recordOp,

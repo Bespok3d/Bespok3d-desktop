@@ -3,6 +3,7 @@
   "bundle": [
     "bespok3d-daemon",
     "bespok3d-jinni-snapmaker-u1",
+    "bespok3d-jinni-klipper-linux",
     "afc-lite",
     "spoolman",
     "u1-gcode-colors",

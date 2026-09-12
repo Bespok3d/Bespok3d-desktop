@@ -5,6 +5,7 @@ import { AdapterSelect } from './AdapterSelect'
 import './add-printer.css'
 
 export interface ManualBodyProps {
+  adapters: AdapterInfo[]
   manualIp: string
   nick: string
   adapterId: string
@@ -14,6 +15,7 @@ export interface ManualBodyProps {
 }
 
 export function ManualBody({
+  adapters,
   manualIp,
   nick,
   adapterId,
@@ -48,7 +50,7 @@ export function ManualBody({
       </div>
       <div className="field">
         <label>{t('add.adapter_label')}</label>
-        <AdapterSelect adapterId={adapterId} onChange={onAdapterChange} />
+        <AdapterSelect adapters={adapters} adapterId={adapterId} onChange={onAdapterChange} />
       </div>
     </div>
   )

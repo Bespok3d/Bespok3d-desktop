@@ -50,6 +50,9 @@ function mockAdapter(steps: EnrollStep[]) {
     jinniPackage: 'bespok3d-jinni-test', restartSeconds: 42, description: '',
     defaults: { sshUser: 'root', sshPort: 22, sshPasswordHint: '', runtimeUser: 'user' },
     envVars: [], enrollSteps: steps, verifyEnrolled: vi.fn().mockResolvedValue(true),
+    lifecycle: { deactivate: [], reactivate: [], remove: [], reboot: [] },
+    readDaemonLog: vi.fn().mockResolvedValue(''),
+    workspaceRoot: vi.fn().mockResolvedValue('/tmp/bespok3d-test'),
   }
 }
 

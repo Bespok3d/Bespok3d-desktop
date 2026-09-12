@@ -71,7 +71,7 @@
     {
       "name": "bespok3d-daemon",
       "title": "Bespok3d daemon",
-      "version": "0.14.0",
+      "version": "0.14.1",
       "description": "The on-printer daemon for the Bespok3d plugin manager: a small FastAPI service that installs, updates, and removes plugins, reports printer capabilities, refuses any operation mid-print, and self-heals a plugin that breaks a service so the printer is never left unusable. It is plugin zero: the adapter bootstraps it over SSH at enrollment (cert-pinned HTTPS, bearer-token auth), not through the normal plugin install pipeline, so the install block below is intentionally empty. This package is the publishable, versioned artifact the app reads to know when a newer daemon is available.",
       "tagline": "The on-printer service that installs plugins and keeps the printer safe.",
       "category": "system",
@@ -89,9 +89,34 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "bespok3d-daemon/doc/README.md",
-      "download_url": "bespok3d-daemon-0.14.0.b3",
+      "download_url": "bespok3d-daemon-0.14.1.b3",
       "min_jinni_version": "0.1.10",
       "changelog_url": "bespok3d-daemon/doc/CHANGELOG.md"
+    },
+    {
+      "name": "bespok3d-jinni-klipper-linux",
+      "title": "Klipper on Linux jinni",
+      "version": "0.2.0",
+      "description": "The jinni for a Klipper printer whose host is a Debian style Linux box with systemd (MainsailOS, Fluidd, a KIAUH install on a Raspberry Pi class board): the printer side process that reads this host's layout, board and service facts and actuates the daemon's install operations on it. It reads where Klipper and Moonraker actually live from the host's own systemd environment files rather than assuming one layout. Bundles the shared klipper jinni runtime it extends, so a printer needs only this one package. It is not independently startable: the daemon owns its lifecycle and picks up a new jinni on the restart its own install op already performs.",
+      "tagline": "The printer side process that gives the daemon Klipper on Linux device knowledge.",
+      "category": "system",
+      "channel": "stable",
+      "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
+      "printer_specific": true,
+      "published_at": "2026-09-12",
+      "updated_at": "2026-09-12",
+      "requires": {
+        "capabilities": [
+          "klipper-linux"
+        ]
+      },
+      "provides": [],
+      "deps": [],
+      "conflicts": [],
+      "doc_url": "bespok3d-jinni-klipper-linux/doc/README.md",
+      "download_url": "bespok3d-jinni-klipper-linux-0.2.0.b3",
+      "min_daemon_version": "0.14.1",
+      "changelog_url": "bespok3d-jinni-klipper-linux/doc/CHANGELOG.md"
     },
     {
       "name": "bespok3d-jinni-snapmaker-u1",

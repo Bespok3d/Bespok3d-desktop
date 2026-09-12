@@ -129,7 +129,18 @@ describe('guessAdapter', () => {
     expect(guessAdapter('Unknown', 'Snapmaker U1')).toBe('snapmaker-u1')
   })
 
+  it('reads a Voron out of the model', () => {
+    expect(guessAdapter('DIY', 'Voron 2.4')).toBe('voron-24')
+  })
+
+  // A MainsailOS host advertises neither a vendor nor a model worth reading; the name its owner typed
+  // into the imager is the only identity on the wire.
+  it('reads a Voron out of the hostname when the model says nothing', () => {
+    expect(guessAdapter('Unknown', 'Network device', 'voron-24.local')).toBe('voron-24')
+  })
+
   it('falls back to the generic Klipper adapter', () => {
     expect(guessAdapter('Unknown', 'Network device')).toBe('klipper-generic')
+    expect(guessAdapter('Unknown', 'Network device', 'mainsailos.local')).toBe('klipper-generic')
   })
 })

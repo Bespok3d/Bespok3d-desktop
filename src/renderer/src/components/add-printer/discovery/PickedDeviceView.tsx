@@ -9,6 +9,7 @@ import { useI18n } from '../../../i18n/context'
 import '../add-printer.css'
 
 interface PickedDeviceViewProps {
+  adapters: AdapterInfo[]
   picked: DiscoveredPrinterRecord
   nick: string
   adapterId: string
@@ -18,6 +19,7 @@ interface PickedDeviceViewProps {
 }
 
 export function PickedDeviceView({
+  adapters,
   picked,
   nick,
   adapterId,
@@ -64,7 +66,7 @@ export function PickedDeviceView({
           <span className="ap-confirm-sep">·</span>
           <span className="ap-confirm-host">{picked.ip}</span>
         </div>
-        <AdapterSelect adapterId={adapterId} onChange={onAdapterChange} />
+        <AdapterSelect adapters={adapters} adapterId={adapterId} onChange={onAdapterChange} />
       </div>
     </>
   )
