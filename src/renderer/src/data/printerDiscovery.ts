@@ -222,16 +222,23 @@ export function dedupeDevices(records: DiscoveredPrinterRecord[]): DiscoveredPri
   return Array.from(byHost.values())
 }
 
+// The Voron 2.4 specifically, as a whole token: "Voron 2.4", "voron-2.4", "voron24", "voron_2_4" or
+// "v2.4", with or without a revision glued on ("voron24r2"). Anchored on both sides so a longer
+// number ("voron241") is not a 2.4.
+const VORON_24_PATTERN = /(^|[^a-z0-9])(voron[-_ ]?2[-_.]?4|v2[-_.]4)(r\d+)?([^a-z0-9]|$)/i
+
 // Which adapter a discovered device most likely wants. The hostname counts as evidence: a Voron on
 // MainsailOS advertises a generic model and vendor, and the one place its identity shows up is the
-// name its owner gave it. The caller checks the answer against the adapters this build registered,
-// so a guess is only ever a pre-selection.
+// name its owner gave it. Only a Voron 2.4 earns the 'voron-24' id: the two Klipper ids run identical
+// code and the title is the only thing that differs between them, so every other Voron (a Trident, a
+// V0, a Switchwire, or a bare "voron") takes the generic id rather than being labelled a 2.4 it is
+// not. The caller checks the answer against the adapters this build registered, so a guess is only
+// ever a pre-selection.
 export function guessAdapter(vendor: string, model: string, host = ''): string {
   const vendorLower = vendor.toLowerCase()
   const modelLower = model.toLowerCase()
-  const hostLower = host.toLowerCase()
   if (vendorLower.includes('snapmaker') || modelLower.includes('snapmaker')) return 'snapmaker-u1'
-  if (modelLower.includes('voron') || hostLower.includes('voron')) return 'voron-24'
+  if (VORON_24_PATTERN.test(model) || VORON_24_PATTERN.test(host)) return 'voron-24'
 
   return 'klipper-generic'
 }

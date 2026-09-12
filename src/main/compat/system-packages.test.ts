@@ -63,6 +63,26 @@ describe('what the machinery on a printer is running', () => {
     expect(running).toEqual({ 'bespok3d-daemon': '0.12.23' })
   })
 
+  // The klipper-linux jinni reads its id back out of the layout file enrolment wrote, and reports
+  // 'klipper-linux' (the code base, not a registered id) if that file is ever missing. Dropping the
+  // jinni version there makes the store offer to install a jinni the printer is already running, so
+  // the id the printer was enrolled under is the second place to look.
+  it('falls back to the id the printer was enrolled under when the reported one is not registered', () => {
+    const klipperLinux = [{ id: 'klipper-generic', jinniPackage: 'bespok3d-jinni-klipper-linux' }]
+    const running = runningMachineryVersions({ adapter: 'klipper-linux', recordAdapter: 'klipper-generic', daemonVersion: '0.12.23', jinniVersion: '0.2.0' }, klipperLinux)
+
+    expect(running).toEqual({ 'bespok3d-daemon': '0.12.23', 'bespok3d-jinni-klipper-linux': '0.2.0' })
+  })
+
+  // The printer's own answer stays the first truth: a printer re-enrolled onto another adapter says so
+  // on the wire before the record catches up, and the record must not override it.
+  it('keeps the reported adapter when that id IS registered', () => {
+    const u1AndKlipperGeneric = [{ id: 'snapmaker-u1', jinniPackage: 'bespok3d-jinni-snapmaker-u1' }, { id: 'klipper-generic', jinniPackage: 'bespok3d-jinni-klipper-linux' }]
+    const running = runningMachineryVersions({ adapter: 'klipper-generic', recordAdapter: 'snapmaker-u1', daemonVersion: '0.12.23', jinniVersion: '0.2.0' }, u1AndKlipperGeneric)
+
+    expect(running).toEqual({ 'bespok3d-daemon': '0.12.23', 'bespok3d-jinni-klipper-linux': '0.2.0' })
+  })
+
   // An entry with no real version reads as installed-at-nothing, which makes any catalog version look
   // newer and hangs a permanent Update on a card that may be perfectly current.
   it('reports nothing for a version the printer did not give', () => {

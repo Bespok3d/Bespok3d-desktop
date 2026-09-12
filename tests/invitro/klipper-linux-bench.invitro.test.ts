@@ -21,6 +21,10 @@ import type { SshSession } from '../../src/main/ssh'
 // set, so the Docker suite and CI never look for it. Every call below is the SAME code the app runs:
 // enrollPrinter, the daemon client, the adapter's own lifecycle steps.
 //
+// One code base registers more than one adapter id, so the bench is run ONCE PER ID: B3D_BENCH_ADAPTER
+// picks the one under test, and the printer identity below is derived from it rather than hardcoded,
+// so two runs never collide on the same record and each run is labelled with the id it proved.
+//
 //   B3D_DEV_SOURCES=<app root> B3D_BENCH_HOST=127.0.0.1 B3D_BENCH_PORT=2222 \
 //     npx vitest run --config vitest.invitro.config.ts klipper-linux-bench
 
@@ -31,7 +35,10 @@ const credentials = {
   port: Number(process.env.B3D_BENCH_PORT ?? '2222'),
 }
 const adapterId = process.env.B3D_BENCH_ADAPTER ?? 'voron-24'
-const PRINTER_ID = 'bench-voron'
+// The adapter's own registered title, which is the only thing that differs between the ids this code
+// base registers. An id with no registered adapter reads as itself rather than as a blank.
+const adapterTitle = getAdapter(adapterId)?.title ?? adapterId
+const PRINTER_ID = `bench-${adapterId}`
 const ENROL_TIMEOUT_MS = 900_000
 
 interface BenchCapabilities {
@@ -96,11 +103,11 @@ async function enrol(): Promise<void> {
 
 const benchIt = benchHost ? it : it.skip
 
-describe('Klipper on Linux bench: a Voron shaped host enrolled by the real app code', () => {
+describe(`Klipper on Linux bench (${adapterId}): a MainsailOS shaped host enrolled by the real app code`, () => {
   benchIt('enrols the bench printer through every step of the adapter', async () => {
     removePrinter(PRINTER_ID)
     savePrinter({
-      id: PRINTER_ID, nick: 'bench voron', model: 'Voron 2.4', adapter: adapterId,
+      id: PRINTER_ID, nick: `bench ${adapterTitle}`, model: adapterTitle, adapter: adapterId,
       host: benchHost as string, ip: benchHost as string, status: 'online', installedIds: [],
     })
 

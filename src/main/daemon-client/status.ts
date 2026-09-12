@@ -43,10 +43,13 @@ export function dedupeEndpoints(endpoints: Array<{ label: string; url: string }>
 }
 
 // The printer this answer came from, as much of it as reading the answer needs: the address the
-// endpoints are rewritten to, and the daemon version, which `/capabilities` does not carry.
+// endpoints are rewritten to, the daemon version, which `/capabilities` does not carry, and the
+// adapter id the printer was enrolled under, which is the fallback when the jinni names an id this
+// build does not register.
 export interface CapabilitiesHost {
   ip: string
   daemonVersion?: string
+  adapter?: string
 }
 
 export function parseCaps(caps: CapabilitiesResult, printer: CapabilitiesHost) {
@@ -55,7 +58,7 @@ export function parseCaps(caps: CapabilitiesResult, printer: CapabilitiesHost) {
     ? Object.fromEntries((rawInstalled as string[]).map((id) => [id, '']))
     : (rawInstalled as Record<string, string>)
   const reachableEndpoints = (caps.endpoints ?? []).map((endpoint) => ({ ...endpoint, url: endpoint.url.replace('{host}', printer.ip) }))
-  const machinery = { adapter: caps.adapter, daemonVersion: printer.daemonVersion, jinniVersion: caps.jinni_version }
+  const machinery = { adapter: caps.adapter, recordAdapter: printer.adapter, daemonVersion: printer.daemonVersion, jinniVersion: caps.jinni_version }
 
   return {
     installedIds: Object.keys(installedVersions),
@@ -189,7 +192,7 @@ async function daemonMetadata(record: PrinterRecord): Promise<DaemonAnswer | nul
     // The version this probe just read, not the one on the record: after a daemon update the record
     // still holds the old number until this same write lands, and the store would show it for a whole
     // ping cycle as an update the printer has already taken.
-    const parsed = parseCaps(caps, { ip: record.ip, daemonVersion: status.version })
+    const parsed = parseCaps(caps, { ip: record.ip, daemonVersion: status.version, adapter: record.adapter })
     // A daemon too old to know about power cycles omits the key entirely, and that reads as "nothing
     // to reboot for", never as "unknown": an old daemon must not make the app nag for a power cycle.
     const health = selfCheck ? {

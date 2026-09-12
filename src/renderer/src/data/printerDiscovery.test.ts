@@ -129,18 +129,33 @@ describe('guessAdapter', () => {
     expect(guessAdapter('Unknown', 'Snapmaker U1')).toBe('snapmaker-u1')
   })
 
-  it('reads a Voron out of the model', () => {
+  it('reads a Voron 2.4 out of the model', () => {
     expect(guessAdapter('DIY', 'Voron 2.4')).toBe('voron-24')
   })
 
   // A MainsailOS host advertises neither a vendor nor a model worth reading; the name its owner typed
   // into the imager is the only identity on the wire.
-  it('reads a Voron out of the hostname when the model says nothing', () => {
-    expect(guessAdapter('Unknown', 'Network device', 'voron-24.local')).toBe('voron-24')
+  it('reads a Voron 2.4 out of the hostname when the model says nothing', () => {
+    expect(guessAdapter('Unknown', 'Network device', 'voron24.local')).toBe('voron-24')
+    expect(guessAdapter('Unknown', 'Network device', 'voron24r2.local')).toBe('voron-24')
+    expect(guessAdapter('Unknown', 'Network device', 'voron241.local')).toBe('klipper-generic')
+  })
+
+  // The two Klipper ids run identical code, so the title is the only thing the guess decides. Calling
+  // a Trident a "Voron 2.4" would be plainly wrong, and calling it generic costs it nothing.
+  it('leaves every other Voron on the generic adapter', () => {
+    expect(guessAdapter('Unknown', 'Network device', 'voron-trident.local')).toBe('klipper-generic')
+    expect(guessAdapter('Unknown', 'Network device', 'voron.local')).toBe('klipper-generic')
+    expect(guessAdapter('DIY', 'Voron V0.2')).toBe('klipper-generic')
   })
 
   it('falls back to the generic Klipper adapter', () => {
     expect(guessAdapter('Unknown', 'Network device')).toBe('klipper-generic')
+  })
+
+  // The shape the bench runs: a stock MainsailOS image answers with a generic model and vendor and a
+  // hostname that names the distribution, not the printer.
+  it('maps a MainsailOS shaped device to the generic Klipper adapter', () => {
     expect(guessAdapter('Unknown', 'Network device', 'mainsailos.local')).toBe('klipper-generic')
   })
 })

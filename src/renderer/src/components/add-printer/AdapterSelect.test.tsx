@@ -7,10 +7,13 @@ import { setup } from '../../test/harness'
 import { makeAdapterInfo } from '../../test/fixtures'
 import { AdapterSelect } from './AdapterSelect'
 
+// Every adapter id this build registers, the two klipper-linux ids included: one code base can
+// register more than one id, and the picker has to offer each of them by its own title.
 function registeredAdapters(): AdapterInfo[] {
   return [
     makeAdapterInfo(),
     makeAdapterInfo({ id: 'voron-24', title: 'Voron 2.4', vendor: 'Voron Design', description: 'Stock Klipper adapter for a Voron 2.4.' }),
+    makeAdapterInfo({ id: 'klipper-generic', title: 'Klipper: generic', vendor: 'Any maker', description: 'Stock Klipper adapter for any Klipper on Linux printer.' }),
   ]
 }
 

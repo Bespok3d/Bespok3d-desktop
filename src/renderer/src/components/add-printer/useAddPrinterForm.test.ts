@@ -11,6 +11,12 @@ function voron(): DiscoveredPrinterRecord {
   return { id: 'v-1', host: 'voron.local', ip: '10.0.0.7', model: 'Voron 2.4', vendor: 'DIY', service: '_klipper._tcp' }
 }
 
+// What a stock MainsailOS image puts on the wire: no vendor, no model, and a hostname that names the
+// distribution rather than the printer. It is the shape the klipper-linux bench runs on.
+function mainsailOs(): DiscoveredPrinterRecord {
+  return { id: 'm-1', host: 'mainsailos.local', ip: '10.0.0.8', model: 'Network device', vendor: 'Unknown', service: '_moonraker._tcp' }
+}
+
 function threeAdapters(): AdapterInfo[] {
   return [
     makeAdapterInfo(),
@@ -19,7 +25,9 @@ function threeAdapters(): AdapterInfo[] {
   ]
 }
 
-describe('useAddPrinterForm', () => {
+// Picking a device pre-fills the adapter field from the device's own identity, checked against the
+// adapters this build registered. Its own group: the rest of the form does not take part in it.
+describe('useAddPrinterForm adapter pre-selection', () => {
   it('guesses the adapter from a picked device', () => {
     const { result } = renderHook(() => useAddPrinterForm('scan', undefined, [voron()], threeAdapters()))
     expect(result.current.adapterId).toBe('snapmaker-u1')
@@ -27,6 +35,14 @@ describe('useAddPrinterForm', () => {
     act(() => result.current.setPicked(voron()))
 
     expect(result.current.adapterId).toBe('voron-24')
+  })
+
+  it('pre-selects the generic Klipper adapter for a MainsailOS shaped device', () => {
+    const { result } = renderHook(() => useAddPrinterForm('scan', undefined, [mainsailOs()], threeAdapters()))
+
+    act(() => result.current.setPicked(mainsailOs()))
+
+    expect(result.current.adapterId).toBe('klipper-generic')
   })
 
   // The guess is a guess: a build that never registered the guessed adapter must not pre-select it,
@@ -40,6 +56,17 @@ describe('useAddPrinterForm', () => {
     expect(result.current.adapterId).toBe('snapmaker-u1')
   })
 
+  it('falls back to the only registered adapter for a MainsailOS shaped device on a U1-only build', () => {
+    const onlyTheU1 = [makeAdapterInfo()]
+    const { result } = renderHook(() => useAddPrinterForm('scan', undefined, [mainsailOs()], onlyTheU1))
+
+    act(() => result.current.setPicked(mainsailOs()))
+
+    expect(result.current.adapterId).toBe('snapmaker-u1')
+  })
+})
+
+describe('useAddPrinterForm', () => {
   // The list arrives over IPC a tick after the modal opens, so the first render has nothing to select.
   it('adopts the first adapter once the list arrives', () => {
     const { result, rerender } = renderHook((adapters: AdapterInfo[]) => useAddPrinterForm('manual', undefined, [], adapters), { initialProps: [] as AdapterInfo[] })
