@@ -18,8 +18,14 @@ export default defineConfig({
       '@bespok3d/contract': resolve(__dirname, '../lib_bespok3d/ts/contract/index.ts'),
     },
   },
+  // Workspace root: tests glob plugin manifests/docs/media from the sibling plugins/ tree (the repo
+  // split), which lives beside Bespok3d, not under it. This belongs on Vite's own server config:
+  // vitest 4 dropped `test.server.fs`, so the same list under `test` is read by nobody and every
+  // `?url`/`?raw` glob into the sibling tree comes back as "Denied ID".
+  server: { fs: { allow: [resolve(__dirname, '..')] } },
   test: {
     environment: 'node',
+    setupFiles: [resolve(__dirname, 'src/renderer/src/test/dom-storage.ts')],
     css: false,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', './tools/**/*.test.ts'],
     coverage: {
@@ -31,11 +37,6 @@ export default defineConfig({
       reporter: ['text', 'json-summary', 'html'],
     },
     server: {
-      fs: {
-        // Workspace root: tests glob plugin manifests/docs from the sibling plugins/ tree (the repo
-        // split), which lives beside Bespok3d, not under it.
-        allow: [resolve(__dirname, '..')],
-      },
       // @electron-toolkit/utils reads electron's own exports at import time. Left external it loads
       // natively, outside the module graph, where a test's electron mock never reaches it and the
       // import throws before a single test runs.

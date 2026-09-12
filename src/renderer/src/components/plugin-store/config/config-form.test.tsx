@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { screen } from '@testing-library/react'
 import { setup } from '../../../test/harness'
 import { makeT } from '../../../i18n'
@@ -22,7 +23,7 @@ async function editServerAndUpdate(user: ReturnType<typeof setup>['user']): Prom
 }
 
 // The port claim a second web UI (Mainsail on 80) presents to this form.
-function mainsailOn80(claim: ReturnType<typeof vi.fn>) {
+function mainsailOn80(claim: Mock<(claimedPort: number) => Promise<void>>) {
   return {
     swapNote: (claimedPort: number) => (claimedPort === 80 ? { name: 'Mainsail', port: 81 } : null),
     steppedDownPort: () => 81,
@@ -32,7 +33,7 @@ function mainsailOn80(claim: ReturnType<typeof vi.fn>) {
 
 describe('PluginConfigSection port roles', () => {
   it('shows port 80 and says where the other UI goes, without touching the printer, until Update config', async () => {
-    var claim = vi.fn().mockResolvedValue(undefined)
+    var claim = vi.fn<(claimedPort: number) => Promise<void>>().mockResolvedValue(undefined)
     var { user, container, b3d } = setup(
       <PluginConfigSection fields={[portField]} current={{ PORT: '81' }} installed printerId="printer-1" pluginId="fluidd" portClaim={mainsailOn80(claim)} />,
     )

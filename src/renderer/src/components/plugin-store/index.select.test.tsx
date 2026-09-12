@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { screen, within } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makeT } from '../../i18n'
@@ -11,20 +12,33 @@ import { PluginStore } from '.'
 
 const en = makeT('en')
 
+// Each spy carries the signature of the prop it stands in for, taken from the component rather than
+// restated here, so the mock is a real substitute for the callback the store calls.
+type StoreProps = React.ComponentProps<typeof PluginStore>
+type InstallSelected = NonNullable<StoreProps['onInstallSelected']>
+type UninstallSelected = NonNullable<StoreProps['onUninstallSelected']>
+type SaveVars = NonNullable<StoreProps['onSaveVars']>
+
+interface SelectHandlers {
+  onInstallSelected?: Mock<InstallSelected>
+  onUninstallSelected?: Mock<UninstallSelected>
+  onSaveVars?: Mock<SaveVars>
+}
+
 function managedStore(
-  handlers: { onInstallSelected?: ReturnType<typeof vi.fn>; onUninstallSelected?: ReturnType<typeof vi.fn>; onSaveVars?: ReturnType<typeof vi.fn> },
+  handlers: SelectHandlers,
   catalog: IndexEntry[],
   installed: Record<string, string> = {},
 ) {
   return setup(
-    <PluginStore printer={makePrinter({ status: 'managed' })} grouped={false} onInstallSelected={handlers.onInstallSelected ?? vi.fn()} onUninstallSelected={handlers.onUninstallSelected ?? vi.fn()} onSaveVars={handlers.onSaveVars} />,
+    <PluginStore printer={makePrinter({ status: 'managed' })} grouped={false} onInstallSelected={handlers.onInstallSelected ?? vi.fn<InstallSelected>()} onUninstallSelected={handlers.onUninstallSelected ?? vi.fn<UninstallSelected>()} onSaveVars={handlers.onSaveVars} />,
     { withCatalog: true, catalog, b3d: { store: { capabilities: vi.fn().mockResolvedValue(makeCapabilities(installed)) } } },
   )
 }
 
 describe('PluginStore multi-select install', () => {
   it('selects an installable plugin and dispatches one batch install spec', async () => {
-    const onInstallSelected = vi.fn()
+    const onInstallSelected = vi.fn<InstallSelected>()
     const { user } = managedStore({ onInstallSelected }, [makeIndexEntry({ name: 'demo-a', title: 'Alpha', version: '1.0.0' })])
 
     await user.click(await screen.findByRole('button', { name: en('store.select') }))
@@ -36,8 +50,8 @@ describe('PluginStore multi-select install', () => {
   })
 
   it('captures a required config value before installing', async () => {
-    const onInstallSelected = vi.fn()
-    const onSaveVars = vi.fn()
+    const onInstallSelected = vi.fn<InstallSelected>()
+    const onSaveVars = vi.fn<SaveVars>()
     const { user } = managedStore({ onInstallSelected, onSaveVars }, [
       makeIndexEntry({ name: 'spoolman', title: 'Spoolman', version: '1.0.0', config: [{ key: 'SPOOLMAN_SERVER', label: 'Server', type: 'text', required: true }] }),
     ])
@@ -90,7 +104,7 @@ async function pickToUninstall(user: UserEvent, cardTitle: string) {
 
 describe('PluginStore multi-select uninstall', () => {
   it('selects an installed plugin and dispatches one batch uninstall', async () => {
-    const onUninstallSelected = vi.fn()
+    const onUninstallSelected = vi.fn<UninstallSelected>()
     const { user } = managedStore(
       { onUninstallSelected },
       [makeIndexEntry({ name: 'demo-a', title: 'Alpha', version: '1.0.0' })],
@@ -103,7 +117,7 @@ describe('PluginStore multi-select uninstall', () => {
   })
 
   it('confirms a cascade when a pick still has an installed dependent, then removes with cascade', async () => {
-    const onUninstallSelected = vi.fn()
+    const onUninstallSelected = vi.fn<UninstallSelected>()
     const { user } = managedStore(
       { onUninstallSelected },
       [

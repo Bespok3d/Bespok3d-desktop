@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 import { screen, act, fireEvent } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makeT } from '../../i18n'
@@ -13,15 +14,21 @@ function makeUpdate(overrides: Partial<UpdateAvailablePayload> = {}): UpdateAvai
   return { version: '1.2.3', action: 'autoInstall', releaseNotesMarkdown: 'Notes', releaseUrl: 'https://example/releases/v1', ...overrides }
 }
 
+type Handler = Mock<() => void>
+
 interface Handlers {
-  onInstall: ReturnType<typeof vi.fn>
-  onDownload: ReturnType<typeof vi.fn>
-  onOpenDownload: ReturnType<typeof vi.fn>
-  onLater: ReturnType<typeof vi.fn>
+  onInstall: Handler
+  onDownload: Handler
+  onOpenDownload: Handler
+  onLater: Handler
+}
+
+function makeHandler(): Handler {
+  return vi.fn<() => void>()
 }
 
 function makeHandlers(): Handlers {
-  return { onInstall: vi.fn(), onDownload: vi.fn(), onOpenDownload: vi.fn(), onLater: vi.fn() }
+  return { onInstall: makeHandler(), onDownload: makeHandler(), onOpenDownload: makeHandler(), onLater: makeHandler() }
 }
 
 function renderModal(props: Partial<React.ComponentProps<typeof UpdateModal>>, handlers: Handlers) {

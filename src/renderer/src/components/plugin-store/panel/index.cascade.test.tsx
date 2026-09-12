@@ -2,15 +2,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { screen } from '@testing-library/react'
 import { setup } from '../../../test/harness'
 import { makeT } from '../../../i18n'
 import { makePlugin, makeIndexEntry } from '../../../test/fixtures'
 import { PluginPanel } from '.'
+import type { B3d } from '../../../test/b3d-mock'
 
 const en = makeT('en')
 
-function renderInstalled(uninstall: ReturnType<typeof vi.fn>, installedIds: string[]) {
+// The spy carries the signature of the IPC call it stands in for, taken from the b3d surface rather
+// than restated here, so the mock is a real substitute for the call the panel makes.
+type Uninstall = B3d['store']['uninstall']
+
+function renderInstalled(uninstall: Mock<Uninstall>, installedIds: string[]) {
   return setup(
     <PluginPanel
       plugin={makePlugin({ id: 'rfid-ntag', name: 'rfid-ntag', title: 'RFID NTAG' })}
@@ -32,14 +38,14 @@ function renderInstalled(uninstall: ReturnType<typeof vi.fn>, installedIds: stri
 
 describe('PluginPanel uninstall + cascade wiring', () => {
   it('uninstalls directly when nothing depends on the plugin', async () => {
-    var uninstall = vi.fn().mockResolvedValue([])
+    var uninstall = vi.fn<Uninstall>().mockResolvedValue([])
     var { user } = renderInstalled(uninstall, ['rfid-ntag'])
     await user.click(screen.getByRole('button', { name: en('btn.uninstall') }))
     expect(uninstall).toHaveBeenCalledWith('printer-1', 'rfid-ntag', undefined)
   })
 
   it('warns about dependents and cascades on confirm', async () => {
-    var uninstall = vi.fn().mockResolvedValue([])
+    var uninstall = vi.fn<Uninstall>().mockResolvedValue([])
     var { user } = renderInstalled(uninstall, ['rfid-ntag', 'spoolman'])
     await user.click(screen.getByRole('button', { name: en('btn.uninstall') }))
 
@@ -52,7 +58,7 @@ describe('PluginPanel uninstall + cascade wiring', () => {
   })
 
   it('keeps the plugin when the cascade dialog is cancelled', async () => {
-    var uninstall = vi.fn().mockResolvedValue([])
+    var uninstall = vi.fn<Uninstall>().mockResolvedValue([])
     var { user } = renderInstalled(uninstall, ['rfid-ntag', 'spoolman'])
     await user.click(screen.getByRole('button', { name: en('btn.uninstall') }))
     await screen.findByText(en('store.cascade.title'))
