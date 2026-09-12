@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
 import * as openpgp from 'openpgp'
-import { fingerprintOfValidSigner, verifyIndexSignature, OFFICIAL_LIST_PUBLIC_KEY } from './verify'
+import { fingerprintOfValidSigner, verifyIndexSignature, LIXNIX_PUBLISHER_PUBLIC_KEY, OFFICIAL_LIST_PUBLIC_KEY } from './verify'
 
 const PINNED_FINGERPRINT = '679939555819FB5F6423DC68C4388E76BFA9B4E0'
+const PUBLISHER_FINGERPRINT = '03034E2A08882463984D06E96098E51D45A94591'
 const FIXTURE_INDEX = { schema_version: 1, name: 'Fixture List', publisher: 'PLACEHOLDER', updated: '2026-01-01', plugins: [] }
 
 interface ThrowawaySigner {
@@ -66,10 +67,25 @@ describe('verifyIndexSignature', () => {
     expect(pinned.getFingerprint().toUpperCase()).toBe(PINNED_FINGERPRINT)
   })
 
-  it('reports failed for a sound signature issued by a key that is not the pinned one', async () => {
+  it('derives the pinned publisher fingerprint from the bundled public key', async () => {
+    const pinned = await openpgp.readKey({ armoredKey: LIXNIX_PUBLISHER_PUBLIC_KEY })
+    expect(pinned.getFingerprint().toUpperCase()).toBe(PUBLISHER_FINGERPRINT)
+  })
+
+  it('reports failed for a sound signature issued by a key that is not one of the pinned ones', async () => {
     const served = servedBytes(FIXTURE_INDEX)
     const signer = await signWithThrowawayKey(served)
     expect(await verifyIndexSignature(served, signer.armoredSignature)).toEqual({ proof: 'failed' })
+  })
+
+  // The org signs its curated index with one key and its own plugin lists with another, so the check
+  // walks the whole set: a list the SECOND key signed is as proved as one the first did, and the
+  // fingerprint that comes back is the one that actually verified, not the first one tried.
+  it('reports signed with the fingerprint of whichever pinned key proved the bytes', async () => {
+    const served = servedBytes(FIXTURE_INDEX)
+    const bystander = await signWithThrowawayKey(servedBytes({ ...FIXTURE_INDEX, name: 'Other List' }))
+    const signer = await signWithThrowawayKey(served)
+    expect(await verifyIndexSignature(served, signer.armoredSignature, [bystander.publicKey, signer.publicKey])).toEqual({ proof: 'signed', fingerprint: signer.fingerprint })
   })
 
   // A list nobody signed and a list whose signature did not match are two different situations and
