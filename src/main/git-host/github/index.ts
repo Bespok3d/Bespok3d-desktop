@@ -11,8 +11,11 @@ const GITHUB_JSON_HEADERS = { Accept: 'application/vnd.github+json', 'X-GitHub-A
 
 // downloadUrl is the asset's API url (raw.url, .../releases/assets/{id}), NOT browser_download_url:
 // on a PRIVATE repo the browser url 404s for a token request, while the API url + Accept:octet-stream
-// redirects to a signed download. The same API url also backs assetInfo's JSON GET and the publisher
-// regex (/repos/{owner}/). browser_download_url only works for public repos.
+// redirects to a signed download. The same API url also backs the publisher regex (/repos/{owner}/).
+// A published entry may instead carry the durable tag-and-filename address
+// (.../releases/download/{tag}/{name}), which is what a public publisher's build emits because an
+// asset id dies when the asset is re-uploaded; assetInfo below accepts both shapes. browser_download_url
+// only works for public repos.
 function mapAsset(raw: JsonObject): AssetInfo {
   return { id: String(raw.id), name: String(raw.name), downloadUrl: String(raw.url), downloadCount: Number(raw.download_count) }
 }
@@ -70,11 +73,36 @@ function assetHeaders(): Record<string, string> {
   return { ...GITHUB_JSON_HEADERS, ...githubAuth(load(GITHUB_KEYCHAIN_KEY) ?? '') }
 }
 
-// Real stats for a release asset, by its API url (the same url plugins use as download_url): the
-// download count GitHub records and the asset's upload time (the actual publish date of that
-// version). JSON view of the asset, not the octet-stream download. Empty fields when unknown.
-async function assetInfo(url: string): Promise<AssetStat> {
-  const response = await fetch(url, { headers: assetHeaders() })
+// A published address is either the asset's API address (a private publisher's, and what a listing
+// hands out) or the durable tag-and-filename address (a public publisher's build emits it because an
+// asset id is minted per upload). Stats live on the API asset object, so a durable address is
+// resolved to that object through its release's tag: one request, answered with every asset of that
+// release. The API shape and any address this cannot read come back unchanged, which is what keeps a
+// private-repo entry on the path that works for it.
+const DURABLE_DOWNLOAD_ADDRESS = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\/([^/]+)$/
+
+interface ReleaseAssetRecord {
+  name?: unknown
+  url?: unknown
+}
+
+async function apiAssetAddress(url: string): Promise<string> {
+  const durable = DURABLE_DOWNLOAD_ADDRESS.exec(url)
+  if (durable === null) return url
+  const [, owner, repo, releaseTag, assetName] = durable
+  const response = await fetch(`${API_BASE}/repos/${owner}/${repo}/releases/tags/${releaseTag}`, { headers: assetHeaders() })
+  if (!response.ok) return url
+  const release = (await response.json()) as { assets?: ReleaseAssetRecord[] }
+  const named = (release.assets ?? []).find((asset) => asset.name === assetName)
+
+  return typeof named?.url === 'string' ? named.url : url
+}
+
+// Real stats for a release asset, by either of its published addresses: the download count GitHub
+// records and the asset's upload time (the actual publish date of that version). JSON view of the
+// asset, not the octet-stream download. Empty fields when unknown.
+export async function assetInfo(url: string): Promise<AssetStat> {
+  const response = await fetch(await apiAssetAddress(url), { headers: assetHeaders() })
   if (!response.ok) return { downloadCount: null, publishedAt: null }
   const asset = (await response.json()) as { download_count?: number; created_at?: string }
 

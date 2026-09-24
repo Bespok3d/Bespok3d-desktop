@@ -4,6 +4,18 @@
 
 ## 0.7.7-beta - unreleased
 
+### A plugin whose release file was re-uploaded keeps its notes, its counts and a truthful reason
+
+Re-uploading a release file used to leave the store holding a web address that then answered "not
+found" forever. The notes and readme on the plugin page fell back to the copy that shipped with the
+app, the download count and publish date disappeared, and installing failed with "The plugin file is
+no longer published at that address. The publisher may have removed the release." when the release
+was still there.
+
+A plugin published at the new address keeps its own release notes, its download count and its publish
+date however many times the publisher re-uploads the file, and a file that really is gone now says the
+release may have been re-uploaded rather than only suggesting the publisher removed it.
+
 ### Plugins and lists from other publishers can now be verified
 
 A plugin or a list signed by anyone other than Bespok3d used to show Signature failed, and a signed

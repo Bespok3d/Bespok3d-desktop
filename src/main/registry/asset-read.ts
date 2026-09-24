@@ -116,7 +116,7 @@ const NO_PACKAGE: Record<AssetProblem, string> = {
   unreachable: 'GitHub could not be reached, so the plugin could not be downloaded. Check the connection and try again.',
   private: 'This plugin is not published publicly. Sign in with a GitHub account that can see it, then install again.',
   ratelimited: 'GitHub has stopped answering this computer for now. Try again later, or sign in to GitHub to raise the limit.',
-  missing: 'The plugin file is no longer published at that address. The publisher may have removed the release.',
+  missing: 'The plugin file is no longer published at that address. The release may have been re-uploaded since this entry was published, or the publisher may have removed it.',
   empty: 'The plugin file downloaded from GitHub is empty, so there is nothing to install.',
 }
 

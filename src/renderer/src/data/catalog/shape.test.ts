@@ -94,6 +94,16 @@ describe('the runtime-readable release notes', () => {
     expect(plugin?.changelogUrl).toBe('https://api.github.com/repos/Bespok3d/u1-hw-camera/releases/assets/42')
   })
 
+  it('carries the notes at the durable tag-and-filename address a public publisher\'s build emits', () => {
+    const released = makeIndexEntry({
+      doc_url: 'https://github.com/Bespok3d/u1-hw-camera/releases/download/camera-hw-accel-v0.1.10/camera-hw-accel-0.1.10-README.md',
+      changelog_url: 'https://github.com/Bespok3d/u1-hw-camera/releases/download/camera-hw-accel-v0.1.10/camera-hw-accel-0.1.10-CHANGELOG.md',
+    })
+    const [plugin] = indexToPlugins([released], [])
+    expect(plugin?.docUrl).toBe('https://github.com/Bespok3d/u1-hw-camera/releases/download/camera-hw-accel-v0.1.10/camera-hw-accel-0.1.10-README.md')
+    expect(plugin?.changelogUrl).toBe('https://github.com/Bespok3d/u1-hw-camera/releases/download/camera-hw-accel-v0.1.10/camera-hw-accel-0.1.10-CHANGELOG.md')
+  })
+
   it('does not offer a source path or a browse link as something to read', () => {
     const unreleased = makeIndexEntry({
       doc_url: 'https://github.com/Bespok3d/u1-hw-camera/blob/main/plugin/doc/README.md',

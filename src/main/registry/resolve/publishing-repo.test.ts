@@ -9,6 +9,7 @@ import { publishingRepoOf, provenanceOfEntry, provenanceOfSourceUrl } from './pu
 
 const ASSET_URL = 'https://api.github.com/repos/fixture-owner/rfid-tools/releases/assets/4242'
 const BLOB_URL = 'https://github.com/fixture-owner/rfid-tools/blob/main/doc/README.md'
+const DURABLE_URL = 'https://github.com/fixture-owner/rfid-tools/releases/download/rfid-tools-v0.1.9/rfid-tools-0.1.9.b3'
 
 function listedEntry(fields: Record<string, unknown>): IndexEntry {
   return { name: 'rfid-tools', version: '0.1.9', ...fields }
@@ -17,6 +18,10 @@ function listedEntry(fields: Record<string, unknown>): IndexEntry {
 describe('publishingRepoOf', () => {
   it('reads the repo out of the release asset url an install actually fetches', () => {
     expect(publishingRepoOf(listedEntry({ download_url: ASSET_URL }))).toEqual({ owner: 'fixture-owner', repo: 'rfid-tools' })
+  })
+
+  it('reads the same repo out of the durable tag-and-filename address a public publisher emits', () => {
+    expect(publishingRepoOf(listedEntry({ download_url: DURABLE_URL }))).toEqual({ owner: 'fixture-owner', repo: 'rfid-tools' })
   })
 
   it('falls back to the doc url when the payload is hosted elsewhere', () => {

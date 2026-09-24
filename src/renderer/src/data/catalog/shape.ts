@@ -82,12 +82,18 @@ export function changelogFor(pluginName: string): string | undefined {
   return CHANGELOGS[pluginName]
 }
 
-// A doc field carries whatever the publisher's build wrote there: a release asset URL when the docs
-// travelled with the release, otherwise a source path or a link for a human to click. Only the asset
-// form can be fetched (the app reads it through the release-asset API, with the token a private repo
-// needs), so the rest is left to the bundled copy rather than shown as a broken page.
+// A doc field carries whatever the publisher's build wrote there: a released asset address when the
+// docs travelled with the release, otherwise a source path or a link for a human to click. Two
+// address shapes name a released asset and can be fetched at runtime: the asset's API address
+// (.../releases/assets/{id}, what a private publisher has to use) and the durable tag-and-filename
+// address (.../releases/download/{tag}/{filename}, which survives a re-upload of the same asset).
+// Everything else is left to the bundled copy rather than shown as a broken page.
+const FETCHABLE_RELEASE_PATHS = ['/releases/assets/', '/releases/download/']
+
 export function fetchableDocUrl(declared: string | undefined): string | undefined {
-  return declared?.includes('/releases/assets/') ? declared : undefined
+  if (declared === undefined) return undefined
+
+  return FETCHABLE_RELEASE_PATHS.some((releasePath) => declared.includes(releasePath)) ? declared : undefined
 }
 
 export function docAssetsFor(pluginId: string): Record<string, string> {
