@@ -122,5 +122,42 @@ export default tseslint.config(
     rules: {
       'max-lines-per-function': 'off',
     },
+  },
+  {
+    // The Playwright background harness: node scripts beside the app, not app or browser code.
+    // The globals below exist by definition in the process that executes them (node, or electron's
+    // main), so declaring them is the truth of the file class rather than a per-file pardon.
+    files: ['e2e/**/*.mjs'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: {
+        process: 'readonly',
+        URL: 'readonly',
+        Buffer: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+      },
+    },
+  },
+  {
+    // background-window.cjs is injected into the electron main process and is CommonJS on purpose
+    // (it rewrites require.cache), so require() is its native form and not an import style to argue with.
+    files: ['e2e/**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        process: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+        Buffer: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
   }
 )

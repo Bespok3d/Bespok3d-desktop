@@ -13,3 +13,11 @@
 .key-published-icon {
   color: oklch(65% 0.17 145);
 }
+
+.flyout-note {
+  padding: 8px 14px;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  border-top: 1px solid var(--line);
+}
+

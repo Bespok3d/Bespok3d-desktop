@@ -7,8 +7,10 @@
 // being bolted on as a second code path.
 //
 // An anchor carries the tier its signature confers, so trust is a property of WHICH key signed the
-// bytes rather than a judgement made at the call site. A key absent from this list confers nothing:
-// its signature is not weaker proof, it is no proof, and the package is refused.
+// bytes rather than a judgement made at the call site. A key absent from this list confers nothing by
+// itself: its signature is not weaker proof, it is no proof here. A third-party publisher is NOT
+// pinned into this set (static per-publisher anchors are not the mechanism): its key is discovered
+// under its own provenance at verify time and confers 'community' - see verify-package.ts.
 import type { PackageTrust } from '../registry/model'
 import { OFFICIAL_LIST_PUBLIC_KEY } from '../registry/resolve/verify'
 

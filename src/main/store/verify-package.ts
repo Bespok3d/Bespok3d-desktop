@@ -15,6 +15,9 @@ import type { MergedEntry, PackageTrust } from '../registry/model'
 import { B3ValidationError, parseManifest } from '../registry/local/b3-manifest'
 import type { StoredManifest } from '../registry/local/b3-manifest'
 import { fingerprintOfValidSigner } from '../registry/resolve/verify'
+import { provenanceOfEntry } from '../registry/resolve/publishing-repo'
+import { discoverPublisherKeyFromHost, isDeclaredFingerprint } from '../publisher/key-lookup'
+import type { PublisherKeyLookup } from '../publisher/key-lookup'
 import { TRUSTED_PACKAGE_ANCHORS } from './trust-anchors'
 import type { TrustAnchor } from './trust-anchors'
 import { PackageRefusedError } from './package-refused'
@@ -96,23 +99,58 @@ function manifestOrRefusal(manifestBytes: Buffer, pluginId: string): StoredManif
   }
 }
 
-// The trust tier this package earns, or a throw if it must not be installed at all. The anchor set is
-// a parameter for the same reason the index verifier's anchor is: the org's private key is a CI secret
-// that never comes near this repo, so a closed-over set would leave the passing path untestable.
+// The trust tier this package earns, or a throw if it must not be installed at all. The anchor set and
+// the publisher-key lookup are parameters for the same reason the index verifier's anchor is: the
+// org's private key is a CI secret that never comes near this repo, and a lookup that could only run
+// against live GitHub would leave the third-party path untestable.
 export async function verifiedPackageTrust(
   archiveBytes: Buffer,
   entry: MergedEntry,
   anchors: readonly TrustAnchor[] = TRUSTED_PACKAGE_ANCHORS,
+  publisherKeyOf: PublisherKeyLookup = discoverPublisherKeyFromHost,
 ): Promise<PackageTrust> {
   const { manifestBytes, armoredSignature } = readSignedManifest(archiveBytes, entry.name)
   const manifest = manifestOrRefusal(manifestBytes, entry.name)
   refuseUnlessManifestMatchesEntry(manifest, entry)
   if (!armoredSignature) return 'unknown'
-  const anchor = await anchorOfValidSignature(manifestBytes, armoredSignature, anchors)
-  if (!anchor) {
+  const tier = await signedManifestTier(manifestBytes, armoredSignature, manifest, entry, anchors, publisherKeyOf)
+  if (tier === null) {
     throw new PackageRefusedError(`the signature on the package for "${entry.name}" does not check out against any key this app trusts, so it was not installed`)
   }
   refuseUnlessPayloadIsEnumerated(manifest, entry.name)
 
-  return anchor.tier
+  return tier
+}
+
+// What the packed manifest's signature proved, or null when it proved nothing. The pinned anchor set
+// is walked first (unchanged project-key behavior); only then may a third party speak, through a
+// discovered key that is exactly the fingerprint the manifest declares and that actually signed these
+// bytes. A discovered proof is the community tier: a verified external publisher receives it, and the
+// pinned project key keeps project trust through its anchor.
+async function signedManifestTier(
+  manifestBytes: Buffer,
+  armoredSignature: string,
+  manifest: StoredManifest,
+  entry: MergedEntry,
+  anchors: readonly TrustAnchor[],
+  publisherKeyOf: PublisherKeyLookup,
+): Promise<PackageTrust | null> {
+  const anchor = await anchorOfValidSignature(manifestBytes, armoredSignature, anchors)
+  if (anchor) return anchor.tier
+  const discoveredKey = await discoveredPublisherKey(manifest, entry, publisherKeyOf)
+  if (!discoveredKey) return null
+  const proved = await fingerprintOfValidSigner(manifestBytes, armoredSignature, discoveredKey)
+
+  return proved ? 'community' : null
+}
+
+// The key of exactly the publisher this manifest declares, found under the account that actually
+// shipped the package. A manifest that declares no real fingerprint (the unsigned-build PLACEHOLDER)
+// or a package with no readable provenance has no third-party claim to check, and gets neither.
+async function discoveredPublisherKey(manifest: StoredManifest, entry: MergedEntry, publisherKeyOf: PublisherKeyLookup): Promise<string | null> {
+  const declaredPublisher = manifest.publisher
+  const provenance = provenanceOfEntry(entry)
+  if (!provenance || !isDeclaredFingerprint(declaredPublisher)) return null
+
+  return publisherKeyOf(provenance, declaredPublisher)
 }

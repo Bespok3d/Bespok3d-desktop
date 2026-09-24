@@ -73,9 +73,15 @@ function appVerification() {
     format: 'esm',
     platform: 'node',
     // The same alias electron-vite compiles the app with, so the shared contract package resolves to
-    // the source the app actually ships rather than failing to resolve here.
-    alias: { '@bespok3d/contract': join(APP_REPO_DIR, '..', 'lib_bespok3d', 'ts', 'contract', 'index.ts') },
-    external: ['openpgp', 'adm-zip', 'electron'],
+    // the source the app actually ships rather than failing to resolve here. Electron resolves to the
+    // in-vitro stand-in for the same reason: the verifier bundle may name it (the publisher-key
+    // discovery reaches the git-host keychain) but this rail runs in plain node, where the electron
+    // package is a bare executable path and its named exports do not exist.
+    alias: {
+      '@bespok3d/contract': join(APP_REPO_DIR, '..', 'lib_bespok3d', 'ts', 'contract', 'index.ts'),
+      electron: join(APP_REPO_DIR, 'tests', 'invitro', 'electron-stub.ts'),
+    },
+    external: ['openpgp', 'adm-zip'],
     outfile: bundlePath,
   })
 

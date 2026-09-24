@@ -12,6 +12,7 @@
     "jsx":                "react-jsx",
     "strict":             true,
     "skipLibCheck":       true,
+    "typeRoots":          ["./node_modules/@types"],
     "esModuleInterop":    true,
     "resolveJsonModule":  true,
     "paths": {

@@ -20,6 +20,12 @@ export function bundledDaemonVersion(): string {
 // down, and the x64 build only exists so people on older Macs still have something to run. Testing
 // the x64 build on Apple Silicon would also test Rosetta rather than the app.
 export function packagedBinary(): string {
+  if (process.env.B3D_E2E_HEADED !== '1') return join(__dirname, 'background-launcher.mjs')
+
+  return packagedAppBinary()
+}
+
+function packagedAppBinary(): string {
   const arm64Build = readdirSync(RELEASE_DIR).find((entry) => entry === 'mac-arm64')
   if (!arm64Build) throw new Error(`No packaged arm64 mac app under ${RELEASE_DIR}/mac-arm64. Run scripts/e2e.sh or scripts/screenshots.sh.`)
   const binary = join(RELEASE_DIR, arm64Build, 'Bespok3d.app', 'Contents', 'MacOS', 'Bespok3d')
@@ -36,7 +42,7 @@ export function appEnv(): Record<string, string> {
   const clean = { ...process.env } as Record<string, string>
   delete clean.ELECTRON_RUN_AS_NODE
 
-  return { ...clean, B3D_AUTOMATED_RUN: '1' }
+  return { ...clean, B3D_AUTOMATED_RUN: '1', B3D_E2E_BINARY: packagedAppBinary() }
 }
 
 export function rendererWindow(app: ElectronApplication): Promise<Page> {

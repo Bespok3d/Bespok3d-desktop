@@ -24,7 +24,7 @@
     "stories_fake_component": 0,
     "prod_standin_component": 0,
     "components_without_story": 131,
-    "weak_identifiers": 19,
+    "weak_identifiers": 18,
     "unguarded_fetch_effects": 2
   },
   "godFiles": {

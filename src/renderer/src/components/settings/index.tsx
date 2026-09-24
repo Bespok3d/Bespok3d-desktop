@@ -44,9 +44,10 @@ const NAV = [
 
 export type Section = (typeof NAV)[number]['id']
 
-// Panes a release build leaves out: key signing and the Labs experiments are for people building
-// plugins, not for the shipped app.
-const UNRELEASED_SECTIONS: Section[] = ['keys', 'labs']
+// Panes a release build leaves out: the Labs experiments are for people building plugins. The Keys
+// pane ships: a publisher generates, publishes and exports keys in a released build, because the
+// consumer verification path reads the published key back from the conventional publisher repository.
+const UNRELEASED_SECTIONS: Section[] = ['labs']
 
 function releasedSections(): (typeof NAV)[number][] {
   if (showsUnreleasedFeatures()) return NAV.slice()

@@ -43,10 +43,10 @@ describe('Settings shell', () => {
     expect(screen.getByRole('button', { name: en('set.labs') })).toBeInTheDocument()
   })
 
-  it('a released build leaves Keys and Labs out and keeps the rest', () => {
+  it('a released build keeps the key management surface and leaves Labs out', () => {
     vi.mocked(showsUnreleasedFeatures).mockReturnValue(false)
     setup(<Settings {...settingsProps(vi.fn())} />, { withCatalog: true, catalog: [] })
-    expect(screen.queryByRole('button', { name: en('set.keys') })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: en('set.keys') })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: en('set.labs') })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: en('set.printers') })).toBeInTheDocument()
   })

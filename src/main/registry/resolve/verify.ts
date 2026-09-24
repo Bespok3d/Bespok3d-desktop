@@ -6,6 +6,9 @@
 // field inside the index is not a thing and never will be, it would sign itself.
 import * as openpgp from 'openpgp'
 import type { SignatureCheck } from '../model'
+import { isDeclaredFingerprint } from '../../publisher/key-lookup'
+import type { PublisherKeyLookup } from '../../publisher/key-lookup'
+import type { PublisherProvenance } from './publishing-repo'
 
 // The trust anchor. A detached signature names its issuer, but that claim is forgeable and only
 // worth the key it is checked against, so the org's registry signing key travels WITH the app rather
@@ -81,19 +84,50 @@ async function signerOfCheckedSignature(signedBytes: string | Uint8Array, armore
 // as a badge and the list still loads, so a signing mistake costs a wrong badge rather than a dead
 // store. A malformed signature counts as failed: something was served in the signature's place and it
 // did not stand up.
-export async function verifyIndexSignature(servedBytes: string, armoredSignature: string | null): Promise<SignatureCheck> {
+//
+// The pinned project key is tried first (unchanged project-key behavior); only then does a third
+// party get a say, and only through the discovery rule: a key found under the artifact's own
+// provenance whose own fingerprint equals the fingerprint the artifact declares as its signer. A key
+// that cannot be reached (offline, HTTP failure) or that matches nothing leaves the signature
+// unproven, which is 'failed', never a silent trust.
+export async function verifyIndexSignature(servedBytes: string, armoredSignature: string | null, context: ListVerificationContext): Promise<SignatureCheck> {
   if (!armoredSignature) return { proof: 'unsigned' }
-  const fingerprint = await fingerprintOfValidSigner(servedBytes, armoredSignature, OFFICIAL_LIST_PUBLIC_KEY)
+  const pinnedFingerprint = await fingerprintOfValidSigner(servedBytes, armoredSignature, context.pinnedTrustAnchor ?? OFFICIAL_LIST_PUBLIC_KEY)
+  if (pinnedFingerprint !== null) return { proof: 'signed', fingerprint: pinnedFingerprint, signer: OFFICIAL_SIGNER_NAME, tier: 'project' }
 
-  return fingerprint === null ? { proof: 'failed' } : { proof: 'signed', fingerprint }
+  return discoveredProof(servedBytes, armoredSignature, context)
+}
+
+// Everything the third-party check needs, carried as one value: whose key to look for (provenance,
+// derived from where the bytes actually came from), which fingerprint the artifact claims signed it
+// (untrusted wire input until the signature checks out), the lookup itself as an injectable seam, and
+// the pinned trust anchor (tests substitute a throwaway; production leaves it at the org key, which is
+// also the default when a caller omits it).
+export interface ListVerificationContext {
+  provenance: PublisherProvenance | null
+  declaredPublisher: unknown
+  publisherKeyOf: PublisherKeyLookup
+  pinnedTrustAnchor?: string
+}
+
+async function discoveredProof(servedBytes: string, armoredSignature: string, context: ListVerificationContext): Promise<SignatureCheck> {
+  const unproven: SignatureCheck = { proof: 'failed' }
+  if (!isDeclaredFingerprint(context.declaredPublisher) || !context.provenance) return unproven
+  const discoveredKey = await context.publisherKeyOf(context.provenance, context.declaredPublisher).catch(() => null)
+  if (!discoveredKey) return unproven
+  const fingerprint = await fingerprintOfValidSigner(servedBytes, armoredSignature, discoveredKey)
+  if (fingerprint === null) return unproven
+
+  return { proof: 'signed', fingerprint, signer: context.provenance.account, tier: 'community' }
 }
 
 // Who a proved signature belongs to, in a word a person can read. A fingerprint is evidence, not
-// something to show anyone, and the check above accepts exactly one pinned key, so a proof that came
-// back 'signed' can only be that key's. Anything else carries through as "nobody proved this", which
-// is what the store shows instead of repeating a publisher line no signature stands behind.
+// something to show anyone, so the name travels with the proof itself: 'Bespok3d' when the pinned key
+// signed, the provenance account when that account's discovered key did. Anything else carries
+// through as "nobody proved this", which is what the store shows instead of repeating a publisher
+// line no signature stands behind.
 export function provedSigner(signature: SignatureCheck): string | null {
-  return signature.proof === 'signed' ? OFFICIAL_SIGNER_NAME : null
+  return signature.proof === 'signed' ? signature.signer : null
 }
 
 const OFFICIAL_SIGNER_NAME = 'Bespok3d'

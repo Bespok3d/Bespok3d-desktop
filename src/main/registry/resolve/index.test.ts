@@ -38,7 +38,7 @@ function fetcherFromSigned(catalogs: Record<string, RegistryIndex>, fingerprint:
     const found = catalogs[ref.url]
     if (!found) throw new Error('not found')
 
-    return { ref, index: found, fromCache: false, signature: { proof: 'signed', fingerprint } }
+    return { ref, index: found, fromCache: false, signature: { proof: 'signed', fingerprint, signer: 'Bespok3d', tier: 'project' } }
   }
 }
 
@@ -61,7 +61,9 @@ function fetcherProving(catalogs: Record<string, RegistryIndex>, provedUrls: str
     const found = catalogs[ref.url]
     if (!found) throw new Error('not found')
 
-    const signature: SignatureCheck = provedUrls.includes(ref.url) ? { proof: 'signed', fingerprint: 'org-gpg-key' } : { proof: 'unsigned' }
+    const signature: SignatureCheck = provedUrls.includes(ref.url)
+      ? { proof: 'signed', fingerprint: 'org-gpg-key', signer: 'Bespok3d', tier: 'project' }
+      : { proof: 'unsigned' }
 
     return { ref, index: found, fromCache: false, signature }
   }

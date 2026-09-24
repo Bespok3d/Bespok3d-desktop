@@ -179,7 +179,9 @@ async function useRealVerifier(armoredTrustAnchor: string): Promise<void> {
 // The real verifier's own last step: a fingerprint means signed, no fingerprint from a signature that
 // WAS served means failed. Mirrored here so the wired-through predicate returns what callers read.
 function asSignatureCheck(fingerprint: string | null): SignatureCheck {
-  return fingerprint === null ? { proof: 'failed' } : { proof: 'signed', fingerprint }
+  return fingerprint === null
+    ? { proof: 'failed' }
+    : { proof: 'signed', fingerprint, signer: 'Bespok3d', tier: 'project' }
 }
 
 beforeEach(() => {
@@ -187,7 +189,7 @@ beforeEach(() => {
   mocks.writeCache.mockClear()
   mocks.listReleases.mockReset()
   mocks.downloadReleaseAsset.mockReset()
-  mocks.verifyIndexSignature.mockReset().mockResolvedValue({ proof: 'signed', fingerprint: SIGNER_FINGERPRINT })
+  mocks.verifyIndexSignature.mockReset().mockResolvedValue({ proof: 'signed', fingerprint: SIGNER_FINGERPRINT, signer: 'Bespok3d', tier: 'project' })
   mocks.isConnected.mockReset().mockResolvedValue(true)
 })
 
@@ -200,7 +202,7 @@ describe('fetchGitHostRegistry on a 304', () => {
     seedCache(FIXTURE_BYTES, FIXTURE_SIGNATURE)
     stubNotModified()
     const fetched = await fetchGitHostRegistry(listRef())
-    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE)
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE, expect.anything())
     expect(fetched).toMatchObject({ fromCache: true, signature: { proof: 'signed', fingerprint: SIGNER_FINGERPRINT } })
   })
 
@@ -240,7 +242,7 @@ describe('fetchGitHostRegistry on a fresh 200', () => {
     stubServedIndex(404)
     mocks.verifyIndexSignature.mockResolvedValue({ proof: 'unsigned' })
     const fetched = await fetchGitHostRegistry(listRef())
-    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, null)
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, null, expect.anything())
     expect(fetched.signature).toEqual({ proof: 'unsigned' })
   })
 
@@ -250,7 +252,7 @@ describe('fetchGitHostRegistry on a fresh 200', () => {
     stubBrokenSignatureBody()
     mocks.verifyIndexSignature.mockResolvedValue({ proof: 'unsigned' })
     const fetched = await fetchGitHostRegistry(listRef())
-    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, null)
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, null, expect.anything())
     expect(fetched.index.name).toBe('Fixture List')
   })
 
@@ -270,8 +272,8 @@ describe('a cached entry whose signature never arrived', () => {
     seedCache(FIXTURE_BYTES, null)
     stubNotModifiedWithSignature()
     const fetched = await fetchGitHostRegistry(listRef())
-    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE)
-    expect(fetched.signature).toEqual({ proof: 'signed', fingerprint: SIGNER_FINGERPRINT })
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE, expect.anything())
+    expect(fetched.signature).toEqual({ proof: 'signed', fingerprint: SIGNER_FINGERPRINT, signer: 'Bespok3d', tier: 'project' })
   })
 
   it('writes the recovered signature back so the next run does not re-fetch it', async () => {
@@ -335,7 +337,7 @@ describe('the github transport', () => {
     seedCacheAt(GITHUB_AVENUE_URL, FIXTURE_BYTES, null)
     stubNotModifiedWithSignature()
     await fetchGitHostRegistry(gitHubRef())
-    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE)
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE, expect.anything())
   })
 })
 
@@ -348,7 +350,7 @@ describe('a list published as a release asset on a private repo', () => {
     stubPublishedRelease(['index.json', 'index.json.sig'])
     const fetched = await fetchGitHostRegistry(releaseAssetRef())
     expect(mocks.listReleases).toHaveBeenCalledWith({ owner: LIST_OWNER, repo: LIST_REPO })
-    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE)
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE, expect.anything())
     expect(fetched.index.name).toBe('Fixture List')
   })
 
@@ -365,7 +367,7 @@ describe('a list published as a release asset on a private repo', () => {
     stubPublishedRelease(['index.json'])
     mocks.verifyIndexSignature.mockResolvedValue({ proof: 'unsigned' })
     const fetched = await fetchGitHostRegistry(releaseAssetRef())
-    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, null)
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, null, expect.anything())
     expect(fetched.signature).toEqual({ proof: 'unsigned' })
   })
 
@@ -391,7 +393,7 @@ describe('a list published as a release asset on a public repo', () => {
     seedCacheAt(RELEASE_ASSET_URL, FIXTURE_BYTES, FIXTURE_SIGNATURE)
     stubNotModified()
     const fetched = await fetchGitHostRegistry(releaseAssetRef())
-    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE)
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, FIXTURE_SIGNATURE, expect.anything())
     expect(fetched.fromCache).toBe(true)
   })
 })
@@ -402,7 +404,7 @@ describe('end to end with real signature verification', () => {
     await useRealVerifier(signer.publicKey)
     vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(signedResponse(url, signer.armoredSignature, FIXTURE_BYTES))))
     const fetched = await fetchGitHostRegistry(listRef())
-    expect(fetched.signature).toEqual({ proof: 'signed', fingerprint: signer.fingerprint })
+    expect(fetched.signature).toEqual({ proof: 'signed', fingerprint: signer.fingerprint, signer: 'Bespok3d', tier: 'project' })
   })
 
   // NO-DOWNGRADE: one changed byte costs the badge, never the list.

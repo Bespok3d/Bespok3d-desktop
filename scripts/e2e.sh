@@ -7,10 +7,19 @@
 # are deferred (see doc/testing.md).
 set -euo pipefail
 
+export B3D_E2E_HEADED=0
+case "${1:-}" in
+    --headed) export B3D_E2E_HEADED=1; shift ;;
+    --background) shift ;;
+esac
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="$REPO_ROOT"
 
-# Unsigned local build; skip code-signing discovery so it does not stall.
+# Unsigned local build; skip code-signing discovery so it does not stall. An exported release
+# certificate (CSC_LINK and friends) must not leak in either: this throwaway bundle is never
+# distributed, and signing it with the real Developer ID would both slow the run and leave a
+# keychain unlock on the critical path. release.sh strips the same variables for the same reason.
 export CSC_IDENTITY_AUTO_DISCOVERY=false
 
 # Pack the DEV plugin bundle into dist/plugins so the store-driven specs (screenshots, layout) have a
@@ -22,7 +31,9 @@ echo "Building + packaging the app (unsigned, --dir, dev plugin bundle, no notar
 ( cd "$APP_DIR" \
     && sh "$REPO_ROOT/scripts/pack-plugins.sh" \
     && npx electron-vite build \
-    && env -u APPLE_API_KEY -u APPLE_API_ISSUER -u APPLE_API_KEY_ID npx electron-builder --dir -c.mac.notarize=false )
+    && env -u APPLE_API_KEY -u APPLE_API_ISSUER -u APPLE_API_KEY_ID \
+       -u CSC_LINK -u CSC_KEY_PASSWORD -u WIN_CSC_LINK -u WIN_CSC_KEY_PASSWORD \
+       npx electron-builder --dir -c.mac.notarize=false )
 
 echo "Running the E2E suite..."
-npm --prefix "$APP_DIR" run test:e2e
+npm --prefix "$APP_DIR" run test:e2e -- "$@"

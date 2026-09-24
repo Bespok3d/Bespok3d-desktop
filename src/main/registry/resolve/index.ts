@@ -49,10 +49,16 @@ function classifyFetchError(error: Error): SourceFailureReason {
 // an unproved source costs a badge, never an install. Trust 'any' claims no curation to prove, so it
 // passes through unchanged; that is the user's own sideloaded files, which nobody ever vouched for and
 // which the badge already says so about.
+//
+// A proof by a DISCOVERED external key confers community no matter what the curator claimed: a
+// verified external publisher receives the community tier, so a hand-pinned 'project' or 'manufacturer'
+// can never outrun a third-party signature. The pinned project key is the proof that keeps the
+// curator's claim standing.
 function derivedTrust(ref: RegistryRef, signature: SignatureCheck): RegistryTrust {
   if (ref.trust === 'any') return 'any'
   if (signature.proof === 'failed') return 'failed'
   if (signature.proof === 'unsigned') return 'unknown'
+  if (signature.tier === 'community') return 'community'
 
   return ref.trust
 }

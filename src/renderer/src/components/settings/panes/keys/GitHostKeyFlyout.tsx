@@ -7,11 +7,19 @@ import { IconGlobe, IconTrash, IconCheckCircle, IconAlert, IconExternalLink } fr
 import { useI18n } from '../../../../i18n/context'
 import type { TFunction } from '../../../../i18n'
 import type { KeyRecord } from '../../../../data/keyTypes'
-import { PUBLISHER_REPO, keyFilePath, publisherRepoUrl, buildReadme } from '../../../../utils/publisherRepo'
+import { PUBLISHER_REPO, keyFilePath, publisherRepoUrl } from '../../../../utils/publisherRepo'
+import { publishPublisherKey, publishedKeyState, updatePublisherReadme } from './publisher-key'
+import type { PublishedKeyState } from './publisher-key'
 import './keys.css'
 
-type PublishStatus = 'loading' | 'disconnected' | 'not-published' | 'published'
+type PublishStatus = 'loading' | 'disconnected' | 'not-published' | 'mismatch' | 'published'
 type ActionState = 'idle' | 'publishing' | 'unpublishing' | 'done' | 'error'
+
+const PUBLISHED_STATES = {
+  absent: 'not-published',
+  matched: 'published',
+  mismatch: 'mismatch',
+} satisfies Record<PublishedKeyState, PublishStatus>
 
 function actionTitle(actionState: ActionState, t: TFunction): string {
   if (actionState === 'publishing') return t('keys.publish.publishing')
@@ -28,12 +36,6 @@ function actionStateIcon(actionState: ActionState) {
   return <IconGlobe size={13} />
 }
 
-const PUBLISHER_REPO_DESC = 'Bespok3d publisher identity and signing keys'
-
-// Publishing keys to the public publisher repo is disabled during the private testing phase so a
-// tester cannot push a key online by accident. Flip to true to re-enable (with signing, post-beta).
-const PUBLISHING_ENABLED = false
-
 interface GitHostKeyFlyoutProps {
   keyRecord: KeyRecord
   onPublishedAt: (date: string | null) => void
@@ -49,7 +51,7 @@ function usePublishStatus(keyRecord: KeyRecord) {
       window.b3d.gitHost.isConnected(),
       window.b3d.gitHost.settings(),
       window.b3d.gitHost.getAccount(),
-    ])
+    ]).catch(() => [false, null, null] as const)
     setSettings(settingsData)
     if (!connected || !acct) { setStatus('disconnected');
 
@@ -59,7 +61,7 @@ function usePublishStatus(keyRecord: KeyRecord) {
       const existing = await window.b3d.gitHost.getFile(
         acct.login, PUBLISHER_REPO, keyFilePath(keyRecord.fingerprint)
       )
-      setStatus(existing ? 'published' : 'not-published')
+      setStatus(PUBLISHED_STATES[publishedKeyState(existing?.content ?? null, keyRecord.publicKey)])
     } catch {
       setStatus('not-published')
     }
@@ -81,35 +83,11 @@ function usePublishActions(
 
   function resetAfterDelay() { setTimeout(() => setActionState('idle'), 2500) }
 
-  async function updateReadme(owner: string, entry: { label: string; fingerprint: string; date: string } | null) {
-    const allKeys = await window.b3d.keys.list()
-    const otherPublished = allKeys
-      .filter((key) => key.id !== keyRecord.id && key.publishedAt)
-      .map((key) => ({ label: key.label, fingerprint: key.fingerprint, date: key.publishedAt! }))
-    const entries = entry ? [...otherPublished, entry] : otherPublished
-    entries.sort((entryA, entryB) => entryA.date.localeCompare(entryB.date))
-    const existing = await window.b3d.gitHost.getFile(owner, PUBLISHER_REPO, 'README.md')
-    await window.b3d.gitHost.putFile(
-      owner, PUBLISHER_REPO, 'README.md', buildReadme(entries),
-      entry ? `Add ${keyRecord.label} to publisher keys` : `Remove ${keyRecord.label} from publisher keys`,
-      existing?.sha,
-    )
-  }
-
   async function doPublish() {
     if (!account) return
     setActionState('publishing')
     try {
-      const repos = await window.b3d.gitHost.listRepos()
-      if (!repos.some((repo) => repo.owner === account.login && repo.repo === PUBLISHER_REPO)) {
-        await window.b3d.gitHost.createRepo(PUBLISHER_REPO, PUBLISHER_REPO_DESC)
-      }
-      const path = keyFilePath(keyRecord.fingerprint)
-      const existing = await window.b3d.gitHost.getFile(account.login, PUBLISHER_REPO, path)
-      await window.b3d.gitHost.putFile(account.login, PUBLISHER_REPO, path, keyRecord.publicKey, `Publish signing key ${keyRecord.fingerprintShort}`, existing?.sha)
-      const date = new Date().toISOString().slice(0, 10)
-      await updateReadme(account.login, { label: keyRecord.label, fingerprint: keyRecord.fingerprint, date })
-      await window.b3d.keys.setPublishedAt(keyRecord.id, date)
+      const date = await publishPublisherKey(keyRecord, account.login, window.b3d)
       onPublishedAt(date); setStatus('published'); setActionState('done'); resetAfterDelay()
     } catch { setActionState('error'); resetAfterDelay() }
   }
@@ -123,7 +101,7 @@ function usePublishActions(
       if (existing) {
         await window.b3d.gitHost.deleteFile(account.login, PUBLISHER_REPO, path, `Remove signing key ${keyRecord.fingerprintShort}`, existing.sha)
       }
-      await updateReadme(account.login, null)
+      await updatePublisherReadme(keyRecord, account.login, null, window.b3d)
       await window.b3d.keys.setPublishedAt(keyRecord.id, null)
       onPublishedAt(null); setStatus('not-published'); setActionState('done'); resetAfterDelay()
     } catch { setActionState('error'); resetAfterDelay() }
@@ -163,15 +141,20 @@ export function GitHostKeyFlyout({ keyRecord, onPublishedAt }: GitHostKeyFlyoutP
     )
   }
 
-  if (status === 'not-published') {
-    if (!PUBLISHING_ENABLED) {
-      return (
-        <Button variant="ghost" size="sm" icon disabled title={t('keys.publish.disabled_testing')}>
-          <IconGlobe size={13} />
-        </Button>
-      )
-    }
+  if (status === 'mismatch') {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        icon
+        title={t('keys.publish.mismatch_to', { target: `${account?.login ?? '…'}/${PUBLISHER_REPO}` })}
+      >
+        <IconAlert size={13} />
+      </Button>
+    )
+  }
 
+  if (status === 'not-published') {
     return (
       <Button
         variant="ghost"
@@ -186,6 +169,7 @@ export function GitHostKeyFlyout({ keyRecord, onPublishedAt }: GitHostKeyFlyoutP
   }
 
   const url = settings && account ? publisherRepoUrl(settings, account.login) : null
+  const target = `${account?.login}/${PUBLISHER_REPO}`
 
   return (
     <Flyout anchor={
@@ -193,12 +177,13 @@ export function GitHostKeyFlyout({ keyRecord, onPublishedAt }: GitHostKeyFlyoutP
         variant="ghost"
         size="sm"
         icon
-        title={t('keys.publish.published_to', { target: `${account?.login}/${PUBLISHER_REPO}` })}
+        title={t('keys.publish.published_to', { target })}
         className="key-published-icon"
       >
         <IconGlobe size={13} />
       </Button>
     }>
+      <div className="flyout-note">{t('keys.publish.verified_to', { target })}</div>
       <button className="flyout-item" onClick={doUnpublish}>
         <IconTrash size={12} /> {t('keys.publish.unpublish')}
       </button>
