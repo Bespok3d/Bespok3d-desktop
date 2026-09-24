@@ -25,3 +25,18 @@ export const app = {
     return stubbed
   },
 }
+
+// The keychain reads this the moment a git-host token is stored. Outside Electron there is no OS
+// store to ask, which is exactly what the real safeStorage reports as "not available", so the token
+// falls back to the plaintext file the harness seeds.
+export const safeStorage = {
+  isEncryptionAvailable: () => false,
+  encryptString: (value: string) => Buffer.from(value, 'utf8'),
+  decryptString: (value: Buffer) => value.toString('utf8'),
+}
+
+// The device-flow's "open the consent page" step. Outside Electron there is no browser to hand it
+// to, and a harness that wants the flow drives the URL itself.
+export const shell = {
+  openExternal: async (): Promise<void> => {},
+}

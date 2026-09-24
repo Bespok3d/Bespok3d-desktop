@@ -14,8 +14,8 @@ export function buildReadme(
   entries: { label: string; fingerprint: string; date: string }[]
 ): string {
   const rows = entries.map(
-    (entry) => `| ${entry.label} | ${entry.date} | [keys/${entry.fingerprint}/](keys/${entry.fingerprint}/) |`
+    (entry) => `| ${entry.label} | ${entry.date} | [${entry.fingerprint}](${keyFilePath(entry.fingerprint)}) |`
   )
 
-  return ['# Publisher keys', '', '| Name | Published | Directory |', '|---|---|---|', ...rows, ''].join('\n')
+  return ['# Publisher keys', '', '| Name | Published | Public key |', '|---|---|---|', ...rows, ''].join('\n')
 }

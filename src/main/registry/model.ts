@@ -13,11 +13,14 @@
 export type RegistryTrust = 'any' | 'community' | 'project' | 'manufacturer' | 'unknown' | 'failed'
 
 // What the detached signature beside a served index proved about those exact bytes. 'unsigned' is no
-// signature at all; 'failed' is a signature that was there and did not check out against any pinned
-// key. A caller that only asked for a fingerprint could not tell those two apart, which is why this
-// is a value and not a nullable string. Neither outcome blocks the list from loading.
+// signature at all; 'failed' is a signature that was there and did not check out against any key that
+// proved it (pinned or discovered). A caller that only asked for a fingerprint could not tell those
+// two apart, which is why this is a value and not a nullable string. Neither outcome blocks the list
+// from loading. A proved signature carries who proved it (`signer`) and what its proof confers
+// (`tier`): the pinned project key confers the curator's claim, a discovered external key confers
+// community, so a claimed tier can never outrun the key that actually signed.
 export type SignatureCheck =
-  | { proof: 'signed', fingerprint: string }
+  | { proof: 'signed', fingerprint: string, signer: string, tier: 'project' | 'community' }
   | { proof: 'unsigned' }
   | { proof: 'failed' }
 

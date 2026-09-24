@@ -6,6 +6,9 @@
 // field inside the index is not a thing and never will be, it would sign itself.
 import * as openpgp from 'openpgp'
 import type { SignatureCheck } from '../model'
+import { isDeclaredFingerprint } from '../../publisher/key-lookup'
+import type { PublisherKeyLookup } from '../../publisher/key-lookup'
+import type { PublisherProvenance } from './publishing-repo'
 
 // The trust anchor. A detached signature names its issuer, but that claim is forgeable and only
 // worth the key it is checked against, so the org's registry signing key travels WITH the app rather
@@ -42,69 +45,6 @@ At5hzMkILtyaJ1gDVIBv/Qmet5QtOB22Sq54rRL4W+igroM=
 =DgD7
 -----END PGP PUBLIC KEY BLOCK-----
 `
-
-// The org's publisher key, the one b3-builder signs with when the org releases plugin lists and
-// packages of its own. It joins the registry key rather than replacing it: both are Bespok3d's, so a
-// list or package either one signed reads as published by Bespok3d. Mirrors
-// main-index/keys/lixnix-publisher.pub.asc; as above, the fingerprint is derived at verify time.
-export const LIXNIX_PUBLISHER_PUBLIC_KEY = `-----BEGIN PGP PUBLIC KEY BLOCK-----
-
-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
-2e8jQi4Q9BGRE4e9CURPXg==
-=P1O8
------END PGP PUBLIC KEY BLOCK-----
-`
-
-// Every key a served list may be signed with. Plural for the same reason the package anchor set is:
-// the curated index is signed with the registry key and the org's own plugin lists with the publisher
-// key, and a rotation has to accept the outgoing and the incoming key at the same time.
-const OFFICIAL_LIST_KEYS: readonly string[] = [OFFICIAL_LIST_PUBLIC_KEY, LIXNIX_PUBLISHER_PUBLIC_KEY]
 
 // The trust anchor is a parameter rather than a closed-over constant so the predicate can be exercised
 // against a throwaway key pair in tests: the real private half is an Actions secret and never comes
@@ -145,33 +85,49 @@ async function signerOfCheckedSignature(signedBytes: string | Uint8Array, armore
 // store. A malformed signature counts as failed: something was served in the signature's place and it
 // did not stand up.
 //
-// The key set is a parameter for the same reason the anchor above is: the private halves are CI
-// secrets that never come near this repo, so a closed-over set would leave the passing path untestable.
-export async function verifyIndexSignature(servedBytes: string, armoredSignature: string | null, trustedKeys: readonly string[] = OFFICIAL_LIST_KEYS): Promise<SignatureCheck> {
+// The pinned project key is tried first (unchanged project-key behavior); only then does a third
+// party get a say, and only through the discovery rule: a key found under the artifact's own
+// provenance whose own fingerprint equals the fingerprint the artifact declares as its signer. A key
+// that cannot be reached (offline, HTTP failure) or that matches nothing leaves the signature
+// unproven, which is 'failed', never a silent trust.
+export async function verifyIndexSignature(servedBytes: string, armoredSignature: string | null, context: ListVerificationContext): Promise<SignatureCheck> {
   if (!armoredSignature) return { proof: 'unsigned' }
-  const fingerprint = await fingerprintOfTrustedSigner(servedBytes, armoredSignature, trustedKeys)
+  const pinnedFingerprint = await fingerprintOfValidSigner(servedBytes, armoredSignature, context.pinnedTrustAnchor ?? OFFICIAL_LIST_PUBLIC_KEY)
+  if (pinnedFingerprint !== null) return { proof: 'signed', fingerprint: pinnedFingerprint, signer: OFFICIAL_SIGNER_NAME, tier: 'project' }
 
-  return fingerprint === null ? { proof: 'failed' } : { proof: 'signed', fingerprint }
+  return discoveredProof(servedBytes, armoredSignature, context)
 }
 
-// The fingerprint of the first pinned key that issued a valid signature over these exact bytes. Walks
-// the set rather than short-circuiting on a claimed issuer, because the issuer named inside a
-// signature is attacker controlled and only the key it is checked against decides anything.
-async function fingerprintOfTrustedSigner(servedBytes: string, armoredSignature: string, trustedKeys: readonly string[]): Promise<string | null> {
-  const [armoredKey, ...remainingKeys] = trustedKeys
-  if (!armoredKey) return null
-  const fingerprint = await fingerprintOfValidSigner(servedBytes, armoredSignature, armoredKey)
-  if (fingerprint) return fingerprint
+// Everything the third-party check needs, carried as one value: whose key to look for (provenance,
+// derived from where the bytes actually came from), which fingerprint the artifact claims signed it
+// (untrusted wire input until the signature checks out), the lookup itself as an injectable seam, and
+// the pinned trust anchor (tests substitute a throwaway; production leaves it at the org key, which is
+// also the default when a caller omits it).
+export interface ListVerificationContext {
+  provenance: PublisherProvenance | null
+  declaredPublisher: unknown
+  publisherKeyOf: PublisherKeyLookup
+  pinnedTrustAnchor?: string
+}
 
-  return fingerprintOfTrustedSigner(servedBytes, armoredSignature, remainingKeys)
+async function discoveredProof(servedBytes: string, armoredSignature: string, context: ListVerificationContext): Promise<SignatureCheck> {
+  const unproven: SignatureCheck = { proof: 'failed' }
+  if (!isDeclaredFingerprint(context.declaredPublisher) || !context.provenance) return unproven
+  const discoveredKey = await context.publisherKeyOf(context.provenance, context.declaredPublisher).catch(() => null)
+  if (!discoveredKey) return unproven
+  const fingerprint = await fingerprintOfValidSigner(servedBytes, armoredSignature, discoveredKey)
+  if (fingerprint === null) return unproven
+
+  return { proof: 'signed', fingerprint, signer: context.provenance.account, tier: 'community' }
 }
 
 // Who a proved signature belongs to, in a word a person can read. A fingerprint is evidence, not
-// something to show anyone, and the check above accepts only the org's own keys, so a proof that came
-// back 'signed' can only be Bespok3d's. Anything else carries through as "nobody proved this", which
-// is what the store shows instead of repeating a publisher line no signature stands behind.
+// something to show anyone, so the name travels with the proof itself: 'Bespok3d' when the pinned key
+// signed, the provenance account when that account's discovered key did. Anything else carries
+// through as "nobody proved this", which is what the store shows instead of repeating a publisher
+// line no signature stands behind.
 export function provedSigner(signature: SignatureCheck): string | null {
-  return signature.proof === 'signed' ? OFFICIAL_SIGNER_NAME : null
+  return signature.proof === 'signed' ? signature.signer : null
 }
 
 const OFFICIAL_SIGNER_NAME = 'Bespok3d'

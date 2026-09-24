@@ -8,22 +8,20 @@
 
 ## Acceptance criteria
 
-- [x] Each key row has a globe icon button; grey = not published, green = published
+- [x] Each key row has a globe icon button; grey = not published, green = published and verified, alert = some other file sits at the key path
 - [x] If no git host is connected, the button is disabled with a tooltip "Connect a git host in Settings → Git Host"
-- [x] If the key has no identity repo yet, clicking the button opens a flyout with a repo name input field
-- [x] The input field pre-fills with `bespok3d-identity`; if that name is already taken on the git host, it pre-fills with `bespok3d-identity_<key-label-slug>`
-- [x] An autocomplete datalist shows existing repos the user owns; entering an existing `owner/repo` uses that repo instead of creating a new one
-- [x] Clicking "Publish key" uploads the public key as `keys/{fingerprint}.asc` in the repo; the repo is created if it does not exist
-- [x] After publishing, the globe icon turns green and the tooltip shows `owner/repo`
-- [x] The published button's flyout shows: "Re-upload key", "Remove from git host", and "View repository" (opens browser)
+- [x] Publication writes to the one conventional repository `bespok3d-publisher` under the signed-in account, created if it does not exist; every key of that account lives there
+- [x] The public key is uploaded as `keys/{fingerprint-lowercase}/key.asc`, matching the atom and manifest `publisher` spelling
+- [x] After publishing, the globe icon turns green, the tooltip shows `owner/bespok3d-publisher`, and the flyout states what was verified: that file is this key's public half
+- [x] The published button's flyout shows: "Unpublish key" and "Open in browser"; unpublishing removes the key file and the README row
+- [x] The private half never leaves the machine except by an explicit "Download, Private key" export
 - [x] Each key's published state is tracked independently - publishing key A does not affect key B
+- [x] The whole flow works in a released build (the Keys pane is not behind development features)
 
 ## Flags
 
-> ⚠️ **CONFLICT** - The publisher-identity decision specifies the identity repo must be named `bespok3d-publisher` and the lookup URL is `GET /repos/{username}/bespok3d-publisher/contents/{fingerprint}.asc`. The current implementation uses `bespok3d-identity` as the default name and supports arbitrary repo names. If the app creates a repo named `bespok3d-identity`, the community trust tier lookup will fail because other clients will look for `bespok3d-publisher`. **Decision needed: adopt one convention.**
+> ✅ **RESOLVED** (2026-09-24, publisher-key-trust) - One convention: the repo is `bespok3d-publisher`, one per publisher account, and the lookup path is `keys/{fingerprint}/key.asc` with a lowercase fingerprint. There is no per-key identity repo and no `identityRepo` field to reconcile: all of an account's keys live in that one repo. Consumers look in the account's own repo first and fall back to `main-index/keys/<account-lowercased>-publisher.pub.asc`; the fetched key's own fingerprint must equal the declared `publisher` (hex, case-blind) and the signature must check out over the exact bytes before anything is trusted.
 
-> ⚠️ **CONFLICT** - The publisher-identity decision implies one identity repo per publisher account (`bespok3d-publisher` is singular). The implementation tracks one repo per key (`identityRepo` field on `KeyRecord`). A user with two keys would have two identity repos - but that decision's lookup only looks at `bespok3d-publisher`. Which model is correct?
+> ❓ **UNCLEAR** - The key-lifecycle decision says publisher key rotation uploads a transition statement to the publisher's repo as `{old_fingerprint}-transition.asc`. The rotation UI is not implemented, so where that statement lands (inside the shared `bespok3d-publisher` repo beside the old key directory) is still open.
 
-> ❓ **UNCLEAR** - The key-lifecycle decision says publisher key rotation uploads a transition statement to the publisher's repo as `{old_fingerprint}-transition.asc`. With per-key repos, where does the transition statement go - the old key's identity repo or the new key's? The rotation UI is not implemented.
-
-> ❓ **UNCLEAR** - The "Remove from git host" action deletes the `.asc` file from the identity repo but does not delete the repo itself. If the repo is empty afterwards, is that acceptable? Should the app offer to delete the repo?
+> ❓ **UNCLEAR** - The "Remove from git host" action deletes the key file and its README row but does not delete the repo itself. If the repo is empty afterwards, is that acceptable? Should the app offer to delete the repo?

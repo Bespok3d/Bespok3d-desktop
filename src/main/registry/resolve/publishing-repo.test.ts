@@ -5,7 +5,7 @@
 // and a bundled entry names no repo at all and must say so rather than guess one.
 import { describe, it, expect } from 'vitest'
 import type { IndexEntry } from '../model'
-import { publishingRepoOf } from './publishing-repo'
+import { publishingRepoOf, provenanceOfEntry, provenanceOfSourceUrl } from './publishing-repo'
 
 const ASSET_URL = 'https://api.github.com/repos/fixture-owner/rfid-tools/releases/assets/4242'
 const BLOB_URL = 'https://github.com/fixture-owner/rfid-tools/blob/main/doc/README.md'
@@ -42,5 +42,43 @@ describe('publishingRepoOf', () => {
 
   it('names no repo for a host that merely looks like github', () => {
     expect(publishingRepoOf(listedEntry({ download_url: 'https://api.github.com.example.invalid/repos/thief/repo/releases/assets/1' }))).toBeNull()
+  })
+})
+
+// The provenance a key lookup may trust as fact: the account that actually served the artifact. A
+// claimed name, author or title never enters it, and a provenance that cannot be read yields null so
+// the lookup does not run at all rather than guessing.
+describe('provenanceOfEntry', () => {
+  it('takes the account from the release asset url an install actually fetches', () => {
+    expect(provenanceOfEntry(listedEntry({ download_url: ASSET_URL, author: 'Someone Else' }))).toEqual({ host: 'github', account: 'fixture-owner' })
+  })
+
+  it('takes the account from the doc url when the payload is hosted elsewhere', () => {
+    expect(provenanceOfEntry(listedEntry({ download_url: 'https://files.example.invalid/rfid-tools-0.1.9.b3', doc_url: BLOB_URL }))).toEqual({
+      host: 'github',
+      account: 'fixture-owner',
+    })
+  })
+
+  it('names no provenance for a bundled entry whose download url is a path beside its list', () => {
+    expect(provenanceOfEntry(listedEntry({ download_url: 'packages/rfid-tools-0.1.9.b3' }))).toBeNull()
+  })
+})
+
+describe('provenanceOfSourceUrl', () => {
+  it('takes the account from a github: list ref', () => {
+    expect(provenanceOfSourceUrl('github:fixture-owner/rfid-tools/index.json')).toEqual({ host: 'github', account: 'fixture-owner' })
+  })
+
+  it('takes the account from a released list download url', () => {
+    expect(provenanceOfSourceUrl('https://github.com/fixture-owner/rfid-tools/releases/latest/download/index.json')).toEqual({
+      host: 'github',
+      account: 'fixture-owner',
+    })
+  })
+
+  it('names no provenance for a plain http list or a disk path', () => {
+    expect(provenanceOfSourceUrl('https://lists.example.invalid/index.json')).toBeNull()
+    expect(provenanceOfSourceUrl('/registry/index.json')).toBeNull()
   })
 })

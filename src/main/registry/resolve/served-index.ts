@@ -8,6 +8,8 @@ import type { RegistryRef, RegistryIndex, ServedIndex, FetchedRegistry } from '.
 import { writeCache } from './cache'
 import type { CacheEntry } from './cache'
 import { verifyIndexSignature } from './verify'
+import { provenanceOfSourceUrl } from './publishing-repo'
+import { discoverPublisherKeyFromHost } from '../../publisher/key-lookup'
 
 // Whether the bytes came off the cache travels WITH them: a caller that assumed 'fresh' would tell the
 // user a list had just been re-read when it had not, and the staleness of a list is exactly what the
@@ -21,7 +23,11 @@ export interface ResolvedIndex {
 // render as a badge, so a signing mistake costs a wrong badge rather than a dead store.
 export async function toFetchedRegistry(ref: RegistryRef, served: ServedIndex, fromCache: boolean): Promise<FetchedRegistry> {
   const index = parseIndex(served.bytes)
-  const signature = await verifyIndexSignature(served.bytes, served.signature)
+  const signature = await verifyIndexSignature(served.bytes, served.signature, {
+    provenance: provenanceOfSourceUrl(ref.url),
+    declaredPublisher: index.publisher,
+    publisherKeyOf: discoverPublisherKeyFromHost,
+  })
 
   return { ref, index, fromCache, signature }
 }
