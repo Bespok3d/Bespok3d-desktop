@@ -9,48 +9,74 @@ import { useInstallGate } from '../hooks/installGate'
 import { POST_OPERATION_GRACE_MS } from '../components/printer-banners'
 import { toRecord, pingAndUpdate, applyToId } from '../data/printers'
 import { daemonAccessDecision, enrollPathDecision } from '../data/enroll-gate'
+import type { AccessPromptState } from '../data/enroll-gate'
 import type { Printer } from '../data/types'
 
 export type AddPrinterModal = { tab: 'scan' | 'manual'; pickedId?: string }
 // forced: opened from the Force menu, which is the user saying he wants this run whatever the printer
 // reports about its daemon version.
 export type EnrollModal = { printer: Printer; mode: EnrollMode; fromAdd?: boolean; forced?: boolean }
+export type AccessModal = { printer: Printer; state: AccessPromptState; fromAdd: boolean; forced: boolean }
+export type ReEnrollWarning = { printer: Printer; fromAdd: boolean; forced: boolean }
 
 type SetPrinters = (update: Printer[] | ((prev: Printer[]) => Printer[])) => void
+
+function startEnrollWhenSshOpen(printer: Printer, fromAdd: boolean, forced: boolean, setRootAccessGate: (value: { printer: Printer; fromAdd: boolean; forced: boolean } | null) => void, setEnrollProposal: (value: Printer | null) => void, setEnrollModal: (value: EnrollModal | null) => void) {
+  window.b3d.printers.checkSshOpen(printer.ip).then((sshOpen) => {
+    const decision = enrollPathDecision({ sshOpen, fromAdd })
+    if (decision === 'root-gate') setRootAccessGate({ printer, fromAdd, forced })
+    else if (decision === 'enroll-proposal') setEnrollProposal(printer)
+    else setEnrollModal({ printer, mode: 'enroll', fromAdd, forced })
+  })
+}
+
+function chooseAccessOrEnrollment(printer: Printer, fromAdd: boolean, forced: boolean, setters: {
+  setAccessModal: (value: AccessModal | null) => void
+  setEnrollModal: (value: EnrollModal | null) => void
+  setEnrollProposal: (value: Printer | null) => void
+  setRootAccessGate: (value: { printer: Printer; fromAdd: boolean; forced: boolean } | null) => void
+}) {
+  window.b3d.printers.checkDaemon(printer.id).then((result) => {
+    const selectedPrinter = result.ip ? { ...printer, ip: result.ip } : printer
+    const decision = daemonAccessDecision({ accessState: result.accessState, isManaged: result.isManaged, enrolled: Boolean(printer.enrollmentLog), hasAccessIdentity: Boolean(printer.accessIdentity) })
+    if (decision === 'access' || decision === 'identity-warning') setters.setAccessModal({ printer: selectedPrinter, state: result.accessState as AccessModal['state'], fromAdd, forced })
+    else if (decision === 'blocked' || (result.accessState === 'authorized' && fromAdd)) return
+    else startEnrollWhenSshOpen(selectedPrinter, fromAdd, forced, setters.setRootAccessGate, setters.setEnrollProposal, setters.setEnrollModal)
+  })
+}
 
 // Decide whether adding/enrolling a printer opens enrollment, the access request, or the root-access
 // guidance gate. Enrollment is all SSH, so a closed port 22 means the user has not turned on root
 // access yet; show the gate with a retry instead of letting the first SSH step fail cryptically.
 function useEnrollGate(
   setEnrollModal: (value: EnrollModal | null) => void,
-  setAccessModal: (value: Printer | null) => void,
+  setAccessModal: (value: AccessModal | null) => void,
 ) {
   const [rootAccessGate, setRootAccessGate] = useState<{ printer: Printer; fromAdd: boolean; forced: boolean } | null>(null)
   const [enrollProposal, setEnrollProposal] = useState<Printer | null>(null)
-  // After SSH is confirmed reachable: when the printer was just added, propose enrollment and wait for
-  // the user to confirm; when they explicitly clicked Enroll, start straight away.
-  function startEnrollWhenSshOpen(printer: Printer, fromAdd: boolean, forced: boolean) {
-    window.b3d.printers.checkSshOpen(printer.ip).then((sshOpen) => {
-      const decision = enrollPathDecision({ sshOpen, fromAdd })
-      if (decision === 'root-gate') setRootAccessGate({ printer, fromAdd, forced })
-      else if (decision === 'enroll-proposal') setEnrollProposal(printer)
-      else setEnrollModal({ printer, mode: 'enroll', fromAdd, forced })
-    })
+  const [reEnrollWarning, setReEnrollWarning] = useState<ReEnrollWarning | null>(null)
+  function warnBeforeReEnroll(printer: Printer, fromAdd: boolean, forced: boolean) {
+    setAccessModal(null)
+    setReEnrollWarning({ printer, fromAdd, forced })
+  }
+  function confirmReEnroll() {
+    if (!reEnrollWarning) return
+    setEnrollModal({ printer: reEnrollWarning.printer, mode: 'enroll', fromAdd: reEnrollWarning.fromAdd, forced: reEnrollWarning.forced })
+    setReEnrollWarning(null)
   }
   // Takes the printer object (not an id) so it works for a just-added printer that is not yet in the
   // printers state array (the setPrinters update has not flushed when add triggers this).
   function openEnrollOrAccess(printer: Printer, fromAdd: boolean, forced = false) {
-    window.b3d.printers.checkDaemon(printer.id).then((result) => {
-      const decision = daemonAccessDecision({ isManaged: result.isManaged, enrolled: Boolean(printer.enrollmentLog), hasAccessIdentity: Boolean(printer.accessIdentity) })
-      if (decision === 'access') setAccessModal(printer)
-      else startEnrollWhenSshOpen(printer, fromAdd, forced)
-    })
+    chooseAccessOrEnrollment(printer, fromAdd, forced, { setAccessModal, setEnrollModal, setEnrollProposal, setRootAccessGate })
+  }
+  function requestReEnroll(accessModal: AccessModal) {
+    warnBeforeReEnroll(accessModal.printer, accessModal.fromAdd, accessModal.forced)
   }
   function retryRootAccessGate() {
     if (!rootAccessGate) return
     const gate = rootAccessGate
     setRootAccessGate(null)
-    startEnrollWhenSshOpen(gate.printer, gate.fromAdd, gate.forced)
+    startEnrollWhenSshOpen(gate.printer, gate.fromAdd, gate.forced, setRootAccessGate, setEnrollProposal, setEnrollModal)
   }
   function confirmEnrollProposal() {
     if (!enrollProposal) return
@@ -61,6 +87,7 @@ function useEnrollGate(
   return {
     openEnrollOrAccess, rootAccessGate, setRootAccessGate, retryRootAccessGate,
     enrollProposal, setEnrollProposal, confirmEnrollProposal,
+    reEnrollWarning, setReEnrollWarning, confirmReEnroll, requestReEnroll,
   }
 }
 
@@ -152,6 +179,8 @@ function gateHandles(gate: EnrollGate) {
   return {
     rootAccessGate: gate.rootAccessGate, setRootAccessGate: gate.setRootAccessGate, retryRootAccessGate: gate.retryRootAccessGate,
     enrollProposal: gate.enrollProposal, setEnrollProposal: gate.setEnrollProposal, confirmEnrollProposal: gate.confirmEnrollProposal,
+    reEnrollWarning: gate.reEnrollWarning, setReEnrollWarning: gate.setReEnrollWarning, confirmReEnroll: gate.confirmReEnroll,
+    requestReEnroll: gate.requestReEnroll,
   }
 }
 
@@ -206,7 +235,7 @@ export function useAppCallbacks(
   removePrinter: (id: string) => void,
 ) {
   const [enrollModal, setEnrollModal] = useState<EnrollModal | null>(null)
-  const [accessModal, setAccessModal] = useState<Printer | null>(null)
+  const [accessModal, setAccessModal] = useState<AccessModal | null>(null)
   const [addPrinterModal, setAddPrinterModal] = useState<AddPrinterModal | null>(null)
   const enrollGate = useEnrollGate(setEnrollModal, setAccessModal)
   // The one install gate, made here so every install path shares it: the batch ops take it as an

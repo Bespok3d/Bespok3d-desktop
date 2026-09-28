@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState, useEffect } from 'react'
 import type { Printer } from '../../data/types'
+import type { AccessPromptState } from '../../data/enroll-gate'
 import { useI18n } from '../../i18n/context'
 import { Modal } from '../common/overlay/Modal'
 import { Button } from '../common/Button'
@@ -9,29 +10,51 @@ import { IconCheckCircle, IconAlert, IconRefresh } from '../../design-system/ico
 import { errorMessage } from '../../utils/errorMessage'
 import '../enrollment/enrollment.css'
 
-type Phase = 'choice' | 'waiting' | 'granted' | 'failed'
+type Phase = 'choice' | 'requesting' | 'waiting' | 'granted' | 'failed'
 
 interface RequestAccessModalProps {
   printer: Printer
+  state: AccessPromptState
   onClose: () => void
   onGranted: (printerId: string) => void
+  onReEnroll: () => void
 }
 
 const POLL_MS = 3000
 
 const STEP_KEYS = ['access.step.request', 'access.step.open', 'access.step.approve']
 
-function ChoiceView({ name, onStart }: { name: string; onStart: (guided: boolean) => void }) {
+function stateMessage(state: AccessPromptState): string {
+  const messages: Record<AccessPromptState, string> = {
+    'present-awaiting-access': 'access.state.present',
+    'credentials-rejected': 'access.state.credentials_rejected',
+    'certificate-missing': 'access.state.certificate_missing',
+    'identity-changed': 'access.state.identity_changed',
+  }
+
+  return messages[state]
+}
+
+function canRequestAccess(state: AccessPromptState): boolean {
+  return state === 'present-awaiting-access' || state === 'credentials-rejected'
+}
+
+function canReEnroll(state: AccessPromptState): boolean {
+  return state !== 'present-awaiting-access'
+}
+
+function ChoiceView({ name, state, onStart, onReEnroll }: { name: string; state: AccessPromptState; onStart: (guided: boolean) => void; onReEnroll: () => void }) {
   const { t } = useI18n()
 
   return (
     <>
       <div className="enroll-body">
-        <p>{t('access.choice.body', { name })}</p>
+        <p>{t(stateMessage(state), { name })}</p>
       </div>
       <div className="modal-foot">
-        <Button variant="outline" onClick={() => onStart(false)}>{t('access.choice.steps_only')}</Button>
-        <Button variant="primary" onClick={() => onStart(true)}>{t('access.choice.guide')}</Button>
+        {canRequestAccess(state) && <Button variant="outline" onClick={() => onStart(false)}>{t('access.choice.steps_only')}</Button>}
+        {canRequestAccess(state) && <Button variant="primary" onClick={() => onStart(true)}>{t('access.choice.guide')}</Button>}
+        {canReEnroll(state) && <Button variant="danger" onClick={onReEnroll}>{t('access.reenroll.action')}</Button>}
       </div>
     </>
   )
@@ -78,7 +101,7 @@ function ResultView({ granted, error, onClose }: { granted: boolean; error: stri
   )
 }
 
-export function RequestAccessModal({ printer, onClose, onGranted }: RequestAccessModalProps) {
+export function RequestAccessModal({ printer, state, onClose, onGranted, onReEnroll }: RequestAccessModalProps) {
   const { t } = useI18n()
   const [phase, setPhase] = useState<Phase>('choice')
   const [guided, setGuided] = useState(true)
@@ -86,8 +109,8 @@ export function RequestAccessModal({ printer, onClose, onGranted }: RequestAcces
 
   function start(asGuided: boolean) {
     setGuided(asGuided)
-    setPhase('waiting')
-    window.b3d.access.request(printer.id, '').catch((requestError) => {
+    setPhase('requesting')
+    window.b3d.access.request(printer.id, '').then(() => setPhase('waiting')).catch((requestError) => {
       setError(errorMessage(requestError))
       setPhase('failed')
     })
@@ -117,7 +140,8 @@ export function RequestAccessModal({ printer, onClose, onGranted }: RequestAcces
       <div className="modal-head">
         <h2>{t('access.request.title', { name: printer.nick || printer.model })}</h2>
       </div>
-      {phase === 'choice' && <ChoiceView name={printer.nick || printer.model} onStart={start} />}
+      {phase === 'choice' && <ChoiceView name={printer.nick || printer.model} state={state} onStart={start} onReEnroll={onReEnroll} />}
+      {phase === 'requesting' && <div className="enroll-body"><p>{t('access.sending.title')}</p></div>}
       {phase === 'waiting' && <WaitingView guided={guided} onCancel={onClose} />}
       {(phase === 'granted' || phase === 'failed') &&
         <ResultView granted={phase === 'granted'} error={error} onClose={finish} />}

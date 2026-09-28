@@ -54,6 +54,17 @@ describe('writeCache', () => {
     expect(loadCache().get(OFFICIAL_URL)?.key).toBe(OFFICIAL_URL)
   })
 
+  it('keeps the same official filename on main and dev in separate cache entries', async () => {
+    const liveUrl = 'github:Bespok3d/main-index/index.json'
+    const tierUrl = 'github:Bespok3d/main-index/index.json?ref=dev'
+    const { loadCache, writeCache } = await importCache([])
+    const served = { bytes: SIGNED_BYTES, signature: SIGNATURE, etag: null, lastModified: null, fetchedAt: 0 }
+    writeCache(liveUrl, served)
+    writeCache(tierUrl, served)
+
+    expect([...loadCache().keys()]).toEqual([liveUrl, tierUrl])
+  })
+
   it('persists an entry that survives its own load filter', async () => {
     const { writeCache } = await importCache([])
     writeCache(OFFICIAL_URL, { bytes: SIGNED_BYTES, signature: SIGNATURE, etag: null, lastModified: null, fetchedAt: 0 })

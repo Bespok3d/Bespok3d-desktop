@@ -48,3 +48,9 @@ describe('parseB3dUrl rejects non-b3d input', () => {
     expect(parseB3dUrl('not a url')).toMatchObject({ kind: 'unknown' })
   })
 })
+
+describe('parseB3dUrl supports each installed channel scheme', () => {
+  it.each(['b3d', 'b3d-staging', 'b3d-dev'])('parses an entity from %s', scheme => {
+    expect(parseB3dUrl(`${scheme}://publisher/item`)).toEqual({ kind: 'entity', publisher: 'publisher', name: 'item' })
+  })
+})

@@ -16,7 +16,7 @@ const en = makeT('en')
 
 function settingsProps(onClose: ReturnType<typeof vi.fn>) {
   return {
-    onClose, printers: [], onAddPrinter: vi.fn(), onRemovePrinter: vi.fn(), onUpdatePrinterIcon: vi.fn(),
+    onClose: onClose as () => void, printers: [], onAddPrinter: vi.fn(), onRemovePrinter: vi.fn(), onUpdatePrinterIcon: vi.fn(),
     onEnrollPrinter: vi.fn(), onRepairPrinter: vi.fn(), onRecoverPrinter: vi.fn(), onReinstallPlugins: vi.fn(), onViewEnrollmentLog: vi.fn(), onUpdateDaemon: vi.fn(), onUpdateJinni: vi.fn(), onDeactivatePrinter: vi.fn(),
     onReactivatePrinter: vi.fn(), onUninstallPrinter: vi.fn(), onSetCustomSshCredentials: vi.fn(),
     theme: 'system' as const, onSetTheme: vi.fn(), density: 'comfortable' as const, onSetDensity: vi.fn(),

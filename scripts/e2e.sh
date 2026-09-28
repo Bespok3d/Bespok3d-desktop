@@ -30,10 +30,10 @@ export CSC_IDENTITY_AUTO_DISCOVERY=false
 echo "Building + packaging the app (unsigned, --dir, dev plugin bundle, no notarize)..."
 ( cd "$APP_DIR" \
     && sh "$REPO_ROOT/scripts/pack-plugins.sh" \
-    && npx electron-vite build \
+     && B3D_CHANNEL=development npx electron-vite build \
     && env -u APPLE_API_KEY -u APPLE_API_ISSUER -u APPLE_API_KEY_ID \
        -u CSC_LINK -u CSC_KEY_PASSWORD -u WIN_CSC_LINK -u WIN_CSC_KEY_PASSWORD \
-       npx electron-builder --dir -c.mac.notarize=false )
+        B3D_CHANNEL=development npx electron-builder --config scripts/electron-builder.config.mjs --dir -c.mac.notarize=false )
 
 echo "Running the E2E suite..."
 npm --prefix "$APP_DIR" run test:e2e -- "$@"

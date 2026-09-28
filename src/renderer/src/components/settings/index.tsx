@@ -95,6 +95,7 @@ interface SettingsContentProps {
   storeGrouped: boolean; onSetStoreGrouped: (v: boolean) => void
   onLocaleChange: (s: LocaleSettings) => void
   onGenerate: (label: string) => Promise<void>; onRemove: (key: KeyRecord) => Promise<void>
+  onImported: () => void
   onSetDefault: (key: KeyRecord) => Promise<void>
   onSetAssignments: (key: KeyRecord, assignments: KeyAssignment[]) => Promise<void>
   onSetIcon: (key: KeyRecord, color?: string, image?: string, size?: number) => Promise<void>
@@ -106,7 +107,7 @@ interface SettingsContentProps {
   onNavigate: (section: Section) => void
 }
 
-function SettingsContent({ section, activeSection, printers, adapters, keys, keysLoaded, gitHostSettings, allUserRepos, gitHostLoaded, localeSettings, theme, onSetTheme, density, onSetDensity, storeGrouped, onSetStoreGrouped, onLocaleChange, onGenerate, onRemove, onSetDefault, onSetAssignments, onSetIcon, onSetPublishedAt, reloadGitHostSettings, selectedPrinter, scopedPluginVars, onScopedPluginVarsChange, onNavigate }: SettingsContentProps) {
+function SettingsContent({ section, activeSection, printers, adapters, keys, keysLoaded, gitHostSettings, allUserRepos, gitHostLoaded, localeSettings, theme, onSetTheme, density, onSetDensity, storeGrouped, onSetStoreGrouped, onLocaleChange, onGenerate, onImported, onRemove, onSetDefault, onSetAssignments, onSetIcon, onSetPublishedAt, reloadGitHostSettings, selectedPrinter, scopedPluginVars, onScopedPluginVarsChange, onNavigate }: SettingsContentProps) {
   const { t } = useI18n()
 
   return (
@@ -122,7 +123,7 @@ function SettingsContent({ section, activeSection, printers, adapters, keys, key
         {section === 'keys' && (
           keysLoaded && gitHostLoaded
             ? <KeysPane keys={keys} printers={printers} gitHostSettings={gitHostSettings} allUserRepos={allUserRepos}
-                onGenerate={onGenerate} onRemove={onRemove} onSetDefault={onSetDefault}
+                onGenerate={onGenerate} onImported={onImported} onRemove={onRemove} onSetDefault={onSetDefault}
                 onSetAssignments={onSetAssignments} onSetIcon={onSetIcon} onSetPublishedAt={onSetPublishedAt} />
             : <PanelSpinner />
         )}
@@ -204,7 +205,7 @@ export function Settings({
   }))
 
   const adapters = useAdaptersList()
-  const { keys, loaded: keysLoaded, handleGenerate, handleRemove, handleSetDefault, handleSetAssignments, handleSetIcon, handleSetPublishedAt } =
+  const { keys, loaded: keysLoaded, reloadKeys, handleGenerate, handleRemove, handleSetDefault, handleSetAssignments, handleSetIcon, handleSetPublishedAt } =
     useKeysManager()
   const { settings: gitHostSettings, allUserRepos, loaded: gitHostLoaded, reload: reloadGitHostSettings } = useGitHostSettings()
 
@@ -251,7 +252,7 @@ export function Settings({
             density={density} onSetDensity={onSetDensity}
             storeGrouped={storeGrouped} onSetStoreGrouped={onSetStoreGrouped}
             onLocaleChange={handleLocaleChange}
-            onGenerate={handleGenerate} onRemove={handleRemove} onSetDefault={handleSetDefault}
+            onGenerate={handleGenerate} onImported={reloadKeys} onRemove={handleRemove} onSetDefault={handleSetDefault}
             onSetAssignments={handleSetAssignments} onSetIcon={handleSetIcon}
             onSetPublishedAt={handleSetPublishedAt} reloadGitHostSettings={reloadGitHostSettings}
             selectedPrinter={selectedPrinter} scopedPluginVars={scopedPluginVars} onScopedPluginVarsChange={onScopedPluginVarsChange}

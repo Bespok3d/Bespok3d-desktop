@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ipcRenderer } from 'electron'
 import type { KeyRecord, GenerateKeyOptions, KeyAssignment } from '@bespok3d/contract'
+import type { PublishedAccountKey } from '../main/publisher/published-keys'
 
 export const keysApi = {
   list: (): Promise<KeyRecord[]> => ipcRenderer.invoke('keys:list'),
@@ -17,4 +18,8 @@ export const keysApi = {
     ipcRenderer.invoke('keys:setIcon', id, color, image, size),
   setPublishedAt: (id: string, date: string | null): Promise<void> =>
     ipcRenderer.invoke('keys:setPublishedAt', id, date),
+  published: (): Promise<PublishedAccountKey[]> => ipcRenderer.invoke('keys:published'),
+  localProfiles: (fingerprint: string): Promise<string[]> => ipcRenderer.invoke('keys:localProfiles', fingerprint),
+  importLocal: (fingerprint: string, profile: string, publicKey: string): Promise<KeyRecord> =>
+    ipcRenderer.invoke('keys:importLocal', fingerprint, profile, publicKey),
 }

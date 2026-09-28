@@ -21,9 +21,9 @@ describe('the launch event', () => {
   })
 
   it('sits inside the single-instance guard, so a second launch of a running app counts nothing', () => {
-    const readyBlock = mainEntry.slice(mainEntry.indexOf('app.whenReady()'))
+    const readyHandler = mainEntry.slice(mainEntry.indexOf('async function onAppReady'))
 
-    expect(readyBlock.indexOf('if (!gotSingleInstanceLock) return')).toBeLessThan(readyBlock.indexOf("reportEvent('app_launched'"))
+    expect(readyHandler.indexOf('if (!gotSingleInstanceLock) return')).toBeLessThan(readyHandler.indexOf("reportEvent('app_launched'"))
   })
 })
 

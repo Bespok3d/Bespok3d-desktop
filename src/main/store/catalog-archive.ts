@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { join, dirname } from 'path'
+import { createHash } from 'crypto'
 import { readFileSync, existsSync, mkdirSync, writeFileSync, statSync, rmSync } from 'fs'
 import { userDataPath } from '../app-paths'
 import { readReleaseAsset } from '../registry/asset-read'
@@ -31,7 +32,10 @@ function listedOrRefused(entry: MergedEntry | undefined, pluginId: string): Merg
 }
 
 function pluginCachePath(entry: MergedEntry): string {
-  return userDataPath('plugin-cache', `${entry.name}-${entry.version}.b3`)
+  const sourceIdentity = `${entry.registry_url}\0${entry.download_url}`
+  const sourceDigest = createHash('sha256').update(sourceIdentity).digest('hex').slice(0, 16)
+
+  return userDataPath('plugin-cache', `${entry.name}-${entry.version}-${sourceDigest}.b3`)
 }
 
 // Throw away the downloaded copy of a package the app would not install, saying whether there was one.
@@ -63,7 +67,7 @@ function readLocalArchive(archivePath: string): Buffer {
 // records. The bundled list is on disk, so download_url is relative to the registry root and the
 // bytes are read locally. A remote http(s) download_url is downloaded the way a visitor downloads it,
 // with no account (readReleaseAsset falls back to the signed-in account only for a plugin whose repo
-// is private), and cached by name-version. That key assumes the asset for a version never
+// is private), and cached by name, version and source. That key assumes the asset for a version never
 // changes, which a re-released build at the same version breaks, so the cached copy is a guess and
 // never the last word: whoever refuses it discards it (discardCachedArchive) and the next resolve
 // downloads the asset as it stands now.

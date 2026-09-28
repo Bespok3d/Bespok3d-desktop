@@ -17,6 +17,8 @@ import { bundledRegistryDir } from './bundled-dir'
 import { loadSettings } from '../settings'
 import { stampListingRefreshed } from './listing-freshness'
 import { userLocalSourceUrl, userLocalIndexExists } from './local'
+import { APP_CHANNEL, officialIndexUrl } from '../channel'
+import type { AppChannel } from '../channel'
 
 export type { CatalogResult } from './model'
 
@@ -27,12 +29,21 @@ function bundledRegistryRef(): RegistryRef {
 // The official published list is a hardcoded built-in root, not a user setting, so a stale
 // git-host.json can never drop it. The bundled offline copy is listed first so locally built
 // plugins shadow the published ones (same name + version).
-const OFFICIAL_REMOTE: ConfiguredSource = {
-  url: 'github:Bespok3d/main-index/index.json',
-  label: 'github:Bespok3d/main-index',
-  name: 'Bespok3d Official',
-  trust: 'project',
-  locked: true,
+export function officialRemoteSources(channel: AppChannel): ConfiguredSource[] {
+  const indexUrl = officialIndexUrl(channel)
+
+  return channel.indexBranches.map((branch) => officialSource(
+    branch === 'dev' ? `${indexUrl}?ref=dev` : indexUrl,
+    channel, branch,
+  ))
+}
+
+function officialSource(url: string, channel: AppChannel, branch: string): ConfiguredSource {
+  var name = 'Bespok3d Official'
+  if (branch === 'dev' && channel.buildFlavor === 'staging') name = 'Bespok3d Official prerelease'
+  if (branch === 'dev' && channel.buildFlavor === 'development') name = 'Bespok3d Official dev'
+
+  return { url, label: url, name, trust: 'project', locked: true }
 }
 
 function bundledSource(): ConfiguredSource {
@@ -50,13 +61,13 @@ function userLocalSource(): ConfiguredSource {
 // the plugins that still live in this repo, so a tester keeps the full catalogue offline; the source
 // stays forever even as those migrate out. The user-local source is appended when present.
 export function configuredSources(): ConfiguredSource[] {
-  const builtIn = [bundledSource(), OFFICIAL_REMOTE]
+  const builtIn = [bundledSource(), ...officialRemoteSources(APP_CHANNEL)]
 
   return userLocalIndexExists() ? [...builtIn, userLocalSource()] : builtIn
 }
 
 function toRef(source: ConfiguredSource): RegistryRef {
-  return { url: source.url, trust: source.trust, locked: source.locked }
+  return { url: source.url, trust: source.trust, locked: source.locked, sourceName: source.name }
 }
 
 export interface Catalog extends CatalogResult {

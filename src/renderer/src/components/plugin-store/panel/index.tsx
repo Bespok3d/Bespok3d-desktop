@@ -19,6 +19,8 @@ import { usePanelActions } from './actions'
 import { PanelConfigArea } from '../config/config-form'
 import { usePanelConfigState } from './tabs/config-tab'
 import { Button } from '../../common/Button'
+import { Segmented } from '../../common/Segmented'
+import { effectiveVariant } from '../../../data/channels'
 import { Modal } from '../../common/overlay/Modal'
 import { CapturesView } from './tabs/CapturesView'
 import { PanelHead } from './head'
@@ -171,7 +173,7 @@ function useVariantSelection(plugin: Plugin, ceiling: ReleaseChannel, disabledCh
   const defaultVariant = defaultSelectedVariant(plugin, ceiling, disabledChannels, installedSource, installedChannel)
   const [selectedKey, setSelectedKey] = useState(defaultVariant ? sourceKey(defaultVariant) : undefined)
   // The channel chips filter which source rows show (a view), independent of selectedKey (what installs).
-  // 'all' shows every row; a specific channel both filters the rows and selects that channel's newest.
+  // 'all' shows every row in the active source; a specific channel selects its newest variant.
   const [channelFilter, setChannelFilter] = useState<ReleaseChannel | 'all'>('all')
   const selectedVariant = plugin.sources.find((source) => sourceKey(source) === selectedKey)
   function pickChannel(channel: ReleaseChannel | 'all') {
@@ -182,20 +184,34 @@ function useVariantSelection(plugin: Plugin, ceiling: ReleaseChannel, disabledCh
     if (variant) setSelectedKey(sourceKey(variant))
   }
 
-  return { selectedKey, setSelectedKey, selectedVariant, channelFilter, pickChannel }
+  function pickSource(sourceUrl: string) {
+    const sourceVariants = plugin.sources.filter((source) => source.registryUrl === sourceUrl)
+    const sourcePlugin = { ...plugin, sources: sourceVariants }
+    const offered = effectiveVariant(sourcePlugin, ceiling, disabledChannels) ?? sourceVariants[0]
+    if (offered) setSelectedKey(sourceKey(offered))
+    setChannelFilter('all')
+  }
+
+  return { selectedKey, setSelectedKey, selectedVariant, channelFilter, pickChannel, pickSource }
 }
 
-function VersionsTab({ plugin, ceiling, selectedKey, channelFilter, installedSource, installedChannel, installedVersion, onPickChannel, onSelect, onRemoveLocal, t }: {
+function VersionsTab({ plugin, ceiling, selectedKey, channelFilter, installedSource, installedChannel, installedVersion, onPickChannel, onPickSource, onSelect, onRemoveLocal, t }: {
   plugin: Plugin; ceiling: ReleaseChannel; selectedKey?: string; channelFilter: ReleaseChannel | 'all'
   installedSource?: string; installedChannel?: ReleaseChannel; installedVersion?: string; onPickChannel: (channel: ReleaseChannel | 'all') => void
-  onSelect: (key: string) => void; onRemoveLocal?: () => void; t: TFunction
+  onPickSource: (url: string) => void; onSelect: (key: string) => void; onRemoveLocal?: () => void; t: TFunction
 }) {
-  const shownSources = channelFilter === 'all' ? plugin.sources : plugin.sources.filter((source) => source.channel === channelFilter)
+  const sourceTabs = [...new Map(plugin.sources.map((source) => [source.registryUrl, { value: source.registryUrl, label: source.label }])).values()]
+  const activeSource = plugin.sources.find((source) => sourceKey(source) === selectedKey)?.registryUrl ?? sourceTabs[0]?.value
+  const shownSources = plugin.sources.filter((source) => source.registryUrl === activeSource
+    && (channelFilter === 'all' || source.channel === channelFilter))
+  const installedVariant = plugin.sources.find((source) => source.registryUrl === installedSource)
+  const installedSourceLabel = installedVariant?.label
 
   return (
     <div className="panel-versions">
+      {sourceTabs.length > 1 && sourceTabs.every((source) => source.label) && activeSource && <Segmented value={activeSource} options={sourceTabs} onChange={onPickSource} />}
       <ChannelSelector plugin={plugin} ceiling={ceiling} channelFilter={channelFilter} onPick={onPickChannel} t={t} />
-      <SourcesSection sources={shownSources} selected={selectedKey} installedSource={installedSource} installedChannel={installedChannel} installedVersion={installedVersion} onSelect={onSelect} onRemoveLocal={onRemoveLocal} t={t} />
+      <SourcesSection sources={shownSources} selected={selectedKey} installedSource={installedSource} installedChannel={installedChannel} installedVersion={installedVersion} installedSourceLabel={installedSourceLabel} onSelect={onSelect} onRemoveLocal={onRemoveLocal} t={t} />
     </div>
   )
 }
@@ -205,7 +221,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   const { plugins, refresh } = useCatalog()
   const localRemove = useLocalRemove(plugin.id, () => { refresh(); onClose() })
   const ceiling = channelCeiling ?? primaryChannel ?? 'stable'
-  const { selectedKey, setSelectedKey, selectedVariant, channelFilter, pickChannel } = useVariantSelection(plugin, ceiling, disabledChannels ?? [], installedSource, installedChannel, onChannelPref)
+  const { selectedKey, setSelectedKey, selectedVariant, channelFilter, pickChannel, pickSource } = useVariantSelection(plugin, ceiling, disabledChannels ?? [], installedSource, installedChannel, onChannelPref)
   // Everything about settings reads the picked version, not the merged listing: the fields shown, the
   // install gate's "is it filled in", and whether there is a Config tab at all.
   const picked = pluginAsPickedVersion(plugin, selectedVariant)
@@ -249,12 +265,12 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
     <>
       <Modal onClose={onClose} surfaceClassName="plugin-modal">
         <Button variant="ghost" icon className="panel-close" onClick={onClose} aria-label={t('btn.close')}><IconClose size={16} /></Button>
-        <PanelHead plugin={plugin} installed={installed} deactivated={deactivated} hasUpdate={hasUpdate} installedVersion={installedVersion} />
+        <PanelHead plugin={plugin} installed={installed} deactivated={deactivated} hasUpdate={hasUpdate} installedVersion={installedVersion} packageTrust={printer?.installedPackageTrust?.[plugin.id]} />
         {showTabs && <PanelTabs tabs={tabs} active={activeTab} onTab={setTab} />}
         <div className="panel-scroll">
           {activeTab === 'overview' && <PanelBody plugin={plugin} missingDeps={missingDeps} installed={installed} />}
           {activeTab === 'versions' && (
-            <VersionsTab plugin={plugin} ceiling={ceiling} selectedKey={selectedKey} channelFilter={channelFilter} installedSource={installedSource} installedChannel={installedChannel} installedVersion={installedVersion} onPickChannel={pickChannel} onSelect={setSelectedKey} onRemoveLocal={isSideloaded(plugin) ? localRemove.request : undefined} t={t} />
+            <VersionsTab plugin={plugin} ceiling={ceiling} selectedKey={selectedKey} channelFilter={channelFilter} installedSource={installedSource} installedChannel={installedChannel} installedVersion={installedVersion} onPickChannel={pickChannel} onPickSource={pickSource} onSelect={setSelectedKey} onRemoveLocal={isSideloaded(plugin) ? localRemove.request : undefined} t={t} />
           )}
           {activeTab === 'doc' && <PanelDoc plugin={plugin} />}
           {activeTab === 'config' && (

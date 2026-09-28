@@ -5,13 +5,14 @@
 // running), then dispatching the parsed route. Auth callbacks are consumed by the PKCE waiter; every
 // other route is forwarded to the renderer, which confirms before any state change (ADR-0023).
 import { app } from 'electron'
+import { APP_CHANNEL } from '../channel'
 import { parseB3dUrl, type B3dRoute } from './url'
 
 var authCallbackHandler: ((params: Record<string, string>) => void) | null = null
 
 type AuthCallbackHandler = (params: Record<string, string>) => void
 
-const SCHEME = 'b3d'
+const SCHEME = APP_CHANNEL.scheme
 
 // The PKCE flow registers its one-shot waiter here; main feeds it the b3d://auth/callback params.
 export function onAuthCallback(handler: AuthCallbackHandler | null): void {

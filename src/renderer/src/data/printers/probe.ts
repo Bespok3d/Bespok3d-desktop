@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Printer, ConnectionReach, PrinterConnection } from '../types'
 import type { DaemonMetadata } from '@bespok3d/contract'
+import type { DaemonAccessState } from '../../../../main/daemon-client/status'
 import { applyToId, type SetPrinters } from './list'
 import { statusAfterProbe, type ProbeStatus } from './status'
 
 interface DaemonResult extends DaemonMetadata {
   isManaged: boolean
+  accessState?: DaemonAccessState
   // What the printer runs of bespok3d itself (the daemon, this printer's jinni). Not part of the
   // plugin list, so nothing else here would know either one is on the printer at all.
   machineryVersions?: Record<string, string>
@@ -25,7 +27,7 @@ function statusFromDaemon(result: DaemonResult): Printer['status'] {
 }
 
 function onDaemonResult(printer: Printer, result: DaemonResult, set: SetPrinters): void {
-  const patch: Partial<Printer> = { status: statusFromDaemon(result), deactivated: result.switchedOff === true, connection: { reach: 'managed', sshOpen: true }, daemonVersion: result.daemonVersion, daemonUpdateAvailable: result.daemonUpdateAvailable }
+  const patch: Partial<Printer> = { status: statusFromDaemon(result), deactivated: result.switchedOff === true, connection: { reach: 'managed', sshOpen: true, accessState: 'authorized' }, daemonVersion: result.daemonVersion, daemonUpdateAvailable: result.daemonUpdateAvailable }
   // The printer answered on this address; adopt it so the dropdown and every SSH op use the live IP,
   // not the lease it had at app start (otherwise an op SSHes to a stale IP after the printer moved).
   if (result.ip && result.ip !== printer.ip) patch.ip = result.ip
@@ -94,7 +96,7 @@ function targetStatus(report: DaemonResult): ProbeStatus {
 }
 
 function connectionDetail(report: DaemonResult): PrinterConnection {
-  return { reach: report.reach ?? 'offline', sshOpen: report.sshOpen ?? false }
+  return { reach: report.reach ?? 'offline', sshOpen: report.sshOpen ?? false, accessState: report.accessState }
 }
 
 // Switching bespok3d off takes the boot hook with it, so once the printer restarts there is no daemon
@@ -109,7 +111,7 @@ function statusWhileSwitchedOff(reach: ConnectionReach): Printer['status'] {
 // refreshes daemon metadata; anything lower stores the reach so the banners can offer the right action.
 export async function pingAndUpdate(printer: Printer, set: SetPrinters): Promise<void> {
   const report = await checkDaemonResult(printer.id)
-  const safe: DaemonResult = report ?? { isManaged: false, reach: 'offline', sshOpen: false, ip: printer.ip }
+  const safe: DaemonResult = report ?? { isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: printer.ip }
   const decision = statusAfterProbe(printer.status, targetStatus(safe), probeMisses.get(printer.id) ?? 0)
   probeMisses.set(printer.id, decision.misses)
   if (safe.isManaged) { onDaemonResult(printer, safe, set);

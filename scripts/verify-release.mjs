@@ -12,7 +12,7 @@
 // release.sh runs both. Run it by hand to check a release someone else cut.
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { UPDATER_FEEDS, assetName, releaseArtifacts } from './release-manifest.mjs'
+import { assetName, releaseArtifacts, updaterFeeds } from './release-manifest.mjs'
 
 function builtSize(buildDir, builtName) {
   const path = join(buildDir, builtName)
@@ -20,8 +20,8 @@ function builtSize(buildDir, builtName) {
   return existsSync(path) ? statSync(path).size : null
 }
 
-function missingFromBuild(version, buildDir) {
-  return releaseArtifacts(version)
+function missingFromBuild(version, buildDir, channelName) {
+  return releaseArtifacts(version, channelName)
     .filter(function (artifact) {
       return !builtSize(buildDir, artifact.built)
     })
@@ -66,18 +66,18 @@ function feedComplaints(version, buildDir, feed, servedNames) {
   ]
 }
 
-function servedAssetNames(version) {
-  return new Set(releaseArtifacts(version).map(function (artifact) {
+function servedAssetNames(version, channelName) {
+  return new Set(releaseArtifacts(version, channelName).map(function (artifact) {
     return assetName(artifact.built)
   }))
 }
 
-function buildComplaints(version, buildDir) {
-  const servedNames = servedAssetNames(version)
+function buildComplaints(version, buildDir, channelName) {
+  const servedNames = servedAssetNames(version, channelName)
 
   return [
-    ...missingFromBuild(version, buildDir),
-    ...UPDATER_FEEDS.flatMap(function (feed) {
+    ...missingFromBuild(version, buildDir, channelName),
+    ...updaterFeeds(channelName).flatMap(function (feed) {
       return feedComplaints(version, buildDir, feed, servedNames)
     }),
   ]
@@ -99,12 +99,12 @@ function uploadComplaint(artifact, buildDir, uploadedSizes) {
   return []
 }
 
-function publishComplaints(version, buildDir, releaseAssets) {
+function publishComplaints(version, buildDir, releaseAssets, channelName) {
   const uploadedSizes = new Map(releaseAssets.map(function (asset) {
     return [asset.name, asset.size]
   }))
 
-  return releaseArtifacts(version).flatMap(function (artifact) {
+  return releaseArtifacts(version, channelName).flatMap(function (artifact) {
     return uploadComplaint(artifact, buildDir, uploadedSizes)
   })
 }
@@ -123,42 +123,42 @@ function report(complaints, whatIsWrong, whatIsRight) {
   process.exit(1)
 }
 
-function checkBuild(version, buildDir) {
-  const expected = releaseArtifacts(version).length
+function checkBuild(version, buildDir, channelName) {
+  const expected = releaseArtifacts(version, channelName).length
 
   report(
-    buildComplaints(version, buildDir),
+    buildComplaints(version, buildDir, channelName),
     `Error: the build of ${version} in ${buildDir} is not complete:`,
     `All ${expected} files of ${version} are built (macOS Apple Silicon + Intel, Windows, Linux AppImage x86_64 + arm64, Linux Flatpak).`,
   )
 }
 
-function checkPublished(version, buildDir, releaseAssets) {
-  const expected = releaseArtifacts(version).length
+function checkPublished(version, buildDir, releaseAssets, channelName) {
+  const expected = releaseArtifacts(version, channelName).length
 
   report(
-    publishComplaints(version, buildDir, releaseAssets),
+    publishComplaints(version, buildDir, releaseAssets, channelName),
     `Error: the v${version} release does not carry the whole build:`,
     `All ${expected} files of ${version} are on the release at the size they were built.`,
   )
 }
 
 function usage() {
-  console.error('Usage: verify-release.mjs built <version> <build-dir>')
-  console.error('       verify-release.mjs published <version> <build-dir>   # release assets JSON on stdin')
+  console.error('Usage: verify-release.mjs built <version> <build-dir> [live|staging|development]')
+  console.error('       verify-release.mjs published <version> <build-dir> [live|staging|development]   # release assets JSON on stdin')
   process.exit(1)
 }
 
-const [mode, version, buildDir] = process.argv.slice(2)
+const [mode, version, buildDir, channelName = 'live'] = process.argv.slice(2)
 
 if (!version || !buildDir) {
   usage()
 }
 
 if (mode === 'built') {
-  checkBuild(version, buildDir)
+  checkBuild(version, buildDir, channelName)
 } else if (mode === 'published') {
-  checkPublished(version, buildDir, JSON.parse(readFileSync(0, 'utf8')))
+  checkPublished(version, buildDir, JSON.parse(readFileSync(0, 'utf8')), channelName)
 } else {
   usage()
 }

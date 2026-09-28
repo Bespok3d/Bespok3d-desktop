@@ -1,7 +1,12 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { DriftReport, PrinterProblem, ConfigTruthRecords } from '@bespok3d/contract'
-import type { ReleaseChannel } from './types'
+import type { DaemonAccessState } from '../../../main/daemon-client/status'
+import type { PublicPrinterRecord } from '../../../main/printers/record'
+
+type PrinterPackageHistory = Pick<PublicPrinterRecord,
+  'installedVersions' | 'machineryVersions' | 'installedSources' | 'installedChannels' | 'installedPackageTrust' | 'installLogs' | 'failedInstallLogs'
+>
 
 export interface EnrollmentLogStep {
   id: string
@@ -17,7 +22,7 @@ export interface EnrollmentLog {
 
 // The truth-ladder records (appliedPluginVars/-At, printerUuid) come from ConfigTruthRecords in
 // @bespok3d/contract, the single definition shared with main's persisted PrinterRecord.
-export interface Printer extends ConfigTruthRecords {
+export interface Printer extends ConfigTruthRecords, PrinterPackageHistory {
   id: string
   nick: string
   model: string
@@ -35,20 +40,6 @@ export interface Printer extends ConfigTruthRecords {
   deactivated?: boolean
   installedIds: string[]
   customSshCredentials?: boolean
-  installedVersions?: Record<string, string>
-  // The versions of the printer's machinery (the daemon, and this printer's adapter jinni), keyed by
-  // package name. Main resolves the names; the renderer only reads the map.
-  machineryVersions?: Record<string, string>
-  installedSources?: Record<string, string>
-  // The release channel each installed plugin came from, keyed by plugin id; drives the installed
-  // channel badge on the card and channel-aware update detection.
-  installedChannels?: Record<string, ReleaseChannel>
-  // The most recent install log per plugin id, persisted by main so the detail view's Install-log
-  // tab survives an app restart (the in-memory install history is lost on reload).
-  installLogs?: Record<string, InstallLog>
-  // The most recent FAILED attempt per plugin id, persisted by main: what the printer got through
-  // before it gave up, or the reason the app would not send the package. Dropped once it installs.
-  failedInstallLogs?: Record<string, InstallLog>
   // Installed plugins a safety fixer (or the user) turned off; shown as Disabled, not Installed.
   deactivatedIds?: string[]
   endpoints?: Array<{ label: string; url: string }>
@@ -87,4 +78,5 @@ export type ConnectionReach = 'managed' | 'recoverable' | 'alive-no-ssh' | 'offl
 export interface PrinterConnection {
   reach: ConnectionReach
   sshOpen: boolean
+  accessState?: DaemonAccessState
 }

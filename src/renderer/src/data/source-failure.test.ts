@@ -6,7 +6,7 @@
 // something that is not broken.
 import { describe, it, expect } from 'vitest'
 import type { SourceRow, SourceFailureReason } from './types'
-import { emptyStoreReason, offersSignIn, signInWouldReach } from './source-failure'
+import { emptyStoreReason, offersSignIn, signInWouldReach, isMissingOfficialDevIndex } from './source-failure'
 
 function failedSource(reason: SourceFailureReason): SourceRow {
   return { url: 'https://lists.example.invalid/index.json', label: 'example/list', name: 'Example List', trust: 'community', locked: false, enabled: true, status: 'failed', pluginCount: 0, error: 'failed', reason }
@@ -61,8 +61,16 @@ describe('the sign-in is offered only where it helps', () => {
   })
 
   it('offers it on a failed source row, never on one that loaded', () => {
-    expect(signInWouldReach(failedSource('ratelimited'))).toBe(true)
-    expect(signInWouldReach(failedSource('network'))).toBe(false)
-    expect(signInWouldReach(loadedSource())).toBe(false)
+    expect(signInWouldReach(failedSource('ratelimited'), false)).toBe(true)
+    expect(signInWouldReach(failedSource('network'), false)).toBe(false)
+    expect(signInWouldReach(loadedSource(), false)).toBe(false)
+  })
+
+  it('does not ask a connected user to sign in again or offer sign-in for an unpublished official tier', () => {
+    const missingTier = { ...failedSource('notfound'), url: 'github:Bespok3d/main-index/index.json?ref=dev' }
+    expect(signInWouldReach(failedSource('auth'), true)).toBe(false)
+    expect(signInWouldReach(missingTier, false)).toBe(false)
+    expect(isMissingOfficialDevIndex(missingTier)).toBe(true)
+    expect(isMissingOfficialDevIndex(failedSource('notfound'))).toBe(false)
   })
 })

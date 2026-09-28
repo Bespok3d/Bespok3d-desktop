@@ -4,13 +4,14 @@
 import { describe, it, expect, vi } from 'vitest'
 import { waitFor } from '@testing-library/react'
 import { setup } from '../../../test/harness'
-import { makePlugin, makeIndexEntry } from '../../../test/fixtures'
+import { makePlugin, makeIndexEntry, makePrinter } from '../../../test/fixtures'
 import { PluginPanel } from '.'
 
-function renderWrapperPanel(installedVersion: string) {
+function renderWrapperPanel(installedVersion: string, packageTrust?: 'project' | 'community' | 'unknown') {
   return setup(
     <PluginPanel
       plugin={makePlugin({ id: 'fluidd', title: 'Fluidd', version: '0.1.4', swVersion: '1.37.2' })}
+      printer={makePrinter({ installedPackageTrust: packageTrust ? { fluidd: packageTrust } : undefined })}
       installed hasUpdate={false} printerId="printer-1" installedVersion={installedVersion}
       allInstalledIds={['fluidd']} onClose={vi.fn()} onOperationDone={vi.fn()}
     />,
@@ -35,6 +36,26 @@ describe('PanelHead version line for a plugin that wraps an upstream project', (
     const sub = headSubText()
     expect(sub).toContain('v0.1.3')
     expect(sub).not.toContain('1.37.2')
+  })
+})
+
+describe('catalog and historical package trust are presented separately', () => {
+  it('labels a verified package signature as historical install evidence', () => {
+    renderWrapperPanel('0.1.4', 'project')
+    expect(document.querySelector('.panel-head')?.textContent).toContain('Package signed by Bespok3d at install')
+    expect(document.querySelector('.panel-head')?.textContent).not.toContain('current printer bytes')
+    expect(document.querySelector('.panel-head [title*="Historical package signature"]')).toBeInTheDocument()
+  })
+
+  it('keeps an unsigned package distinct from a missing package-trust record', () => {
+    renderWrapperPanel('0.1.4', 'unknown')
+    expect(document.querySelector('.panel-head')?.textContent).toContain('Package was unsigned at install')
+  })
+
+  it('names a missing historical package-trust record without inferring catalog trust', () => {
+    renderWrapperPanel('0.1.4')
+    expect(document.querySelector('.panel-head')?.textContent).toContain('No package signature record')
+    expect(document.querySelector('.panel-head')?.textContent).toContain('Bespok3d project')
   })
 })
 

@@ -127,6 +127,17 @@ describe('a published list loads for someone with no GitHub account', () => {
     expect(probe.requested.indexOf(RELEASE_ASSET_URL)).toBeLessThan(probe.requested.indexOf(RAW_FILE_URL))
   })
 
+  it('fetches the same signed index.json from dev without trying main or the latest release', async () => {
+    const devIndex = `https://raw.githubusercontent.com/${LIST_OWNER}/${LIST_REPO}/dev/index.json`
+    const probe = servedBy({ [devIndex]: answer(200, FIXTURE_BYTES), [`${devIndex}.sig`]: answer(200, 'signed fixture') })
+    const fetched = await fetchGitHostRegistry(refTo(`github:${LIST_OWNER}/${LIST_REPO}/index.json?ref=dev`))
+
+    expect(fetched.index.name).toBe('Fixture List')
+    expect(probe.requested).toEqual([devIndex, `${devIndex}.sig`])
+    expect(mocks.verifyIndexSignature).toHaveBeenCalledWith(FIXTURE_BYTES, 'signed fixture', expect.anything())
+    expect(askedTheApi(probe)).toBe(false)
+  })
+
   it('carries no Authorization header on either anonymous avenue, signed in or not', async () => {
     mocks.isConnected.mockResolvedValue(true)
     const probe = servedBy({ [RAW_FILE_URL]: answer(200, FIXTURE_BYTES) })
@@ -154,6 +165,19 @@ describe('a ladder that serves nothing keeps the failure the user can act on', (
     refusingEveryConnection()
 
     await expect(fetchGitHostRegistry(refTo(RELEASE_ASSET_URL))).rejects.toMatchObject({ reason: 'network' })
+  })
+
+  it.each([false, true])('does not fall back from a missing dev index to main with cached=%s', async (hasCache) => {
+      const channelIndex = `github:${LIST_OWNER}/${LIST_REPO}/index.json?ref=dev`
+      const channelRaw = `https://raw.githubusercontent.com/${LIST_OWNER}/${LIST_REPO}/dev/index.json`
+      if (hasCache) seedCache(channelRaw)
+      const probe = servedBy({})
+
+      await expect(fetchGitHostRegistry(refTo(channelIndex))).rejects.toMatchObject({ reason: 'notfound' })
+
+      expect(probe.requested).toEqual([channelRaw])
+      expect(probe.requested).not.toContain(RELEASE_ASSET_URL)
+      expect(probe.requested).not.toContain(RAW_FILE_URL)
   })
 
   it('prefers the spent ration over a plain miss when the avenues disagree', async () => {

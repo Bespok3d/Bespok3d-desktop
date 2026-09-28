@@ -17,7 +17,7 @@ function managedStore(
   installed: Record<string, string> = {},
 ) {
   return setup(
-    <PluginStore printer={makePrinter({ status: 'managed' })} grouped={false} onInstallSelected={handlers.onInstallSelected ?? vi.fn()} onUninstallSelected={handlers.onUninstallSelected ?? vi.fn()} onSaveVars={handlers.onSaveVars} />,
+    <PluginStore printer={makePrinter({ status: 'managed' })} grouped={false} onInstallSelected={(handlers.onInstallSelected ?? vi.fn()) as (printerId: string, specs: PluginUpdateSpec[]) => void} onUninstallSelected={(handlers.onUninstallSelected ?? vi.fn()) as (printerId: string, pluginIds: string[], cascade: boolean) => void} onSaveVars={handlers.onSaveVars as (save: import('../../data/plugin-vars/types').PluginVarsSave) => void} />,
     { withCatalog: true, catalog, b3d: { store: { capabilities: vi.fn().mockResolvedValue(makeCapabilities(installed)) } } },
   )
 }

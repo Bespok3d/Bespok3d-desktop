@@ -11,12 +11,14 @@ import { StatusPill } from '../../common/badges/StatusPill'
 import { CAT_ICONS, CAT_CLASS } from '../browse/PluginCard'
 import { useAssetInfo } from './tabs/sources'
 import { useFreshestVersion } from './freshest-version'
+import type { PackageTrust } from '../../../../../main/registry/model'
 
-export function PanelHead({ plugin, installed, deactivated, hasUpdate, installedVersion }: { plugin: Plugin; installed: boolean; deactivated?: boolean; hasUpdate: boolean; installedVersion?: string }) {
+export function PanelHead({ plugin, installed, deactivated, hasUpdate, installedVersion, packageTrust }: { plugin: Plugin; installed: boolean; deactivated?: boolean; hasUpdate: boolean; installedVersion?: string; packageTrust?: PackageTrust | null }) {
   const { t } = useI18n()
   const CatIcon = CAT_ICONS[plugin.category] ?? IconChip
   const iconClass = CAT_CLASS[plugin.category] ?? 'mac'
   const trustLabel = t(`trust.${plugin.trust}.full`)
+  const packageTrustLabel = packageTrust ? t(`store.package_trust_${packageTrust}`) : t('store.package_trust_missing')
   // Installed version is read live from the printer. Browsing shows what the plugin's own repo last
   // released, which is the listed version until that repo answers with something newer.
   const freshestVersion = useFreshestVersion(plugin.name)
@@ -45,6 +47,7 @@ export function PanelHead({ plugin, installed, deactivated, hasUpdate, installed
       </div>
       <div className="panel-stat-row">
         <TrustPill trust={plugin.trust} icon full title={trustLabel} />
+        {installed && <span className="chip" title={t('store.package_trust_help')}>{packageTrustLabel}</span>}
         {deactivated && <StatusPill status="disabled" />}
         {hasUpdate && !deactivated && <StatusPill status="update" />}
         {installed && !deactivated && !hasUpdate && <StatusPill status="installed" />}

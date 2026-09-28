@@ -26,7 +26,7 @@ function mainsailOn80(claim: ReturnType<typeof vi.fn>) {
   return {
     swapNote: (claimedPort: number) => (claimedPort === 80 ? { name: 'Mainsail', port: 81 } : null),
     steppedDownPort: () => 81,
-    claim,
+    claim: claim as (claimedPort: number) => Promise<void>,
   }
 }
 

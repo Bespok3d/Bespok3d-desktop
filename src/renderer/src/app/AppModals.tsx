@@ -16,6 +16,26 @@ import type { Printer } from '../data/types'
 import type { DiscoveredPrinterRecord } from '../env'
 import type { AppActions } from './callbacks'
 
+function AccessGateModals({ actions }: { actions: AppActions }) {
+  const { t } = useI18n()
+  const accessModal = actions.accessModal
+
+  return (
+    <>
+      {accessModal && <RequestAccessModal printer={accessModal.printer} state={accessModal.state} onClose={() => actions.setAccessModal(null)} onGranted={actions.handleAccessGranted} onReEnroll={() => actions.requestReEnroll(accessModal)} />}
+      {actions.reEnrollWarning && <ConfirmActionDialog
+        title={t('access.reenroll.title', { name: actions.reEnrollWarning.printer.nick || actions.reEnrollWarning.printer.model })}
+        summary={t('access.reenroll.summary')}
+        detail={t('access.reenroll.detail')}
+        confirmLabel={t('access.reenroll.confirm')}
+        danger
+        onConfirm={actions.confirmReEnroll}
+        onCancel={() => actions.setReEnrollWarning(null)}
+      />}
+    </>
+  )
+}
+
 export function AppModals({ actions, discovered, existingPrinters, onOpenPlugin }: { actions: AppActions; discovered: DiscoveredPrinterRecord[]; existingPrinters: Printer[]; onOpenPlugin: (pluginId: string) => void }) {
   const { t } = useI18n()
   const appUpdate = useAppUpdate()
@@ -54,13 +74,7 @@ export function AppModals({ actions, discovered, existingPrinters, onOpenPlugin 
           onExpectedRestart={(printerId) => actions.markExpectedRestart(printerId, EXPECTED_RESTART_GRACE_MS)}
         />
       )}
-      {actions.accessModal && (
-        <RequestAccessModal
-          printer={actions.accessModal}
-          onClose={() => actions.setAccessModal(null)}
-          onGranted={actions.handleAccessGranted}
-        />
-      )}
+      <AccessGateModals actions={actions} />
       {actions.rootAccessGate && (
         <ConfirmActionDialog
           title={t('enroll.ssh_closed_title')}

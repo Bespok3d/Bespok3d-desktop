@@ -4,6 +4,18 @@
 
 ## 0.7.7-beta - unreleased
 
+### Try the next Bespok3d release before it goes live
+
+Until now, there was no separate app for trying an upcoming release. Bespok3d Staging is a
+prerelease build you can install alongside regular Bespok3d to check that it works for you before
+it goes live. It has its own updates, so trying Staging does not replace your regular app.
+
+### Try upcoming plugins without losing the regular store
+
+The regular store did not show development versions beside published ones. Bespok3d Dev and the
+new Staging app now show both, so you can pick the version and source you want to try. If the
+development list is unavailable, the regular store is still there.
+
 ### A plugin whose release file was re-uploaded keeps its notes, its counts and a truthful reason
 
 Re-uploading a release file used to leave the store holding a web address that then answered "not

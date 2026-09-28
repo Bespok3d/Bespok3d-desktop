@@ -76,7 +76,7 @@ function SourceItemRow({ source, selected, isInstalled, shownVersion, shownSwVer
   return (
     <button className={cx('source-row', selected && 'selected')} onClick={onSelect} type="button">
       <span className={cx('source-radio', selected && 'on')} />
-      <span className="source-label mono">{source.label}</span>
+      {source.label && <span className="source-label">{source.label}</span>}
       <ChannelPill channel={source.channel} />
       <span className="card-version">{versionLabel(t, shownVersion, shownSwVersion)}</span>
       {stat.publishedAt && <span className="source-date">{stat.publishedAt}</span>}
@@ -92,8 +92,9 @@ function SourceItemRow({ source, selected, isInstalled, shownVersion, shownSwVer
 // drifted ahead of the printer must advertise its available build, or the listing would say "0.1.6"
 // while the Update action targets 0.1.7. What is actually on the printer is surfaced by a separate,
 // read-only "on this printer" entry.
-export function SourcesSection({ sources, selected, installedSource, installedChannel, installedVersion, onSelect, onRemoveLocal, t }: {
+export function SourcesSection({ sources, selected, installedSource, installedChannel, installedVersion, installedSourceLabel, onSelect, onRemoveLocal, t }: {
   sources: PluginSource[]; selected?: string; installedSource?: string; installedChannel?: ReleaseChannel; installedVersion?: string
+  installedSourceLabel?: string
   onSelect: (key: string) => void; onRemoveLocal?: () => void; t: TFunction
 }) {
   // A source is the current install only when it is the one the printer was installed from AND it still
@@ -133,7 +134,9 @@ export function SourcesSection({ sources, selected, installedSource, installedCh
       <div className="panel-sources-hint">{t('store.sources_hint')}</div>
       {installedVersion && !currentInstallListed && (
         <div className="source-row on-printer">
-          <span className="source-label">{t('store.source_on_printer')}</span>
+          <span className="source-label">{installedSourceLabel
+            ? t('store.installed_from_source', { source: installedSourceLabel })
+            : t('store.source_on_printer')}</span>
           <span className="card-version">v{displayVersion(installedVersion)}</span>
           <span className="source-installed">{t('store.source_installed')}</span>
         </div>

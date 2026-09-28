@@ -72,6 +72,7 @@ function appVerification() {
     bundle: true,
     format: 'esm',
     platform: 'node',
+    define: { __B3D_CHANNEL__: JSON.stringify('staging') },
     // The same alias electron-vite compiles the app with, so the shared contract package resolves to
     // the source the app actually ships rather than failing to resolve here. Electron resolves to the
     // in-vitro stand-in for the same reason: the verifier bundle may name it (the publisher-key

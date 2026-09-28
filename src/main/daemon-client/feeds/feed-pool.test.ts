@@ -17,7 +17,11 @@ class MockSocket extends EventEmitter {
   close(): void {}
 }
 
-vi.mock('ws', () => ({ default: vi.fn((url: string, options: Record<string, unknown>) => new MockSocket(url, options)) }))
+vi.mock('ws', () => ({
+  default: vi.fn(function createMockSocket(url: string, options: Record<string, unknown>) {
+    return new MockSocket(url, options)
+  }),
+}))
 vi.mock('../client', () => ({ makeAgent: vi.fn(() => ({})) }))
 vi.mock('../../printers', () => ({
   loadPrinters: vi.fn(() => [{ id: 'p1', ip: '10.0.0.1', daemonCert: 'CERT', daemonToken: 'TOK' }]),

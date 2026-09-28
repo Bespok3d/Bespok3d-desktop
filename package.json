@@ -1,6 +1,6 @@
 {
   "name": "bespok3d",
-  "version": "0.7.6-beta",
+  "version": "0.7.7-beta",
   "description": "Plugin manager for Klipper 3D printers",
   "main": "./out/main/index.js",
   "author": "unlucio",
@@ -14,11 +14,14 @@
     "typecheck:node": "tsc -b tsconfig.node.json",
     "typecheck:web": "tsc -b tsconfig.web.json",
     "release": "bash ./scripts/release.sh",
-    "package": "npm run build && electron-builder",
-    "package:mac": "npm run build && electron-builder --mac",
-    "package:win": "npm run build && electron-builder --win --x64",
-    "package:linux": "npm run build && electron-builder --linux",
-    "package:flatpak": "npm run build && electron-builder --linux flatpak",
+    "package": "node scripts/package-app.mjs live",
+    "package:dev": "node scripts/package-app.mjs development",
+    "package:staging": "node scripts/package-app.mjs staging",
+    "package:live": "node scripts/package-app.mjs live",
+    "package:mac": "node scripts/package-app.mjs live --mac",
+    "package:win": "node scripts/package-app.mjs live --win --x64",
+    "package:linux": "node scripts/package-app.mjs live --linux",
+    "package:flatpak": "node scripts/package-app.mjs live --linux flatpak",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "lint": "eslint src/ tests/ e2e/",
@@ -49,128 +52,6 @@
     "remark-gfm": "^4.0.1",
     "ssh2": "^1.17.0",
     "ws": "^8.21.0"
-  },
-  "build": {
-    "appId": "io.bespok3d.app",
-    "productName": "Bespok3d",
-    "copyright": "Copyright © 2026 Bespok3d contributors",
-    "protocols": [
-      {
-        "name": "Bespok3d Deep Link",
-        "schemes": [
-          "b3d"
-        ]
-      }
-    ],
-    "directories": {
-      "buildResources": "resources",
-      "output": "./dist/release"
-    },
-    "npmRebuild": false,
-    "files": [
-      "**/*",
-      "!dist/**",
-      "!release/**",
-      "!**/node_modules/cpu-features/**"
-    ],
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "Bespok3d",
-        "repo": "Bespok3d-desktop",
-        "releaseType": "prerelease"
-      }
-    ],
-    "extraResources": [
-      {
-        "from": "./dist/plugins",
-        "to": "plugins",
-        "filter": [
-          "*.b3",
-          "index.json",
-          "index.json.sig"
-        ]
-      }
-    ],
-    "fileAssociations": [
-      {
-        "ext": "b3",
-        "name": "Bespok3d Plugin",
-        "description": "Signed Bespok3d plugin package",
-        "icon": "resources/icons/b3-file.icns",
-        "role": "Viewer"
-      },
-      {
-        "ext": "b3p",
-        "name": "Bespok3d Bundle",
-        "description": "Bespok3d airgap plugin bundle",
-        "icon": "resources/icons/b3-package.icns",
-        "role": "Viewer"
-      }
-    ],
-    "mac": {
-      "icon": "resources/icons/icon.icns",
-      "extendInfo": {
-        "NSLocalNetworkUsageDescription": "Bespok3d uses the local network to discover Klipper printers.",
-        "CFBundleURLTypes": [
-          {
-            "CFBundleURLName": "Bespok3d Deep Link",
-            "CFBundleURLSchemes": [
-              "b3d"
-            ]
-          }
-        ]
-      },
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
-      ]
-    },
-    "win": {
-      "icon": "resources/icons/icon.png",
-      "target": "nsis",
-      "verifyUpdateCodeSignature": false
-    },
-    "linux": {
-      "icon": "resources/icons/icon.png",
-      "category": "Utility",
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    },
-    "flatpak": {
-      "runtimeVersion": "24.08",
-      "baseVersion": "24.08",
-      "finishArgs": [
-        "--socket=wayland",
-        "--socket=x11",
-        "--share=ipc",
-        "--device=dri",
-        "--socket=pulseaudio",
-        "--filesystem=home",
-        "--share=network",
-        "--talk-name=org.freedesktop.Notifications",
-        "--talk-name=org.freedesktop.secrets"
-      ]
-    }
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
@@ -204,5 +85,8 @@
     "typescript-eslint": "^8.59.4",
     "vite": "^7.3.6",
     "vitest": "^4.1.11"
+  },
+  "allowScripts": {
+    "electron@43.4.1": true
   }
 }

@@ -1,0 +1,50 @@
+{
+  "live": {
+    "buildFlavor": "live",
+    "appId": "io.bespok3d.app",
+    "productName": "Bespok3d",
+    "appName": "Bespok3d",
+    "releaseRepository": "Bespok3d/Bespok3d-desktop",
+    "scheme": "b3d",
+    "indexAssets": ["index.json"],
+    "indexBranches": ["main"],
+    "updateRule": "live-feed",
+    "updateChannel": "latest",
+    "releaseType": "release",
+    "versionSuffix": null,
+    "versionLabels": ["beta", ""],
+    "transitionFromProfile": null
+  },
+  "staging": {
+    "buildFlavor": "staging",
+    "appId": "io.bespok3d.app.staging",
+    "productName": "Bespok3d Staging",
+    "appName": "Bespok3d Staging",
+    "releaseRepository": "Bespok3d/Bespok3d-desktop",
+    "scheme": "b3d-staging",
+    "indexAssets": ["index.json"],
+    "indexBranches": ["main", "dev"],
+    "updateRule": "prerelease-feed",
+    "updateChannel": "bespok3d-staging",
+    "releaseType": "prerelease",
+    "versionSuffix": "-staging",
+    "versionLabels": ["beta-staging", "staging"],
+    "transitionFromProfile": "Bespok3d Beta"
+  },
+  "development": {
+    "buildFlavor": "development",
+    "appId": "io.bespok3d.app.dev",
+    "productName": "Bespok3d Dev",
+    "appName": "Bespok3d Dev",
+    "releaseRepository": null,
+    "scheme": "b3d-dev",
+    "indexAssets": ["index.json"],
+    "indexBranches": ["main", "dev"],
+    "updateRule": "draft-feed",
+    "updateChannel": "bespok3d-dev",
+    "releaseType": "prerelease",
+    "versionSuffix": null,
+    "versionLabels": null,
+    "transitionFromProfile": null
+  }
+}

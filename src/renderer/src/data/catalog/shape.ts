@@ -112,7 +112,7 @@ export function docAssetsFor(pluginId: string): Record<string, string> {
 function entryToSource(variant: IndexEntry, labels: Record<string, string>): PluginSource {
   return {
     registryUrl: variant.registry_url,
-    label: labels[variant.registry_url] ?? variant.registry_url,
+    label: variant.source_name ?? labels[variant.source_url ?? variant.registry_url] ?? '',
     version: variant.version,
     swVersion: variant.sw_version,
     channel: variant.channel,
@@ -195,7 +195,7 @@ function entryToPlugin(entry: IndexEntry, labels: Record<string, string>): Plugi
 }
 
 function sourceLabels(sources: SourceRow[]): Record<string, string> {
-  return Object.fromEntries(sources.map((source) => [source.url, source.label]))
+  return Object.fromEntries(sources.map((source) => [source.url, source.name]))
 }
 
 export function indexToPlugins(entries: IndexEntry[], sources: SourceRow[]): Plugin[] {

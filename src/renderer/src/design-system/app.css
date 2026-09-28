@@ -1672,6 +1672,13 @@ textarea {
   background: var(--bg-sunken);
   border: 1px solid var(--line);
 }
+.source-badge {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Detail-view "Sources & versions" picker: one selectable row per source offering the plugin. */
 .panel-sources {

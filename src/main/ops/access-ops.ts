@@ -22,21 +22,21 @@ function clientIdentity(): { identity: string; publicKey?: string } {
   return { identity: key?.fingerprint || clientId(), publicKey: key?.publicKey }
 }
 
-async function runRequestAccess(printerId: string, label: string): Promise<{ ok: boolean }> {
+async function runRequestAccess(printerId: string, label: string, daemonPort: number): Promise<{ ok: boolean }> {
   const record = recordOrThrow(printerId)
   const { identity, publicKey } = clientIdentity()
   const token = randomBytes(32).toString('hex')
   const safeLabel = (label || hostname()).slice(0, 64)
-  const result = await requestAccess({ ip: record.ip, label: safeLabel, identity, token, publicKey })
+  const result = await requestAccess({ ip: record.ip, port: daemonPort, label: safeLabel, identity, token, publicKey })
   updatePrinter(printerId, { daemonCert: result.cert, daemonToken: token, accessIdentity: identity, status: 'online' })
 
   return { ok: result.ok }
 }
 
-async function runAccessStatus(printerId: string): Promise<'pending' | 'granted'> {
+async function runAccessStatus(printerId: string, daemonPort: number): Promise<'pending' | 'granted'> {
   const record = loadPrinters().find((rec) => rec.id === printerId)
   if (!record || !record.daemonToken || !record.daemonCert) return 'pending'
-  if (!(await isAccessGranted(record))) return 'pending'
+  if (!(await isAccessGranted(record, daemonPort))) return 'pending'
   updatePrinter(printerId, { status: 'managed' })
 
   return 'granted'
@@ -64,9 +64,9 @@ async function runResetAccess(printerId: string, ip: string, user: string, passw
   updatePrinter(printerId, { daemonToken: token, accessIdentity: identity, status: 'managed' })
 }
 
-export function registerAccessHandlers(): void {
-  ipcMain.handle('access:request', (_ev, printerId: string, label: string) => runRequestAccess(printerId, label))
-  ipcMain.handle('access:status', (_ev, printerId: string) => runAccessStatus(printerId))
+export function registerAccessHandlers(daemonPort = 4269): void {
+  ipcMain.handle('access:request', (_ev, printerId: string, label: string) => runRequestAccess(printerId, label, daemonPort))
+  ipcMain.handle('access:status', (_ev, printerId: string) => runAccessStatus(printerId, daemonPort))
   ipcMain.handle('access:clients', (_ev, printerId: string) => fetchAccessClients(recordOrThrow(printerId)))
   ipcMain.handle('access:grant', (_ev, printerId: string, identity: string) => grantAccess(recordOrThrow(printerId), identity))
   ipcMain.handle('access:revoke', (_ev, printerId: string, identity: string) => revokeAccess(recordOrThrow(printerId), identity))

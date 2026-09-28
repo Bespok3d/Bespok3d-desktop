@@ -25,7 +25,7 @@ function renderInstalled(uninstall: ReturnType<typeof vi.fn>, installedIds: stri
     {
       withCatalog: true,
       catalog: [makeIndexEntry({ name: 'rfid-ntag' }), makeIndexEntry({ name: 'spoolman', deps: ['rfid-ntag'] })],
-      b3d: { store: { uninstall } },
+      b3d: { store: { uninstall: uninstall as (printerId: string, pluginId: string, cascade?: boolean) => Promise<string[]> } },
     },
   )
 }

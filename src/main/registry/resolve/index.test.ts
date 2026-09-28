@@ -3,13 +3,14 @@
 import { describe, it, expect } from 'vitest'
 import { resolveCatalog } from './index'
 import { RegistryFetchError, DEFAULT_LIMITS } from '../model'
-import type { RegistryRef, RegistryIndex, FetchedRegistry, MergedEntry, SignatureCheck } from '../model'
+import type { RegistryRef, RegistryIndex, IndexEntry, FetchedRegistry, MergedEntry, SignatureCheck } from '../model'
+import { missingDependencyIds } from '../../store/missing-deps'
 
 function entry(name: string, version = '1.0.0'): { name: string; version: string } {
   return { name, version }
 }
 
-function index(name: string, plugins: Array<{ name: string; version: string }>, lists: string[] = []): RegistryIndex {
+function index(name: string, plugins: IndexEntry[], lists: string[] = []): RegistryIndex {
   return {
     schema_version: 1,
     name,
@@ -75,12 +76,40 @@ function pluginNames(result: { plugins: MergedEntry[] }): string[] {
   return result.plugins.map((plugin) => plugin.name).sort()
 }
 
+async function sideloadedRfidDependencies(): Promise<string[]> {
+  const published = index('Published', [
+    { name: 'rfid-creality', version: '0.1.0', deps: ['rfid-ntag'] },
+    { name: 'rfid-ntag', version: '0.1.15', deps: ['u1-base-fm175xx-reader'], provides: ['rfid-service'] },
+    { name: 'u1-base-fm175xx-reader', version: '0.1.0', deps: [] },
+  ])
+  const sideloaded = index('Sideloaded', [{ name: 'rfid-creality', version: '0.2.3', deps: ['rfid-service'] }])
+  const catalogs = { published, sideloaded }
+  const result = await resolveCatalog([root('published'), { url: 'sideloaded', trust: 'any', locked: false }], fetcherFromSigned(catalogs, 'org-gpg-key'), DEFAULT_LIMITS, noop)
+
+  return missingDependencyIds(result.plugins, 'rfid-creality', [], [], { sourceUrl: 'sideloaded' })
+}
+
+it('resolves a sideloaded variant service through a provider in another source', async () => {
+  expect(await sideloadedRfidDependencies()).toEqual(['u1-base-fm175xx-reader', 'rfid-ntag'])
+})
+
 describe('resolveCatalog list-of-lists', () => {
   it('merges entries from a root and its child lists', async () => {
     const catalogs = { root: index('Root', [entry('one')], ['child']), child: index('Child', [entry('two')]) }
     const result = await resolveCatalog([root('root')], fetcherFrom(catalogs), DEFAULT_LIMITS, noop)
     expect(pluginNames(result)).toEqual(['one', 'two'])
     expect(result.registries).toHaveLength(2)
+  })
+
+  it('keeps the configured root identity on a plugin served by a nested list', async () => {
+    const catalogs = {
+      official: index('Bespok3d Official', [], ['child']),
+      child: index('Child', [], ['grandchild']),
+      grandchild: index('Grandchild', [entry('nested-plugin')]),
+    }
+    const result = await resolveCatalog([{ ...root('official'), sourceName: 'Bespok3d Official' }], fetcherFrom(catalogs), DEFAULT_LIMITS, noop)
+
+    expect(result.plugins[0]).toMatchObject({ registry_url: 'grandchild', source_url: 'official', source_name: 'Bespok3d Official' })
   })
 
   it('breaks a cycle by fetching each registry at most once', async () => {

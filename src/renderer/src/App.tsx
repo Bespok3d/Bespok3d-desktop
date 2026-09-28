@@ -78,7 +78,7 @@ function App() {
         />
         {printers.length > 0 && showsUnreleasedFeatures() && <ModeBar mode={mode} onModeChange={setMode} printerName={selectedPrinter?.nick} />}
         <PrinterNotices printer={selectedPrinter} savedPluginVars={savedPluginVars} onUpdateDaemon={actions.handleUpdateDaemon} onMigrate={actions.handleMigrateBatch}
-          standingBanners={<PrinterBanners selectedPrinter={selectedPrinter} bundledJinniVersion={selectedPrinter ? jinniVersions[selectedPrinter.adapter] : undefined} onRepair={actions.handleRepairPrinter} onRecover={actions.handleRecoverPrinter} onReactivate={actions.handleReactivatePrinter} onRecoverDrift={actions.handleRecoverDrift} onUpdateJinni={actions.handleUpdateJinni} onReboot={actions.handleReboot} />}
+          standingBanners={<PrinterBanners selectedPrinter={selectedPrinter} bundledJinniVersion={selectedPrinter ? jinniVersions[selectedPrinter.adapter] : undefined} onRepair={actions.handleRepairPrinter} onRecover={actions.handleRecoverPrinter} onReactivate={actions.handleReactivatePrinter} onRecoverDrift={actions.handleRecoverDrift} onUpdateJinni={actions.handleUpdateJinni} onReboot={actions.handleReboot} onAccess={actions.handleEnrollPrinter} />}
         />
         <div className="u-fill">
           {mainPane()}

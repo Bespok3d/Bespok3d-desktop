@@ -63,6 +63,9 @@ export interface RegistryRef {
   url: string
   trust: RegistryTrust
   locked: boolean
+  // Configured root that led to this list. Nested lists keep their own url for package provenance.
+  sourceUrl?: string
+  sourceName?: string
 }
 
 // An index exactly as a transport handed it over, plus its detached signature when one was served
@@ -89,6 +92,8 @@ export interface MergedEntry extends IndexEntry {
   // host of those bytes could write. The store shows this one.
   signer: string | null
   registry_url: string
+  source_url?: string
+  source_name?: string
   // True when this entry is the daemon or an adapter's jinni: the printer's own machinery, which the
   // store may update but never remove. Stamped by main at the renderer boundary (compat/system-packages)
   // from what this build carries, and overwritten on every entry, so a list cannot claim it.

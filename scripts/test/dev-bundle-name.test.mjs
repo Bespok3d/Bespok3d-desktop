@@ -15,12 +15,13 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
+const packageJson = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'))
 const DEV_BUNDLE = join(REPO_ROOT, 'node_modules', 'electron', 'dist', 'Electron.app')
 const PLIST = join(DEV_BUNDLE, 'Contents', 'Info.plist')
 const NAMING_SCRIPT = join(REPO_ROOT, 'scripts', 'name-dev-electron-bundle.sh')
 
-const packageJson = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'))
-const expectedBundleName = `${packageJson.build.productName} Dev`
+const channelTable = JSON.parse(readFileSync(join(REPO_ROOT, 'scripts', 'channel-table.json'), 'utf8'))
+const expectedBundleName = channelTable.development.productName
 const noDevBundle = process.platform !== 'darwin' || !existsSync(PLIST)
 
 function bundleNameKey(key) {
@@ -55,5 +56,5 @@ test('`npm run dev` runs the naming script', () => {
 test('the name in the menu bar is the name the dev run calls itself', () => {
   const mainProcessSource = readFileSync(join(REPO_ROOT, 'src', 'main', 'index.ts'), 'utf8')
 
-  assert.match(mainProcessSource, new RegExp(`is\\.dev \\? '${expectedBundleName}' :`))
+  assert.match(mainProcessSource, /APP_CHANNEL\.appName/)
 })

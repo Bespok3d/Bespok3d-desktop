@@ -18,7 +18,10 @@ import {
   setAssignments,
   setKeyIcon,
   setPublishedAt,
+  localProfilesWithKey,
+  importKeyFromProfile,
 } from './keys'
+import { listPublishedAccountKeys } from './publisher/published-keys'
 import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, pingPrinter, checkSshOpen, probeService, probeServiceUrl, resolveLiveAddress } from './printers'
 import type { PublicPrinterRecord } from './printers'
 import { setAddressResolver } from './daemon-client/client'
@@ -81,6 +84,10 @@ function registerKeyHandlers(): void {
   ipcMain.handle('keys:setAssignments', (_ev, id, assignments) => setAssignments(id, assignments))
   ipcMain.handle('keys:setIcon', (_ev, id, color, image, size) => setKeyIcon(id, color, image, size))
   ipcMain.handle('keys:setPublishedAt', (_ev, id: string, date: string | null) => setPublishedAt(id, date))
+  ipcMain.handle('keys:published', () => listPublishedAccountKeys())
+  ipcMain.handle('keys:localProfiles', (_ev, fingerprint: string) => localProfilesWithKey(fingerprint))
+  ipcMain.handle('keys:importLocal', (_ev, fingerprint: string, profile: string, publicKey: string) =>
+    importKeyFromProfile(fingerprint, profile, publicKey))
 }
 
 function registerPrinterHandlers(getMainWindow: () => BrowserWindow): void {

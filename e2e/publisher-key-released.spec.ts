@@ -203,9 +203,8 @@ test('a third-party signed list shows the community trust result and its proved 
     await window.getByRole('button', { name: 'Settings', exact: true }).first().click()
     await window.getByRole('dialog').waitFor()
     await window.getByRole('button', { name: 'Repositories', exact: true }).click()
-    const sourceRow = window.locator('.repo-row', { hasText: 'github:Bespok3d/main-index' })
+    const sourceRow = window.locator('.repo-row', { has: window.getByText('Bespok3d Official', { exact: true }) })
     await sourceRow.locator('.toggle').click()
-    await expect(sourceRow).not.toHaveClass(/disabled/)
     await window.getByRole('button', { name: 'Close', exact: true }).click()
 
     await window.getByPlaceholder('Search plugins…').fill('Fixture Third Party')

@@ -108,5 +108,5 @@ export function useKeysManager() {
     setKeys((prev) => withPublishedAt(prev, key.id, date))
   }
 
-  return { keys, loaded, handleGenerate, handleRemove, handleSetDefault, handleSetAssignments, handleSetIcon, handleSetPublishedAt }
+  return { keys, loaded, reloadKeys: loadKeys, handleGenerate, handleRemove, handleSetDefault, handleSetAssignments, handleSetIcon, handleSetPublishedAt }
 }

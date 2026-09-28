@@ -32,7 +32,10 @@ function renderModal(props: Partial<React.ComponentProps<typeof UpdateModal>>, h
       downloaded={false}
       downloadRequested={false}
       errorMessage={null}
-      {...handlers}
+      onInstall={handlers.onInstall as () => void}
+      onDownload={handlers.onDownload as () => void}
+      onOpenDownload={handlers.onOpenDownload as () => void}
+      onLater={handlers.onLater as () => void}
       {...props}
     />,
   )

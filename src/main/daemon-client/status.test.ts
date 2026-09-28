@@ -1,13 +1,18 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { readFileSync } from 'fs'
+import { X509Certificate } from 'crypto'
+
+const fixtureCertificate = readFileSync(new URL('./__fixtures__/daemon-cert.pem', import.meta.url), 'utf8')
 
 vi.mock('./client', () => ({
   fetchDaemonStatus: vi.fn(), fetchCapabilities: vi.fn(), fetchSelfCheck: vi.fn(),
 }))
 vi.mock('./expected-version', () => ({ expectedDaemonVersion: () => '0.12.12-dev' }))
+vi.mock('./license-client', () => ({ fetchDaemonLicense: vi.fn() }))
 vi.mock('../printers', () => ({
-  loadPrinters: vi.fn().mockReturnValue([]), updatePrinter: vi.fn(), checkDaemon: vi.fn(),
+  loadPrinters: vi.fn().mockReturnValue([]), updatePrinter: vi.fn(), probeDaemonPort: vi.fn().mockResolvedValue('refused'),
   checkMoonraker: vi.fn(), checkSshOpen: vi.fn(), resolveLiveAddress: vi.fn().mockResolvedValue('10.0.0.5'),
   knownAddresses: vi.fn().mockReturnValue([]),
   gradeReach: (moonrakerOpen: boolean, sshOpen: boolean) => {
@@ -23,7 +28,9 @@ import {
   verifyDaemonVersion, getManagedRecord, recordOrThrow, checkDaemonRecord, switchedOffCorrection,
 } from './status'
 import { fetchDaemonStatus, fetchCapabilities, fetchSelfCheck } from './client'
-import { loadPrinters, updatePrinter, checkDaemon, checkMoonraker, checkSshOpen, resolveLiveAddress } from '../printers'
+import { fetchDaemonLicense } from './license-client'
+import { DaemonHttpError } from './transport'
+import { loadPrinters, updatePrinter, probeDaemonPort, checkMoonraker, checkSshOpen, resolveLiveAddress } from '../printers'
 import type { SelfCheckResult } from './client'
 
 beforeEach(() => vi.clearAllMocks())
@@ -194,7 +201,7 @@ function mockManagedRecord(): void {
   vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '10.0.0.5', daemonToken: 'T', daemonCert: 'C' } as never])
 }
 function mockDaemonAnswers(version: string): void {
-  vi.mocked(checkDaemon).mockResolvedValue(true)
+  vi.mocked(probeDaemonPort).mockResolvedValue('open')
   vi.mocked(fetchDaemonStatus).mockResolvedValue({ ok: true, version })
   vi.mocked(fetchCapabilities).mockResolvedValue({ installed: {}, endpoints: [] } as never)
   vi.mocked(fetchSelfCheck).mockResolvedValue({ ok: true, drift: [] })
@@ -203,15 +210,15 @@ function mockDaemonAnswers(version: string): void {
 describe('checkDaemonRecord (connection ladder)', () => {
   it('reports offline when the printer record is unknown', async () => {
     vi.mocked(loadPrinters).mockReturnValue([])
-    expect(await checkDaemonRecord('missing')).toEqual({ isManaged: false, reach: 'offline', sshOpen: false, ip: '', networkInterfaces: [] })
+    expect(await checkDaemonRecord('missing')).toEqual({ isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '', networkInterfaces: [] })
   })
 
   it('grades the moonraker/ssh ladder when the daemon does not answer', async () => {
     mockManagedRecord()
-    vi.mocked(checkDaemon).mockResolvedValue(false)
+    vi.mocked(probeDaemonPort).mockResolvedValue('refused')
     vi.mocked(checkMoonraker).mockResolvedValue(true)
     vi.mocked(checkSshOpen).mockResolvedValue(true)
-    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, reach: 'recoverable', sshOpen: true, ip: '10.0.0.5', networkInterfaces: [] })
+    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, reach: 'recoverable', sshOpen: true, accessState: 'daemon-absent', ip: '10.0.0.5', networkInterfaces: [] })
   })
 
   it('reports managed with metadata when the daemon answers', async () => {
@@ -234,6 +241,117 @@ describe('checkDaemonRecord (connection ladder)', () => {
     const result = await checkDaemonRecord('p1')
 
     expect(result.machineryVersions).toEqual({ 'bespok3d-daemon': '0.12.23' })
+  })
+})
+
+describe('checkDaemonRecord with an unreachable daemon port', () => {
+  it('does not infer authorization from a timed-out port when another service answers', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.10' } as never])
+    vi.mocked(probeDaemonPort).mockResolvedValue('unreachable')
+    vi.mocked(checkMoonraker).mockResolvedValue(true)
+    vi.mocked(checkSshOpen).mockResolvedValue(false)
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.accessState).toBe('unrecognized')
+    expect(result.isManaged).toBe(false)
+    expect(fetchDaemonLicense).not.toHaveBeenCalled()
+    expect(updatePrinter).not.toHaveBeenCalled()
+  })
+})
+
+describe('checkDaemonRecord separates service presence from authorization', () => {
+  it('recognizes a daemon for a fresh profile without issuing SSH probes or an enrollment action', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.10' } as never])
+    vi.mocked(probeDaemonPort).mockResolvedValue('open')
+    vi.mocked(fetchDaemonLicense).mockResolvedValue({ version: '0.12.12', certificateFingerprint: 'AA:BB' })
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.accessState).toBe('present-awaiting-access')
+    expect(result.isManaged).toBe(false)
+    expect(checkSshOpen).not.toHaveBeenCalled()
+    expect(checkMoonraker).not.toHaveBeenCalled()
+    expect(fetchDaemonLicense).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses actual authorization rejection evidence even when another endpoint fails', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.10', daemonToken: 'fixture-token', daemonCert: fixtureCertificate, accessIdentity: 'fixture-client' } as never])
+    vi.mocked(probeDaemonPort).mockResolvedValue('open')
+    vi.mocked(fetchDaemonStatus).mockRejectedValue(new DaemonHttpError(500, 'maintenance', 'daemon 500'))
+    vi.mocked(fetchCapabilities).mockRejectedValue(new DaemonHttpError(401, 'unauthorized', 'daemon 401'))
+    vi.mocked(fetchDaemonLicense).mockResolvedValue({ version: '0.12.12', certificateFingerprint: new X509Certificate(fixtureCertificate).fingerprint256 })
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.accessState).toBe('credentials-rejected')
+    expect(checkSshOpen).not.toHaveBeenCalled()
+    expect(updatePrinter).not.toHaveBeenCalled()
+    expect(fetchDaemonLicense).not.toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('does not call saved credentials rejected when the daemon responds with a service error', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.10', daemonToken: 'fixture-token', daemonCert: fixtureCertificate, accessIdentity: 'fixture-client' } as never])
+    vi.mocked(probeDaemonPort).mockResolvedValue('open')
+    vi.mocked(fetchDaemonStatus).mockRejectedValue(new DaemonHttpError(500, 'maintenance', 'daemon 500'))
+    vi.mocked(fetchCapabilities).mockRejectedValue(new Error('service unavailable'))
+    vi.mocked(fetchDaemonLicense).mockResolvedValue({ version: '0.12.12', certificateFingerprint: new X509Certificate(fixtureCertificate).fingerprint256 })
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.accessState).toBe('unrecognized')
+    expect(updatePrinter).not.toHaveBeenCalled()
+    expect(checkSshOpen).not.toHaveBeenCalled()
+  })
+})
+
+describe('saved access identity evidence', () => {
+  it('does not infer a pending request from a saved client identity alone', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.10', accessIdentity: 'fixture-client' } as never])
+    vi.mocked(probeDaemonPort).mockResolvedValue('open')
+    vi.mocked(fetchDaemonLicense).mockResolvedValue({ version: '0.12.12', certificateFingerprint: 'AA:BB' })
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.accessState).toBe('unrecognized')
+    expect(checkSshOpen).not.toHaveBeenCalled()
+    expect(updatePrinter).not.toHaveBeenCalled()
+  })
+})
+
+describe('daemon certificate identity checks', () => {
+  it('flags a changed certificate without authorizing or replacing the saved credentials', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.10', daemonToken: 'fixture-token', daemonCert: fixtureCertificate } as never])
+    vi.mocked(probeDaemonPort).mockResolvedValue('open')
+    vi.mocked(fetchDaemonStatus).mockRejectedValue(new Error('certificate identity mismatch'))
+    vi.mocked(fetchCapabilities).mockRejectedValue(new Error('certificate identity mismatch'))
+    vi.mocked(fetchDaemonLicense).mockResolvedValue({ version: '0.12.12', certificateFingerprint: 'AA:BB' })
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.accessState).toBe('identity-changed')
+    expect(result.isManaged).toBe(false)
+    expect(updatePrinter).not.toHaveBeenCalled()
+  })
+
+  it('reports a missing saved certificate distinctly', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.10', daemonToken: 'fixture-token' } as never])
+    vi.mocked(probeDaemonPort).mockResolvedValue('open')
+    vi.mocked(fetchDaemonLicense).mockResolvedValue({ version: '0.12.12', certificateFingerprint: 'AA:BB' })
+
+    expect((await checkDaemonRecord('p1')).accessState).toBe('certificate-missing')
+  })
+
+  it('keeps an arbitrary HTTPS response unrecognized and never falls through to SSH', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.10' } as never])
+    vi.mocked(probeDaemonPort).mockResolvedValue('open')
+    vi.mocked(fetchDaemonLicense).mockRejectedValue(new Error('malformed license'))
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.accessState).toBe('unrecognized')
+    expect(result.isManaged).toBe(false)
+    expect(checkSshOpen).not.toHaveBeenCalled()
   })
 })
 
@@ -267,17 +385,17 @@ describe('checkDaemonRecord learns the daemon-minted printer uuid', () => {
 describe('checkDaemonRecord follows a moved or recycled IP (Bug B)', () => {
   it('grades offline (not alive-no-ssh) when only a foreign device answers at the recorded IP', async () => {
     mockManagedRecord()
-    vi.mocked(checkDaemon).mockResolvedValue(false)
+    vi.mocked(probeDaemonPort).mockResolvedValue('refused')
     vi.mocked(checkMoonraker).mockResolvedValue(false)
     vi.mocked(checkSshOpen).mockResolvedValue(false)
-    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, reach: 'offline', sshOpen: false, ip: '10.0.0.5', networkInterfaces: [] })
+    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '10.0.0.5', networkInterfaces: [] })
   })
 
   it('follows the printer to the live IP (resolved among candidates) and re-probes + returns it', async () => {
     mockManagedRecord()
     // Daemon down at the recorded .5; resolveLiveAddress finds it answering at the moved .9.
     vi.mocked(resolveLiveAddress).mockResolvedValue('10.0.0.9')
-    vi.mocked(checkDaemon).mockImplementation(async (ip: string) => ip === '10.0.0.9')
+    vi.mocked(probeDaemonPort).mockImplementation(async (ip: string) => ip === '10.0.0.9' ? 'open' : 'refused')
     vi.mocked(fetchDaemonStatus).mockResolvedValue({ ok: true, version: '0.12.12-dev' })
     vi.mocked(fetchCapabilities).mockResolvedValue({ installed: {}, endpoints: [] } as never)
     vi.mocked(fetchSelfCheck).mockResolvedValue({ ok: true, drift: [] })
@@ -285,6 +403,25 @@ describe('checkDaemonRecord follows a moved or recycled IP (Bug B)', () => {
     expect(result.isManaged).toBe(true)
     expect(result.reach).toBe('managed')
     expect(result.ip).toBe('10.0.0.9')
+  })
+
+  it('keeps an unrecognized daemon at the resolved live address out of the authorization path', async () => {
+    mockManagedRecord()
+    vi.mocked(resolveLiveAddress).mockResolvedValue('10.0.0.9')
+    vi.mocked(probeDaemonPort).mockImplementation(async (ip: string) => ip === '10.0.0.9' ? 'open' : 'refused')
+    vi.mocked(checkMoonraker).mockResolvedValue(false)
+    vi.mocked(checkSshOpen).mockResolvedValue(true)
+    vi.mocked(fetchDaemonStatus).mockRejectedValue(new Error('transport unavailable'))
+    vi.mocked(fetchCapabilities).mockRejectedValue(new Error('transport unavailable'))
+    vi.mocked(fetchDaemonLicense).mockRejectedValue(new Error('malformed license'))
+
+    const result = await checkDaemonRecord('p1')
+
+    expect(result.accessState).toBe('unrecognized')
+    expect(result.isManaged).toBe(false)
+    expect(result.ip).toBe('10.0.0.9')
+    expect(checkSshOpen).toHaveBeenCalledWith('10.0.0.5')
+    expect(checkSshOpen).not.toHaveBeenCalledWith('10.0.0.9')
   })
 })
 

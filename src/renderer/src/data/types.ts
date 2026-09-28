@@ -176,6 +176,10 @@ export interface IndexEntry {
   // Absent on a published list: the resolver stamps it after checking the signature over the bytes.
   signer?: string | null
   registry_url: string
+  // Configured root that led to a nested list. The actual registry_url still identifies the package.
+  source_url?: string
+  // Directly from the configured source shown in Settings > Repositories, including nested lists.
+  source_name?: string
   endpoints?: PluginEndpoint[]
   changelog_url?: string
   license_url?: string

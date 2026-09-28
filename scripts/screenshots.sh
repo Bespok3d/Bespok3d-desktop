@@ -13,7 +13,7 @@ APP_DIR="$REPO_ROOT"
 export CSC_IDENTITY_AUTO_DISCOVERY=false
 
 echo "Building + packaging the app (unsigned, --dir, arm64)..."
-( cd "$APP_DIR" && npm run build && npx electron-builder --dir --arm64 )
+( cd "$APP_DIR" && B3D_CHANNEL=development npm run build && B3D_CHANNEL=development npx electron-builder --config scripts/electron-builder.config.mjs --dir --arm64 )
 
 echo "Capturing app + store screenshots..."
 ( cd "$APP_DIR" && npx playwright test e2e/screenshots.spec.ts )

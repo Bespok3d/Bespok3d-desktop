@@ -72,6 +72,8 @@ function toMerged(entry: IndexEntry, registry: FetchedRegistry): MergedEntry {
     trust: derivedTrust(registry.ref, registry.signature),
     signer: provedSigner(registry.signature),
     registry_url: registry.ref.url,
+    source_url: registry.ref.sourceUrl ?? registry.ref.url,
+    source_name: registry.ref.sourceName,
   }
 }
 
@@ -92,7 +94,11 @@ function toSummary(registry: FetchedRegistry): RegistrySummary {
 // third-party -> community), NOT the parent's own trust: being referenced by the project index does
 // not make an external list project. Undeclared falls to the lowest curated tier.
 function childRefs(registry: FetchedRegistry): RegistryRef[] {
-  return (registry.index.lists ?? []).map((ref) => ({ url: ref.url, trust: ref.trust ?? UNDECLARED_TRUST, locked: false }))
+  return (registry.index.lists ?? []).map((ref) => ({
+    url: ref.url, trust: ref.trust ?? UNDECLARED_TRUST, locked: false,
+    sourceUrl: registry.ref.sourceUrl ?? registry.ref.url,
+    sourceName: registry.ref.sourceName,
+  }))
 }
 
 function absorbEntries(state: ResolveState, registry: FetchedRegistry): void {
@@ -165,7 +171,7 @@ export async function resolveCatalog(roots: RegistryRef[], fetcher: RegistryFetc
     publisher: primary?.index.publisher ?? '',
     updated: primary?.index.updated ?? '',
     trust: roots[0]?.trust ?? UNDECLARED_TRUST,
-    plugins: resolveCrossSourceDeps(collapseToVariants(state.entries)),
+    plugins: collapseToVariants(resolveCrossSourceDeps(state.entries)),
     collections: dedupeCollections(state.collections),
     registries: state.fetched.map(toSummary),
     drops: state.drops,

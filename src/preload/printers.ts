@@ -6,6 +6,7 @@ import type { PublicPrinterRecord } from '../main/printers'
 import type { AdapterInfo } from '../main/adapter-loader'
 import type { EnrollProgressEvent, SshCheckResult } from '../main/enrollment'
 import type { PrintStateEvent } from '../main/daemon-client/feeds/print-state'
+import type { CheckDaemonResult } from '../main/daemon-client/status'
 
 export const printersApi = {
   load: (): Promise<PublicPrinterRecord[]> => ipcRenderer.invoke('printers:load'),
@@ -16,7 +17,7 @@ export const printersApi = {
   ping: (ip: string): Promise<boolean> => ipcRenderer.invoke('printers:ping', ip),
   checkSshOpen: (ip: string): Promise<boolean> => ipcRenderer.invoke('printers:checkSshOpen', ip),
   checkWriteLayer: (printerId: string): Promise<boolean | null> => ipcRenderer.invoke('printers:checkWriteLayer', printerId),
-  checkDaemon: (printerId: string): Promise<{ isManaged: boolean; reach: 'managed' | 'recoverable' | 'alive-no-ssh' | 'offline'; sshOpen: boolean; ip?: string; networkInterfaces?: Array<{ ip: string }>; daemonVersion?: string; daemonUpdateAvailable?: boolean; installedIds?: string[]; installedVersions?: Record<string, string> }> =>
+  checkDaemon: (printerId: string): Promise<CheckDaemonResult> =>
     ipcRenderer.invoke('printers:checkDaemon', printerId),
   adapterGet: (id: string): Promise<AdapterInfo | null> =>
     ipcRenderer.invoke('printers:adapter:get', id),

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ElectronApplication, Page } from '@playwright/test'
-import { readdirSync, existsSync } from 'fs'
+import { readdirSync, existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { daemonVersionInRegistry } from '../src/main/daemon-client/version'
 
@@ -28,7 +28,8 @@ export function packagedBinary(): string {
 function packagedAppBinary(): string {
   const arm64Build = readdirSync(RELEASE_DIR).find((entry) => entry === 'mac-arm64')
   if (!arm64Build) throw new Error(`No packaged arm64 mac app under ${RELEASE_DIR}/mac-arm64. Run scripts/e2e.sh or scripts/screenshots.sh.`)
-  const binary = join(RELEASE_DIR, arm64Build, 'Bespok3d.app', 'Contents', 'MacOS', 'Bespok3d')
+  const productName = JSON.parse(readFileSync(join(__dirname, '../scripts/channel-table.json'), 'utf8')).development.productName as string
+  const binary = join(RELEASE_DIR, arm64Build, `${productName}.app`, 'Contents', 'MacOS', productName)
   if (!existsSync(binary)) throw new Error(`Packaged binary not found: ${binary}`)
 
   return binary

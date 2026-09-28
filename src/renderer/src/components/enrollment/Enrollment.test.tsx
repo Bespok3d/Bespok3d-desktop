@@ -17,7 +17,7 @@ function renderEnroll(mode: EnrollMode, printerOverrides = {}, handlers: Record<
   var onRebuildPrinter = handlers.onRebuildPrinter ?? vi.fn()
   var onExpectedRestart = handlers.onExpectedRestart ?? vi.fn()
   var rendered = setup(
-    <Enrollment printer={printer} mode={mode} onEnrolled={onEnrolled} onClose={vi.fn()} onEscalateRecovery={onEscalateRecovery} onRebuildPrinter={onRebuildPrinter} onExpectedRestart={onExpectedRestart} />,
+    <Enrollment printer={printer} mode={mode} onEnrolled={onEnrolled as (updated: Printer) => void} onClose={vi.fn() as () => void} onEscalateRecovery={onEscalateRecovery as () => void} onRebuildPrinter={onRebuildPrinter as () => void} onExpectedRestart={onExpectedRestart as (printerId: string) => void} />,
   )
 
   return { ...rendered, onEnrolled, onEscalateRecovery, onRebuildPrinter, onExpectedRestart }

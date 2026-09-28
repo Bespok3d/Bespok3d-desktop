@@ -6,6 +6,7 @@ import { writeFileSync } from 'fs'
 import { join } from 'path'
 import { reportEvent } from '../analytics'
 import { loadSettings, saveSettings, type RepoCoords } from '../settings'
+import { APP_CHANNEL, releaseRepository } from '../channel'
 import { autoUpdateFeed } from './feed'
 import { updateProblemFromError, type UpdateProblem } from './problem'
 import { readPublishedReleases, fetchReleaseInstallers, downloadPublicAsset, isReleasePageUrl } from './public-releases'
@@ -14,7 +15,7 @@ import {
   updateStrategyForPlatform,
   autoInstallPayload,
   manualUpdatePayload,
-  newestApplicableRelease,
+  newestChannelRelease,
   toReleaseRows,
   type UpdateAvailablePayload,
   type AppReleaseListing,
@@ -30,12 +31,10 @@ export interface RollbackResult {
 
 // The release repo testers update from. Baked like the registry's OFFICIAL_REMOTE so a stale
 // settings.json can never drop it; settings.appUpdateRepo overrides it for a custom build.
-const DEFAULT_APP_REPO: RepoCoords = { owner: 'Bespok3d', repo: 'Bespok3d-desktop' }
-
 type WindowGetter = () => BrowserWindow
 
-function resolveAppRepo(): RepoCoords {
-  return loadSettings().appUpdateRepo ?? DEFAULT_APP_REPO
+function resolveAppRepo(): RepoCoords | null {
+  return loadSettings().appUpdateRepo ?? releaseRepository(APP_CHANNEL)
 }
 
 // Windows/Linux can auto-install via electron-updater; an unsigned, dmg-only macOS build cannot, and
@@ -64,7 +63,9 @@ function reportError(getMainWindow: WindowGetter, error: Error): void {
 // pane does (independent of electron-updater's releaseNotes) and offer the release page as a manual
 // fallback when the in-app download stalls.
 async function matchingRelease(version: string): Promise<{ body: string; url: string } | null> {
-  const { releases } = await readPublishedReleases(resolveAppRepo())
+  const appRepo = resolveAppRepo()
+  if (!appRepo) return null
+  const { releases } = await readPublishedReleases(appRepo)
   const release = releases.find((entry) => entry.tag.replace(/^v/, '') === version)
 
   return release ? { body: release.body, url: release.url } : null
@@ -112,11 +113,9 @@ function applyPreferences(): void {
 // True when an app repo is configured. Also sets the feed once, wires listeners once, and re-applies
 // the user's preferences each call so reconfigure takes effect live.
 function ensureConfigured(getMainWindow: WindowGetter): boolean {
-  const feed = autoUpdateFeed(resolveAppRepo())
-  if (!feed) return false
+  if (!resolveAppRepo()) return false
   if (!autoInstallSupported()) return true
   if (!listenersWired) {
-    autoUpdater.setFeedURL(feed)
     wireListeners(getMainWindow)
   }
   applyPreferences()
@@ -124,27 +123,43 @@ function ensureConfigured(getMainWindow: WindowGetter): boolean {
   return true
 }
 
-// macOS: check the latest release and let the modal open the download page; report up-to-date too.
-async function checkMacUpdate(getMainWindow: WindowGetter): Promise<void> {
-  const { releases, problem } = await readPublishedReleases(resolveAppRepo())
-  if (problem) {
-    sendProblem(getMainWindow, problem, `Could not read the release list from github.com (${problem})`)
+async function readApplicableUpdate() {
+  const appRepo = resolveAppRepo()
+  if (!appRepo) return { appRepo, release: null, problem: null }
+  const { releases, problem } = await readPublishedReleases(appRepo)
+  if (problem) return { appRepo, release: null, problem }
 
-    return
-  }
-  const release = newestApplicableRelease(releases, app.getVersion())
-  if (!release) {
-    sendToRenderer(getMainWindow, 'app-update:none', app.getVersion())
-
-    return
-  }
-  sendToRenderer(getMainWindow, 'app-update:available', manualUpdatePayload(release))
+  return { appRepo, release: newestChannelRelease(releases, app.getVersion(), APP_CHANNEL.buildFlavor), problem: null }
 }
 
-function runCheck(getMainWindow: WindowGetter): Promise<unknown> {
-  if (autoInstallSupported()) return autoUpdater.checkForUpdates()
+function reportNoUpdateRead(getMainWindow: WindowGetter, updateRead: Awaited<ReturnType<typeof readApplicableUpdate>>): boolean {
+  if (updateRead.problem) {
+    sendProblem(getMainWindow, updateRead.problem, `Could not read the release list from github.com (${updateRead.problem})`)
 
-  return checkMacUpdate(getMainWindow)
+    return true
+  }
+  if (updateRead.release) return false
+
+  sendToRenderer(getMainWindow, 'app-update:none', app.getVersion())
+
+  return true
+}
+
+async function checkManualUpdate(getMainWindow: WindowGetter): Promise<void> {
+  const updateRead = await readApplicableUpdate()
+  if (reportNoUpdateRead(getMainWindow, updateRead) || !updateRead.release) return
+
+  sendToRenderer(getMainWindow, 'app-update:available', manualUpdatePayload(updateRead.release))
+}
+
+async function runCheck(getMainWindow: WindowGetter): Promise<unknown> {
+  if (!autoInstallSupported()) return checkManualUpdate(getMainWindow)
+  const updateRead = await readApplicableUpdate()
+  if (reportNoUpdateRead(getMainWindow, updateRead) || !updateRead.release || !updateRead.appRepo) return
+  autoUpdater.channel = APP_CHANNEL.updateChannel
+  autoUpdater.setFeedURL(autoUpdateFeed(updateRead.appRepo, updateRead.release.tag)!)
+
+  return autoUpdater.checkForUpdates()
 }
 
 function schedulePoll(getMainWindow: WindowGetter, frequency: UpdateFrequency): void {
@@ -200,7 +215,9 @@ export function openAppDownloadPage(url: string): void {
 // versions still has something true to say, and a rejected call would only reach the user as the
 // remote-method wording the IPC layer wraps it in.
 export async function listAppReleases(): Promise<AppReleaseListing> {
-  const { releases, problem } = await readPublishedReleases(resolveAppRepo())
+  const appRepo = resolveAppRepo()
+  if (!appRepo) return { releases: [], problem: null }
+  const { releases, problem } = await readPublishedReleases(appRepo)
 
   return { releases: toReleaseRows(releases, app.getVersion()), problem }
 }
@@ -209,12 +226,13 @@ export async function listAppReleases(): Promise<AppReleaseListing> {
 // (the NSIS exe / dmg reinstalls in place). With no matching installer, open the release page instead.
 export async function rollbackToRelease(tag: string): Promise<RollbackResult> {
   const appRepo = resolveAppRepo()
+  if (!appRepo) throw new Error('This app channel has no published release repository')
   const { releases } = await readPublishedReleases(appRepo)
   const release = releases.find((entry) => entry.tag === tag)
   // Only reachable when the list the user picked from has since stopped being readable, so the
   // sentence says that rather than accusing the version of not existing.
   if (!release) throw new Error(`Version ${tag} is no longer listed on github.com`)
-  const installers = await fetchReleaseInstallers(appRepo, tag, process.platform, process.arch)
+  const installers = await fetchReleaseInstallers(appRepo, tag, process.platform, process.arch, APP_CHANNEL.updateChannel)
   const asset = pickPlatformAsset(installers, process.platform, process.arch)
   if (!asset) {
     openAppDownloadPage(release.url)

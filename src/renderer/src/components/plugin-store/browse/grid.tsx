@@ -62,6 +62,8 @@ function cardVariant(plugin: Plugin, ctx: StoreCardContext, installed: Installed
 function cardProps(plugin: Plugin, ctx: StoreCardContext) {
   const installed = installedFromRecords(ctx.installedVersions, ctx.installedSources, ctx.ceilingFor, ctx.disabledChannels)
   const variant = cardVariant(plugin, ctx, installed)
+  const installedSourceUrl = ctx.installedSources[plugin.id]
+  const installedVariant = plugin.sources.find((source) => source.registryUrl === installedSourceUrl)
   const displayVersion = variant?.version ?? plugin.version
   const displaySwVersion = variant?.swVersion ?? plugin.swVersion
 
@@ -71,6 +73,9 @@ function cardProps(plugin: Plugin, ctx: StoreCardContext) {
     hasUpdate: hasUpdate(plugin, installed),
     displayVersion,
     displaySwVersion,
+    displaySource: variant?.label,
+    installedSourceLabel: installedVariant?.label,
+    displayTrust: variant?.trust ?? plugin.trust,
     displayChannel: variant?.channel ?? plugin.channel,
     installedChannel: ctx.installedChannels[plugin.id],
     ...cardSelectProps(plugin, ctx.selection),

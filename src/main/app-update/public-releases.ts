@@ -31,16 +31,18 @@ const FETCH_TIMEOUT_MS = 15000
 
 // electron-builder writes one update file per platform build and `release.sh` uploads all of them to
 // every release, so an older release names its own installers without anyone asking the API.
-const UPDATE_FILE_BY_PLATFORM: Record<string, string> = {
-  darwin: 'latest-mac.yml',
-  win32: 'latest.yml',
-  linux: 'latest-linux.yml',
+const UPDATE_FILE_SUFFIX_BY_PLATFORM: Record<string, string> = {
+  darwin: '-mac.yml',
+  win32: '.yml',
+  linux: '-linux.yml',
 }
 
-function updateFileName(platform: string, arch: string): string | null {
-  if (platform === 'linux' && arch === 'arm64') return 'latest-linux-arm64.yml'
+function updateFileName(platform: string, arch: string, updateChannel: string): string | null {
+  if (platform === 'linux' && arch === 'arm64') return `${updateChannel}-linux-arm64.yml`
+  const platformSuffix = UPDATE_FILE_SUFFIX_BY_PLATFORM[platform]
+  if (!platformSuffix) return null
 
-  return UPDATE_FILE_BY_PLATFORM[platform] ?? null
+  return `${updateChannel}${platformSuffix}`
 }
 
 export function releaseDownloadUrl(repo: PublicRepo, tag: string, fileName: string): string {
@@ -155,8 +157,8 @@ function installerAsset(repo: PublicRepo, tag: string, fileName: string): AssetI
 // The installers a given release published for this machine, named by that release's own update file.
 // An empty list is ordinary: a release predating this platform's build, or one whose update file was
 // never uploaded, simply has nothing to install and the caller offers the release page instead.
-export async function fetchReleaseInstallers(repo: PublicRepo, tag: string, platform: string, arch: string): Promise<AssetInfo[]> {
-  const updateFile = updateFileName(platform, arch)
+export async function fetchReleaseInstallers(repo: PublicRepo, tag: string, platform: string, arch: string, updateChannel = 'latest'): Promise<AssetInfo[]> {
+  const updateFile = updateFileName(platform, arch, updateChannel)
   if (!updateFile) return []
   const published = await fetchPublicTextOrEmpty(releaseDownloadUrl(repo, tag, updateFile))
 

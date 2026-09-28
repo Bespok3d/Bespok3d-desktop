@@ -4,6 +4,8 @@ import { app, BrowserWindow, shell, nativeImage, screen } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
+import { APP_CHANNEL } from './channel'
+import { prepareBetaProfileTransition } from './channel-transition-prompt'
 import { registerIpc } from './ipc'
 import { stopMdnsScan } from './mdns'
 import { closeAllPrintStateWatches } from './daemon-client/feeds/print-state'
@@ -18,6 +20,9 @@ import { reportErrorEvent } from './analytics/errors'
 import type { B3dRoute } from './protocol/url'
 
 var mainWindow: BrowserWindow
+
+const APP_NAME = APP_CHANNEL.appName
+app.setName(APP_NAME)
 
 // A .b3 opened from the OS (double-click on the registered file type) reaches the app two ways:
 // macOS fires the 'open-file' event; Windows/Linux pass the path as a launch argument (and, if the app
@@ -83,11 +88,6 @@ if (!gotSingleInstanceLock) {
   pendingB3dUrls.push(...b3dUrlsFromArgv(process.argv))
 }
 
-// Dev runs unsigned, so give it its own profile + keychain item ("Bespok3d Dev Safe Storage"). Sharing
-// the name with the signed release made the two fight over the same keychain ACL (re-prompt loop).
-const APP_NAME = is.dev ? 'Bespok3d Dev' : 'Bespok3d'
-
-app.setName(APP_NAME)
 app.setAboutPanelOptions({ applicationName: APP_NAME, applicationVersion: app.getVersion() })
 
 const PREFERRED_WIDTH = 1280
@@ -159,8 +159,16 @@ function reportCrashToUsage(thrown: unknown): void {
   reportErrorEvent(thrown, 'main-process')
 }
 
-app.whenReady().then(() => {
+async function onAppReady(): Promise<void> {
   if (!gotSingleInstanceLock) return
+
+  const canOpenStaging = await prepareBetaProfileTransition(APP_CHANNEL.transitionFromProfile, app.getPath('userData'))
+  if (!canOpenStaging) {
+    app.quit()
+
+    return
+  }
+
   const iconPath = join(__dirname, '../../resources/icons/icon.png')
   const icon = nativeImage.createFromPath(iconPath)
   if (!icon.isEmpty() && process.platform === 'darwin' && app.dock) {
@@ -186,7 +194,9 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(createSplash(APP_NAME))
   })
-})
+}
+
+app.whenReady().then(onAppReady)
 
 app.on('window-all-closed', () => {
   stopMdnsScan()

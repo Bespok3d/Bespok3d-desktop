@@ -9,10 +9,12 @@ import type { KeyHandlers } from './key-handlers'
 import { KeyRow } from './KeyRow'
 import { GenerateKeyForm } from './GenerateKeyForm'
 import { useI18n } from '../../../../i18n/context'
+import { PublishedKeysSection } from './PublishedKeysSection'
 
 export interface KeysPaneProps extends KeyHandlers {
   keys: KeyRecord[]
   onGenerate: (label: string) => Promise<void>
+  onImported: () => void
 }
 
 export function KeysPane({
@@ -21,6 +23,7 @@ export function KeysPane({
   gitHostSettings,
   allUserRepos,
   onGenerate,
+  onImported,
   onRemove,
   onSetDefault,
   onSetAssignments,
@@ -64,6 +67,7 @@ export function KeysPane({
 
         {(!hasKeys || showForm) && <GenerateKeyForm onGenerate={onGenerate} />}
       </Group>
+      <PublishedKeysSection onImported={onImported} />
     </>
   )
 }

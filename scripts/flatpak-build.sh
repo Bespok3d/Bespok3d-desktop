@@ -28,7 +28,9 @@ RUNTIME_VOLUME=bespok3d-flatpak-runtimes
 # Flathub being reachable and on whatever it happens to be serving that day. Switching the remote off
 # builds against the pinned runtimes only, so the cut is the same offline as online. Moving to a newer
 # runtime means editing the pin and the image together, never something a build picks up on its own.
-BUILD_COMMAND="npx --no-install electron-builder --linux flatpak --publish never"
+B3D_CHANNEL="${B3D_CHANNEL:-live}"
+B3D_PUBLISHED_CUT="${B3D_PUBLISHED_CUT:-false}"
+BUILD_COMMAND="npx --no-install electron-builder --config scripts/electron-builder.config.mjs --linux flatpak --publish never"
 
 command -v docker > /dev/null || {
   echo "Error: the Flatpak needs Docker on this machine (or flatpak-builder on a Linux host)." >&2
@@ -64,6 +66,8 @@ docker run --rm --platform "$PLATFORM" \
   -v "$ELECTRON_CACHE":/root/.cache/electron \
   -v bespok3d-flatpak-builder:/root/.cache/electron-builder \
   -v "$RUNTIME_VOLUME":/var/lib/flatpak \
+  -e B3D_CHANNEL="$B3D_CHANNEL" \
+  -e B3D_PUBLISHED_CUT="$B3D_PUBLISHED_CUT" \
   -w /src/Bespok3d-desktop \
   "$IMAGE" \
   sh -c "flatpak remote-modify --disable flathub && $BUILD_COMMAND"

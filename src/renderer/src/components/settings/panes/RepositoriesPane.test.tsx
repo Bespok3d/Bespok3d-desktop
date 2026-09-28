@@ -74,4 +74,47 @@ describe('RepositoriesPane', () => {
     await user.click(await screen.findByRole('button', { name: /sign in to github/i }))
     expect(onConnectGitHub).toHaveBeenCalled()
   })
+
+  it('names a missing tier index and does not call an un-fetched source unsigned', async () => {
+    const tierUrl = 'github:Bespok3d/main-index/index.json?ref=dev'
+    const payload = makeCatalogPayload([], {
+      sources: [source({
+        url: tierUrl, label: tierUrl, name: 'Bespok3d Official prerelease', status: 'failed',
+        reason: 'notfound', error: 'HTTP 404: dev index not found',
+      })],
+    })
+    setup(<RepositoriesPane />, { withCatalog: true, b3d: {
+      registry: { catalog: vi.fn().mockResolvedValue(payload) }, gitHost: { isConnected: vi.fn().mockResolvedValue(true) },
+    } })
+    const row = (await screen.findByText('Bespok3d Official prerelease')).closest('.repo-row') as HTMLElement
+
+    expect(within(row).queryByText(tierUrl)).toBeNull()
+    expect(within(row).getByText('The development index has not been published yet.')).toBeInTheDocument()
+    expect(within(row).queryByRole('button', { name: /sign in to github/i })).toBeNull()
+    expect(within(row).queryByText(/unsigned|project/i)).toBeNull()
+  })
+
+  it('does not present configured trust as verified while a source is disabled', async () => {
+    const disabledSource = source({ status: 'disabled', enabled: false })
+    const payload = makeCatalogPayload([], { sources: [disabledSource] })
+    setup(<RepositoriesPane />, { withCatalog: true, b3d: { registry: { catalog: vi.fn().mockResolvedValue(payload) } } })
+    const row = (await screen.findByText(disabledSource.name)).closest('.repo-row') as HTMLElement
+
+    expect(within(row).queryByText(/project|unsigned|community/i)).toBeNull()
+  })
+})
+
+describe('a connected account with a failed source', () => {
+  it('never sends the user back to Git Host for another source access failure', async () => {
+    const payload = makeCatalogPayload([], {
+      sources: [source({ status: 'failed', reason: 'auth', error: 'Access denied' })],
+    })
+    setup(<RepositoriesPane />, { withCatalog: true, b3d: {
+      registry: { catalog: vi.fn().mockResolvedValue(payload) }, gitHost: { isConnected: vi.fn().mockResolvedValue(true) },
+    } })
+
+    expect(await screen.findByText('Access denied')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /sign in to github/i })).toBeNull()
+  })
+
 })

@@ -3,7 +3,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import * as openpgp from 'openpgp'
 import { discoverPublisherKey, isDeclaredFingerprint, keyLookupSites } from './key-lookup'
-import type { KeyFileRepo, KeyFileReader } from './key-lookup'
+import type { KeyFileRepo, KeyFileReader, KeyLookupSite } from './key-lookup'
 import { PUBLISHER_REPO, MAIN_INDEX_OWNER, MAIN_INDEX_REPO, keyFilePath, indexBucketKeyFile } from './repo'
 
 const ACCOUNT = 'Fixture-Publisher'
@@ -30,9 +30,9 @@ function disposablePublisher(publisherName: string): Promise<DisposablePublisher
 function readerRecording(served: Record<string, string | null>): { read: KeyFileReader, asked: string[] } {
   const asked: string[] = []
   const read = vi.fn(async (repo: KeyFileRepo, path: string) => {
-    asked.push(`${repo.owner}/${repo.repo}/${path}`)
+    asked.push(`${repo.owner}/${repo.repo}/${repo.ref ? `${repo.ref}/` : ''}${path}`)
 
-    return served[`${repo.owner}/${repo.repo}/${path}`] ?? null
+    return served[`${repo.owner}/${repo.repo}/${repo.ref ? `${repo.ref}/` : ''}${path}`] ?? null
   }) as unknown as KeyFileReader
 
   return { read, asked }
@@ -95,6 +95,33 @@ describe('discoverPublisherKey primary and fallback lookup', () => {
     const publisher = await disposablePublisher('Absent Key')
     const { read } = readerRecording({})
     expect(await discoverPublisherKey(provenance, publisher.fingerprint, read)).toBeNull()
+  })
+})
+
+describe('discoverPublisherKey from a registered dev candidate', () => {
+  it('finds a dev-registered key by fingerprint when the publisher has not published a key repo', async () => {
+    const publisher = await disposablePublisher('Print Scheduler Candidate')
+    const candidatePath = `${MAIN_INDEX_OWNER}/${MAIN_INDEX_REPO}/dev/keys/print-scheduler.pub.asc`
+    const { read, asked } = readerRecording({ [candidatePath]: publisher.armoredPublicKey })
+    function candidateSites(): Promise<KeyLookupSite[]> {
+      return Promise.resolve([{ owner: MAIN_INDEX_OWNER, repo: MAIN_INDEX_REPO, path: 'keys/print-scheduler.pub.asc', ref: 'dev' }])
+    }
+    expect(await discoverPublisherKey(provenance, publisher.fingerprint, read, candidateSites)).toBe(publisher.armoredPublicKey)
+    expect(asked).toEqual([primaryPathFor(publisher.fingerprint), bucketPathFor(), candidatePath])
+  })
+
+  it('does not accept a different dev key or consult dev when the publisher key is already found', async () => {
+    const publisher = await disposablePublisher('Candidate Owner')
+    const impostor = await disposablePublisher('Candidate Impostor')
+    const candidatePath = `${MAIN_INDEX_OWNER}/${MAIN_INDEX_REPO}/dev/keys/print-scheduler.pub.asc`
+    function candidateSites(): Promise<KeyLookupSite[]> {
+      return Promise.resolve([{ owner: MAIN_INDEX_OWNER, repo: MAIN_INDEX_REPO, path: 'keys/print-scheduler.pub.asc', ref: 'dev' }])
+    }
+    const missing = readerRecording({ [candidatePath]: impostor.armoredPublicKey })
+    expect(await discoverPublisherKey(provenance, publisher.fingerprint, missing.read, candidateSites)).toBeNull()
+    const published = readerRecording({ [primaryPathFor(publisher.fingerprint)]: publisher.armoredPublicKey })
+    expect(await discoverPublisherKey(provenance, publisher.fingerprint, published.read, candidateSites)).toBe(publisher.armoredPublicKey)
+    expect(published.asked).toEqual([primaryPathFor(publisher.fingerprint)])
   })
 })
 

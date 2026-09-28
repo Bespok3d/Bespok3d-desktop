@@ -13,7 +13,9 @@ import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { assetName, releaseArtifacts, websiteDownloads } from '../release-manifest.mjs'
+import { assetName, releaseArtifacts, releaseInstallers, updaterFeeds, websiteDownloads } from '../release-manifest.mjs'
+import electronBuilderConfigForEnvironment, { electronBuilderConfig } from '../electron-builder.config.mjs'
+import { liveVersion, versionForChannel, versionLabelError } from '../channels.mjs'
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const VERIFIER = join(REPO_ROOT, 'scripts', 'verify-release.mjs')
@@ -48,8 +50,8 @@ function completeBuildDir(skipped = []) {
   return buildDir
 }
 
-function verifyBuilt(buildDir) {
-  const attempt = spawnSync('node', [VERIFIER, 'built', VERSION, buildDir], { encoding: 'utf8' })
+function verifyBuilt(buildDir, channelName = 'live', version = VERSION) {
+  const attempt = spawnSync('node', [VERIFIER, 'built', version, buildDir, channelName], { encoding: 'utf8' })
 
   return { ...attempt, output: `${attempt.stdout}${attempt.stderr}` }
 }
@@ -90,6 +92,100 @@ test('the list of what a cut is made of names every platform we ship', () => {
   assert.ok(['latest-mac.yml', 'latest.yml', 'latest-linux.yml', 'latest-linux-arm64.yml'].every(function (feed) {
     return built.includes(feed)
   }), 'the files the app reads to find an update')
+})
+
+test('each channel config has its own identity and exactly one protocol scheme', () => {
+  const channelExpectations = [
+    ['development', 'io.bespok3d.app.dev', 'Bespok3d Dev', 'b3d-dev', 'prerelease'],
+    ['staging', 'io.bespok3d.app.staging', 'Bespok3d Staging', 'b3d-staging', 'prerelease'],
+    ['live', 'io.bespok3d.app', 'Bespok3d', 'b3d', 'release'],
+  ]
+
+  channelExpectations.forEach(function ([channelName, appId, productName, scheme, releaseType]) {
+    const config = electronBuilderConfig(channelName)
+
+    assert.equal(config.appId, appId)
+    assert.equal(config.productName, productName)
+    if (channelName === 'development') {
+      assert.deepEqual(config.publish, [])
+    } else {
+      assert.equal(config.publish[0].releaseType, releaseType)
+      assert.equal(config.publish[0].channel, channelName === 'live' ? 'latest' : 'bespok3d-staging')
+    }
+    assert.deepEqual(config.protocols.map(protocol => protocol.schemes).flat(), [scheme])
+    assert.deepEqual(config.mac.extendInfo.CFBundleURLTypes.map(protocol => protocol.CFBundleURLSchemes).flat(), [scheme])
+  })
+})
+
+test('Staging versions derive once from the complete Live version', () => {
+  assert.equal(versionForChannel('staging', '0.7.7-beta'), '0.7.7-beta-staging')
+  assert.equal(liveVersion('0.7.7-beta-staging'), '0.7.7-beta')
+  assert.equal(versionForChannel('staging', '0.7.7-beta-staging'), '0.7.7-beta-staging')
+  assert.equal(versionLabelError('staging', '0.7.7-beta-staging'), null)
+  assert.equal(versionLabelError('staging', '0.7.7-staging'), null)
+})
+
+test('published versions must carry the target label while local channel builds remain version-flexible', () => {
+  assert.equal(versionLabelError('live', '0.7.6-beta'), null)
+  assert.equal(versionLabelError('live', '0.7.7'), null)
+  assert.equal(versionLabelError('staging', '0.7.7-beta-staging'), null)
+  assert.match(versionLabelError('staging', '0.7.6-beta'), /requires version label beta-staging or staging/)
+  assert.equal(versionLabelError('development', '0.1.0-anything'), null)
+})
+
+test('the generated builder config rejects a mismatched published cut', () => {
+  const previousFlavor = process.env.B3D_CHANNEL
+  const previousCutFlag = process.env.B3D_PUBLISHED_CUT
+  const previousBuildVersion = process.env.B3D_VERSION
+  process.env.B3D_CHANNEL = 'staging'
+  process.env.B3D_PUBLISHED_CUT = 'true'
+  process.env.B3D_VERSION = '0.7.6-beta'
+
+  try {
+    assert.throws(() => electronBuilderConfigForEnvironment(), /requires version label beta-staging or staging/)
+  } finally {
+    if (previousFlavor === undefined) delete process.env.B3D_CHANNEL
+    else process.env.B3D_CHANNEL = previousFlavor
+    if (previousCutFlag === undefined) delete process.env.B3D_PUBLISHED_CUT
+    else process.env.B3D_PUBLISHED_CUT = previousCutFlag
+    if (previousBuildVersion === undefined) delete process.env.B3D_VERSION
+    else process.env.B3D_VERSION = previousBuildVersion
+  }
+})
+
+test('channel artifact names do not collide', () => {
+  const artifactNames = ['live', 'staging', 'development'].map(function (channelName) {
+    return releaseInstallers('0.7.7-pre', channelName).map(installer => installer.built)
+  })
+
+  assert.equal(new Set(artifactNames.flat()).size, artifactNames.flat().length)
+  assert.ok(artifactNames[0].includes('Bespok3d-0.7.7-pre-arm64.dmg'))
+  assert.ok(artifactNames[1].includes('Bespok3d Staging-0.7.7-pre-arm64.dmg'))
+  assert.ok(artifactNames[2].includes('Bespok3d Dev-0.7.7-pre-arm64.dmg'))
+  assert.deepEqual(updaterFeeds('live'), ['latest-mac.yml', 'latest.yml', 'latest-linux.yml', 'latest-linux-arm64.yml'])
+  assert.deepEqual(updaterFeeds('staging'), ['bespok3d-staging-mac.yml', 'bespok3d-staging.yml', 'bespok3d-staging-linux.yml', 'bespok3d-staging-linux-arm64.yml'])
+  assert.deepEqual(updaterFeeds('development'), ['bespok3d-dev-mac.yml', 'bespok3d-dev.yml', 'bespok3d-dev-linux.yml', 'bespok3d-dev-linux-arm64.yml'])
+})
+
+test('the release verifier reads the selected channel artifact and feed names', () => {
+  const stagingVersion = '0.7.7-beta-staging'
+  const stagingBuildDir = mkdtempSync(join(tmpdir(), 'b3d-staging-cut-'))
+  const stagingInstaller = assetName(releaseInstallers(stagingVersion, 'staging')[0].built)
+
+  releaseArtifacts(stagingVersion, 'staging').forEach(function (artifact) {
+    const contents = updaterFeeds('staging').includes(artifact.built)
+      ? feedText(stagingVersion, [stagingInstaller])
+      : artifact.built
+
+    writeFileSync(join(stagingBuildDir, artifact.built), contents)
+  })
+
+  const stagingPass = verifyBuilt(stagingBuildDir, 'staging', stagingVersion)
+  const liveMismatch = verifyBuilt(stagingBuildDir, 'live', stagingVersion)
+
+  assert.equal(stagingPass.status, 0, stagingPass.output)
+  assert.equal(liveMismatch.status, 1)
+  assert.match(liveMismatch.output, /Bespok3d-0\.7\.7-beta-staging-arm64\.dmg was not built/)
 })
 
 test('a complete build passes', () => {
@@ -198,7 +294,7 @@ test('the Flatpak build takes its runtimes from the pin, not from Flathub that d
 // longer quietly downloaded: it fails the cut. The two places that name the runtime version have to
 // say the same thing, and this is what says so before a release finds out.
 test('the runtime the app pins is the runtime the builder image carries', () => {
-  const pinned = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).build.flatpak
+  const pinned = electronBuilderConfig('live').flatpak
   const dockerfile = readFileSync(join(REPO_ROOT, 'scripts', 'flatpak', 'Dockerfile'), 'utf8')
 
   assert.ok(dockerfile.includes(`org.freedesktop.Platform//${pinned.runtimeVersion}`), `the image installs no org.freedesktop.Platform//${pinned.runtimeVersion}`)

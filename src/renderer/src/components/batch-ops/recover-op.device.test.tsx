@@ -66,7 +66,7 @@ function theDaemonAnswers(): Promise<DaemonReport> {
     var socket = connect({ host: PRINTER_IP, port: DAEMON_PORT, timeout: 4_000 })
     function sayWhetherItAnswered(serving: boolean) {
       socket.destroy()
-      resolve({ isManaged: serving, sshOpen: serving, reach: serving ? 'managed' : 'offline' })
+      resolve({ isManaged: serving, sshOpen: serving, reach: serving ? 'managed' : 'offline', accessState: serving ? 'authorized' : 'offline', ip: PRINTER_IP, networkInterfaces: [] })
     }
     socket.on('connect', () => sayWhetherItAnswered(true))
     socket.on('error', () => sayWhetherItAnswered(false))

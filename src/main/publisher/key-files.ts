@@ -7,12 +7,12 @@
 // signature. The walk above treats every such outcome the same, so no failure class is lost here.
 import { httpGet } from '../registry/resolve/request'
 import { activeConnector } from '../git-host'
-import type { KeyFileRepo } from './key-lookup'
+import type { KeyFileRepo, KeyLookupSite } from './key-lookup'
+import { MAIN_INDEX_OWNER, MAIN_INDEX_REPO } from './repo'
 
 const RAW_FILE_BASE = 'https://raw.githubusercontent.com'
-// `HEAD` resolves to whatever branch the repository defaults to, which is where the app's publish
-// flow writes; `main` is the branch published artifacts are read from across this project. Both are
-// tried with no credentials before the token rung, matching the list transport's avenue order.
+// `HEAD` resolves to the repository default; candidate keys explicitly request dev instead.
+// Without an explicit ref, both HEAD and main are tried before the authenticated fallback.
 const REFS = ['HEAD', 'main']
 
 export async function readPublishedKeyFile(repo: KeyFileRepo, path: string): Promise<string | null> {
@@ -23,7 +23,7 @@ export async function readPublishedKeyFile(repo: KeyFileRepo, path: string): Pro
 }
 
 async function firstAnonymousCopy(repo: KeyFileRepo, path: string): Promise<string | null> {
-  const rawUrls = REFS.map((gitRef) => `${RAW_FILE_BASE}/${repo.owner}/${repo.repo}/${gitRef}/${path}`)
+  const rawUrls = (repo.ref ? [repo.ref] : REFS).map((gitRef) => `${RAW_FILE_BASE}/${repo.owner}/${repo.repo}/${gitRef}/${path}`)
 
   return firstServedCopy(rawUrls)
 }
@@ -45,7 +45,24 @@ async function anonymousFile(url: string): Promise<string | null> {
 }
 
 async function authenticatedCopy(repo: KeyFileRepo, path: string): Promise<string | null> {
-  const file = await activeConnector().getFile(repo, path).catch(() => null)
+  const file = await activeConnector().getFile(repo, path, repo.ref).catch(() => null)
 
   return file?.content ?? null
+}
+
+export async function indexKeySites(branch: string): Promise<KeyLookupSite[]> {
+  const url = `https://api.github.com/repos/${MAIN_INDEX_OWNER}/${MAIN_INDEX_REPO}/contents/keys?ref=${branch}`
+  const response = await httpGet(url, { Accept: 'application/vnd.github+json' }).catch(() => null)
+  if (!response?.ok) return []
+  const files: unknown = await response.json().catch(() => null)
+  if (!Array.isArray(files)) return []
+
+  return files.filter(isPublisherKeyFile).map((file) => ({ owner: MAIN_INDEX_OWNER, repo: MAIN_INDEX_REPO, path: file.path, ref: branch }))
+}
+
+function isPublisherKeyFile(file: unknown): file is { path: string, type: string } {
+  if (!file || typeof file !== 'object') return false
+  const candidate = file as { path?: unknown, type?: unknown }
+
+  return candidate.type === 'file' && typeof candidate.path === 'string' && /^keys\/[a-z0-9-]+\.pub\.asc$/.test(candidate.path)
 }

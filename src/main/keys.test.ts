@@ -7,7 +7,7 @@ import { tmpdir } from 'os'
 
 vi.mock('electron', () => ({ app: { getPath: vi.fn() } }))
 
-import { generateKey, listKeys, removeKey, setDefault, setAssignments } from './keys'
+import { generateKey, listKeys, removeKey, setDefault, setAssignments, localProfilesWithKey, importKeyFromProfile, exportPrivateKey, hasMatchingPrivateKey } from './keys'
 import { app } from 'electron'
 
 const mockGetPath = vi.mocked(app.getPath)
@@ -118,5 +118,51 @@ describe('setAssignments: exclusive per {purpose, entityId}', () => {
     const updated = listKeys()
     expect(updated.find((key) => key.id === keyA.id)?.assignments).toHaveLength(0)
     expect(updated.find((key) => key.id === keyB.id)?.assignments).toEqual([{ purpose: 'packages', entityId: 'my-repo' }])
+  })
+})
+
+describe('local Bespok3d key import', () => {
+  var testDir: string
+  var activeProfile: string
+  beforeEach(() => {
+    testDir = mkdtempSync(join(tmpdir(), 'b3-key-profiles-'))
+    activeProfile = 'Bespok3d'
+    mockGetPath.mockImplementation((name) => name === 'appData' ? testDir : join(testDir, activeProfile))
+  })
+  afterEach(() => rmSync(testDir, { recursive: true, force: true }))
+
+  it('finds and copies the same private key into Staging without copying settings or assignments', async () => {
+    const original = await generateKey({ label: 'Publisher' })
+    setAssignments(original.id, [{ purpose: 'packages', entityId: 'sample-repo' }])
+    const privateKey = exportPrivateKey(original.id)
+    activeProfile = 'Bespok3d Staging'
+
+    expect(await localProfilesWithKey(original.fingerprint)).toEqual(['Bespok3d'])
+    const imported = await importKeyFromProfile(original.fingerprint, 'Bespok3d', original.publicKey)
+
+    expect(imported.fingerprint).toBe(original.fingerprint)
+    expect(imported.assignments).toEqual([])
+    expect(exportPrivateKey(original.id)).toBe(privateKey)
+    expect(listKeys()).toHaveLength(1)
+    await expect(importKeyFromProfile(original.fingerprint, 'Bespok3d', original.publicKey)).rejects.toThrow('already has')
+  })
+
+  it('refuses a private key that differs from the published public key', async () => {
+    const source = await generateKey({ label: 'Source' })
+    const other = await generateKey({ label: 'Other' })
+    activeProfile = 'Bespok3d Staging'
+
+    await expect(importKeyFromProfile(source.fingerprint, 'Bespok3d', other.publicKey)).rejects.toThrow('does not match')
+    expect(listKeys()).toEqual([])
+  })
+
+  it('does not call a mismatched private file a usable match', async () => {
+    const source = await generateKey({ label: 'Source' })
+    const other = await generateKey({ label: 'Other' })
+    writeFileSync(join(testDir, 'Bespok3d', 'keys', `${source.id}.priv.asc`), exportPrivateKey(other.id))
+
+    expect(await hasMatchingPrivateKey(source.id)).toBe(false)
+    activeProfile = 'Bespok3d Staging'
+    expect(await localProfilesWithKey(source.id)).toEqual([])
   })
 })

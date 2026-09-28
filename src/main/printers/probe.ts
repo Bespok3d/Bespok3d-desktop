@@ -6,13 +6,21 @@ import type { ConnectionReach } from './record'
 // One TCP liveness probe. `refusedMeansUp` flips the meaning of a refused connection: for a coarse
 // host-reachability ping a refusal still proves the host is there, but for "is this service serving"
 // a refusal means closed.
-function probePort(ip: string, port: number, timeoutMs: number, refusedMeansUp = false): Promise<boolean> {
+function probePortState(ip: string, port: number, timeoutMs: number): Promise<'open' | 'refused' | 'unreachable'> {
   return new Promise((resolve) => {
     const socket = createConnection({ host: ip, port, timeout: timeoutMs })
-    socket.on('connect', () => { socket.destroy(); resolve(true) })
-    socket.on('timeout', () => { socket.destroy(); resolve(false) })
-    socket.on('error', (error: NodeJS.ErrnoException) => resolve(refusedMeansUp && error.code === 'ECONNREFUSED'))
+    socket.on('connect', () => { socket.destroy(); resolve('open') })
+    socket.on('timeout', () => { socket.destroy(); resolve('unreachable') })
+    socket.on('error', (error: NodeJS.ErrnoException) => resolve(error.code === 'ECONNREFUSED' ? 'refused' : 'unreachable'))
   })
+}
+
+function probePort(ip: string, port: number, timeoutMs: number, refusedMeansUp = false): Promise<boolean> {
+  return probePortState(ip, port, timeoutMs).then((state) => state === 'open' || (refusedMeansUp && state === 'refused'))
+}
+
+export function probeDaemonPort(ip: string): Promise<'open' | 'refused' | 'unreachable'> {
+  return probePortState(ip, 4269, 3000)
 }
 
 // The http code a whole address, protocol and all, answers with from this computer, or null when
@@ -32,7 +40,7 @@ export async function probeServiceUrl(address: string): Promise<number | null> {
 
 export function pingPrinter(ip: string): Promise<boolean> { return probePort(ip, 80, 1000, true) }
 
-export function checkDaemon(ip: string): Promise<boolean> { return probePort(ip, 4269, 3000) }
+export function checkDaemon(ip: string): Promise<boolean> { return probeDaemonPort(ip).then((state) => state === 'open') }
 
 // True when SSH (port 22) accepts a connection. Enrollment and repair are all SSH, so an open port 22
 // means we can still fix or enroll the printer; a closed one means root access is off.

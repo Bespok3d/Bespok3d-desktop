@@ -30,7 +30,7 @@ export function Installed() {
     <Grid>
       <PluginCard
         plugin={makePlugin()} installed hasUpdate={false} displayVersion="1.2.0" displayChannel="stable"
-        installedChannel="stable" layout="grid" onOpen={noop}
+        installedChannel="stable" installedSourceLabel="Bespok3d Official" layout="grid" onOpen={noop}
       />
     </Grid>
   )
@@ -41,7 +41,7 @@ export function UpdateAvailable() {
     <Grid>
       <PluginCard
         plugin={makePlugin()} installed hasUpdate displayVersion="1.3.0" displayChannel="stable"
-        installedChannel="stable" layout="grid" onOpen={noop}
+        installedChannel="stable" installedSourceLabel="Bespok3d Official" layout="grid" onOpen={noop}
       />
     </Grid>
   )
@@ -52,7 +52,7 @@ export function Deactivated() {
     <Grid>
       <PluginCard
         plugin={makePlugin()} installed deactivated hasUpdate={false} displayVersion="1.2.0" displayChannel="stable"
-        installedChannel="stable" layout="grid" onOpen={noop}
+        installedChannel="stable" installedSourceLabel="Bespok3d Official" layout="grid" onOpen={noop}
       />
     </Grid>
   )
@@ -74,7 +74,19 @@ export function MultiSourceWithDeps() {
     <Grid>
       <PluginCard
         plugin={makePlugin({ deps: ['rfid-ntag'], sources: [makeSource(), makeSource({ label: 'Sideloaded local files', local: true, trust: 'any' })] })}
-        installed={false} hasUpdate={false} displayVersion="1.2.0" displayChannel="stable"
+        installed={false} hasUpdate={false} displayVersion="1.2.0" displaySource="Bespok3d Official" displayChannel="stable"
+        layout="grid" onOpen={noop}
+      />
+    </Grid>
+  )
+}
+
+export function OnlyOnPrerelease() {
+  return (
+    <Grid>
+      <PluginCard
+        plugin={makePlugin({ sources: [makeSource({ label: 'Bespok3d Official prerelease', version: '1.1.0-pre' })] })}
+        installed={false} hasUpdate={false} displayVersion="1.1.0-pre" displaySource="Bespok3d Official prerelease" displayChannel="stable"
         layout="grid" onOpen={noop}
       />
     </Grid>

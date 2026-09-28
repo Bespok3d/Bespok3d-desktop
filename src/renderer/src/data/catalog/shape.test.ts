@@ -5,6 +5,42 @@ import { docFor, indexToPlugins, indexToCollections } from './shape'
 import { isLocalRegistry } from './local-source'
 import { makeIndexEntry, makeCollectionEntry } from '../../test/fixtures'
 import { NO_PLUGIN_SOURCES } from '../../test/plugin-sources'
+import type { SourceRow } from '../types'
+
+describe('source names on offered versions', () => {
+  it('keeps the readable Staging source name despite both branches using index.json', () => {
+    const liveUrl = 'github:Bespok3d/main-index/index.json'
+    const prereleaseUrl = 'github:Bespok3d/main-index/index.json?ref=dev'
+    const sources: SourceRow[] = [
+      { url: liveUrl, label: liveUrl, name: 'Bespok3d Official', trust: 'project', locked: true, enabled: true, status: 'ok', pluginCount: 1, error: null, reason: null },
+      { url: prereleaseUrl, label: prereleaseUrl, name: 'Bespok3d Official prerelease', trust: 'project', locked: true, enabled: true, status: 'ok', pluginCount: 1, error: null, reason: null },
+    ]
+    const live = makeIndexEntry({ registry_url: liveUrl, source_name: 'Bespok3d Official' })
+    const prerelease = makeIndexEntry({ registry_url: prereleaseUrl, source_name: 'Bespok3d Official prerelease', version: '1.1.0-pre' })
+    const [plugin] = indexToPlugins([{ ...live, variants: [live, prerelease] }], sources)
+
+    expect(plugin.sources.map((source) => source.label)).toEqual(['Bespok3d Official', 'Bespok3d Official prerelease'])
+  })
+
+  it('never turns an unmatched registry address into a display label', () => {
+    const [plugin] = indexToPlugins([
+      makeIndexEntry({ registry_url: 'github:example-publisher/plugin-repo/index.json' }),
+    ], [])
+
+    expect(plugin.sources[0].label).toBe('')
+  })
+
+  it('uses the configured source name even when a nested list serves the plugin bytes', () => {
+    const liveUrl = 'github:Bespok3d/main-index/index.json'
+    const childUrl = 'github:Bespok3d/u1-base/index.json'
+    const [plugin] = indexToPlugins([
+      makeIndexEntry({ registry_url: childUrl, source_url: liveUrl, source_name: 'Bespok3d Official' }),
+    ], [{ url: liveUrl, label: liveUrl, name: 'Bespok3d Official', trust: 'project', locked: true,
+      enabled: true, status: 'ok', pluginCount: 1, error: null, reason: null }])
+
+    expect(plugin.sources[0]).toMatchObject({ registryUrl: childUrl, label: 'Bespok3d Official' })
+  })
+})
 
 describe('docFor', () => {
   // camera-hw-accel lives in plugins/u1-hw-camera/plugin/, so its directory name ("plugin") differs

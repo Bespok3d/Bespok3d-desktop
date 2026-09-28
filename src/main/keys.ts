@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { join } from 'path'
-import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, readdirSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, readdirSync, lstatSync } from 'fs'
+import { app } from 'electron'
 import * as openpgp from 'openpgp'
 import { readJsonFile } from './json-store'
 import { userDataPath } from './app-paths'
@@ -192,4 +193,86 @@ export function exportPublicKey(id: string): string {
 
 export function exportPrivateKey(id: string): string {
   return readFileSync(privPath(id), 'utf-8')
+}
+
+const BESPOK3D_PROFILES = ['Bespok3d', 'Bespok3d Staging', 'Bespok3d Dev', 'Bespok3d Beta'] as const
+
+function profileKeyPath(profileName: string, fingerprint: string, extension: string): string {
+  if (!BESPOK3D_PROFILES.some((name) => name === profileName)) throw new Error('Unknown Bespok3d profile')
+  if (!/^[0-9a-f]{40}$/i.test(fingerprint)) throw new Error('Invalid key fingerprint')
+
+  return join(app.getPath('appData'), profileName, 'keys', `${fingerprint.toUpperCase()}.${extension}`)
+}
+
+async function matchingPrivateKey(profileName: string, fingerprint: string): Promise<string | null> {
+  const path = profileKeyPath(profileName, fingerprint, 'priv.asc')
+  if (!existsSync(path) || !lstatSync(path).isFile()) return null
+  try {
+    const armoredKey = readFileSync(path, 'utf8')
+    const key = await openpgp.readPrivateKey({ armoredKey })
+
+    return key.getFingerprint().toUpperCase() === fingerprint.toUpperCase() ? armoredKey : null
+  } catch {
+    return null
+  }
+}
+
+export function hasPrivateKey(fingerprint: string): boolean {
+  return existsSync(privPath(fingerprint.toUpperCase()))
+}
+
+export async function hasMatchingPrivateKey(fingerprint: string): Promise<boolean> {
+  const path = privPath(fingerprint.toUpperCase())
+  if (!existsSync(path) || !lstatSync(path).isFile()) return false
+  try {
+    const key = await openpgp.readPrivateKey({ armoredKey: readFileSync(path, 'utf8') })
+
+    return key.getFingerprint().toUpperCase() === fingerprint.toUpperCase()
+  } catch {
+    return false
+  }
+}
+
+export async function localProfilesWithKey(fingerprint: string): Promise<string[]> {
+  const profiles = BESPOK3D_PROFILES.filter((name) =>
+    join(app.getPath('appData'), name) !== app.getPath('userData'))
+  const matches = await Promise.all(profiles.map(async (name) => ({ name, key: await matchingPrivateKey(name, fingerprint) })))
+
+  return matches.filter((match) => match.key !== null).map((match) => match.name)
+}
+
+export async function importKeyFromProfile(fingerprint: string, profileName: string, publishedPublicKey: string): Promise<KeyRecord> {
+  const publicKey = await openpgp.readKey({ armoredKey: publishedPublicKey })
+  if (publicKey.getFingerprint().toUpperCase() !== fingerprint.toUpperCase()) throw new Error('Published key does not match the requested fingerprint')
+  const privateKey = await matchingPrivateKey(profileName, fingerprint)
+  if (!privateKey) throw new Error('Matching private key not found in this Bespok3d profile')
+  if (join(app.getPath('appData'), profileName) === app.getPath('userData')) throw new Error('Choose another Bespok3d profile')
+  if (hasPrivateKey(fingerprint)) throw new Error('This app already has this private key')
+
+  const sourceMeta = profileKeyPath(profileName, fingerprint, 'meta.json')
+  if (!existsSync(sourceMeta) || !lstatSync(sourceMeta).isFile()) throw new Error('Source key details not found')
+  const sourceRecord = readMetaFromProfile(sourceMeta)
+  const existing = listKeys().find((key) => key.id === fingerprint.toUpperCase())
+  if (existing && existing.publicKey !== publishedPublicKey) throw new Error('Local public key differs from the published key')
+  const record: KeyRecord = existing ?? {
+    ...sourceRecord, id: fingerprint.toUpperCase(), fingerprint: fingerprint.toUpperCase(),
+    fingerprintShort: fingerprint.slice(-16).toUpperCase(), publicKey: publishedPublicKey,
+    isDefault: listKeys().length === 0, assignments: [],
+  }
+  writeFileSync(privPath(record.id), privateKey, { flag: 'wx', mode: 0o600 })
+  try {
+    if (!existing) writeFileSync(metaPath(record.id), JSON.stringify(record, null, 2), { flag: 'wx', mode: 0o600 })
+  } catch (error) {
+    rmSync(privPath(record.id))
+    throw error
+  }
+
+  return record
+}
+
+function readMetaFromProfile(path: string): KeyRecord {
+  const record = migrateRecord(JSON.parse(readFileSync(path, 'utf8')))
+  if (!record.label) throw new Error('Source key has no label')
+
+  return record
 }

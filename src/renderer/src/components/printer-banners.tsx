@@ -5,6 +5,7 @@ import type { Printer, ConnectionReach } from '../data/types'
 import { jinniLags } from '../data/printers'
 import { useI18n } from '../i18n/context'
 import { PrinterBanner } from './common/PrinterBanner'
+import type { DaemonAccessState } from '../../../main/daemon-client/status'
 
 export const EXPECTED_RESTART_GRACE_MS = 5 * 60 * 1000
 export const POST_OPERATION_GRACE_MS = 30 * 1000
@@ -30,6 +31,7 @@ export function repairOrRecover(
 
 function bannerAction(printer: Printer, now: number): 'recover' | 'repair' | null {
   if (printer.status !== 'online') return null
+  if (printer.connection?.accessState && printer.connection.accessState !== 'authorized' && printer.connection.accessState !== 'daemon-absent') return null
 
   return repairOrRecover({
     reach: printer.connection?.reach,
@@ -107,6 +109,18 @@ export function printerProblemCount(printer: Printer): number {
   return printer.printerProblems.length
 }
 
+function accessMessageKey(state: DaemonAccessState | undefined): string | null {
+  const messages: Partial<Record<DaemonAccessState, string>> = {
+    'present-awaiting-access': 'banner.access_new',
+    'credentials-rejected': 'banner.access_rejected',
+    'certificate-missing': 'banner.access_certificate_missing',
+    'identity-changed': 'banner.access_identity_changed',
+    unrecognized: 'banner.access_unrecognized',
+  }
+
+  return state ? messages[state] ?? null : null
+}
+
 // Something is wrong with the printer itself, not with one plugin's links: it no longer includes
 // bespok3d in its own config, part of the bespok3d tree is gone, a plugin was left half removed. A
 // printer with no plugins left has no drift to show and can still be in this state, which is exactly
@@ -142,10 +156,17 @@ function useTickWhilePending(target: number | undefined): void {
   useEffect(scheduleTickAtTarget, [target])
 }
 
-export function PrinterBanners({ selectedPrinter, bundledJinniVersion, onRepair, onRecover, onReactivate, onRecoverDrift, onUpdateJinni, onReboot }: { selectedPrinter: Printer | null; bundledJinniVersion?: string; onRepair: (id: string) => void; onRecover: (id: string) => void; onReactivate: (id: string) => void; onRecoverDrift: (id: string) => void; onUpdateJinni: (id: string) => void; onReboot: (id: string) => void }) {
+export function PrinterBanners({ selectedPrinter, bundledJinniVersion, onRepair, onRecover, onReactivate, onRecoverDrift, onUpdateJinni, onReboot, onAccess }: { selectedPrinter: Printer | null; bundledJinniVersion?: string; onRepair: (id: string) => void; onRecover: (id: string) => void; onReactivate: (id: string) => void; onRecoverDrift: (id: string) => void; onUpdateJinni: (id: string) => void; onReboot: (id: string) => void; onAccess: (id: string) => void }) {
   const { t } = useI18n()
   useTickWhilePending(selectedPrinter?.expectedRestartUntil)
   if (!selectedPrinter) return null
+
+  const accessMessage = accessMessageKey(selectedPrinter.connection?.accessState)
+  if (accessMessage) {
+    const accessAction = selectedPrinter.connection?.accessState === 'unrecognized' ? undefined : () => onAccess(selectedPrinter.id)
+
+    return <PrinterBanner message={t(accessMessage, { name: selectedPrinter.nick || selectedPrinter.model })} actionLabel={accessAction ? t('banner.access_action') : undefined} onAction={accessAction} />
+  }
 
   if (recoverBannerCondition(selectedPrinter)) {
     return (

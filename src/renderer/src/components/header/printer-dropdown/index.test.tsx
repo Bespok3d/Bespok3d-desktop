@@ -18,7 +18,7 @@ function renderDropdown(fns: { onSelect: ReturnType<typeof vi.fn>; onAddPrinter:
   ]
 
   return setup(
-    <PrinterDropdown printers={printers} selectedId="printer-1" adapterIcons={{}} adapterTitles={{}} onSelect={fns.onSelect} onAddPrinter={fns.onAddPrinter} onOpenSettings={fns.onOpenSettings} onUpdateDaemon={vi.fn()} onUpdateJinni={vi.fn()} onUpdateAll={vi.fn()} adapterJinniVersions={{}} savedPluginVars={{}} installingCount={0} />,
+    <PrinterDropdown printers={printers} selectedId="printer-1" adapterIcons={{}} adapterTitles={{}} onSelect={fns.onSelect as (id: string) => void} onAddPrinter={fns.onAddPrinter as () => void} onOpenSettings={fns.onOpenSettings as () => void} onUpdateDaemon={vi.fn() as (id: string) => void} onUpdateJinni={vi.fn() as (id: string) => void} onUpdateAll={vi.fn() as React.ComponentProps<typeof PrinterDropdown>['onUpdateAll']} adapterJinniVersions={{}} savedPluginVars={{}} installingCount={0} />,
     { withCatalog: true, catalog: [] },
   )
 }
@@ -140,7 +140,7 @@ interface UpdateFns {
 
 function renderRow(printer: Printer, adapterJinniVersions: Record<string, string>, fns: UpdateFns) {
   return setup(
-    <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={{}} adapterTitles={{}} adapterJinniVersions={adapterJinniVersions} savedPluginVars={{}} onSelect={vi.fn()} onAddPrinter={vi.fn()} onOpenSettings={vi.fn()} onUpdateDaemon={fns.onUpdateDaemon} onUpdateJinni={fns.onUpdateJinni} onUpdateAll={vi.fn()} installingCount={0} />,
+    <PrinterDropdown printers={[printer]} selectedId={printer.id} adapterIcons={{}} adapterTitles={{}} adapterJinniVersions={adapterJinniVersions} savedPluginVars={{}} onSelect={vi.fn() as (id: string) => void} onAddPrinter={vi.fn() as () => void} onOpenSettings={vi.fn() as () => void} onUpdateDaemon={fns.onUpdateDaemon as (id: string) => void} onUpdateJinni={fns.onUpdateJinni as (id: string) => void} onUpdateAll={vi.fn() as React.ComponentProps<typeof PrinterDropdown>['onUpdateAll']} installingCount={0} />,
     { withCatalog: true, catalog: [] },
   )
 }

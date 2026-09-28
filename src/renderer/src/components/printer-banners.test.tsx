@@ -17,10 +17,11 @@ interface BannerHandlers {
   onRecoverDrift: ReturnType<typeof vi.fn>
   onUpdateJinni: ReturnType<typeof vi.fn>
   onReboot: ReturnType<typeof vi.fn>
+  onAccess: ReturnType<typeof vi.fn>
 }
 
 function makeHandlers(): BannerHandlers {
-  return { onRepair: vi.fn(), onRecover: vi.fn(), onReactivate: vi.fn(), onRecoverDrift: vi.fn(), onUpdateJinni: vi.fn(), onReboot: vi.fn() }
+  return { onRepair: vi.fn(), onRecover: vi.fn(), onReactivate: vi.fn(), onRecoverDrift: vi.fn(), onUpdateJinni: vi.fn(), onReboot: vi.fn(), onAccess: vi.fn() }
 }
 
 function renderBanners(printer: ReturnType<typeof makePrinter> | null, handlers: BannerHandlers, bundledJinniVersion?: string) {
@@ -30,6 +31,16 @@ function renderBanners(printer: ReturnType<typeof makePrinter> | null, handlers:
 const enrolled = { enrollmentLog: { enrolledAt: '2026-01-01', adapterId: 'snapmaker-u1', steps: [] } }
 
 describe('PrinterBanners render + action wiring', () => {
+  it('shows the selected printer access state and routes review to that record', async () => {
+    var handlers = makeHandlers()
+    var printer = makePrinter({ id: 'printer-2', status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false, accessState: 'identity-changed' } })
+    var { user } = renderBanners(printer, handlers)
+    expect(screen.getByText(en('banner.access_identity_changed', { name: printer.nick || printer.model }))).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: en('banner.access_action') }))
+    expect(handlers.onAccess).toHaveBeenCalledWith('printer-2')
+    expect(handlers.onRepair).not.toHaveBeenCalled()
+  })
+
   it('shows the repair banner for an enrolled, SSH-reachable printer and repairs on click', async () => {
     var handlers = makeHandlers()
     var printer = makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, ...enrolled })
@@ -61,7 +72,9 @@ describe('PrinterBanners render + action wiring', () => {
     await user.click(screen.getByRole('button', { name: en('printers.reactivate') }))
     expect(handlers.onReactivate).toHaveBeenCalledWith('printer-1')
   })
+})
 
+describe('PrinterBanners maintenance actions', () => {
   it('shows the drift banner for a managed printer with drift and recovers on click', async () => {
     var handlers = makeHandlers()
     var printer = makePrinter({ status: 'managed', daemonDrift: [{ pluginId: 'spoolman', symlinkIssueCount: 2 }] })

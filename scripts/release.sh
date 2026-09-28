@@ -5,36 +5,44 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="$REPO_ROOT"
-PKG="$APP_DIR/package.json"
+PKG="${B3D_RELEASE_PACKAGE_JSON:-$APP_DIR/package.json}"
+LOCK="${B3D_RELEASE_PACKAGE_LOCK_JSON:-$APP_DIR/package-lock.json}"
 # electron-builder writes installers to the central dist/ (build.directories.output = ./dist/release).
-OUTPUT_DIR="$REPO_ROOT/dist/release"
-# Matches package.json build.publish (github Bespok3d/Bespok3d-desktop). Uploading goes through gh
-# here, not through electron-builder, so the kind of release is decided by 'pre' and not by that file.
-PUBLISH_REPO="Bespok3d/Bespok3d-desktop"
+OUTPUT_DIR="${B3D_RELEASE_OUTPUT_DIR:-$REPO_ROOT/dist/release}"
+# The selected channel's release host comes from scripts/channel-table.json. Uploading goes through gh
+# here, so the selected channel alone decides which artifacts repository receives the release.
+PUBLISH_REPO=""
+TARGET=live
 DRY_RUN=false
-IS_PRERELEASE=false
+IMPORT_SIGNING_CERT=false
+
+if [ "${1:-}" = golive ]; then
+  shift
+  exec node "$REPO_ROOT/scripts/golive.mjs" "$@"
+fi
 
 usage() {
   cat >&2 <<EOF
-Usage: $0 [bump [minor|major]] [publish [pre]] [web] [--dry-run]
+Usage: $0 [live|staging] [bump [minor|major]] [publish] [web] [--import-signing-cert] [--dry-run]
+       $0 golive --staged-manifest <execution/5/staged-app.json> [--dry-run|--preflight]
 
-  (no args)     Build the current version locally (no upload).
+  (no target)   Build Live locally (no upload).
+  staging       Build Staging as the Live version plus -staging.
   bump          Raise the patch number, then build. 'bump minor' and 'bump major' raise
-                those instead. The maturity label ('beta') is carried over untouched.
-  publish       Upload the existing build in dist/release to GitHub as a real release.
-                Does NOT rebuild; run a build first ('$0' or '$0 bump'). (needs the
-                publish token)
-  pre           Publish as a GitHub prerelease instead, and leave the landing page alone
-                even when 'web' is also given. Only means something alongside 'publish'.
-  bump publish  Raise the version, build, then upload. (order does not matter)
-  web           Point the landing page's download buttons at this version. Edits the page
-                in the bespok3d-server repo; it goes live when that page is deployed.
+                 those instead. The Live maturity label ('beta') is carried over untouched.
+                 With 'staging publish', requires a clean dev checkout, commits the
+                 package and lock versions, and pushes dev after the verified build.
+  publish       Upload the selected target's existing verified build. Does NOT rebuild.
+                Live is a normal release; Staging is always a prerelease.
+  web           Point the Live landing-page download buttons at this version.
+  --import-signing-cert  Explicitly import CSC_LINK into a temporary macOS keychain.
+                By default, macOS uses the installed Developer ID and ignores CSC_LINK.
   --dry-run     Print every build and publish command instead of running it.
                 Changes nothing on disk or on GitHub. (alias: -n)
 
 Notes:
   Publishing uploads the dist/release artifacts (installers + the latest*.yml metadata
-  electron-updater reads) to the GitHub repo set in package.json build.publish. It
+  electron-updater reads) to the GitHub repo set in the generated electron-builder config. It
   reuses what the build produced, so 'publish' never rebuilds. Set
   BESPOK3D_DESKTOP_APP_PUBLISH_GH_TOKEN (a fine-grained PAT with Contents:write on
   Bespok3d/Bespok3d-desktop) before publishing.
@@ -49,10 +57,8 @@ Notes:
   publishing checks the same list again against the release GitHub ended up with. A missing or
   half-uploaded platform stops the run and is named.
 
-  'pre' decides what GitHub calls the release: a prerelease is kept off the repo's Latest
-  pointer and off the download page people land on. The app's own updater does not read
-  that flag, it reads the version's maturity label ('-beta'), so a release published
-  without 'pre' is still offered as a prerelease inside the app.
+  Live's version is the version stored in package.json. Staging appends '-staging' for its
+  build without changing that source version. A Live build preserves '-beta' in its version.
 
   'web' rewrites only the generated download block and the version in the landing page at
   \$BESPOK3D_WEB_INDEX (default: the sibling bespok3d-server checkout). It never deploys:
@@ -75,6 +81,24 @@ current_version() {
   node -pe "require('$PKG').version"
 }
 
+live_version() {
+  node --input-type=module -e '
+    import { pathToFileURL } from "node:url"
+    const [appVersion, channelsPath] = process.argv.slice(1)
+    const { liveVersion } = await import(pathToFileURL(channelsPath))
+    process.stdout.write(liveVersion(appVersion))
+  ' "$(current_version)" "$REPO_ROOT/scripts/channels.mjs"
+}
+
+version_for_target() {
+  node --input-type=module -e '
+    import { pathToFileURL } from "node:url"
+    const [releaseTarget, liveVersionValue, channelsPath] = process.argv.slice(1)
+    const { versionForChannel } = await import(pathToFileURL(channelsPath))
+    process.stdout.write(versionForChannel(releaseTarget, liveVersionValue))
+  ' "$TARGET" "$1" "$REPO_ROOT/scripts/channels.mjs"
+}
+
 raise_triple() {
   local triple="$1" level="$2" major minor patch
   IFS=. read -r major minor patch <<<"$triple"
@@ -92,7 +116,7 @@ raise_triple() {
 # 1.0 looks like, and that is a hand edit made once.
 bump_version() {
   local current base label next
-  current=$(current_version)
+  current=$(live_version)
   base="${current%%-*}"
   label="${current#"$base"}"
   next="$(raise_triple "$base" "$BUMP_LEVEL")${label}"
@@ -104,8 +128,14 @@ bump_version() {
     node -e "
 const fs = require('fs');
 const pkg = JSON.parse(fs.readFileSync('$PKG', 'utf8'));
+const lockPath = '$LOCK';
+const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+if (!lock.packages?.['']) throw new Error('package-lock.json has no root package');
 pkg.version = '$next';
+lock.version = '$next';
+lock.packages[''].version = '$next';
 fs.writeFileSync('$PKG', JSON.stringify(pkg, null, 2) + '\n');
+fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
 "
   fi
 
@@ -130,15 +160,32 @@ adopt_signing_key() {
 # macOS builds all three (mac + windows + linux) directly; only the macOS .dmg cannot be cross-built,
 # so guard JUST that to a Darwin host. Always builds without uploading (--publish never); uploading is
 # a separate, build-free step (publish_artifacts), so 'publish' never rebuilds.
+clear_target_outputs() {
+  local version="$1" target="$2" artifact artifact_path
+
+  while IFS= read -r artifact; do
+    artifact_path="$OUTPUT_DIR/$artifact"
+    [ -f "$artifact_path" ] || continue
+    run rm -f "$artifact_path"
+  done < <(node --input-type=module -e "import { releaseArtifacts } from 'file://$REPO_ROOT/scripts/release-manifest.mjs'; console.log(releaseArtifacts('$version', '$target').map(item => item.built).join('\\n'))")
+}
+
 build_all() {
-  local version="$1"
+  local live_version_value="$1" app_version="$2"
+  local mac_signing_arguments=(--mac --publish never)
 
   adopt_signing_key
+  clear_target_outputs "$app_version" "$TARGET"
+  [ "$DRY_RUN" = true ] || record_build_provenance "$app_version" "$TARGET"
+  if [ "$IMPORT_SIGNING_CERT" = true ]; then
+    mac_signing_arguments+=(--import-signing-cert)
+  fi
 
   if [ "$(uname -s)" = "Darwin" ]; then
     echo ""
     echo "Building macOS..."
-    run npm --prefix "$APP_DIR" run package:mac -- --publish never
+    run env B3D_CHANNEL="$TARGET" B3D_LIVE_VERSION="$live_version_value" B3D_VERSION="$app_version" B3D_PUBLISHED_CUT=true \
+      npm --prefix "$APP_DIR" run "package:$TARGET" -- "${mac_signing_arguments[@]}"
   fi
 
   # CSC_LINK/CSC_KEY_PASSWORD hold the Apple Developer ID key for the macOS build. electron-builder
@@ -148,12 +195,16 @@ build_all() {
   echo ""
   echo "Building Windows..."
   run env -u CSC_LINK -u CSC_KEY_PASSWORD -u WIN_CSC_LINK -u WIN_CSC_KEY_PASSWORD \
-    npm --prefix "$APP_DIR" run package:win -- --publish never
+    -u CSC_NAME -u CSC_IDENTITY_AUTO_DISCOVERY B3D_CHANNEL="$TARGET" B3D_LIVE_VERSION="$live_version_value" \
+    B3D_VERSION="$app_version" B3D_PUBLISHED_CUT=true \
+    npm --prefix "$APP_DIR" run "package:$TARGET" -- --win --x64 --publish never
 
   echo ""
   echo "Building Linux..."
-  run env -u CSC_LINK -u CSC_KEY_PASSWORD \
-    npm --prefix "$APP_DIR" run package:linux -- --publish never
+  run env -u CSC_LINK -u CSC_KEY_PASSWORD -u WIN_CSC_LINK -u WIN_CSC_KEY_PASSWORD \
+    -u CSC_NAME -u CSC_IDENTITY_AUTO_DISCOVERY B3D_CHANNEL="$TARGET" B3D_LIVE_VERSION="$live_version_value" \
+    B3D_VERSION="$app_version" B3D_PUBLISHED_CUT=true \
+    npm --prefix "$APP_DIR" run "package:$TARGET" -- --linux --publish never
 
   # flatpak-builder runs only on Linux. On a Linux host it is used directly; anywhere else the same
   # tool runs in a Linux container against this build, so every cut produces the Flatpak on whatever
@@ -161,15 +212,17 @@ build_all() {
   echo ""
   echo "Building Linux Flatpak..."
   if command -v flatpak-builder > /dev/null; then
-    run npm --prefix "$APP_DIR" run package:flatpak -- --publish never
+    run env B3D_CHANNEL="$TARGET" B3D_LIVE_VERSION="$live_version_value" B3D_VERSION="$app_version" \
+      B3D_PUBLISHED_CUT=true npm --prefix "$APP_DIR" run "package:$TARGET" -- --linux flatpak --publish never
   else
-    run "$APP_DIR/scripts/flatpak-build.sh"
+    run env B3D_CHANNEL="$TARGET" B3D_LIVE_VERSION="$live_version_value" B3D_VERSION="$app_version" \
+      B3D_PUBLISHED_CUT=true "$APP_DIR/scripts/flatpak-build.sh"
   fi
 
   echo ""
-  [ "$DRY_RUN" = true ] && echo "DRY-RUN would build $version into $OUTPUT_DIR/" || echo "Built $version into $OUTPUT_DIR/"
+  [ "$DRY_RUN" = true ] && echo "DRY-RUN would build $TARGET $app_version into $OUTPUT_DIR/" || echo "Built $TARGET $app_version into $OUTPUT_DIR/"
 
-  verify_built "$version"
+  verify_built "$app_version" "$TARGET"
 }
 
 # A cut is only finished when every platform is in it. The list of what "every platform" means lives
@@ -177,17 +230,17 @@ build_all() {
 # what holds the build to it: a missing installer, an empty file, or an updater feed left over from an
 # earlier cut stops the run here instead of going out as a release with a hole in it.
 verify_built() {
-  local version="$1"
+  local version="$1" target="${2:-$TARGET}"
 
   echo ""
   echo "Checking the build in $OUTPUT_DIR has every platform..."
-  run node "$REPO_ROOT/scripts/verify-release.mjs" built "$version" "$OUTPUT_DIR"
+  run node "$REPO_ROOT/scripts/verify-release.mjs" built "$version" "$OUTPUT_DIR" "$target"
 }
 
 # And the same list again against what GitHub actually holds, because an upload that dies halfway
 # leaves a release that looks complete in the browser and serves a truncated file.
 verify_published() {
-  local version="$1" tag="v$1"
+  local version="$1" target="${2:-$TARGET}" tag="v$1"
 
   if [ "$DRY_RUN" = true ]; then
     echo "DRY-RUN would check the $tag release carries every platform."
@@ -197,17 +250,66 @@ verify_published() {
   echo ""
   echo "Checking the $tag release carries every platform..."
   gh release view "$tag" --repo "$PUBLISH_REPO" --json assets -q '.assets' \
-    | node "$REPO_ROOT/scripts/verify-release.mjs" published "$version" "$OUTPUT_DIR"
+    | node "$REPO_ROOT/scripts/verify-release.mjs" published "$version" "$OUTPUT_DIR" "$target"
+}
+
+record_build_provenance() {
+  local version="$1" target="$2" source_commit
+  local evidence_path="$OUTPUT_DIR/.release-provenance-v$version.json"
+  source_commit=$(git -C "$APP_DIR" rev-parse HEAD)
+  mkdir -p "$OUTPUT_DIR"
+
+  node -e '
+    const fs = require("node:fs")
+    const [path, tag, appVersion, releaseTarget, repository, sourceSha] = process.argv.slice(1)
+    fs.writeFileSync(path, JSON.stringify({
+      tag,
+      appVersion,
+      releaseTarget,
+      releaseRepository: repository,
+      sourceCommit: sourceSha,
+      hostCommit: null,
+    }, null, 2) + "\n")
+  ' "$evidence_path" "v$version" "$version" "$target" "$PUBLISH_REPO" "$source_commit"
+}
+
+source_commit_for_release() {
+  local version="$1" target="$2"
+  local evidence_path="$OUTPUT_DIR/.release-provenance-v$version.json"
+
+  node -e '
+    const fs = require("node:fs")
+    const [path, tag, appVersion, releaseTarget, repository] = process.argv.slice(1)
+    const evidence = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, "utf8")) : null
+    if (!evidence || evidence.tag !== tag || evidence.appVersion !== appVersion || evidence.releaseTarget !== releaseTarget || evidence.releaseRepository !== repository || !evidence.sourceCommit) {
+      console.error("No matching build provenance for " + tag + "; build this target before publishing.")
+      process.exit(1)
+    }
+    process.stdout.write(evidence.sourceCommit)
+  ' "$evidence_path" "v$version" "$version" "$target" "$PUBLISH_REPO"
+}
+
+record_release_provenance() {
+  local version="$1" host_commit="$2"
+  local evidence_path="$OUTPUT_DIR/.release-provenance-v$version.json"
+
+  node -e '
+    const fs = require("node:fs")
+    const [path, hostSha] = process.argv.slice(1)
+    const evidence = JSON.parse(fs.readFileSync(path, "utf8"))
+    evidence.hostCommit = hostSha
+    fs.writeFileSync(path, JSON.stringify(evidence, null, 2) + "\n")
+  ' "$evidence_path" "$host_commit"
 }
 
 release_kind() {
-  [ "$IS_PRERELEASE" = true ] && echo prerelease || echo release
+  node --input-type=module -e "import { channelFor } from 'file://$REPO_ROOT/scripts/channels.mjs'; console.log(channelFor('${1:-$TARGET}').releaseType)"
 }
 
 # gh takes the same flag on create and on edit, so one answer serves both and a release that already
 # exists is corrected to the kind this run asked for rather than left as whatever it was first cut as.
 prerelease_flag() {
-  [ "$IS_PRERELEASE" = true ] && echo '--prerelease=true' || echo '--prerelease=false'
+  [ "$(release_kind "${1:-$TARGET}")" = prerelease ] && echo '--prerelease=true' || echo '--prerelease=false'
 }
 
 # Upload the already-built artifacts for $version to the GitHub release, reusing the build (no
@@ -217,26 +319,53 @@ prerelease_flag() {
 # match, so we upload those files under the dashed name; otherwise GitHub's own space->dot rename
 # would not match the feed and Windows updates would 404.
 publish_artifacts() {
-  local version="$1" tag="v$1" feed artifact base staging
+  local version="$1" target="${2:-$TARGET}" tag="v$1" artifact base staging source_commit source_label host_commit remote_branch_status
   # A dry run uploads nothing, so it has nothing to need gh for.
   [ "$DRY_RUN" = true ] || command -v gh > /dev/null || { echo "Error: the gh CLI is required to publish." >&2; exit 1; }
 
   local sources=()
-  while IFS= read -r artifact; do sources+=("$artifact"); done < <(
-    find "$OUTPUT_DIR" -maxdepth 1 -type f -name "*${version}*" | sort
-  )
-  for feed in latest-mac.yml latest.yml latest-linux.yml latest-linux-arm64.yml; do
-    [ -f "$OUTPUT_DIR/$feed" ] && sources+=("$OUTPUT_DIR/$feed")
-  done
+  while IFS= read -r artifact; do
+    if [ "$DRY_RUN" = true ] || [ -f "$OUTPUT_DIR/$artifact" ]; then
+      sources+=("$OUTPUT_DIR/$artifact")
+    fi
+  done < <(node --input-type=module -e "import { releaseArtifacts } from 'file://$REPO_ROOT/scripts/release-manifest.mjs'; console.log(releaseArtifacts('$version', '$target').map(item => item.built).join('\\n'))")
 
   if [ "${#sources[@]}" -eq 0 ]; then
-    [ "$DRY_RUN" = true ] && { echo "DRY-RUN would upload the dist/release artifacts for $version as a $(release_kind)."; return 0; }
+    [ "$DRY_RUN" = true ] && { echo "DRY-RUN would upload the dist/release artifacts for $target $version as a $(release_kind "$target")."; return 0; }
     echo "Error: no built artifacts for $version in $OUTPUT_DIR; build first ('$0' or '$0 bump')." >&2
     exit 1
   fi
 
   echo ""
-  echo "Publishing ${#sources[@]} artifact(s) for $version to $PUBLISH_REPO as a $(release_kind) (no rebuild)..."
+  echo "Publishing ${#sources[@]} artifact(s) for $target $version to $PUBLISH_REPO as a $(release_kind "$target") (no rebuild)..."
+
+  if [ "$DRY_RUN" = true ]; then
+    if [ -f "$OUTPUT_DIR/.release-provenance-v$version.json" ]; then
+      if source_commit=$(source_commit_for_release "$version" "$target" 2>/dev/null); then
+        source_label='Source commit'
+      else
+        source_commit=$(git -C "$APP_DIR" rev-parse HEAD)
+        source_label='Source checkout commit (no matching build provenance found)'
+      fi
+    else
+      source_commit=$(git -C "$APP_DIR" rev-parse HEAD)
+      source_label='Source checkout commit (no build provenance found)'
+    fi
+  else
+    source_commit=$(source_commit_for_release "$version" "$target") || exit 1
+    source_label='Source commit'
+  fi
+  host_commit="$source_commit"
+  if [ "$target" = staging ] && [ "$DRY_RUN" = false ]; then
+    remote_branch_status=$(gh api "repos/$PUBLISH_REPO/compare/$source_commit...dev" --jq '.status')
+    if [ "$remote_branch_status" != identical ] && [ "$remote_branch_status" != ahead ]; then
+      echo "Error: the built Staging source commit is not on the desktop dev branch." >&2
+      exit 1
+    fi
+  fi
+  echo "$source_label: $source_commit"
+  echo "Release host commit: $host_commit"
+  [ "$DRY_RUN" = true ] || record_release_provenance "$version" "$host_commit"
 
   if [ "$DRY_RUN" = true ]; then
     for artifact in "${sources[@]}"; do
@@ -263,9 +392,9 @@ publish_artifacts() {
 
   if gh release view "$tag" --repo "$PUBLISH_REPO" > /dev/null 2>&1; then
     gh release upload "$tag" "${uploads[@]}" --repo "$PUBLISH_REPO" --clobber
-    gh release edit "$tag" --repo "$PUBLISH_REPO" "$(prerelease_flag)"
+    gh release edit "$tag" --repo "$PUBLISH_REPO" "$(prerelease_flag "$target")"
   else
-    gh release create "$tag" --repo "$PUBLISH_REPO" --title "$version" "$(prerelease_flag)" --notes "" "${uploads[@]}"
+    gh release create "$tag" --repo "$PUBLISH_REPO" --title "$version" "$(prerelease_flag "$target")" --target "$host_commit" --notes "" "${uploads[@]}"
   fi
 }
 
@@ -299,13 +428,26 @@ do_bump=false
 do_publish=false
 do_web=false
 BUMP_LEVEL='patch'
+TARGET_SELECTED=false
 for arg in "$@"; do
   case "$arg" in
+    live | staging)
+      if [ "$TARGET_SELECTED" = true ] && [ "$TARGET" != "$arg" ]; then
+        echo "Error: choose exactly one release target." >&2
+        usage
+      fi
+      TARGET="$arg"
+      TARGET_SELECTED=true
+      ;;
     bump)            do_bump=true ;;
     minor | major)   BUMP_LEVEL="$arg" ;;
     publish)         do_publish=true ;;
-    pre)             IS_PRERELEASE=true ;;
+    pre)
+      echo "Error: 'pre' was replaced by the explicit 'staging' target. Use '$0 staging publish'." >&2
+      exit 1
+      ;;
     web)             do_web=true ;;
+    --import-signing-cert) IMPORT_SIGNING_CERT=true ;;
     --dry-run | -n)  DRY_RUN=true ;;
     *)               usage ;;
   esac
@@ -316,49 +458,65 @@ if [ "$BUMP_LEVEL" != patch ] && [ "$do_bump" = false ]; then
   usage
 fi
 
-if [ "$IS_PRERELEASE" = true ] && [ "$do_publish" = false ]; then
-  echo "Error: 'pre' says what kind of release to publish, so it only means anything alongside 'publish'." >&2
-  usage
+if [ "$TARGET" = staging ] && [ "$do_web" = true ]; then
+  echo "Error: Staging cannot update the website. Remove 'web'; no release side effect was started." >&2
+  exit 1
 fi
 
-# A prerelease is not what anyone lands on, so it never becomes the download the page offers. Asking
-# for both is taken as a slip and the page is left alone, rather than pointing everybody at a build
-# that was published as one to try.
-if [ "$IS_PRERELEASE" = true ] && [ "$do_web" = true ]; then
-  echo "Note: 'pre' never touches the landing page, so 'web' is ignored." >&2
-  do_web=false
+if [ "$IMPORT_SIGNING_CERT" = true ] && [ "$(uname -s)" != "Darwin" ]; then
+  echo "Error: --import-signing-cert is available only on macOS." >&2
+  exit 1
 fi
+
+PUBLISH_REPO=$(node --input-type=module -e "import { channelFor } from 'file://$REPO_ROOT/scripts/channels.mjs'; const repository = channelFor('$TARGET').releaseRepository; if (!repository) { console.error('Selected channel has no release repository'); process.exit(1) }; console.log(repository)")
 
 # electron-builder reads GH_TOKEN; accept the descriptive name and map it across.
 PUBLISH_TOKEN="${BESPOK3D_DESKTOP_APP_PUBLISH_GH_TOKEN:-${GH_TOKEN:-}}"
 
 if [ "$do_publish" = true ] && [ "$DRY_RUN" = false ] && [ -z "$PUBLISH_TOKEN" ]; then
-  echo "Error: set BESPOK3D_DESKTOP_APP_PUBLISH_GH_TOKEN (fine-grained PAT, Contents:write on Bespok3d/Bespok3d-desktop) before publishing." >&2
+  echo "Error: set BESPOK3D_DESKTOP_APP_PUBLISH_GH_TOKEN (fine-grained PAT, Contents:write on the selected channel's release repository) before publishing." >&2
   exit 1
 fi
 
 if [ "$do_bump" = true ]; then
-  VERSION=$(bump_version)
+  if [ "$TARGET" = staging ] && [ "$do_publish" = true ] && [ "$DRY_RUN" = false ]; then
+    [ "$(git -C "$APP_DIR" branch --show-current)" = dev ] || {
+      echo "Error: Staging release must be built from desktop/dev." >&2; exit 1;
+    }
+    [ -z "$(git -C "$APP_DIR" status --porcelain)" ] || {
+      echo "Error: commit the desktop changes before bumping and publishing Staging." >&2; exit 1;
+    }
+  fi
+  LIVE_VERSION=$(bump_version)
+  if [ "$TARGET" = staging ] && [ "$do_publish" = true ] && [ "$DRY_RUN" = false ]; then
+    git -C "$APP_DIR" add -- package.json package-lock.json
+    git -C "$APP_DIR" commit -m "release: prepare Staging $LIVE_VERSION"
+  fi
 else
-  VERSION=$(current_version)
+  LIVE_VERSION=$(live_version)
 fi
+VERSION=$(version_for_target "$LIVE_VERSION")
 
 # Build when bumping, or when nothing else was asked for; 'publish' and 'web' on their own reuse the
 # existing build.
 if [ "$do_bump" = true ] || { [ "$do_publish" = false ] && [ "$do_web" = false ]; }; then
-  build_all "$VERSION"
+  build_all "$LIVE_VERSION" "$VERSION"
 fi
 
 if [ "$do_publish" = true ]; then
+  if [ "$TARGET" = staging ] && [ "$do_bump" = true ] && [ "$DRY_RUN" = false ]; then
+    git -C "$APP_DIR" push origin dev
+  fi
   export GH_TOKEN="$PUBLISH_TOKEN"
   # 'publish' on its own reuses whatever is in dist/release, so what is there is checked before any of
   # it is uploaded: half a build must never become a release.
-  [ "$do_bump" = true ] || verify_built "$VERSION"
-  publish_artifacts "$VERSION"
+  [ "$do_bump" = true ] || verify_built "$VERSION" "$TARGET"
+  publish_artifacts "$VERSION" "$TARGET"
   set_release_notes "$VERSION"
-  verify_published "$VERSION"
+  verify_published "$VERSION" "$TARGET"
 fi
 
 if [ "$do_web" = true ]; then
+  [ "$TARGET" = live ] || { echo "Error: only Live may update the website." >&2; exit 1; }
   update_web "$VERSION"
 fi

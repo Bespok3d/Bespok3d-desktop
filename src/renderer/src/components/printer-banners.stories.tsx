@@ -11,7 +11,7 @@ const ENROLLED = { enrollmentLog: { enrolledAt: '2026-06-16T22:03:00Z', adapterI
 
 function noop() {}
 
-const HANDLERS = { onRepair: noop, onRecover: noop, onReactivate: noop, onRecoverDrift: noop, onUpdateJinni: noop, onReboot: noop }
+const HANDLERS = { onRepair: noop, onRecover: noop, onReactivate: noop, onRecoverDrift: noop, onUpdateJinni: noop, onReboot: noop, onAccess: noop }
 
 function Banner({ printer, bundledJinniVersion }: { printer: Printer; bundledJinniVersion?: string }) {
   return <PrinterBanners selectedPrinter={printer} bundledJinniVersion={bundledJinniVersion} {...HANDLERS} />

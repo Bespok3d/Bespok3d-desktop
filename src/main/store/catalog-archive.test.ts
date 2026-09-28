@@ -67,6 +67,15 @@ describe('findCatalogVariant', () => {
     expect(variant.registry_url).toBe('local:dev-bundle')
   })
 
+  it('keeps the selected equal-version source trust and package URL bound together', () => {
+    const live = catalogEntry({ name: 'fluidd', version: '2.0.0', trust: 'project', registry_url: 'live', download_url: 'https://live.example/fluidd.b3' })
+    const prerelease = catalogEntry({ name: 'fluidd', version: '2.0.0', trust: 'unknown', registry_url: 'prerelease', download_url: 'https://tier.example/fluidd.b3' })
+    const catalog = [{ ...live, variants: [live, prerelease] }]
+    const picked = findCatalogVariant(catalog, 'fluidd', 'prerelease')
+
+    expect(picked).toMatchObject({ registry_url: 'prerelease', trust: 'unknown', download_url: 'https://tier.example/fluidd.b3' })
+  })
+
   it('falls back to the winner when the named source is gone from the catalog', () => {
     expect(findCatalogVariant(withVariants(), 'fluidd', 'local:a-bundle-that-is-gone').version).toBe('2.0.0')
   })
@@ -102,6 +111,25 @@ describe('resolveArchiveBytes', () => {
     expect((await resolveArchiveBytes(entry)).toString()).toBe('REMOTE')
     expect((await resolveArchiveBytes(entry)).toString()).toBe('REMOTE')
     expect(downloaded).toHaveBeenCalledTimes(1)
+  })
+
+})
+
+describe('source-bound package cache', () => {
+  it('keeps equal-version alternatives from different sources in separate caches', async () => {
+    hoisted.userDataDir = mkdtempSync(join(tmpdir(), 'b3d-cache-'))
+    const downloaded = vi.mocked(readReleaseAsset)
+    downloaded.mockReset()
+      .mockResolvedValueOnce(Buffer.from('LIVE'))
+      .mockResolvedValueOnce(Buffer.from('PRERELEASE'))
+    const live = catalogEntry({ name: 'fluidd', version: '2.0.0', registry_url: 'live', download_url: 'https://live.example/fluidd.b3' })
+    const prerelease = catalogEntry({ name: 'fluidd', version: '2.0.0', registry_url: 'prerelease', download_url: 'https://tier.example/fluidd.b3' })
+
+    expect((await resolveArchiveBytes(live)).toString()).toBe('LIVE')
+    expect((await resolveArchiveBytes(prerelease)).toString()).toBe('PRERELEASE')
+    expect((await resolveArchiveBytes(live)).toString()).toBe('LIVE')
+    expect((await resolveArchiveBytes(prerelease)).toString()).toBe('PRERELEASE')
+    expect(downloaded).toHaveBeenCalledTimes(2)
   })
 })
 

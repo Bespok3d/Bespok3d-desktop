@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-286 exported components + hooks across 22 areas.
+288 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -290,11 +290,13 @@ as you touch the file.
 - `PrinterForceMenu` (component) - [components/settings/panes/printers/PrinterForceMenu.tsx](../src/renderer/src/components/settings/panes/printers/PrinterForceMenu.tsx) - On-demand access to the setup flows that the primary action hides: an enrolled printer can be
 - `PrinterRow` (component) - [components/settings/panes/printers/printer-row.tsx](../src/renderer/src/components/settings/panes/printers/printer-row.tsx)
 - `PrintersPane` (component) - [components/settings/panes/printers/index.tsx](../src/renderer/src/components/settings/panes/printers/index.tsx)
+- `PublishedKeysSection` (component) - [components/settings/panes/keys/PublishedKeysSection.tsx](../src/renderer/src/components/settings/panes/keys/PublishedKeysSection.tsx)
 - `PurposeChip` (component) - [components/settings/panes/keys/PurposeChip.tsx](../src/renderer/src/components/settings/panes/keys/PurposeChip.tsx)
 - `RegionFormatsGroup` (component) - [components/settings/panes/language/region-formats-group.tsx](../src/renderer/src/components/settings/panes/language/region-formats-group.tsx)
 - `RepoAdder` (component) - [components/settings/panes/git-host/repo-adder.tsx](../src/renderer/src/components/settings/panes/git-host/repo-adder.tsx)
 - `RepoListSection` (component) - [components/settings/panes/git-host/repos.tsx](../src/renderer/src/components/settings/panes/git-host/repos.tsx)
 - `RepositoriesPane` (component) - [components/settings/panes/RepositoriesPane.tsx](../src/renderer/src/components/settings/panes/RepositoriesPane.tsx)
+- `RepositorySourceRow` (component) - [components/settings/panes/source-row.tsx](../src/renderer/src/components/settings/panes/source-row.tsx)
 - `ScopedPluginDefaultsPane` (component) - [components/settings/panes/ScopedPluginDefaultsPane.tsx](../src/renderer/src/components/settings/panes/ScopedPluginDefaultsPane.tsx) - Settings > Plugin defaults, the scoped-values manager. A variable never has a mixed scope: the
 - `Settings` (component) - [components/settings/index.tsx](../src/renderer/src/components/settings/index.tsx)
 - `TranslationEditor` (component) - [components/settings/panes/language/TranslationEditor.tsx](../src/renderer/src/components/settings/panes/language/TranslationEditor.tsx)

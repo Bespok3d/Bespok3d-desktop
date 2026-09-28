@@ -4,9 +4,16 @@ import { createRequire } from 'node:module'
 import { resolve } from 'path'
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import { channelFor, versionForChannel, versionLabelError } from './scripts/channels.mjs'
 
 const require = createRequire(import.meta.url)
-const { version } = require('./package.json')
+const { version: packageVersion } = require('./package.json')
+const buildFlavor = process.env.B3D_CHANNEL ?? 'development'
+const channel = channelFor(buildFlavor)
+const liveVersion = process.env.B3D_LIVE_VERSION ?? packageVersion
+const version = process.env.B3D_VERSION ?? versionForChannel(buildFlavor, liveVersion)
+const labelError = process.env.B3D_PUBLISHED_CUT === 'true' ? versionLabelError(buildFlavor, version) : null
+if (labelError) throw new Error(labelError)
 
 export default defineConfig({
   main: {
@@ -18,6 +25,7 @@ export default defineConfig({
     // the build.
     define: {
       __ANALYTICS_PROJECT_TOKEN__: JSON.stringify(process.env.BESPOK3D_POSTHOG_PROJECT_TOKEN ?? ''),
+      __B3D_CHANNEL__: JSON.stringify(channel.buildFlavor),
     },
     resolve: {
       alias: {

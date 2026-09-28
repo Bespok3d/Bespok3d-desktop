@@ -24,6 +24,7 @@
   "include": [
     "src/main/**/*",
     "src/main/**/*.json",
+    "scripts/channel-table.json",
     "src/preload/**/*",
     "tests/**/*",
     "../lib_bespok3d/ts/contract/**/*",

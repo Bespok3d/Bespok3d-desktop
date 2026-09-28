@@ -33,8 +33,14 @@ export function offersSignIn(reason: EmptyStoreReason): boolean {
 }
 
 // The one row's own answer, for the Repositories pane, where each source is listed with its own state.
-export function signInWouldReach(source: SourceRow): boolean {
-  return source.status === 'failed' && !!source.reason && REACHED_BY_SIGNING_IN.includes(source.reason)
+export function isMissingOfficialDevIndex(source: SourceRow): boolean {
+  return source.status === 'failed' && source.reason === 'notfound'
+    && source.url === 'github:Bespok3d/main-index/index.json?ref=dev'
+}
+
+export function signInWouldReach(source: SourceRow, gitHubConnected: boolean): boolean {
+  return !gitHubConnected && !isMissingOfficialDevIndex(source)
+    && source.status === 'failed' && !!source.reason && REACHED_BY_SIGNING_IN.includes(source.reason)
 }
 
 function firstActionableFailure(sources: SourceRow[]): SourceFailureReason | null {

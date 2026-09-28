@@ -9,8 +9,10 @@
 
 export type { B3dRoute } from '@bespok3d/contract'
 import type { B3dRoute } from '@bespok3d/contract'
+import { APP_CHANNELS } from '../channel'
 
 const RESERVED_HOSTS = new Set(['registry', 'printer', 'auth'])
+const APP_SCHEMES = new Set(APP_CHANNELS.map(channel => `${channel.scheme}:`))
 
 function firstSegment(pathname: string): string {
   return pathname.replace(/^\/+/, '').split('/')[0] ?? ''
@@ -52,7 +54,7 @@ function parseEntity(url: URL): B3dRoute {
 
 export function parseB3dUrl(raw: string): B3dRoute {
   const url = toUrl(raw)
-  if (!url || url.protocol !== 'b3d:') return { kind: 'unknown', raw }
+  if (!url || !APP_SCHEMES.has(url.protocol)) return { kind: 'unknown', raw }
   // A reserved host is only an action when it carries no publisher userinfo, so a real
   // `user@auth` publisher could never be hijacked by the reserved namespace.
   if (!url.username && RESERVED_HOSTS.has(url.hostname)) return parseReserved(url)

@@ -117,6 +117,13 @@ const catalogB3d = {
     onPrintState: emitPrintState,
   },
   registry: { catalog: () => Promise.resolve(makeCatalog(CATALOG_PLUGINS)) },
+  keys: {
+    published: () => Promise.resolve([{
+      fingerprint: 'A'.repeat(40), publicKey: 'catalog-public-key', label: 'Catalog publisher', hasPrivateKey: false,
+    }]),
+    localProfiles: () => Promise.resolve(['Bespok3d Dev']),
+    importLocal: () => Promise.resolve({}),
+  },
   // Usage reporting reads its own answer back rather than taking it as a prop, so the stub keeps one
   // in memory: the toggle in a story really flips, and the catalog starts unanswered because that is
   // the only state in which the one-time request appears at all.

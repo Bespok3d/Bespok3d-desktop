@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { setup } from '../../../test/harness'
 import { makeT } from '../../../i18n'
 import { makePlugin, makeSource, makeIndexEntry } from '../../../test/fixtures'
@@ -55,7 +55,9 @@ describe('PluginPanel version/source pick wiring', () => {
     await user.click(screen.getByRole('button', { name: en('btn.install') }))
     expect(install).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: /Source B/ }))
+    const sourceTabs = document.querySelector('.panel-versions > .segmented') as HTMLElement
+    await user.click(within(sourceTabs).getByRole('button', { name: 'Source A' }))
+    await user.click(within(sourceTabs).getByRole('button', { name: 'Source B' }))
     await user.click(screen.getByRole('button', { name: en('btn.install') }))
 
     expect(install).toHaveBeenCalledWith('printer-1', 'demo', undefined, [], 'url-b', 'stable')
@@ -74,13 +76,13 @@ describe('PluginPanel version/source pick wiring', () => {
     await user.click(screen.getByRole('button', { name: en('chan.experiment') }))
 
     expect(onChannelPref).toHaveBeenCalledWith('experiment')
-    expect(screen.getByRole('button', { name: /Source B/ })).toHaveClass('selected')
+    expect(within(document.querySelector('.panel-sources') as HTMLElement).getByRole('button', { name: /Source B/ })).toHaveClass('selected')
 
     await user.click(screen.getByRole('button', { name: en('btn.install') }))
     expect(install).toHaveBeenCalledWith('printer-1', 'demo', undefined, [], 'url-exp', 'experiment')
   })
 
-  it('ALL chip shows every source row; a channel chip filters the rows to that channel', async () => {
+  it('source tabs show one source at a time while a channel choice follows its selected source', async () => {
     var { user } = setup(
       <PluginPanel plugin={twoChannelPlugin()} installed={false} hasUpdate={false} printerId="printer-1"
         channelCeiling="stable" onChannelPref={vi.fn()} allInstalledIds={[]} onClose={vi.fn()} onOperationDone={vi.fn()} />,
@@ -88,16 +90,21 @@ describe('PluginPanel version/source pick wiring', () => {
     )
     await user.click(screen.getByRole('button', { name: en('btn.install') }))
 
-    expect(screen.getByRole('button', { name: /Source A/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Source B/ })).toBeTruthy()
+    const rows = document.querySelector('.panel-sources') as HTMLElement
+    const tabs = document.querySelector('.panel-versions > .segmented') as HTMLElement
+    expect(within(rows).getByRole('button', { name: /Source A/ })).toBeInTheDocument()
+    expect(within(rows).queryByRole('button', { name: /Source B/ })).toBeNull()
+
+    await user.click(within(tabs).getByRole('button', { name: 'Source B' }))
+    expect(within(rows).getByRole('button', { name: /Source B/ })).toHaveClass('selected')
+    expect(within(rows).queryByRole('button', { name: /Source A/ })).toBeNull()
 
     await user.click(screen.getByRole('button', { name: en('chan.experiment') }))
-    expect(screen.queryByRole('button', { name: /Source A/ })).toBeNull()
-    expect(screen.getByRole('button', { name: /Source B/ })).toBeTruthy()
+    expect(within(rows).getByRole('button', { name: /Source B/ })).toHaveClass('selected')
 
     await user.click(screen.getByRole('button', { name: en('filter.all') }))
-    expect(screen.getByRole('button', { name: /Source A/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Source B/ })).toBeTruthy()
+    expect(within(rows).queryByRole('button', { name: /Source A/ })).toBeNull()
+    expect(within(rows).getByRole('button', { name: /Source B/ })).toBeInTheDocument()
   })
 
   it('shows the on-printer version when the install is not from a listed source (same version)', async () => {
@@ -162,18 +169,37 @@ describe('PluginPanel drifted-source listing', () => {
     )
     await user.click(screen.getByRole('button', { name: en('store.tab_versions') }))
 
-    const bundledRow = screen.getByRole('button', { name: /Bundled/ })
+    const sourceTabs = document.querySelector('.panel-versions > .segmented') as HTMLElement
+    const panel = document.querySelector('.panel-sources') as HTMLElement
+    const bundledRow = within(panel).getByRole('button', { name: /Bundled/ })
     expect(bundledRow).toHaveTextContent('v0.1.7')
     expect(bundledRow).not.toHaveTextContent('0.1.6')
     expect(bundledRow).not.toHaveTextContent('+dev')
     expect(bundledRow.querySelector('.source-installed')).toBeNull()
 
-    expect(screen.getByRole('button', { name: /GitHub/ })).toHaveTextContent('v0.1.6')
+    await user.click(within(sourceTabs).getByRole('button', { name: 'GitHub' }))
+    expect(within(panel).getByRole('button', { name: /GitHub/ })).toHaveTextContent('v0.1.6')
 
     const onPrinter = document.querySelector('.source-row.on-printer')
-    expect(onPrinter).toHaveTextContent(en('store.source_on_printer'))
+    expect(onPrinter).toHaveTextContent(en('store.installed_from_source', { source: 'Bundled' }))
     expect(onPrinter).toHaveTextContent('0.1.6')
     expect(onPrinter?.querySelector('.source-installed')).toBeTruthy()
+  })
+})
+
+describe('unmatched source names', () => {
+  it('never substitutes an address or invented source name for a missing configured label', async () => {
+    const registryUrl = 'github:example-publisher/plugin-repo/index.json'
+    const plugin = makePlugin({ sources: [makeSource({ registryUrl, label: '' }), makeSource({ registryUrl: 'bundled', label: 'On this machine' })] })
+    const { user } = setup(
+      <PluginPanel plugin={plugin} installed={false} hasUpdate={false} printerId="printer-1" allInstalledIds={[]} onClose={vi.fn()} onOperationDone={vi.fn()} />,
+      { withCatalog: true, catalog: [makeIndexEntry({ name: 'demo' })] },
+    )
+    await user.click(screen.getByRole('button', { name: en('store.tab_versions') }))
+
+    expect(document.querySelector('.panel-versions > .segmented')).toBeNull()
+    expect(screen.queryByText('Unknown source')).toBeNull()
+    expect(screen.queryByText(registryUrl)).toBeNull()
   })
 })
 
@@ -229,7 +255,7 @@ describe('PluginPanel install button label', () => {
     )
     expect(screen.getByRole('button', { name: en('btn.reinstall') })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: en('store.tab_versions') }))
-    await user.click(screen.getByRole('button', { name: /Source B/ }))
+    await user.click(within(document.querySelector('.panel-versions > .segmented') as HTMLElement).getByRole('button', { name: 'Source B' }))
     expect(screen.getByRole('button', { name: en('btn.switch_version') })).toBeInTheDocument()
   })
 })

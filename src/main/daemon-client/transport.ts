@@ -66,15 +66,20 @@ export function collectResponse(res: IncomingMessage, onText: (text: string) => 
   })
 }
 
-function doRequestAt(
-  record: PrinterRecord,
+interface DaemonRequestOptions {
   method: string,
   path: string,
   body?: Buffer,
   contentType?: string,
-  timeoutMs: number = DEFAULT_DAEMON_TIMEOUT_MS,
+  timeoutMs?: number,
   onUploadProgress?: UploadProgressFn,
-): Promise<string> {
+  port: number
+}
+
+function doRequestAt(record: PrinterRecord, requestOptions: DaemonRequestOptions): Promise<string> {
+  const { method, path, body, contentType, onUploadProgress, port } = requestOptions
+  const timeoutMs = requestOptions.timeoutMs ?? DEFAULT_DAEMON_TIMEOUT_MS
+
   return new Promise((resolve, reject) => {
     const agent = makeAgent(record.daemonCert!)
     const headers: Record<string, string | number> = {
@@ -85,7 +90,7 @@ function doRequestAt(
       headers['Content-Length'] = body.length
     }
     const req = httpsRequest(
-      { hostname: record.ip, port: 4269, path, method, agent, headers },
+      { hostname: record.ip, port, path, method, agent, headers },
       (res) => collectResponse(res, resolve, reject),
     )
     req.on('error', reject)
@@ -115,14 +120,16 @@ export async function doRequest(
   contentType?: string,
   timeoutMs: number = DEFAULT_DAEMON_TIMEOUT_MS,
   onUploadProgress?: UploadProgressFn,
+  port = 4269,
 ): Promise<string> {
+  const requestOptions = { method, path, body, contentType, timeoutMs, onUploadProgress, port }
   try {
-    return await doRequestAt(record, method, path, body, contentType, timeoutMs, onUploadProgress)
+    return await doRequestAt(record, requestOptions)
   } catch (error) {
     if (!isUnreachable(error)) throw error
     const liveIp = await addressResolver.resolve(record.id)
     if (!liveIp || liveIp === record.ip) throw error
 
-    return doRequestAt({ ...record, ip: liveIp }, method, path, body, contentType, timeoutMs, onUploadProgress)
+    return doRequestAt({ ...record, ip: liveIp }, requestOptions)
   }
 }

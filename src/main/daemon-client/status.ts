@@ -1,10 +1,14 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { updatePrinter, loadPrinters, checkDaemon, checkSshOpen, checkMoonraker, gradeReach, resolveLiveAddress, knownAddresses } from '../printers'
+import { updatePrinter, loadPrinters, probeDaemonPort, checkSshOpen, checkMoonraker, gradeReach, resolveLiveAddress, knownAddresses } from '../printers'
 import type { ConnectionReach, PrinterRecord, DriftReport } from '../printers'
 import { macForIp } from '../mdns/arp'
-import { fetchCapabilities, fetchDaemonStatus, fetchSelfCheck } from './client'
+import { fetchDaemonStatus } from './client'
+import { fetchMetadataResponses } from './metadata-responses'
 import { expectedDaemonVersion } from './expected-version'
+import { unverifiedDaemonState } from './access-state'
+import type { DaemonAccessState } from './access-state'
+export type { DaemonAccessState } from './access-state'
 import { runningMachineryVersions } from '../compat/system-packages'
 import { listAdapters } from '../adapter-loader'
 import { isReleaseNewer, isDaemonVersionAtLeast, reportedVersionOrNull } from '@bespok3d/contract'
@@ -20,6 +24,7 @@ export interface DaemonAnswer extends DaemonMetadata {
 
 export interface CheckDaemonResult extends DaemonAnswer {
   isManaged: boolean
+  accessState: DaemonAccessState
   reach: ConnectionReach
   sshOpen: boolean
   // The address the printer actually answered on this probe, so the renderer can adopt it when a DHCP
@@ -171,20 +176,15 @@ export async function verifyDaemonVersion(record: PrinterRecord, attemptsLeft: n
 // "managed" requires the daemon to actually ANSWER, not just hold port 4269 open: a wedged daemon
 // that accepts the TCP connect but never serves HTTP is not healthy. Returns null (not managed) when
 // the daemon is absent or unresponsive, so the caller falls through to the web/SSH ladder rungs.
-async function daemonMetadata(record: PrinterRecord): Promise<DaemonAnswer | null> {
+async function daemonMetadata(record: PrinterRecord, daemonOpen: boolean): Promise<{ metadata: DaemonAnswer } | { failure: unknown } | null> {
   if (!record.daemonToken || !record.daemonCert) return null
-  if (!(await checkDaemon(record.ip))) return null
+  if (!daemonOpen) return null
   try {
     // Bound every call: this runs on the status ping loop, so an unbounded request against a daemon
     // that holds the port open but never answers HTTP would hang the loop for that printer forever.
-    const [status, caps, selfCheck] = await Promise.all([
-      fetchDaemonStatus(record, DAEMON_QUERY_TIMEOUT_MS),
-      fetchCapabilities(record, DAEMON_QUERY_TIMEOUT_MS),
-      // A check that did not answer says nothing about the printer's health. Claiming "all fine" here
-      // is what let a broken printer look sound, so an unanswered check leaves the last known health
-      // on the record untouched instead of overwriting it with a clean bill.
-      fetchSelfCheck(record, DAEMON_QUERY_TIMEOUT_MS).catch(() => null),
-    ])
+    const responses = await fetchMetadataResponses(record, DAEMON_QUERY_TIMEOUT_MS)
+    if ('failure' in responses) return responses
+    const { status, caps, selfCheck } = responses
     const daemonUpdateAvailable = daemonNeedsUpdate(status.version)
     // The version this probe just read, not the one on the record: after a daemon update the record
     // still holds the old number until this same write lands, and the store would show it for a whole
@@ -207,7 +207,7 @@ async function daemonMetadata(record: PrinterRecord): Promise<DaemonAnswer | nul
     const printerUuid = status.printer_uuid ?? undefined
     updatePrinter(record.id, { daemonVersion: status.version, daemonUpdateAvailable, ...health, ...switchState, ...parsed, ...(learnedMac ? { mac: learnedMac } : {}), ...(printerUuid ? { printerUuid } : {}) })
 
-    return {
+    return { metadata: {
       daemonVersion: status.version,
       daemonUpdateAvailable,
       installedIds: parsed.installedIds,
@@ -221,9 +221,9 @@ async function daemonMetadata(record: PrinterRecord): Promise<DaemonAnswer | nul
       jinniCapabilities: parsed.jinniCapabilities,
       jinniExtras: parsed.jinniExtras,
       ...(printerUuid ? { printerUuid } : {}),
-    }
-  } catch {
-    return null
+    } }
+  } catch (failure) {
+    return { failure }
   }
 }
 
@@ -231,11 +231,27 @@ async function daemonMetadata(record: PrinterRecord): Promise<DaemonAnswer | nul
 // surfaces (Moonraker for "alive", SSH for "we can still fix or enroll it") so the app always knows
 // what is going on and which action to offer, instead of a bare reachable/unreachable.
 async function probeAddress(record: PrinterRecord): Promise<Omit<CheckDaemonResult, 'ip' | 'networkInterfaces'>> {
-  const metadata = await daemonMetadata(record)
-  if (metadata) return { ...metadata, isManaged: true, reach: 'managed', sshOpen: true }
-  const [moonrakerOpen, sshOpen] = await Promise.all([checkMoonraker(record.ip), checkSshOpen(record.ip)])
+  const daemonPortState = await probeDaemonPort(record.ip)
+  const daemonOpen = daemonPortState === 'open'
+  const metadataResult = await daemonMetadata(record, daemonOpen)
+  if (metadataResult && 'metadata' in metadataResult) return { ...metadataResult.metadata, isManaged: true, accessState: 'authorized', reach: 'managed', sshOpen: true }
+  if (daemonOpen) {
+    const accessState = await unverifiedDaemonState(record, metadataResult?.failure)
 
-  return { isManaged: false, reach: gradeReach(moonrakerOpen, sshOpen), sshOpen }
+    return { isManaged: false, reach: 'alive-no-ssh', sshOpen: false, accessState }
+  }
+  const [moonrakerOpen, sshOpen] = await Promise.all([checkMoonraker(record.ip), checkSshOpen(record.ip)])
+  const reach = gradeReach(moonrakerOpen, sshOpen)
+  const accessState = accessStateForPortResult(reach, daemonPortState)
+
+  return { isManaged: false, reach, sshOpen, accessState }
+}
+
+function accessStateForPortResult(reach: ConnectionReach, daemonPortState: 'open' | 'refused' | 'unreachable'): DaemonAccessState {
+  if (reach === 'offline') return 'offline'
+  if (daemonPortState === 'refused') return 'daemon-absent'
+
+  return 'unrecognized'
 }
 
 // Probe the printer, following it if its lease moved: try the recorded address first (the common,
@@ -245,9 +261,10 @@ async function probeAddress(record: PrinterRecord): Promise<Omit<CheckDaemonResu
 // grades a healthy printer dead/rootless and never leaves a later op pointed at a stale IP.
 export async function checkDaemonRecord(printerId: string): Promise<CheckDaemonResult> {
   const record = loadPrinters().find((rec) => rec.id === printerId)
-  if (!record) return { isManaged: false, reach: 'offline', sshOpen: false, ip: '', networkInterfaces: [] }
+  if (!record) return { isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '', networkInterfaces: [] }
   const atRecorded = await probeAddress(record)
   if (atRecorded.isManaged) return { ...atRecorded, ip: record.ip, networkInterfaces: knownAddresses(printerId) }
+  if (atRecorded.accessState !== 'daemon-absent' && atRecorded.accessState !== 'offline') return { ...atRecorded, ip: record.ip, networkInterfaces: knownAddresses(printerId) }
   const liveIp = await resolveLiveAddress(printerId)
   const reprobed = liveIp === record.ip ? atRecorded : await probeAddress({ ...record, ip: liveIp })
 

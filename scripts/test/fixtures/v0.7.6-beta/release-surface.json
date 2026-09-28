@@ -1,0 +1,6 @@
+{
+  "liveHost": "Bespok3d/Bespok3d-desktop",
+  "liveTags": ["v0.7.7-beta", "v0.7.6-beta"],
+  "stagingHost": "Bespok3d/Bespok3d-desktop-staging",
+  "stagingTags": ["v0.7.8-beta-staging"]
+}

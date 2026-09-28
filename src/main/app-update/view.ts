@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ReleaseInfo } from '../git-host/connector'
 import type { UpdateProblem } from './problem'
-import { isReleaseNewer, compareSemanticVersions } from '@bespok3d/contract'
+import { isReleaseNewer, compareSemanticVersions, parseSemanticVersion } from '@bespok3d/contract'
 
 // Pure mapping from an update source (electron-updater on Windows/Linux, a GitHub release on
 // macOS) to the single payload the renderer modal consumes. The action discriminates the two
@@ -93,6 +93,28 @@ export function manualUpdatePayload(release: ReleaseInfo): UpdateAvailablePayloa
 }
 
 export function newestApplicableRelease(releases: ReleaseInfo[], installedVersion: string): ReleaseInfo | null {
+  return newestNewerRelease(releases, installedVersion)
+}
+
+function acceptedByChannel(tag: string, channel: string): boolean {
+  if (channel === 'development') return false
+  const prereleaseLabel = parseSemanticVersion(tag).prereleaseLabel
+  if (channel === 'staging') return prereleaseLabel === 'staging' || (prereleaseLabel?.endsWith('-staging') ?? false)
+  if (channel !== 'live') return false
+  if (!prereleaseLabel) return parseSemanticVersion(tag).release[0] >= 1
+
+  return prereleaseLabel === 'beta'
+}
+
+export function newestChannelRelease(
+  releases: ReleaseInfo[], installedVersion: string, channel: string,
+): ReleaseInfo | null {
+  const candidates = releases.filter((release) => acceptedByChannel(release.tag, channel))
+
+  return newestNewerRelease(candidates, installedVersion)
+}
+
+function newestNewerRelease(releases: ReleaseInfo[], installedVersion: string): ReleaseInfo | null {
   const newer = releases.filter((release) => isReleaseNewer(installedVersion, release.tag))
   if (newer.length === 0) return null
 

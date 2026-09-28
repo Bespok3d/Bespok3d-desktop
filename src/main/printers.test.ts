@@ -8,7 +8,7 @@ import { tmpdir } from 'os'
 vi.mock('electron', () => ({ app: { getPath: vi.fn() } }))
 vi.mock('net', () => ({ createConnection: vi.fn() }))
 
-import { savePrinter, loadPrinters, removePrinter, checkDaemon, updatePrinter } from './printers'
+import { savePrinter, loadPrinters, removePrinter, checkDaemon, probeDaemonPort, updatePrinter } from './printers'
 import { toPublicRecord, loadPublicPrinters } from './printers'
 import { mergeCapture, appendPluginCapture, pluginCaptures } from './printers'
 import { createConnection } from 'net'
@@ -30,7 +30,7 @@ function makeSocket(event: 'connect' | 'timeout' | 'error') {
   }
   mockCreateConnection.mockImplementation(() => {
     Promise.resolve().then(() => {
-      if (event === 'error') handlers[event]?.(new Error('refused'))
+      if (event === 'error') handlers[event]?.(Object.assign(new Error('refused'), { code: 'ECONNREFUSED' }))
       else handlers[event]?.()
     })
 
@@ -269,5 +269,21 @@ describe('checkDaemon', () => {
   it('resolves false on timeout', async () => {
     makeSocket('timeout')
     expect(await checkDaemon('1.2.3.4')).toBe(false)
+  })
+})
+
+describe('probeDaemonPort', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('distinguishes a confirmed closed port from a timed out host', async () => {
+    makeSocket('error')
+    expect(await probeDaemonPort('1.2.3.4')).toBe('refused')
+    makeSocket('timeout')
+    expect(await probeDaemonPort('1.2.3.4')).toBe('unreachable')
+  })
+
+  it('reports a successful daemon socket connection as open', async () => {
+    makeSocket('connect')
+    expect(await probeDaemonPort('1.2.3.4')).toBe('open')
   })
 })

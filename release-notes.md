@@ -1,4 +1,20 @@
-# Third-party publishing and verification
+# Bespok3d 0.7.7 beta
+
+### Try the next Bespok3d release before it goes live
+
+There was no separate app for trying an upcoming release. Bespok3d Staging is a prerelease build
+you can install alongside regular Bespok3d to check it before it goes live. Staging gets its own
+updates without replacing your regular app.
+
+### Try upcoming plugins alongside the regular store
+
+The regular store did not show development versions beside published ones. Bespok3d Dev and the
+new Staging app now show both, with a choice of which version to install.
+
+### About Snapmaker U1 Extended Firmware
+
+Running Bespok3d on a U1 with Extended Firmware makes no sense. If you want a feature from Extended
+Firmware, publish a plugin that provides it, or ask for it and someone may build one.
 
 ### Plugins and lists from other publishers can now be verified
 

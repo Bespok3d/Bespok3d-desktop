@@ -5,15 +5,15 @@ import { Group } from '../../common/Group'
 import { Button } from '../../common/Button'
 import { useI18n } from '../../../i18n/context'
 import type { TFunction } from '../../../i18n'
-import { IconGitBranch, IconGitHub, IconPlus } from '../../../design-system/icons'
-import { TrustPill } from '../../common/badges/TrustPill'
+import { IconPlus } from '../../../design-system/icons'
 import { Toggle } from '../../common/Toggle'
 import { CHANNELS } from '../../../data/catalog/bundled'
 import { useCatalog } from '../../../data/catalog'
 import { allowsChannel } from '../../../data/channels'
-import type { Channel, ReleaseChannel, SourceRow } from '../../../data/types'
-import { signInWouldReach } from '../../../data/source-failure'
+import type { Channel, ReleaseChannel } from '../../../data/types'
 import cx from '../../../utils/cx'
+import { RepositorySourceRow } from './source-row'
+import { useAsyncResource } from '../../common/hooks/useAsyncResource'
 
 function useRepoSettings() {
   // primaryChannel is the stability CEILING; disabledChannels are explicit opt-outs within it.
@@ -72,53 +72,11 @@ function ChannelRow({ channel, primary, disabledChannels, t, onSetPrimary, onTog
   )
 }
 
-function sourceMeta(source: SourceRow, t: TFunction): string {
-  if (source.status === 'failed') return source.error ?? t('repos.unreachable')
-  if (source.status === 'disabled') return t('repos.off')
-
-  return `${source.pluginCount} ${t('repos.plugins')}`
-}
-
-interface SourceItemProps {
-  source: SourceRow
-  t: TFunction
-  onToggle: (enabled: boolean) => void
-  onConnectGitHub: () => void
-}
-
-function SourceItem({ source, t, onToggle, onConnectGitHub }: SourceItemProps) {
-  const needsAuth = signInWouldReach(source)
-
-  return (
-    <div className={cx('set-row repo-row', !source.enabled && 'disabled', source.status === 'failed' && 'failed')}>
-      <div className="repo-icon"><IconGitBranch size={15} /></div>
-      <div className="set-row-text">
-        <div className="set-row-label">
-          {source.name}
-          <TrustPill trust={source.trust} />
-        </div>
-        <div className="set-row-hint mono">{source.label}</div>
-        <div className="repo-meta">
-          <span>{sourceMeta(source, t)}</span>
-          {source.locked && <span className="mono dim">{t('repos.locked')}</span>}
-        </div>
-      </div>
-      <div className="set-row-control">
-        {needsAuth && (
-          <Button variant="primary" size="sm" onClick={onConnectGitHub}>
-            <IconGitHub size={13} /> {t('repos.sign_in')}
-          </Button>
-        )}
-        <Toggle on={source.enabled} onChange={onToggle} />
-      </div>
-    </div>
-  )
-}
-
 export function RepositoriesPane({ onConnectGitHub }: { onConnectGitHub?: () => void }) {
   const { t } = useI18n()
   const { sources, setSourceEnabled } = useCatalog()
   const { primaryChannel, disabledChannels, selectPrimary, toggleChannel } = useRepoSettings()
+  const { value: gitHubConnected } = useAsyncResource(() => window.b3d.gitHost.isConnected(), [])
 
   return (
     <>
@@ -145,7 +103,7 @@ export function RepositoriesPane({ onConnectGitHub }: { onConnectGitHub?: () => 
         }
       >
         {sources.map((source) => (
-          <SourceItem key={source.url} source={source} t={t} onToggle={(enabled) => setSourceEnabled(source.url, enabled)} onConnectGitHub={() => onConnectGitHub?.()} />
+          <RepositorySourceRow key={source.url} source={source} gitHubConnected={gitHubConnected !== false} t={t} onToggle={(enabled) => setSourceEnabled(source.url, enabled)} onConnectGitHub={() => onConnectGitHub?.()} />
         ))}
       </Group>
     </>

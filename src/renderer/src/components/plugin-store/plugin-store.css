@@ -617,6 +617,12 @@ button.install-zone:hover {
   min-height: 0;
   overflow-y: auto;
 }
+.panel-versions > .segmented {
+  margin: var(--space-4) var(--space-6) 0;
+  max-width: calc(100% - 2 * var(--space-6));
+  overflow-x: auto;
+}
+.panel-versions > .segmented .seg { flex-shrink: 0; }
 
 /* The single scrollable region between the fixed head/tabs and the fixed footer. Owning the scroll
    here (instead of each tab managing its own) is what keeps a long tab from growing the modal past

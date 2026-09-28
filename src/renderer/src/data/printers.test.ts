@@ -186,7 +186,7 @@ describe('pingAndUpdate', () => {
 
   it('records the connection reach on a managed answer', async () => {
     mockCheckDaemon.mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true })
-    expect((await runUpdate(ENROLLED))?.connection).toEqual({ reach: 'managed', sshOpen: true })
+    expect((await runUpdate(ENROLLED))?.connection).toEqual({ reach: 'managed', sshOpen: true, accessState: 'authorized' })
   })
 
   it('sets the printer to online and records reach when the daemon is down but SSH is up', async () => {

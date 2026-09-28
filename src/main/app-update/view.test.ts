@@ -7,6 +7,7 @@ import {
   autoInstallPayload,
   manualUpdatePayload,
   newestApplicableRelease,
+  newestChannelRelease,
   toReleaseRows,
 } from './view'
 
@@ -70,6 +71,34 @@ describe('newestApplicableRelease', () => {
 
   it('returns null when the installed version is current', () => {
     expect(newestApplicableRelease([release('v0.1.0-alpha.13')], '0.1.0-alpha.13')).toBeNull()
+  })
+})
+
+describe('newestChannelRelease', () => {
+  it('keeps Live offers on the beta or bare Live line and excludes staging and legacy pre', () => {
+    const candidates = [release('v0.7.8-beta-staging'), release('v0.7.8-pre'), release('v0.7.8-beta'), release('v0.7.8')]
+    expect(newestChannelRelease(candidates, '0.7.7-beta', 'live')?.tag).toBe('v0.7.8-beta')
+    expect(newestChannelRelease([release('v0.7.8-beta-staging')], '0.7.7-beta', 'live')).toBeNull()
+    expect(newestChannelRelease([release('v1.0.0')], '0.9.9-beta', 'live')?.tag).toBe('v1.0.0')
+    expect(newestChannelRelease([release('v0.7.8')], '0.7.7-beta', 'live')).toBeNull()
+    expect(newestApplicableRelease([release('v0.7.8-beta-staging')], '0.7.7-beta')?.tag).toBe('v0.7.8-beta-staging')
+  })
+
+  it('offers only newer terminal staging labels to Staging and nothing to development', () => {
+    const candidates = [release('v0.7.8-beta-staging'), release('v0.7.6-beta-staging'), release('v0.7.9-beta')]
+    expect(newestChannelRelease(candidates, '0.7.7-beta-staging', 'staging')?.tag).toBe('v0.7.8-beta-staging')
+    expect(newestChannelRelease(candidates, '0.7.9-beta-staging', 'staging')).toBeNull()
+    expect(newestChannelRelease([release('v0.7.8-staging')], '0.7.7-beta-staging', 'staging')?.tag).toBe('v0.7.8-staging')
+    expect(newestChannelRelease(candidates, '0.7.7-beta', 'development')).toBeNull()
+  })
+
+  it('uses the same Staging candidate on macOS, Windows and Linux auto-install paths', () => {
+    const stagingReleases = [release('v0.7.8-beta-staging'), release('v0.7.9-beta')]
+    const platforms: NodeJS.Platform[] = ['darwin', 'win32', 'linux']
+    platforms.forEach((platform) => {
+      expect(updateStrategyForPlatform(platform, undefined)).toBe('autoInstall')
+      expect(newestChannelRelease(stagingReleases, '0.7.7-beta-staging', 'staging')?.tag).toBe('v0.7.8-beta-staging')
+    })
   })
 })
 

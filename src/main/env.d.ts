@@ -5,3 +5,4 @@
 // read from the environment at runtime: a checkout with no key in the shell still builds and still
 // gates green, and the key it lacks is simply an empty string that can never send anything.
 declare const __ANALYTICS_PROJECT_TOKEN__: string
+declare const __B3D_CHANNEL__: 'development' | 'staging' | 'live'

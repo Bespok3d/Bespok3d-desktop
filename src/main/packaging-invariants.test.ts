@@ -4,8 +4,9 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { electronBuilderConfig } from '../../scripts/electron-builder.config.mjs'
 
-// The Linux artifacts are built by electron-builder from package.json, so the facts a Linux user
+// The Linux artifacts are built by electron-builder from its generated config, so the facts a Linux user
 // depends on are config, not code, and nothing else in the suite would notice them going missing.
 
 const APP_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -24,7 +25,7 @@ interface BuildConfig {
 }
 
 function buildConfig(): BuildConfig {
-  return JSON.parse(readFileSync(PACKAGE_JSON, 'utf8')).build
+  return electronBuilderConfig('live')
 }
 
 function packageScripts(): Record<string, string> {

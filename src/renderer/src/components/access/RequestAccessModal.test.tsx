@@ -8,8 +8,8 @@ import { makePrinter } from '../../test/fixtures'
 import { RequestAccessModal } from './RequestAccessModal'
 import type { B3dOverrides } from '../../test/b3d-mock'
 
-function renderModal(onGranted: ReturnType<typeof vi.fn>, b3d: B3dOverrides = {}) {
-  return setup(<RequestAccessModal printer={makePrinter({ id: 'printer-1' })} onClose={vi.fn()} onGranted={onGranted} />, { b3d })
+function renderModal(onGranted: ReturnType<typeof vi.fn>, b3d: B3dOverrides = {}, onReEnroll = vi.fn(), onClose = vi.fn()) {
+  return setup(<RequestAccessModal printer={makePrinter({ id: 'printer-1' })} state="present-awaiting-access" onClose={onClose as () => void} onGranted={onGranted as (printerId: string) => void} onReEnroll={onReEnroll} />, { b3d })
 }
 
 describe('RequestAccessModal polling flow', () => {
@@ -23,6 +23,7 @@ describe('RequestAccessModal polling flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Guide me' }))
     expect(b3d.access.request).toHaveBeenCalledWith('printer-1', '')
+    await act(async () => { await Promise.resolve() })
     expect(screen.getByText('Waiting for approval')).toBeInTheDocument()
 
     await act(async () => { vi.advanceTimersByTime(3000) })
@@ -39,9 +40,25 @@ describe('RequestAccessModal polling flow', () => {
 describe('RequestAccessModal failure', () => {
   it('shows a failure result when the request is rejected', async () => {
     var request = vi.fn().mockRejectedValue(new Error('pending cap reached'))
-    var { user } = renderModal(vi.fn(), { access: { request } })
+    var onGranted = vi.fn()
+    var onReEnroll = vi.fn()
+    var { user } = renderModal(onGranted, { access: { request } }, onReEnroll)
     await user.click(screen.getByRole('button', { name: 'Just the steps' }))
     expect(await screen.findByText('Request failed')).toBeInTheDocument()
     expect(screen.getByText(/pending cap reached/)).toBeInTheDocument()
+    expect(onGranted).not.toHaveBeenCalled()
+    expect(onReEnroll).not.toHaveBeenCalled()
+  })
+
+  it('allows a pending request to be cancelled without reporting a grant', async () => {
+    var onGranted = vi.fn()
+    var onClose = vi.fn()
+    var { user } = renderModal(onGranted, { access: { request: vi.fn().mockResolvedValue({ ok: true }) } }, vi.fn(), onClose)
+    await user.click(screen.getByRole('button', { name: 'Just the steps' }))
+    await screen.findByText('Waiting for approval')
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onGranted).not.toHaveBeenCalled()
   })
 })

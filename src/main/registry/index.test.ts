@@ -16,7 +16,8 @@ vi.mock('./resolve', () => ({ resolveCatalog: mocks.resolveCatalog }))
 vi.mock('./resolve/latest-release', () => ({ cachedRelease: mocks.cachedRelease, fetchLatestRelease: vi.fn() }))
 vi.mock('./listing-freshness', () => ({ stampListingRefreshed: mocks.stampListingRefreshed }))
 
-import { configuredSources, loadCatalog } from './index'
+import { configuredSources, loadCatalog, officialRemoteSources } from './index'
+import { APP_CHANNELS } from '../channel'
 import { normalizeRegistryUrl } from './resolve/url'
 
 const OFFICIAL_URL = 'github:Bespok3d/main-index/index.json'
@@ -28,7 +29,29 @@ const OFFICIAL_URL = 'github:Bespok3d/main-index/index.json'
 describe('configuredSources built-in roots', () => {
   it('always lists the official published list as a locked project source', () => {
     const official = configuredSources().find((source) => source.url === OFFICIAL_URL)
-    expect(official).toMatchObject({ trust: 'project', locked: true })
+    expect(official).toMatchObject({ trust: 'project', locked: true, label: 'github:Bespok3d/main-index/index.json' })
+  })
+
+  it('hands the exact Repositories name to the resolver for every configured root', async () => {
+    mocks.resolveCatalog.mockResolvedValue({
+      name: 'fixture', publisher: '', updated: '', trust: 'project', plugins: [], collections: [], registries: [], drops: [], failures: [],
+    })
+    await loadCatalog()
+
+    expect(mocks.resolveCatalog.mock.calls[0][0]).toEqual(expect.arrayContaining([
+      expect.objectContaining({ url: OFFICIAL_URL, sourceName: 'Bespok3d Official' }),
+    ]))
+  })
+
+  it('uses the unfiltered dev index as a separate named source alongside the main index', () => {
+    expect(APP_CHANNELS.map((channel) => officialRemoteSources(channel).map((source) => source.url))).toEqual([
+      [OFFICIAL_URL],
+      [OFFICIAL_URL, 'github:Bespok3d/main-index/index.json?ref=dev'],
+      [OFFICIAL_URL, 'github:Bespok3d/main-index/index.json?ref=dev'],
+    ])
+    expect(officialRemoteSources(APP_CHANNELS[1])[1]).toMatchObject({
+      label: 'github:Bespok3d/main-index/index.json?ref=dev', name: 'Bespok3d Official prerelease', trust: 'project', locked: true,
+    })
   })
 
   it('lists the bundled offline copy as a locked project source ahead of the remote', () => {
@@ -152,5 +175,21 @@ describe('loadCatalog and the release the launch pass filed', () => {
     const catalog = await loadCatalog()
 
     expect(catalog.sources.length).toBe(configuredSources().length)
+  })
+})
+
+describe('catalog refresh keeps each alternative bound to its source evidence', () => {
+  it('does not overwrite each refreshed alternative source trust or signer', async () => {
+    const live = listed('rfid-tools', '0.1.9', { registry_url: OFFICIAL_URL, trust: 'project', signer: 'Bespok3d' })
+    const tier = listed('rfid-tools', '0.1.9', {
+      registry_url: 'github:Bespok3d/main-index/index.json?ref=dev', trust: 'unknown', signer: null,
+    })
+    mocks.resolveCatalog.mockResolvedValue(resolvedInto([{ ...live, variants: [live, tier] }]))
+    const catalog = await loadCatalog()
+
+    expect(catalog.plugins[0].variants?.map((variant) => [variant.registry_url, variant.trust, variant.signer])).toEqual([
+      [OFFICIAL_URL, 'project', 'Bespok3d'],
+      ['github:Bespok3d/main-index/index.json?ref=dev', 'unknown', null],
+    ])
   })
 })

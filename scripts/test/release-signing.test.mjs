@@ -10,22 +10,21 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import electronBuilderConfigForEnvironment from '../electron-builder.config.mjs'
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const RELEASE_SCRIPT = join(REPO_ROOT, 'scripts', 'release.sh')
-const packageManifest = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'))
 
-function windowsBuildCommand() {
-  const attempt = spawnSync('bash', [RELEASE_SCRIPT, '--dry-run'], {
+function windowsBuildCommand(target = 'live') {
+  const attempt = spawnSync('bash', [RELEASE_SCRIPT, target, '--dry-run'], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
     env: { ...process.env, CSC_LINK: '/nowhere/fake.p12', CSC_KEY_PASSWORD: 'fake' },
   })
   const printed = `${attempt.stdout}\n${attempt.stderr}`
-  const announced = printed.split('\n').find((line) => line.includes('package:win'))
+  const announced = printed.split('\n').find((line) => line.includes(`package:${target}`) && line.includes('--win'))
   assert.ok(announced, `release.sh printed no Windows build line:\n${printed}`)
 
   return announced
@@ -37,10 +36,15 @@ test('the Windows build runs without the Apple signing key in its environment', 
   assert.match(announced, /-u CSC_KEY_PASSWORD\b/)
   assert.match(announced, /-u WIN_CSC_LINK\b/)
   assert.match(announced, /-u WIN_CSC_KEY_PASSWORD\b/)
+  assert.match(announced, /-u CSC_NAME\b/)
+})
+
+test('the Staging Windows build uses the Staging package target without certificate overrides', () => {
+  assert.match(windowsBuildCommand('staging'), /package:staging/)
 })
 
 test('no owner name is recorded for the Windows updater to demand', () => {
-  assert.equal(packageManifest.build.win.verifyUpdateCodeSignature, false)
+  assert.equal(electronBuilderConfigForEnvironment().win.verifyUpdateCodeSignature, false)
 })
 
 // The packer reads REGISTRY_SIGNING_KEY and nothing else, and refuses a release build that has no

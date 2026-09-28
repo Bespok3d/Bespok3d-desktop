@@ -33,7 +33,7 @@ jobs:
           path: lib_bespok3d
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       # check.sh runs the per-file licence check through `reuse`, which is not on the runner image.
       # Without it the check reports itself as skipped, so a file naming a licence whose text is

@@ -18,7 +18,11 @@ class MockSocket extends EventEmitter {
   }
 }
 
-vi.mock('ws', () => ({ default: vi.fn(() => new MockSocket()) }))
+vi.mock('ws', () => ({
+  default: vi.fn(function createMockSocket() {
+    return new MockSocket()
+  }),
+}))
 vi.mock('../client', () => ({ makeAgent: vi.fn(() => ({})) }))
 
 import { watchInstallProgress, parseEvent, batchEventFrom, installPhaseMessage } from './install-progress'

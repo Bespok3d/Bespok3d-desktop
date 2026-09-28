@@ -11,12 +11,14 @@
 // failure), one that is absent and one whose fingerprint does not match all end the same way here:
 // null, which callers surface as unproven. Never as trust.
 import * as openpgp from 'openpgp'
+import { APP_CHANNEL } from '../channel'
 import type { PublisherProvenance } from '../registry/resolve/publishing-repo'
 import { PUBLISHER_REPO, MAIN_INDEX_OWNER, MAIN_INDEX_REPO, keyFilePath, indexBucketKeyFile } from './repo'
 
 export interface KeyFileRepo {
   owner: string
   repo: string
+  ref?: string
 }
 
 export type KeyFileReader = (repo: KeyFileRepo, path: string) => Promise<string | null>
@@ -27,6 +29,7 @@ export interface KeyLookupSite {
   owner: string
   repo: string
   path: string
+  ref?: string
 }
 
 const FINGERPRINT = /^[0-9a-f]{40}$/i
@@ -38,10 +41,9 @@ export function isDeclaredFingerprint(candidate: unknown): candidate is string {
   return typeof candidate === 'string' && FINGERPRINT.test(candidate)
 }
 
-// The sites a key may live at, primary then fallback. The primary is the conventional publisher
-// repository (ADR-0013) at the same path the publish flow writes; the fallback is the org's
-// main-index key bucket (main-index/keys/README.md), where the org registers a publisher key under
-// the account-derived filename.
+// The conventional publisher repository comes first, then the org's account-named key bucket.
+// Staging and Dev also check registered keys on main-index/dev after both sites miss: a candidate
+// key can be named for its plugin rather than the GitHub account that published the signed list.
 export function keyLookupSites(provenance: PublisherProvenance, declaredFingerprint: string): KeyLookupSite[] {
   return [
     { owner: provenance.account, repo: PUBLISHER_REPO, path: keyFilePath(declaredFingerprint) },
@@ -56,11 +58,14 @@ export async function discoverPublisherKey(
   provenance: PublisherProvenance | null,
   declaredFingerprint: string,
   readFile: KeyFileReader,
+  candidateSites?: () => Promise<KeyLookupSite[]>,
 ): Promise<string | null> {
   if (!provenance || !isDeclaredFingerprint(declaredFingerprint)) return null
   const sites = keyLookupSites(provenance, declaredFingerprint)
+  const publishedKey = await firstMatchingKey(sites, declaredFingerprint, readFile)
+  if (publishedKey || !candidateSites) return publishedKey
 
-  return firstMatchingKey(sites, declaredFingerprint, readFile)
+  return firstMatchingKey(await candidateSites().catch(() => []), declaredFingerprint, readFile)
 }
 
 async function firstMatchingKey(sites: KeyLookupSite[], declaredFingerprint: string, readFile: KeyFileReader): Promise<string | null> {
@@ -73,7 +78,7 @@ async function firstMatchingKey(sites: KeyLookupSite[], declaredFingerprint: str
 }
 
 async function matchingKeyAtSite(site: KeyLookupSite, declaredFingerprint: string, readFile: KeyFileReader): Promise<string | null> {
-  const candidate = await readFile({ owner: site.owner, repo: site.repo }, site.path).catch(() => null)
+  const candidate = await readFile({ owner: site.owner, repo: site.repo, ref: site.ref }, site.path).catch(() => null)
   if (!candidate) return null
   const fetchedFingerprint = await ownFingerprint(candidate).catch(() => null)
   if (fetchedFingerprint?.toLowerCase() !== declaredFingerprint.toLowerCase()) return null
@@ -91,7 +96,8 @@ async function ownFingerprint(armoredKey: string): Promise<string> {
 // git-host connector (and through it Electron's keychain); the walk above must stay loadable in a
 // plain unit-test process that never models any of that.
 export async function discoverPublisherKeyFromHost(provenance: PublisherProvenance | null, declaredFingerprint: string): Promise<string | null> {
-  const { readPublishedKeyFile } = await import('./key-files')
+  const { readPublishedKeyFile, indexKeySites } = await import('./key-files')
+  const candidateSites = APP_CHANNEL.indexBranches.includes('dev') ? () => indexKeySites('dev') : undefined
 
-  return discoverPublisherKey(provenance, declaredFingerprint, readPublishedKeyFile)
+  return discoverPublisherKey(provenance, declaredFingerprint, readPublishedKeyFile, candidateSites)
 }

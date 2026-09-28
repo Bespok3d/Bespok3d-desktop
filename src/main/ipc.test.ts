@@ -20,7 +20,10 @@ function fakeOn(channel: string, listener: IpcListener): void {
   syncChannels.set(channel, listener)
 }
 
-const hoisted = vi.hoisted(() => ({ userDataDir: '' }))
+const hoisted = vi.hoisted(() => ({
+  userDataDir: '',
+  managedRecord: { id: 'printer-1', ip: '10.0.0.5', daemonToken: 'T', daemonCert: 'C' },
+}))
 vi.mock('electron', () => ({
   ipcMain: { handle: fakeHandle, on: fakeOn },
   shell: { openExternal: vi.fn() },
@@ -28,6 +31,12 @@ vi.mock('electron', () => ({
 }))
 vi.mock('@electron-toolkit/utils', () => ({ is: { dev: false } }))
 vi.mock('./enrollment', () => ({ checkSsh: vi.fn(), enrollPrinter: vi.fn() }))
+vi.mock('./daemon-client/status', () => ({
+  checkDaemonRecord: vi.fn(),
+  getManagedRecord: vi.fn(() => hoisted.managedRecord),
+  parseCaps: vi.fn(() => ({ installedIds: [], installedVersions: {} })),
+  recordOrThrow: vi.fn(() => hoisted.managedRecord),
+}))
 vi.mock('./adapter-loader', () => ({ getAdapter: vi.fn(), listAdapters: vi.fn().mockReturnValue([]) }))
 vi.mock('@adapters/snapmaker-u1/client/snapmaker-u1', () => ({ patchS90lmd: vi.fn() }))
 vi.mock('./keys', () => ({
@@ -60,9 +69,10 @@ vi.mock('./dev-tools/patch-engine', () => ({ buildSession: vi.fn() }))
 vi.mock('./dev-tools/patch-apply', () => ({ applyPatch: vi.fn() }))
 
 import { registerIpc } from './ipc'
-import { fetchDaemonStatus, fetchCapabilities, fetchSelfCheck, reconfigurePlugin, fetchAccessClients, grantAccess, revokeAccess } from './daemon-client/client'
+import { fetchCapabilities, reconfigurePlugin, fetchAccessClients, grantAccess, revokeAccess } from './daemon-client/client'
 import { enrollPrinter } from './enrollment'
-import { updatePrinter, loadPrinters, checkDaemon } from './printers'
+import { updatePrinter, loadPrinters } from './printers'
+import { checkDaemonRecord } from './daemon-client/status'
 import { getAdapter } from './adapter-loader'
 import { connect } from './ssh'
 import { startMdnsScan } from './mdns'
@@ -110,7 +120,7 @@ describe('registerIpc', () => {
   })
 })
 
-describe('enroll handler refreshes the record', () => {
+describe('enroll handler refreshes daemon status', () => {
   beforeEach(() => registeredHandlers.clear())
 
   it('records the true daemon version on a successful enroll, not a version-less window', async () => {
@@ -118,23 +128,14 @@ describe('enroll handler refreshes the record', () => {
     // now refreshes the record from the live daemon as soon as enroll succeeds, so the printer shows
     // its real version (and update signal) immediately.
     vi.mocked(enrollPrinter).mockResolvedValue(undefined)
-    vi.mocked(checkDaemon).mockResolvedValue(true)
-    vi.mocked(loadPrinters).mockReturnValue([
-      { id: 'printer-1', ip: '10.0.0.5', daemonToken: 'T', daemonCert: 'C' } as never,
-    ])
-    vi.mocked(fetchDaemonStatus).mockResolvedValue({ ok: true, version: '0.0.0' })
-    vi.mocked(fetchCapabilities).mockResolvedValue({ installed: {}, endpoints: [] } as never)
-    vi.mocked(fetchSelfCheck).mockResolvedValue({ ok: true, drift: [] })
+    vi.mocked(checkDaemonRecord).mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true, accessState: 'authorized', ip: '192.0.2.23', networkInterfaces: [], daemonVersion: '0.0.0' })
 
     registerIpc(() => firstWindow)
     const enroll = registeredHandlers.get('printers:enroll')
     if (!enroll) throw new Error('printers:enroll handler not registered')
     await enroll({}, 'printer-1', '10.0.0.5', 'snapmaker-u1', 'lava', 'pw', 22)
 
-    expect(updatePrinter).toHaveBeenCalledWith(
-      'printer-1',
-      expect.objectContaining({ daemonVersion: '0.0.0', daemonUpdateAvailable: false }),
-    )
+    expect(checkDaemonRecord).toHaveBeenCalledWith('printer-1')
   })
 })
 
@@ -196,7 +197,7 @@ describe('printers:checkWriteLayer handler (repair vs recover)', () => {
 // gap was invisible. These invoke each one through its registered handler, so an incomplete mock makes
 // the call throw "X is not a function" and the test fails - the gap can no longer hide.
 describe('store + access handlers reach their daemon-client calls', () => {
-  const managed = { id: 'printer-1', ip: '10.0.0.5', daemonToken: 'T', daemonCert: 'C' }
+  const managed = hoisted.managedRecord
   const progressWindow = { webContents: { send: vi.fn() }, isDestroyed: () => false } as unknown as BrowserWindow
 
   beforeEach(() => {

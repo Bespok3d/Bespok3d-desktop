@@ -224,17 +224,22 @@ if [ "$RUN_SHELL" -eq 1 ]; then
     # dev run reads "Bespok3d Dev" in the macOS menu bar instead of "Electron".
     run_check "dev menu-bar name rail" node --test "$REPO_ROOT/scripts/test/dev-bundle-name.test.mjs"
 
-    # The version rail: proves a bump moves the semver triple and carries the maturity label ("beta")
-    # across untouched, so the beta line never starts counting its label the way the alphas did.
+    # Release targets share one entry point but have distinct package versions and publication rules.
     run_check "release version rail" node --test "$REPO_ROOT/scripts/test/release-bump.test.mjs"
+
+    run_check "macOS signing route rail" node --test "$REPO_ROOT/scripts/test/mac-signing.test.mjs"
+    run_check "release target dispatch rail" node --test "$REPO_ROOT/scripts/test/release-targets.test.mjs"
+    run_check "go-live orchestration and anonymous verifier" node --test "$REPO_ROOT/scripts/test/golive-run.test.mjs" "$REPO_ROOT/scripts/test/golive-candidate.test.mjs" "$REPO_ROOT/scripts/test/golive-effects.test.mjs" "$REPO_ROOT/scripts/test/golive-index.test.mjs" "$REPO_ROOT/scripts/test/golive-website.test.mjs" "$REPO_ROOT/scripts/test/verify-live.test.mjs"
+    if [ -n "${B3D_RELEASE_INTEGRATION_WORKSPACE:-}" ]; then
+        run_check "actual consumer go-live rehearsal" node --test "$REPO_ROOT/scripts/test/golive-integration.test.mjs"
+    fi
 
     # The Windows installer must carry no code signature and no owner name: a Windows build that
     # inherits the mac signing key gets signed with a certificate Windows cannot trust, and every
     # copy already installed then refuses every later update, permanently.
     run_check "windows update signing rail" node --test "$REPO_ROOT/scripts/test/release-signing.test.mjs"
 
-    # 'publish' cuts a real release and 'pre' cuts a prerelease, so the difference between the two is
-    # one word that a slip can get wrong, and 'pre' must keep the landing page out of it.
+    # Live publishes normally; Staging is always a prerelease and cannot alter the website.
     run_check "release kind rail" node --test "$REPO_ROOT/scripts/test/release-publish-kind.test.mjs"
 
     # The landing page's download buttons are generated: if this breaks, the page offers four dead links.

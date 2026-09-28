@@ -1,9 +1,17 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, afterEach, vi } from 'vitest'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { createRequire } from 'module'
+import { releaseNotesFromHtml } from './release-notes-html'
+import { parseSemanticVersion } from '@bespok3d/contract'
 import { readPublishedReleases, fetchReleaseInstallers, releaseDownloadUrl } from './public-releases'
+import { newestApplicableRelease, toReleaseRows } from './view'
+import type { ReleaseInfo } from '../git-host/connector'
 
 const APP_REPO = { owner: 'Bespok3d', repo: 'Bespok3d-desktop' }
+const requireFromTest = createRequire(import.meta.url)
 
 function atomEntry(tag: string, title: string, notesHtml: string): string {
   return `<entry>
@@ -60,11 +68,56 @@ function serveTornBody(): void {
 
 const FEED_URL = 'https://github.com/Bespok3d/Bespok3d-desktop/releases.atom'
 
+async function replayLegacyManualListing(): Promise<ReleaseInfo[]> {
+  const fixtureRoot = join(process.cwd(), 'scripts/test/fixtures/v0.7.6-beta')
+  const shippedReader = readFileSync(join(fixtureRoot, 'app-update/public-releases.tagged-source'), 'utf8')
+  const shippedIndex = readFileSync(join(fixtureRoot, 'app-update/index.tagged-source'), 'utf8')
+  const surface = JSON.parse(readFileSync(join(fixtureRoot, 'release-surface.json'), 'utf8')) as { liveTags: string[]; stagingTags: string[] }
+  const shippedReaderModule = loadShippedManualReader(shippedReader)
+  expect(shippedIndex).toContain('newestApplicableRelease(releases, app.getVersion())')
+  expect(shippedIndex).toContain('toReleaseRows(releases, app.getVersion())')
+  serveUrls({ [FEED_URL]: atomFeed(surface.liveTags.map((tag) => atomEntry(tag, tag.slice(1), 'live notes'))) })
+
+  const { releases } = await shippedReaderModule.readPublishedReleases(APP_REPO)
+
+  expect(releases.some((release) => surface.stagingTags.includes(release.tag))).toBe(false)
+
+  return releases
+}
+
+function loadShippedManualReader(source: string): { readPublishedReleases: typeof readPublishedReleases } {
+  const typescript = requireFromTest('typescript') as typeof import('typescript')
+  const transformedSource = typescript.transpileModule(source, {
+    compilerOptions: { module: typescript.ModuleKind.CommonJS, target: typescript.ScriptTarget.ES2022 },
+  }).outputText
+  const shippedModule = { exports: {} as { readPublishedReleases?: typeof readPublishedReleases } }
+  function shippedRequire(moduleName: string): unknown {
+    if (moduleName === './release-notes-html') return { releaseNotesFromHtml }
+    if (moduleName === '@bespok3d/contract') return { parseSemanticVersion }
+
+    throw new Error(`Unexpected shipped reader import: ${moduleName}`)
+  }
+
+  new Function('require', 'module', 'exports', transformedSource)(shippedRequire, shippedModule, shippedModule.exports)
+
+  if (!shippedModule.exports.readPublishedReleases) throw new Error('Shipped reader has no readPublishedReleases export')
+
+  return { readPublishedReleases: shippedModule.exports.readPublishedReleases }
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
 
 describe('readPublishedReleases', () => {
+  it('replays the shipped v0.7.6-beta manual reader against a Live-only host', async () => {
+    const releases = await replayLegacyManualListing()
+
+    expect(releases.map((release) => release.tag)).toEqual(['v0.7.7-beta', 'v0.7.6-beta'])
+    expect(newestApplicableRelease(releases, '0.7.6-beta')?.tag).toBe('v0.7.7-beta')
+    expect(toReleaseRows(releases, '0.7.6-beta')).toHaveLength(2)
+  })
+
   it('reads the public release feed, with no account and no api', async () => {
     const requested = serveUrls({ [FEED_URL]: atomFeed([atomEntry('v0.1.0-alpha.34', '0.1.0-alpha.34', 'notes')]) })
 
@@ -171,6 +224,16 @@ describe('fetchReleaseInstallers', () => {
     await fetchReleaseInstallers(APP_REPO, 'v0.1.0', 'linux', 'arm64')
 
     expect(requested).toEqual([releaseDownloadUrl(APP_REPO, 'v0.1.0', 'latest-linux-arm64.yml')])
+  })
+
+  it('reads Staging rollback installer metadata from the selected update channel', async () => {
+    const stagingUpdateFile = releaseDownloadUrl(APP_REPO, 'v0.1.0-staging', 'bespok3d-staging-mac.yml')
+    const requested = serveUrls({ [stagingUpdateFile]: MAC_UPDATE_YML })
+
+    const installers = await fetchReleaseInstallers(APP_REPO, 'v0.1.0-staging', 'darwin', 'arm64', 'bespok3d-staging')
+
+    expect(installers.map((installer) => installer.name)).toEqual(['Bespok3d-0.1.0-arm64.dmg', 'Bespok3d-0.1.0.dmg'])
+    expect(requested).toEqual([stagingUpdateFile])
   })
 
   // A release older than this platform's build has nothing to install; the caller opens the release

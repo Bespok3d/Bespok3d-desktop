@@ -14,12 +14,11 @@ import { toFetchedRegistry } from './served-index'
 import type { ResolvedIndex } from './served-index'
 import { activeConnector } from '../../git-host'
 
-const GITHUB_REGISTRY_URL = /^github:([^/]+)\/([^/]+)\/(.+)$/
+const GITHUB_REGISTRY_URL = /^github:([^/]+)\/([^/]+)\/([^?]+)(?:\?ref=(main|dev))?$/
 const RELEASE_DOWNLOAD_BASE = 'https://github.com'
 const RAW_FILE_BASE = 'https://raw.githubusercontent.com'
-// A contents request that names no branch is answered with the repo's DEFAULT branch, and every
-// Bespok3d repo defaults to the working branch `dev`. A published list lives on main, so every read
-// of one names main - otherwise the store shows whatever is mid-flight in the repo.
+// A contents request without a branch reads the repo's default dev branch. Live must name main;
+// the additional Staging/Dev source explicitly names dev, so neither falls through to the other.
 const PUBLISHED_BRANCH = 'main'
 const NO_ACCESS = 'Not found, or you do not have access to this private list'
 
@@ -27,6 +26,7 @@ export interface GitHubListRef {
   owner: string
   repo: string
   path: string
+  branch: 'main' | 'dev'
 }
 
 // Null means "not this transport", which is what lets the entry point route on the ref alone.
@@ -34,7 +34,7 @@ export function toGitHubListRef(url: string): GitHubListRef | null {
   const match = GITHUB_REGISTRY_URL.exec(url)
   if (!match) return null
 
-  return { owner: match[1], repo: match[2], path: match[3] }
+  return { owner: match[1], repo: match[2], path: match[3], branch: (match[4] ?? PUBLISHED_BRANCH) as 'main' | 'dev' }
 }
 
 export async function fetchGitHubRegistry(ref: RegistryRef, list: GitHubListRef): Promise<FetchedRegistry> {
@@ -53,9 +53,11 @@ function assetNamed(path: string): string {
 // through `/releases/latest/` means the newest release is found by the url itself, with no API call
 // spent discovering a version.
 function anonymousAvenues(list: GitHubListRef): string[] {
+  if (list.branch === 'dev') return [`${RAW_FILE_BASE}/${list.owner}/${list.repo}/dev/${list.path}`]
+
   return [
     `${RELEASE_DOWNLOAD_BASE}/${list.owner}/${list.repo}/releases/latest/download/${assetNamed(list.path)}`,
-    `${RAW_FILE_BASE}/${list.owner}/${list.repo}/${PUBLISHED_BRANCH}/${list.path}`,
+    `${RAW_FILE_BASE}/${list.owner}/${list.repo}/${list.branch}/${list.path}`,
   ]
 }
 
@@ -73,9 +75,9 @@ async function resolveGitHubIndex(list: GitHubListRef): Promise<ResolvedIndex> {
 async function fetchGitHubAuthorized(list: GitHubListRef): Promise<ServedIndex> {
   const repoRef = { owner: list.owner, repo: list.repo }
   const connector = activeConnector()
-  const file = await connector.getFile(repoRef, list.path, PUBLISHED_BRANCH).catch(connectorFailure)
+  const file = await connector.getFile(repoRef, list.path, list.branch).catch(connectorFailure)
   if (!file) throw new RegistryFetchError('notfound', NO_ACCESS)
-  const signatureFile = await connector.getFile(repoRef, `${list.path}.sig`, PUBLISHED_BRANCH).catch(() => null)
+  const signatureFile = await connector.getFile(repoRef, `${list.path}.sig`, list.branch).catch(() => null)
 
   return { bytes: file.content, signature: signatureFile?.content ?? null }
 }

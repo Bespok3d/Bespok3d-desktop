@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ComponentType } from 'react'
-import type { Plugin, ReleaseChannel } from '../../../data/types'
+import type { Plugin, ReleaseChannel, TrustTier } from '../../../data/types'
 import type { IconProps } from '../../../design-system/icons'
 import { useI18n } from '../../../i18n/context'
 import cx from '../../../utils/cx'
@@ -10,6 +10,7 @@ import { IconCamera, IconSpool, IconScreen, IconChip, IconGlobe, IconSliders, Ic
 import { TrustPill } from '../../common/badges/TrustPill'
 import { StatusPill } from '../../common/badges/StatusPill'
 import { ChannelPill } from '../../common/badges/ChannelPill'
+import type { TFunction } from '../../../i18n'
 
 export const CAT_ICONS: Record<string, ComponentType<IconProps>> = {
   camera: IconCamera, filament: IconSpool, screen: IconScreen, ui: IconGlobe,
@@ -32,6 +33,9 @@ interface PluginCardProps {
   // The packaged upstream version of the effective variant, when this plugin wraps an external
   // project; shown as the primary version with the plugin version in brackets.
   displaySwVersion?: string
+  displaySource?: string
+  installedSourceLabel?: string
+  displayTrust?: TrustTier
   displayChannel: ReleaseChannel
   // The channel the printer's installed copy came from; badged only when installed.
   installedChannel?: ReleaseChannel
@@ -62,6 +66,12 @@ function cardChannelBadge(installed: boolean, installedChannel: ReleaseChannel |
   return displayChannel === 'stable' ? null : { channel: displayChannel, installed: false }
 }
 
+function cardSourceBadge(t: TFunction, installed: boolean, displayed?: string, installedLabel?: string): string | null {
+  if (!installed) return displayed ? t('store.offered_from_source', { source: displayed }) : null
+
+  return installedLabel ? t('store.installed_from_source', { source: installedLabel }) : null
+}
+
 // The foot button reflects the plugin's state on the printer: update if a newer version is available,
 // manage if it is installed and current, install otherwise (the install path is not yet wired, so it
 // carries a "coming soon" hint instead of a click handler).
@@ -73,11 +83,12 @@ function CardFootAction({ hasUpdate, installed, onClick }: { hasUpdate: boolean;
   return <span className="btn primary sm" role="button" tabIndex={0} title={t('store.coming_soon')}>{t('btn.install')}</span>
 }
 
-export function PluginCard({ plugin, installed, deactivated, hasUpdate, displayVersion, displaySwVersion, displayChannel, installedChannel, layout, showCategory, onOpen, selecting = false, selectable = false, selected = false, onToggleSelect }: PluginCardProps) {
+export function PluginCard({ plugin, installed, deactivated, hasUpdate, displayVersion, displaySwVersion, displaySource, installedSourceLabel, displayTrust, displayChannel, installedChannel, layout, showCategory, onOpen, selecting = false, selectable = false, selected = false, onToggleSelect }: PluginCardProps) {
   const { t } = useI18n()
   const CatIcon = CAT_ICONS[plugin.category] ?? IconChip
   var iconClass = CAT_CLASS[plugin.category] ?? 'mac'
   const badge = cardChannelBadge(installed, installedChannel, displayChannel)
+  const sourceBadge = cardSourceBadge(t, installed, displaySource, installedSourceLabel)
   const primaryAction = cardPrimaryAction(selecting, selectable, onToggleSelect, onOpen)
   function footClick(event: { stopPropagation: () => void }) {
     event.stopPropagation()
@@ -94,8 +105,9 @@ export function PluginCard({ plugin, installed, deactivated, hasUpdate, displayV
         <div className="card-heading">
           <div className="card-title">{plugin.title}</div>
           <div className="card-publisher">
-            <TrustPill trust={plugin.trust} icon title={plugin.trust} />
+            <TrustPill trust={displayTrust ?? plugin.trust} icon title={displayTrust ?? plugin.trust} />
             <span className="card-version">{versionLabel(t, displayVersion, displaySwVersion)}</span>
+            {sourceBadge && <span className="multi-source source-badge" title={sourceBadge}>{sourceBadge}</span>}
             {badge && (
               <ChannelPill channel={badge.channel} installed={badge.installed} title={badge.installed ? t('store.installed_channel') : undefined} />
             )}

@@ -1,55 +1,43 @@
-// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// Until the public beta every cut went up as a GitHub prerelease, so the flag was hard-coded and
-// nothing could say otherwise. Now 'publish' means a real release and 'pre' is what asks for a
-// prerelease, which makes the difference between the two something a slip can get wrong. This proves
-// each word lands on the release GitHub is told to make, and that 'pre' keeps the landing page out
-// of it: a build published as one to try must never become the download the page offers.
-//
-// Every case runs --dry-run, which prints what it would do and uploads nothing.
+// SPDX-FileCopyrightText: Copyright (C) 2026 Luciano Colosio
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
-const RELEASE_SCRIPT = join(REPO_ROOT, 'scripts', 'release.sh')
+const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
+const releaseScript = join(repositoryRoot, 'scripts', 'release.sh')
 
-function runRelease(...args) {
-  const attempt = spawnSync('bash', [RELEASE_SCRIPT, ...args, '--dry-run'], {
-    cwd: REPO_ROOT,
+function runRelease(argumentsList) {
+  const attempt = spawnSync('bash', [releaseScript, ...argumentsList, '--dry-run'], {
+    cwd: repositoryRoot,
     encoding: 'utf8',
   })
 
   return { ...attempt, output: `${attempt.stdout}${attempt.stderr}` }
 }
 
-// What kind of release the run would make, as the run itself announces it.
-function announcedKind(...args) {
-  const attempt = runRelease(...args)
-  const announced = attempt.output.match(/as an? (prerelease|release)\b/)
-  assert.ok(announced, `release.sh announced no release kind:\n${attempt.output}`)
-
-  return announced[1]
-}
-
-test('publish on its own makes a real release', () => {
-  assert.equal(announcedKind('publish'), 'release')
-})
-
-test('pre makes a prerelease', () => {
-  assert.equal(announcedKind('pre', 'publish'), 'prerelease')
-})
-
-test('pre leaves the landing page alone even when web is asked for', () => {
-  const attempt = runRelease('pre', 'publish', 'web')
+test('Live publish selects a normal GitHub release by default', () => {
+  const attempt = runRelease(['publish'])
 
   assert.equal(attempt.status, 0, attempt.output)
-  assert.match(attempt.output, /'pre' never touches the landing page/)
+  assert.match(attempt.output, /as a release/)
+})
+
+test('Staging publish selects a prerelease and excludes the website', () => {
+  const attempt = runRelease(['staging', 'publish'])
+
+  assert.equal(attempt.status, 0, attempt.output)
+  assert.match(attempt.output, /as a prerelease/)
   assert.doesNotMatch(attempt.output, /Pointing the landing page/)
 })
 
-test('pre without publish is refused, never ignored', () => {
-  assert.notEqual(runRelease('pre').status, 0)
+test('Staging website requests and legacy pre targets are refused', () => {
+  const stagingWeb = runRelease(['staging', 'web'])
+  const legacyPre = runRelease(['pre', 'publish'])
+
+  assert.notEqual(stagingWeb.status, 0)
+  assert.match(stagingWeb.output, /Staging cannot update the website/)
+  assert.notEqual(legacyPre.status, 0)
+  assert.match(legacyPre.output, /explicit 'staging' target/)
 })

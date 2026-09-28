@@ -32,7 +32,7 @@ PLIST="$DEV_BUNDLE/Contents/Info.plist"
 command -v plutil >/dev/null 2>&1 || exit 0
 
 # The packaged build's name plus the dev marker, matching app.setName() in src/main/index.ts.
-BUNDLE_NAME="$(jq -r '.build.productName' "$REPO_ROOT/package.json") Dev"
+BUNDLE_NAME="$(jq -r '.development.productName' "$REPO_ROOT/scripts/channel-table.json")"
 
 CURRENT=$(plutil -extract CFBundleName raw "$PLIST" 2>/dev/null || echo '')
 if [ "$CURRENT" = "$BUNDLE_NAME" ]; then
