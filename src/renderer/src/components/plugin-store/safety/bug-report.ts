@@ -18,6 +18,24 @@ function sourceRef(plugin: Plugin): string {
   return plugin.sources.map((source) => source.registryUrl).find(Boolean) ?? 'unknown'
 }
 
+function githubRepositoryFromDownloadUrl(downloadUrl: string | undefined): string | null {
+  if (!downloadUrl) return null
+
+  try {
+    const downloadAddress = new URL(downloadUrl)
+    const pathSegments = downloadAddress.pathname.split('/').filter(Boolean)
+    const isReleaseDownload = pathSegments[2] === 'releases' && pathSegments[3] === 'download'
+    if (downloadAddress.hostname !== 'github.com' || !isReleaseDownload) return null
+
+    const [repositoryOwner, repositoryName] = pathSegments
+    if (!repositoryOwner || !repositoryName) return null
+
+    return `https://github.com/${repositoryOwner}/${repositoryName}`
+  } catch {
+    return null
+  }
+}
+
 const REPORT_LOG_PER_SECTION = 2500
 
 // Keep a section's header + its TAIL (a traceback sits at the end of each service's log) within
@@ -70,13 +88,18 @@ export function buildBugReport(ctx: ReportContext): string {
   ].join('\n')
 }
 
-// A prefilled "New issue" URL for the plugin's repo, derived from its github: source ref. Returns
-// null when the source is not a github ref (then the caller falls back to copy-to-clipboard).
+// A prefilled "New issue" URL for the plugin's repo, derived from its package download URL when
+// possible and otherwise its github: source ref. Returns null when neither identifies a GitHub repo.
 export function repoIssueUrl(plugin: Plugin, title: string, body: string): string | null {
-  const ref = plugin.sources.map((source) => source.registryUrl).find((url) => url.startsWith('github:'))
-  if (!ref) return null
-  const [owner, repo] = ref.slice('github:'.length).split('/')
-  if (!owner || !repo) return null
+  const downloadRepository = plugin.sources
+    .map((source) => githubRepositoryFromDownloadUrl(source.downloadUrl))
+    .find(Boolean)
+  if (downloadRepository) return githubIssueUrl(downloadRepository, title, body)
 
-  return githubIssueUrl(`https://github.com/${owner}/${repo}`, title, body)
+  const registryRef = plugin.sources.map((source) => source.registryUrl).find((url) => url.startsWith('github:'))
+  if (!registryRef) return null
+  const [registryOwner, registryRepository] = registryRef.slice('github:'.length).split('/')
+  if (!registryOwner || !registryRepository) return null
+
+  return githubIssueUrl(`https://github.com/${registryOwner}/${registryRepository}`, title, body)
 }

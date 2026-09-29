@@ -9,6 +9,7 @@ import AdmZip from 'adm-zip'
 import { packagedBinary, appEnv, rendererWindow, bundledDaemonVersion } from './app-launch'
 import { startStubDaemon } from './stub-daemon'
 import type { StubDaemon } from './stub-daemon'
+import { seedManagedPrinter } from './managed-printer-fixture'
 import { buildLocalIndex } from '../src/main/registry/local/build-index'
 import type { StoredManifest } from '../src/main/registry/local/b3-manifest'
 
@@ -28,20 +29,6 @@ const REFUSED_PLUGIN: StoredManifest = {
   description: 'E2E fixture: a package whose signature fails verification',
   category: 'other',
   install: {},
-}
-
-// The app re-grades every saved printer from `checking` at boot through a live daemon probe
-// (hooks/printers.ts); with nothing answering, the record grades offline and the Install button never
-// enables. The stub daemon (127.0.0.1:4269) is what printer-dropdown.spec.ts uses for the same reason.
-function seedManagedPrinter(userData: string, daemon: StubDaemon): void {
-  const printersDir = join(userData, 'printers')
-  mkdirSync(printersDir, { recursive: true })
-  const record = {
-    id: 'demo-u1', nick: 'Workshop U1', model: 'Snapmaker U1', adapter: 'snapmaker-u1',
-    host: 'demo-u1.local', ip: '127.0.0.1', status: 'managed', installedIds: [],
-    daemonVersion: bundledDaemonVersion(), daemonCert: daemon.cert, daemonToken: daemon.token,
-  }
-  writeFileSync(join(printersDir, 'demo-u1.json'), JSON.stringify(record, null, 2), 'utf-8')
 }
 
 function buildRefusedArchive(manifest: StoredManifest): Buffer {
@@ -78,8 +65,11 @@ test.describe('refused install: a package whose signature fails verification', (
   })
 
   test.afterAll(async () => {
-    await app?.close()
-    await daemon?.stop()
+    try {
+      await app?.close()
+    } finally {
+      await daemon?.stop()
+    }
   })
 
   test('clicking Install on a signature-refused package shows the refusal modal, not a generic error', async () => {

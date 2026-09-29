@@ -7,7 +7,10 @@ import { buildBugReport, repoIssueUrl } from './bug-report'
 
 const plugin = {
   id: 'moonraker-notify', version: '0.1.0', publisher: 'Bespok3d',
-  sources: [{ registryUrl: 'github:Bespok3d/u1-extras/index.json' }],
+  sources: [{
+    registryUrl: 'github:Bespok3d/u1-extras/index.json',
+    downloadUrl: 'https://github.com/Bespok3d/u1-extras/releases/download/v0.1.0/moonraker-notify.b3',
+  }],
 } as unknown as Plugin
 
 const printer = { daemonVersion: '0.11.0-dev', adapter: 'snapmaker-u1', jinniVersion: '0.1.1', model: 'Snapmaker U1', firmwareVersion: '1.4.0.246' } as unknown as Printer
@@ -33,14 +36,24 @@ describe('buildBugReport', () => {
 })
 
 describe('repoIssueUrl', () => {
-  it('builds a prefilled GitHub new-issue URL from a github: source', () => {
+  it('prefers the plugin repository from its package download URL', () => {
     const url = repoIssueUrl(plugin, 'title', 'body')
     expect(url).toContain('https://github.com/Bespok3d/u1-extras/issues/new?')
     expect(url).toContain('title=title')
+    expect(url).not.toContain('main-index')
   })
 
-  it('returns null when the source is not a github ref', () => {
-    const local = { ...plugin, sources: [{ registryUrl: 'local:bundled' }] } as unknown as Plugin
+  it('falls back to the GitHub registry ref without a usable package download URL', () => {
+    const fallbackPlugin = {
+      ...plugin,
+      sources: [{ registryUrl: 'github:Bespok3d/main-index/index.json', downloadUrl: 'https://example.com/plugin.b3' }],
+    } as unknown as Plugin
+    const url = repoIssueUrl(fallbackPlugin, 'title', 'body')
+    expect(url).toContain('https://github.com/Bespok3d/main-index/issues/new?')
+  })
+
+  it('returns null when neither source identifies a GitHub repository', () => {
+    const local = { ...plugin, sources: [{ registryUrl: 'local:bundled', downloadUrl: 'https://example.com/plugin.b3' }] } as unknown as Plugin
     expect(repoIssueUrl(local, 't', 'b')).toBeNull()
   })
 })
