@@ -421,7 +421,7 @@ update_web() {
   echo ""
   echo "Pointing the landing page at $version ($index)..."
 
-  node "$REPO_ROOT/scripts/update-web-downloads.mjs" "$index" "$version" "$OUTPUT_DIR" "$PUBLISH_REPO" "${dry_run_flag[@]}"
+  node "$REPO_ROOT/scripts/update-web-downloads.mjs" "$index" "$version" "$OUTPUT_DIR" "$PUBLISH_REPO" "${dry_run_flag[@]+"${dry_run_flag[@]}"}"
 }
 
 do_bump=false
