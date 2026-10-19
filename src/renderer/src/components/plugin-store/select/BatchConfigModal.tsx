@@ -7,7 +7,16 @@ import { useI18n } from '../../../i18n/context'
 import { Button } from '../../common/Button'
 import { Modal } from '../../common/overlay/Modal'
 import { FieldInput, ScopeControl, configComplete } from '../config/config-form'
-import { initialBatchValues } from './batch-install'
+import { configAddressError } from '../../../data/address'
+import { httpPortError } from '../../../data/ports'
+import { initialBatchValues, requiredFields } from './batch-install'
+import type { CapturedPluginValues } from './batch-install'
+
+function requiredValuesUsable(plugin: Plugin, values: Record<string, string>): boolean {
+  const fields = requiredFields(plugin)
+
+  return configComplete(fields, values) && !configAddressError(fields, values) && !httpPortError(fields, values)
+}
 
 // One selected plugin's config fields on the batch-capture screen. Reuses the same FieldInput (and,
 // when scope choices are threaded, the same ScopeControl) the per-plugin panel uses, so a field
@@ -23,7 +32,7 @@ function PluginConfigGroup({ plugin, values, scopes, onField, onScopeChange }: {
     <div className="batch-config-group">
       <div className="batch-config-plugin">{plugin.title}</div>
       <div className="config-fields">
-        {(plugin.config ?? []).map((field) => (
+        {requiredFields(plugin).map((field) => (
           <div key={field.key} className="config-field">
             <label>{field.label}{field.required && <span className="config-req" aria-hidden>*</span>}</label>
             <FieldInput field={field} value={values[field.key] ?? ''} onChange={(next) => onField(field.key, next)} />
@@ -50,14 +59,14 @@ export function BatchConfigModal({ plugins, savedVars, busy, scopes, onScopeChan
   scopes?: Record<string, ScopeChoice>
   onScopeChange?: (fieldKey: string, choice: ScopeChoice) => void
   onCancel: () => void
-  onConfirm: (captured: Record<string, string>) => void
+  onConfirm: (captured: CapturedPluginValues) => void
 }) {
   const { t } = useI18n()
   const [values, setValues] = useState(() => initialBatchValues(plugins, savedVars))
-  const ready = plugins.every((plugin) => configComplete(plugin.config ?? [], values))
+  const ready = plugins.every((plugin) => requiredValuesUsable(plugin, values[plugin.id] ?? {}))
 
-  function setField(key: string, value: string) {
-    setValues((prev) => ({ ...prev, [key]: value }))
+  function setField(pluginId: string, key: string, value: string) {
+    setValues((previous) => ({ ...previous, [pluginId]: { ...previous[pluginId], [key]: value } }))
   }
 
   return (
@@ -68,7 +77,7 @@ export function BatchConfigModal({ plugins, savedVars, busy, scopes, onScopeChan
       </div>
       <div className="batch-config-scroll">
         {plugins.map((plugin) => (
-          <PluginConfigGroup key={plugin.id} plugin={plugin} values={values} scopes={scopes} onField={setField} onScopeChange={onScopeChange} />
+          <PluginConfigGroup key={plugin.id} plugin={plugin} values={values[plugin.id] ?? {}} scopes={scopes} onField={(key, value) => setField(plugin.id, key, value)} onScopeChange={onScopeChange} />
         ))}
       </div>
       <div className="batch-config-foot">

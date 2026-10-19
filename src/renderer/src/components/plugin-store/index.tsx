@@ -112,7 +112,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
     live: { installedIds: liveInstalledIds, installedVersions: liveInstalledVersions, deactivatedIds: liveDeactivatedIds },
     filters: { query, channels: facets.channels, categories: facets.categories, trusts: facets.trusts, statuses: facets.statuses, printerOnly: facets.printerOnly, grouped, sortKey, sortDir, ceilingFor, disabledChannels },
   })
-  const batch = useBatchInstall({ catalogPlugins, installedIds, deactivatedIds, savedVars: savedPluginVars ?? {}, printerId: managedId, printActive, blockedActions, daemonVersion: printer?.daemonVersion, onSaveVars, onInstallSelected })
+  const batch = useBatchInstall({ catalogPlugins, installedIds, deactivatedIds, savedVars: savedPluginVars ?? {}, printerId: managedId, printActive, blockedActions, daemonVersion: printer?.daemonVersion, onSaveVars, onInstallSelected, scopeFor })
   const uninstall = useBatchUninstall({ plugins: catalogPlugins, installedIds, printerId: managedId, onUninstallSelected })
   const selection = activeSelection(batch, uninstall)
   const cardCtx: StoreCardContext = { installedIds, installedVersions, installedSources, installedChannels: printer?.installedChannels ?? {}, deactivatedIds, ceilingFor, disabledChannels, selection }
@@ -169,7 +169,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
         <CollectionDetailPanel
           collection={panelCollection} plugins={catalogPlugins} collections={collections} installedIds={installedIds} printerId={managedId} installing={installingSelected}
           printActive={printActive} blockedActions={blockedActions} daemonVersion={printer?.daemonVersion}
-          savedPluginVars={savedPluginVars} onSaveVars={onSaveVars} onInstallSelected={onInstallSelected} onMigrateSelected={onMigrateSelected}
+          savedPluginVars={savedPluginVars} onSaveVars={onSaveVars} onInstallSelected={onInstallSelected} onMigrateSelected={onMigrateSelected} scopeFor={scopeFor}
           onOpenPlugin={setPanelPlugin} onClose={() => setPanelCollection(null)}
         />
       )}

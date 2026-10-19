@@ -1,5 +1,12 @@
 # Bespok3d 0.7.7 beta
 
+### Installing several plugins asks for every required value on one screen
+
+Installing several plugins at once, or a whole list, put every setting of every plugin into one
+shared form, and two plugins using the same setting shared one value. The app now shows one section
+for each plugin that needs required values, keeps each plugin's answers apart, and only installs
+once every one is filled in and valid.
+
 ### Try the next Bespok3d release before it goes live
 
 There was no separate app for trying an upcoming release. Bespok3d Staging is a prerelease build

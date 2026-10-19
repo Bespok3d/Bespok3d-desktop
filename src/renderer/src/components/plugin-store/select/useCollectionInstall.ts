@@ -5,11 +5,11 @@ import type { Plugin } from '../../../data/types'
 import type { ScopeChoice } from '../../../data/plugin-vars'
 import { seedFieldScopes } from '../../../data/plugin-vars'
 import { useI18n } from '../../../i18n/context'
-import { gatedInstallSpecs, pluginsNeedingConfig, capturedConfigFields } from './batch-install'
-import type { BatchInstallContext } from './batch-install'
+import { gatedInstallSpecs, pluginsNeedingConfig, capturedConfigFields, unambiguousCapturedValues } from './batch-install'
+import type { BatchInstallContext, CapturedPluginValues } from './batch-install'
 
 export interface CollectionInstall {
-  // The missing members that still need a required value, so BatchConfigModal should show. Null when no
+  // The missing members with required fields, so BatchConfigModal should show. Null when no
   // capture is pending.
   configPlugins: Plugin[] | null
   // The capture screen's per-field scope choices, hint-seeded when the capture opens and persisted
@@ -18,7 +18,7 @@ export interface CollectionInstall {
   setConfigScope: (fieldKey: string, choice: ScopeChoice) => void
   installMembers: (missing: Plugin[]) => void
   cancelConfig: () => void
-  confirmConfig: (captured: Record<string, string>) => void
+  confirmConfig: (captured: CapturedPluginValues) => void
 }
 
 // "Install all" for a collection: install the not-yet-installed members in ONE batch (the daemon's
@@ -31,35 +31,36 @@ export function useCollectionInstall(deps: BatchInstallContext): CollectionInsta
   const [configScopes, setConfigScopes] = useState<Record<string, ScopeChoice>>({})
   const { t } = useI18n()
 
-  function runInstall(members: Plugin[], vars: Record<string, string>) {
+  function runInstall(members: Plugin[], captured: CapturedPluginValues = {}) {
     if (!deps.printerId || !deps.onInstallSelected) return
     const memberIds = members.map((member) => member.id)
-    const specs = gatedInstallSpecs(t, memberIds, { ...deps, savedVars: vars })
+    const specs = gatedInstallSpecs(t, memberIds, deps, captured)
     if (specs.length === 0) return
 
     deps.onInstallSelected(deps.printerId, specs)
   }
 
   function installMembers(missing: Plugin[]) {
-    const needingConfig = pluginsNeedingConfig(missing, deps.savedVars)
+    const needingConfig = pluginsNeedingConfig(missing)
     if (needingConfig.length === 0) {
-      runInstall(missing, deps.savedVars)
+      runInstall(missing)
 
       return
     }
-    setConfigScopes(seedFieldScopes(capturedConfigFields(needingConfig), undefined))
+    setConfigScopes(seedFieldScopes(capturedConfigFields(needingConfig), deps.scopeFor))
     setPendingMembers(missing)
   }
 
-  function confirmConfig(captured: Record<string, string>) {
-    const needingConfig = pendingMembers ? pluginsNeedingConfig(pendingMembers, deps.savedVars) : []
-    deps.onSaveVars?.({ values: captured, fields: capturedConfigFields(needingConfig), scopeChoices: configScopes })
-    if (pendingMembers) runInstall(pendingMembers, { ...deps.savedVars, ...captured })
+  function confirmConfig(captured: CapturedPluginValues) {
+    const needingConfig = pendingMembers ? pluginsNeedingConfig(pendingMembers) : []
+    const uniqueValues = unambiguousCapturedValues(captured)
+    deps.onSaveVars?.({ values: uniqueValues, fields: capturedConfigFields(needingConfig).filter((field) => field.key in uniqueValues), scopeChoices: configScopes })
+    if (pendingMembers) runInstall(pendingMembers, captured)
     setPendingMembers(null)
   }
 
   return {
-    configPlugins: pendingMembers ? pluginsNeedingConfig(pendingMembers, deps.savedVars) : null,
+    configPlugins: pendingMembers ? pluginsNeedingConfig(pendingMembers) : null,
     configScopes,
     setConfigScope: (fieldKey, choice) => setConfigScopes((current) => ({ ...current, [fieldKey]: choice })),
     installMembers,

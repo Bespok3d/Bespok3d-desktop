@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
-import { batchInstallable, installablePlugins, pluginsNeedingConfig, initialBatchValues, buildInstallSpecs } from './batch-install'
+import { batchInstallable, installablePlugins, pluginsNeedingConfig, initialBatchValues, buildInstallSpecs, unambiguousCapturedValues } from './batch-install'
 import { makePlugin } from '../../../test/fixtures'
 
 describe('batchInstallable', () => {
@@ -23,26 +23,44 @@ describe('pluginsNeedingConfig', () => {
   const cpuTemp = makePlugin({ id: 'cpu-temp' })
 
   it('flags a plugin whose required field has no saved value or default', () => {
-    expect(pluginsNeedingConfig([spoolman, cpuTemp], {}).map((entry) => entry.id)).toEqual(['spoolman'])
+    expect(pluginsNeedingConfig([spoolman, cpuTemp]).map((entry) => entry.id)).toEqual(['spoolman'])
   })
 
-  it('does not flag it once the required value is saved', () => {
-    expect(pluginsNeedingConfig([spoolman], { SPOOLMAN_SERVER: 'printer.local' })).toEqual([])
+  it('shows the required step even when a value was saved', () => {
+    expect(pluginsNeedingConfig([spoolman])).toEqual([spoolman])
   })
 
-  it('does not flag a required field that carries a usable default', () => {
+  it('shows a required field with a usable default', () => {
     const withDefault = makePlugin({ id: 'mainsail', config: [{ key: 'PORT', label: 'Port', type: 'text', scope: 'global', required: true, default: '81' }] })
-    expect(pluginsNeedingConfig([withDefault], {})).toEqual([])
+    expect(pluginsNeedingConfig([withDefault])).toEqual([withDefault])
+  })
+
+  it('keeps a plugin with optional fields on the direct path', () => {
+    const optional = makePlugin({ id: 'optional', config: [{ key: 'NOTE', label: 'Note', type: 'text', scope: 'global' }] })
+    expect(pluginsNeedingConfig([optional])).toEqual([])
+  })
+})
+
+describe('captured plugin values', () => {
+  it('sends each plugin only its own value when field keys match', () => {
+    const plugins = [
+      makePlugin({ id: 'first', config: [{ key: 'SERVER', label: 'Server', type: 'text', scope: 'global', required: true }] }),
+      makePlugin({ id: 'second', config: [{ key: 'SERVER', label: 'Server', type: 'text', scope: 'global', required: true }] }),
+    ]
+    const captured = { first: { SERVER: 'first.local' }, second: { SERVER: 'second.local' } }
+    expect(buildInstallSpecs(plugins, ['first', 'second'], [], {}, captured).map((spec) => spec.vars))
+      .toEqual([{ SERVER: 'first.local' }, { SERVER: 'second.local' }])
+    expect(unambiguousCapturedValues(captured)).toEqual({})
   })
 })
 
 describe('initialBatchValues', () => {
   it('pre-fills every field across the plugins, saved value winning over default', () => {
     const plugins = [
-      makePlugin({ id: 'spoolman', config: [{ key: 'SERVER', label: 'Server', type: 'text', scope: 'global', default: 'localhost' }] }),
-      makePlugin({ id: 'auth', config: [{ key: 'FORCE', label: 'Force', type: 'text', scope: 'global', default: 'false' }] }),
+      makePlugin({ id: 'spoolman', config: [{ key: 'SERVER', label: 'Server', type: 'text', scope: 'global', required: true, default: 'localhost' }] }),
+      makePlugin({ id: 'auth', config: [{ key: 'FORCE', label: 'Force', type: 'text', scope: 'global', required: true, default: 'false' }] }),
     ]
-    expect(initialBatchValues(plugins, { SERVER: 'printer.local' })).toEqual({ SERVER: 'printer.local', FORCE: 'false' })
+    expect(initialBatchValues(plugins, { SERVER: 'printer.local' })).toEqual({ spoolman: { SERVER: 'printer.local' }, auth: { FORCE: 'false' } })
   })
 })
 

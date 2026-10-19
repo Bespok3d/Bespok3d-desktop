@@ -31,6 +31,7 @@ export interface BatchMemberContext extends BatchGateState {
   catalogPlugins: Plugin[]
   installedIds: string[]
   savedVars: Record<string, string>
+  capturedVars?: Record<string, Record<string, string>>
   // The daemon version this printer reported. A plugin whose card is greyed out because this printer
   // runs an older daemon than it declares has to be refused here too, or the batch offers what the
   // card refuses and the install fails on the printer instead of before it. A printer that has not
@@ -66,13 +67,15 @@ export function batchBlockReason(t: TFunction, state: BatchGateState): InstallBl
 // port another UI holds is not a refusal: the batch gives this member a free port instead
 // (`buildInstallSpecs`). The batch-wide reasons answer first, exactly as they do for a single install.
 export function memberBlockReason(t: TFunction, plugin: Plugin, context: BatchMemberContext): InstallBlock | null {
+  const memberVars = { ...context.savedVars, ...context.capturedVars?.[plugin.id] }
+
   return installBlockReason(t, {
     printerId: context.printerId,
     printActive: context.printActive,
     blockedActions: context.blockedActions,
     conflicts: installedConflicts(context.catalogPlugins, plugin.id, context.installedIds),
-    portProblem: httpPortError(plugin.config ?? [], pluginInstallVars(plugin, context.savedVars)),
-    addressError: configAddressError(plugin.config ?? [], pluginInstallVars(plugin, context.savedVars)),
+    portProblem: httpPortError(plugin.config ?? [], pluginInstallVars(plugin, memberVars)),
+    addressError: configAddressError(plugin.config ?? [], pluginInstallVars(plugin, memberVars)),
     daemonFloorUnmet: daemonFloorVerdict(plugin, context.daemonVersion).floorUnmet,
     configReady: true,
     missingFields: [],

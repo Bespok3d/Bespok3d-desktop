@@ -7,6 +7,7 @@ import { setup } from '../../test/harness'
 import { makeT } from '../../i18n'
 import { makeIndexEntry, makePrinter, makeCapabilities } from '../../test/fixtures'
 import type { IndexEntry } from '../../data/types'
+import type { PluginConfigField } from '../../data/types'
 import { PluginStore } from '.'
 
 const en = makeT('en')
@@ -15,9 +16,10 @@ function managedStore(
   handlers: { onInstallSelected?: ReturnType<typeof vi.fn>; onUninstallSelected?: ReturnType<typeof vi.fn>; onSaveVars?: ReturnType<typeof vi.fn> },
   catalog: IndexEntry[],
   installed: Record<string, string> = {},
+  scopeFor?: (field: PluginConfigField) => 'global' | 'printer',
 ) {
   return setup(
-    <PluginStore printer={makePrinter({ status: 'managed' })} grouped={false} onInstallSelected={(handlers.onInstallSelected ?? vi.fn()) as (printerId: string, specs: PluginUpdateSpec[]) => void} onUninstallSelected={(handlers.onUninstallSelected ?? vi.fn()) as (printerId: string, pluginIds: string[], cascade: boolean) => void} onSaveVars={handlers.onSaveVars as (save: import('../../data/plugin-vars/types').PluginVarsSave) => void} />,
+    <PluginStore printer={makePrinter({ status: 'managed' })} grouped={false} onInstallSelected={(handlers.onInstallSelected ?? vi.fn()) as (printerId: string, specs: PluginUpdateSpec[]) => void} onUninstallSelected={(handlers.onUninstallSelected ?? vi.fn()) as (printerId: string, pluginIds: string[], cascade: boolean) => void} onSaveVars={handlers.onSaveVars as (save: import('../../data/plugin-vars/types').PluginVarsSave) => void} scopeFor={scopeFor} />,
     { withCatalog: true, catalog, b3d: { store: { capabilities: vi.fn().mockResolvedValue(makeCapabilities(installed)) } } },
   )
 }
@@ -66,6 +68,22 @@ describe('PluginStore multi-select install', () => {
       fields: [expect.objectContaining({ key: 'SPOOLMAN_SERVER', scope: 'global' })],
       scopeChoices: { SPOOLMAN_SERVER: 'printer' },
     })
+  })
+
+  it('keeps a printer override scoped to this printer when confirming saved required values', async () => {
+    const onSaveVars = vi.fn()
+    const { user } = managedStore({ onSaveVars }, [
+      makeIndexEntry({ name: 'spoolman', title: 'Spoolman', config: [{ key: 'SERVER', label: 'Server', type: 'text', required: true }] }),
+    ], {}, () => 'printer')
+    await user.click(await screen.findByRole('button', { name: en('store.select') }))
+    await user.click(screen.getByText(en('store.select_install')))
+    await user.click(screen.getByText('Spoolman'))
+    await user.click(screen.getByRole('button', { name: en('store.install_selected', { count: 1 }) }))
+    const modal = screen.getByText(en('batch_config.title')).closest('.batch-config-modal') as HTMLElement
+    expect(within(modal).getByRole('button', { name: en('store.scope_this_printer') })).toHaveClass('active')
+    await user.type(within(modal).getByRole('textbox'), 'printer.local')
+    await user.click(within(modal).getByRole('button', { name: en('batch_config.install', { count: 1 }) }))
+    expect(onSaveVars).toHaveBeenCalledWith(expect.objectContaining({ scopeChoices: { SERVER: 'printer' } }))
   })
 
   it('offers no select mode for a printer that is not managed', async () => {
