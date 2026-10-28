@@ -72,3 +72,23 @@ describe('usePanelConfigState scope-flip retention', () => {
     expect(reopened.result.current.multiScopes.SPOOLMAN_LOCATION).toBe('global')
   })
 })
+
+describe('usePanelConfigState values an Update sends', () => {
+  const SERVER_FIELD: PluginConfigField = { key: 'SPOOLMAN_SERVER', label: 'Server', type: 'text', default: 'localhost', scope: 'global' }
+  const serverPlugin = makePlugin({ id: 'spoolman', title: 'Spoolman', config: [SERVER_FIELD] })
+
+  function openWith(installed: boolean) {
+    return renderHook(() => usePanelConfigState({
+      plugin: serverPlugin, plugins: [serverPlugin], installed, installedIds: installed ? ['spoolman'] : [],
+      savedVars: {}, printerId: 'printer-1',
+    }))
+  }
+
+  it('an installed plugin with no saved value sends no default, so the printer keeps its own', () => {
+    expect(openWith(true).result.current.sendVars).toEqual({})
+  })
+
+  it('a fresh install still sends the default it shows', () => {
+    expect(openWith(false).result.current.sendVars).toEqual({ SPOOLMAN_SERVER: 'localhost' })
+  })
+})

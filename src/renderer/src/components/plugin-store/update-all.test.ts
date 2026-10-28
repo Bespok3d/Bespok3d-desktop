@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
-import { updatablePlugins, pluginInstallVars, buildUpdateSpecs } from './update-all'
+import { updatablePlugins, pluginInstallVars, pluginSavedVars, buildUpdateSpecs } from './update-all'
 import { printerVarsView } from '../../data/plugin-vars'
 import type { Plugin, PluginSource } from '../../data/types'
 import { installedFromRecords } from '../../data/channels/updates'
@@ -101,14 +101,33 @@ describe('pluginInstallVars', () => {
   })
 })
 
+describe('pluginSavedVars', () => {
+  it('sends only what the user saved, never a manifest default', () => {
+    const spoolman = plugin({
+      config: [
+        { key: 'SPOOLMAN_SERVER', label: 'Server', type: 'text', default: 'localhost' },
+        { key: 'SPOOLMAN_PORT', label: 'Port', type: 'text', default: '7912' },
+      ],
+    } as Partial<Plugin>)
+    expect(pluginSavedVars(spoolman, { SPOOLMAN_PORT: '7999' })).toEqual({ SPOOLMAN_PORT: '7999' })
+  })
+})
+
 describe('buildUpdateSpecs', () => {
-  it('emits one spec per updatable plugin with its vars and missing deps', () => {
+  it('emits one spec per updatable plugin with its saved vars and missing deps', () => {
     const plugins = [
       plugin({ id: 'leaf', version: '2.0.0', deps: ['core'], config: [{ key: 'OPT', label: 'Opt', type: 'text', default: 'd' }] } as Partial<Plugin>),
       plugin({ id: 'core', version: '1.0.0' }),
     ]
-    const specs = buildUpdateSpecs(plugins, [], onPrinter({ leaf: '1.0.0' }), {})
-    expect(specs).toEqual([{ pluginId: 'leaf', vars: { OPT: 'd' }, depIds: ['core'] }])
+    const specs = buildUpdateSpecs(plugins, [], onPrinter({ leaf: '1.0.0' }), { OPT: 'saved' })
+    expect(specs).toEqual([{ pluginId: 'leaf', vars: { OPT: 'saved' }, depIds: ['core'] }])
+  })
+
+  // The lost Spoolman server: a default sent as if it were the user's value beat the printer's own.
+  it('leaves a field with no saved value out, so the printer keeps the value it runs', () => {
+    const plugins = [plugin({ id: 'leaf', version: '2.0.0', config: [{ key: 'OPT', label: 'Opt', type: 'text', default: 'd' }] } as Partial<Plugin>)]
+    const specs = buildUpdateSpecs(plugins, ['leaf'], onPrinter({ leaf: '1.0.0' }), {})
+    expect(specs).toEqual([{ pluginId: 'leaf', vars: {}, depIds: [] }])
   })
 
   it('omits an already-installed dependency from the spec', () => {

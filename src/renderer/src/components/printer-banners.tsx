@@ -5,6 +5,7 @@ import type { Printer, ConnectionReach } from '../data/types'
 import { jinniLags } from '../data/printers'
 import { useI18n } from '../i18n/context'
 import { PrinterBanner } from './common/PrinterBanner'
+import { PrinterProblemBanner } from './PrinterProblemBanner'
 import type { DaemonAccessState } from '../../../main/daemon-client/status'
 
 export const EXPECTED_RESTART_GRACE_MS = 5 * 60 * 1000
@@ -218,9 +219,9 @@ export function PrinterBanners({ selectedPrinter, bundledJinniVersion, onRepair,
 
   if (printerProblemBannerCondition(selectedPrinter)) {
     return (
-      <PrinterBanner
-        message={t('banner.printer_problem_body', { name: selectedPrinter.nick || selectedPrinter.model, count: String(printerProblemCount(selectedPrinter)) })}
-        actionLabel={t('banner.printer_problem_action')}
+      <PrinterProblemBanner
+        printerName={selectedPrinter.nick || selectedPrinter.model}
+        problems={selectedPrinter.printerProblems ?? []}
         onAction={() => onRecoverDrift(selectedPrinter.id)}
       />
     )

@@ -5,6 +5,7 @@ import type { Plugin, PluginConfigField } from '../../../../data/types'
 import type { PluginVarsSave, ScopeChoice } from '../../../../data/plugin-vars'
 import { seedFieldScopes } from '../../../../data/plugin-vars'
 import { initialConfigValues } from '../../config/config-form'
+import { userGivenValues } from '../../config/values'
 import type { PortClaimPlan } from '../../../../data/ports'
 import { httpPortField, httpPortValue, uiPortFields, suggestedPort, portClaimPlan, portSwapNote, steppedDownPort } from '../../../../data/ports'
 
@@ -71,7 +72,8 @@ export function usePanelConfigState(input: {
   onSaveVars?: (save: PluginVarsSave) => void
 }) {
   const { plugin, plugins, installed, installedIds, savedVars, printerId, scopeFor, onSaveVars } = input
-  const [multiVars, setMultiVars] = useState(() => seedUiPort(plugin, plugins, installed, installedIds, savedVars))
+  const [seedVars] = useState(() => seedUiPort(plugin, plugins, installed, installedIds, savedVars))
+  const [multiVars, setMultiVars] = useState(seedVars)
   const [multiScopes, setMultiScopes] = useState(() => seedFieldScopes(plugin.config ?? [], scopeFor))
   const { portClaim, claimFormPort } = uiPortControls({ plugin, plugins, installedIds, savedVars, printerId, onSaveVars })
   // A flip is a direct action on the preference store, not draft state: it persists the field's
@@ -85,9 +87,10 @@ export function usePanelConfigState(input: {
   function saveConfigVars(values: Record<string, string>) {
     onSaveVars?.({ values, fields: plugin.config ?? [], scopeChoices: multiScopes })
   }
+  const sendVars = installed ? userGivenValues(multiVars, seedVars, savedVars) : multiVars
   function persistInstallVars() {
-    if (plugin.config) saveConfigVars(multiVars)
+    if (plugin.config) saveConfigVars(sendVars)
   }
 
-  return { multiVars, setMultiVars, multiScopes, setFieldScope, portClaim, claimFormPort, saveConfigVars, persistInstallVars }
+  return { multiVars, sendVars, setMultiVars, multiScopes, setFieldScope, portClaim, claimFormPort, saveConfigVars, persistInstallVars }
 }

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
 import type { PluginConfigField } from '../../../data/types'
-import { configComplete, initialConfigValues, missingRequiredFields } from './values'
+import { configComplete, initialConfigValues, missingRequiredFields, userGivenValues } from './values'
 
 // A manifest is JSON and the printer reports its saved vars as JSON, so a `number` field's default
 // and its reported value both arrive as a real number however the declared string type reads. These
@@ -40,5 +40,21 @@ describe('a setting the manifest declares as a number', () => {
 
     expect(values.listen_port).toBe('8080')
     expect(configComplete(MANIFEST_FIELDS, values)).toBe(true)
+  })
+})
+
+describe('userGivenValues', () => {
+  const seed = { SPOOLMAN_SERVER: 'localhost', SPOOLMAN_PORT: '7912' }
+
+  it('leaves out a value the form only shows as its default', () => {
+    expect(userGivenValues(seed, seed, {})).toEqual({})
+  })
+
+  it('keeps a value the user saved, even when it equals the default', () => {
+    expect(userGivenValues(seed, seed, { SPOOLMAN_PORT: '7912' })).toEqual({ SPOOLMAN_PORT: '7912' })
+  })
+
+  it('keeps a value the user changed in the form', () => {
+    expect(userGivenValues({ ...seed, SPOOLMAN_SERVER: 'spoolman.example' }, seed, {})).toEqual({ SPOOLMAN_SERVER: 'spoolman.example' })
   })
 })

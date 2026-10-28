@@ -140,6 +140,15 @@ describe('resolveCatalog list-of-lists', () => {
   })
 })
 
+describe('resolveCatalog shared sub-lists', () => {
+  it('fetches a sub-list two roots share once, so its plugins show once per source', async () => {
+    const catalogs = { main: index('Main', [], ['shared']), dev: index('Dev', [], ['shared']), shared: index('Shared', [entry('reader')]) }
+    const result = await resolveCatalog([root('main'), root('dev')], fetcherFrom(catalogs), DEFAULT_LIMITS, noop)
+    expect(result.registries).toHaveLength(3)
+    expect(pluginNames(result)).toEqual(['reader'])
+  })
+})
+
 describe('resolveCatalog sub-list trust', () => {
   it('honors the trust the parent declared on a sub-list, not the parent own trust', async () => {
     const parent = { ...index('Root', [entry('one')]), lists: [{ name: 'Org', url: 'org', trust: 'project' as const }, { name: 'Ext', url: 'ext', trust: 'community' as const }] }

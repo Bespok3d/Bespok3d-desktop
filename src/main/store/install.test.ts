@@ -20,8 +20,8 @@ vi.mock('./record-sync', async (importOriginal) => ({
   capsAfterInstall: vi.fn(),
   recordAppliedVars: () => ({}),
 }))
-vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn(), installPlugin: vi.fn(), fetchDaemonStatus: vi.fn() }))
-vi.mock('../daemon-client/status', () => ({ getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }) }))
+vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn(), installPlugin: vi.fn(), fetchDaemonStatus: vi.fn(), fetchPluginConfig: vi.fn() }))
+vi.mock('../daemon-client/status', () => ({ getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }), DAEMON_QUERY_TIMEOUT_MS: 8000 }))
 vi.mock('../daemon-client/feeds/install-progress', () => ({ watchInstallProgress: vi.fn(), installPhaseMessage: (phase: string) => phase }))
 vi.mock('../daemon-client/guard', () => ({ daemonGuardMessage: vi.fn() }))
 vi.mock('../registry/resolve/latest-release', () => ({ fetchLatestRelease: vi.fn() }))
@@ -34,7 +34,7 @@ import { updatePrinter } from '../printers'
 import { loadCatalog } from '../registry'
 import { findCatalogVariant, resolveArchiveBytes, discardCachedArchive } from './catalog-archive'
 import { capsAfterInstall } from './record-sync'
-import { fetchCapabilities, installPlugin, fetchDaemonStatus } from '../daemon-client/client'
+import { fetchCapabilities, installPlugin, fetchDaemonStatus, fetchPluginConfig } from '../daemon-client/client'
 import { getManagedRecord } from '../daemon-client/status'
 import { watchInstallProgress } from '../daemon-client/feeds/install-progress'
 import { daemonGuardMessage } from '../daemon-client/guard'
@@ -72,6 +72,7 @@ function stubTheHappyPathAround(archiveBytes: Buffer): void {
   vi.mocked(fetchCapabilities).mockResolvedValue({} as never)
   vi.mocked(watchInstallProgress).mockResolvedValue(() => undefined)
   vi.mocked(installPlugin).mockResolvedValue({ steps: [] } as never)
+  vi.mocked(fetchPluginConfig).mockResolvedValue(null)
   vi.mocked(capsAfterInstall).mockResolvedValue({ installedIds: ['idle-timeout'] } as never)
 }
 
@@ -150,6 +151,28 @@ describe('runStoreInstall package verification', () => {
     expect(installPlugin).toHaveBeenCalled()
     const [, recordPatch] = vi.mocked(updatePrinter).mock.calls[0]
     expect(patchAppliedToRecord(recordPatch).installedPackageTrust).toEqual({ 'idle-timeout': 'unknown' })
+  })
+})
+
+// The lost Spoolman server: an Update from an app that never saved a setting must keep the one the
+// printer already runs, while a value the user gave this app still wins.
+describe('runStoreInstall with settings the printer already holds', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('fills a setting the app does not have from the printer, and keeps the app value over it', async () => {
+    stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(fetchPluginConfig).mockResolvedValue({ SERVER: 'spoolman.example', PORT: '7912' })
+    await installGuarded({} as BrowserWindow, 'printer-1', 'idle-timeout', { PORT: '7999' })
+    const [, , , sentVars] = vi.mocked(installPlugin).mock.calls[0]
+    expect(sentVars).toEqual({ SERVER: 'spoolman.example', PORT: '7999' })
+  })
+
+  it('sends the app values alone when the printer cannot answer', async () => {
+    stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(fetchPluginConfig).mockRejectedValue(new Error('printer did not answer'))
+    await installGuarded({} as BrowserWindow, 'printer-1', 'idle-timeout', { PORT: '7999' })
+    const [, , , sentVars] = vi.mocked(installPlugin).mock.calls[0]
+    expect(sentVars).toEqual({ PORT: '7999' })
   })
 })
 

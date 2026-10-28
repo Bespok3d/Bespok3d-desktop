@@ -24,6 +24,7 @@ import { failedLogsAfter, refusalSentence, refusedAttempt } from './failed-insta
 import { sendUpload } from './progress'
 import { capsOrFallback } from './record-sync'
 import { missingDependencyIds } from './missing-deps'
+import { requestsWithPrinterVars } from './printer-vars'
 import type { PackageOrigin } from './catalog-variant'
 import { reportEvent } from '../analytics'
 
@@ -215,8 +216,9 @@ function guardedPoster(post: BatchPoster): BatchPoster {
   }
 }
 
-async function runStoreBatch(win: BrowserWindow, printerId: string, specs: PluginUpdateSpec[], post: BatchPoster): Promise<BatchResult> {
+async function runStoreBatch(win: BrowserWindow, printerId: string, requested: PluginUpdateSpec[], post: BatchPoster): Promise<BatchResult> {
   const record = getManagedRecord(printerId)
+  const specs = await requestsWithPrinterVars(record, requested)
   const catalog = (await loadCatalog()).plugins
   const printer = await printerAsItStands(record)
   // The ordered plan (deps first) is decided here; the renderer renders every row up front, then ticks

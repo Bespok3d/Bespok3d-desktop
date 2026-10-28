@@ -91,6 +91,17 @@ describe('PrinterBanners maintenance actions', () => {
     expect(handlers.onRecoverDrift).toHaveBeenCalledWith('printer-1')
   })
 
+  it('names the half removed plugin, offers a clean up and explains it behind the info icon', async () => {
+    var handlers = makeHandlers()
+    var printer = makePrinter({ status: 'managed', printerProblems: [{ kind: 'plugin_half_removed', detail: 'spoolman', pluginId: 'spoolman' }] })
+    var { user } = renderBanners(printer, handlers)
+    expect(screen.getByText(en('banner.printer_problem_half_removed_body', { name: printer.nick || printer.model, plugin: 'spoolman' }))).toBeTruthy()
+    await user.click(screen.getByTitle(en('explainer.show')))
+    expect(screen.getByText(en('banner.printer_problem_line.plugin_half_removed', { plugin: 'spoolman' }))).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: en('banner.printer_problem_cleanup_action') }))
+    expect(handlers.onRecoverDrift).toHaveBeenCalledWith('printer-1')
+  })
+
   it('shows the jinni-update banner when the deployed jinni lags the bundled one', async () => {
     var handlers = makeHandlers()
     var { user } = renderBanners(makePrinter({ status: 'managed', jinniVersion: '0.1.0' }), handlers, '0.1.1')

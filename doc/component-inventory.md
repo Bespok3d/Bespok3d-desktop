@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-288 exported components + hooks across 22 areas.
+289 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -352,6 +352,7 @@ as you touch the file.
 - `FirstRun` (component) - [components/FirstRun.tsx](../src/renderer/src/components/FirstRun.tsx)
 - `LocalDropZone` (component) - [components/LocalDropZone.tsx](../src/renderer/src/components/LocalDropZone.tsx)
 - `PrinterBanners` (component) - [components/printer-banners.tsx](../src/renderer/src/components/printer-banners.tsx)
+- `PrinterProblemBanner` (component) - [components/PrinterProblemBanner.tsx](../src/renderer/src/components/PrinterProblemBanner.tsx)
 - `PrinterUpdateCallout` (component) - [components/PrinterUpdateCallout.tsx](../src/renderer/src/components/PrinterUpdateCallout.tsx) - The actionable update strip a printer surface shows when a device-side update is pending. Shared by
 
 ## Other: data

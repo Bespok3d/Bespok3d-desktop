@@ -21,9 +21,9 @@ vi.mock('./record-sync', () => ({ capsOrFallback: vi.fn() }))
 vi.mock('../daemon-client/client', async () => {
   const { DaemonHttpError } = await vi.importActual<typeof import('../daemon-client/transport')>('../daemon-client/transport')
 
-  return { DaemonHttpError, fetchCapabilities: vi.fn(), fetchDaemonStatus: vi.fn(), updateBatchPackages: vi.fn(), installBatchPackages: vi.fn() }
+  return { DaemonHttpError, fetchCapabilities: vi.fn(), fetchDaemonStatus: vi.fn(), fetchPluginConfig: vi.fn(), updateBatchPackages: vi.fn(), installBatchPackages: vi.fn() }
 })
-vi.mock('../daemon-client/status', () => ({ getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }) }))
+vi.mock('../daemon-client/status', () => ({ DAEMON_QUERY_TIMEOUT_MS: 8000, getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }) }))
 vi.mock('../analytics', () => ({ reportEvent: vi.fn() }))
 
 import { orderedBatchPluginIds, runStoreUpdateBatch, runStoreInstallBatch } from './update-batch'
@@ -33,7 +33,7 @@ import type { PrinterRecord } from '../printers'
 import { findCatalogVariant, resolveArchiveBytes, discardCachedArchive } from './catalog-archive'
 import { streamBatchProgress } from './batch-progress'
 import { capsOrFallback } from './record-sync'
-import { DaemonHttpError, fetchCapabilities, fetchDaemonStatus, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
+import { DaemonHttpError, fetchCapabilities, fetchDaemonStatus, fetchPluginConfig, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
 import { getManagedRecord } from '../daemon-client/status'
 import { reportEvent } from '../analytics'
 
@@ -67,6 +67,7 @@ function stubTheBatchAround(archiveBytes: Buffer): void {
   vi.mocked(resolveArchiveBytes).mockResolvedValue(archiveBytes)
   vi.mocked(fetchCapabilities).mockResolvedValue({} as never)
   vi.mocked(fetchDaemonStatus).mockResolvedValue({ version: '0.13.0' } as never)
+  vi.mocked(fetchPluginConfig).mockResolvedValue(null)
   vi.mocked(streamBatchProgress).mockResolvedValue(() => undefined)
   vi.mocked(updateBatchPackages).mockResolvedValue(IDLE_TIMEOUT_INSTALLED as never)
   vi.mocked(installBatchPackages).mockResolvedValue(IDLE_TIMEOUT_INSTALLED as never)
@@ -598,5 +599,39 @@ describe('a batch sends the dependencies it worked out for itself, not only the 
     stubBatchWhereTheUpdateNeedsPrefs({ installedIds: ['print-prefs-core'], deactivatedIds: [] })
     await updateBatch()
     expect(pluginIdsSentToThePrinter()).toEqual(['idle-timeout'])
+  })
+})
+
+// An app with no saved settings for a plugin sent an update carrying none, the printer refused the
+// required Spoolman address, and the user was left with a half removed plugin. The printer still held
+// the address it was last given.
+describe('settings an update carries when this app holds none', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function varsSentToThePrinter(): Record<string, string> | undefined {
+    const [firstCall] = vi.mocked(updateBatchPackages).mock.calls
+
+    return firstCall?.[1][0]?.vars
+  }
+
+  it('fills a setting the app lacks from the value saved on the printer', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(fetchPluginConfig).mockResolvedValue({ SPOOLMAN_SERVER: 'http://spoolman.example:7912' })
+    await updateBatch()
+    expect(varsSentToThePrinter()).toEqual({ SPOOLMAN_SERVER: 'http://spoolman.example:7912' })
+  })
+
+  it('sends the app value over the printer value', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(fetchPluginConfig).mockResolvedValue({ SPOOLMAN_SERVER: 'http://old.example:7912' })
+    await runStoreUpdateBatch({} as BrowserWindow, 'printer-1', [{ pluginId: 'idle-timeout', vars: { SPOOLMAN_SERVER: 'http://new.example:7912' } }])
+    expect(varsSentToThePrinter()).toEqual({ SPOOLMAN_SERVER: 'http://new.example:7912' })
+  })
+
+  it('still sends the app values when the printer cannot say what it holds', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(fetchPluginConfig).mockRejectedValue(new Error('printer unreachable'))
+    await runStoreUpdateBatch({} as BrowserWindow, 'printer-1', [{ pluginId: 'idle-timeout', vars: { PORT: '8080' } }])
+    expect(varsSentToThePrinter()).toEqual({ PORT: '8080' })
   })
 })

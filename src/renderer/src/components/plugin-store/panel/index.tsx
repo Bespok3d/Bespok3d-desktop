@@ -231,7 +231,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   // A deep link can request a starting tab; else on an update open straight to the changelog so the
   // user sees what changed before updating. An unavailable tab is corrected by the activeTab guard.
   const [tab, setTab] = useState<DetailTab>((initialTab as DetailTab) ?? (hasUpdate && hasReleaseNotes(plugin) ? 'changelog' : 'overview'))
-  const installVars = multiFields ? multiVars : undefined
+  const installVars = multiFields ? configState.sendVars : undefined
   const portProblem = httpPortError(multiFields ?? [], installVars ?? {})
   const missingDeps = resolveMissingDeps(plugins, plugin.id, allInstalledIds ?? [])
   const dependents = installed ? installedDependents(plugins, plugin.id, allInstalledIds ?? []) : []

@@ -26,6 +26,17 @@ export function pluginInstallVars(plugin: Plugin, savedVars: Record<string, stri
   )
 }
 
+// What an update of an installed plugin sends: only the values the user saved. A field left out keeps
+// the value the printer already runs, and the printer fills its own defaults for anything still unset,
+// so a manifest default never overwrites a setting the printer was given.
+export function pluginSavedVars(plugin: Plugin, savedVars: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    (plugin.config ?? [])
+      .map((field) => [field.key, savedVars[field.key] ?? ''])
+      .filter(([, value]) => value !== ''),
+  )
+}
+
 // One plugin's update: its saved config vars, the deps a new version may need, and the source the offer
 // was computed from. The source travels with the spec because the printer must be sent the build the
 // user was offered, not whichever list happens to hold a higher number for that plugin.
@@ -34,7 +45,7 @@ function updateSpec(plugin: Plugin, catalog: Plugin[], installedIds: string[], i
 
   return {
     pluginId: plugin.id,
-    vars: pluginInstallVars(plugin, savedVars),
+    vars: pluginSavedVars(plugin, savedVars),
     depIds: resolveMissingDeps(catalog, plugin.id, installedIds),
     sourceUrl: offered?.registryUrl,
     channel: offered?.channel,

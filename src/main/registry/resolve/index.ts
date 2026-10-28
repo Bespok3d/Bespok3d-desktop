@@ -146,6 +146,14 @@ function withinRegistryCap(state: ResolveState, fresh: RegistryRef[]): RegistryR
   return allowed
 }
 
+// Two lists can name the same sub-list. Without this, both copies are fetched in the same level and
+// every plugin in it shows up twice under one source.
+function firstOfEachUrl(refs: RegistryRef[]): RegistryRef[] {
+  const urls = refs.map((ref) => normalizeRegistryUrl(ref.url))
+
+  return refs.filter((_, position) => urls.indexOf(urls[position]) === position)
+}
+
 async function expandLevel(state: ResolveState, frontier: RegistryRef[], depth: number, fetcher: RegistryFetcher): Promise<ResolveState> {
   if (frontier.length === 0) return state
   if (depth > state.limits.maxDepth) {
@@ -153,7 +161,7 @@ async function expandLevel(state: ResolveState, frontier: RegistryRef[], depth: 
 
     return state
   }
-  const fresh = frontier.filter((ref) => !state.visited.has(normalizeRegistryUrl(ref.url)))
+  const fresh = firstOfEachUrl(frontier.filter((ref) => !state.visited.has(normalizeRegistryUrl(ref.url))))
   const allowed = withinRegistryCap(state, fresh)
   allowed.forEach((ref) => state.visited.add(normalizeRegistryUrl(ref.url)))
   const fetched = (await Promise.all(allowed.map((ref) => fetchOne(state, ref, fetcher)))).filter(Boolean) as FetchedRegistry[]

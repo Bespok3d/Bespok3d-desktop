@@ -21,6 +21,7 @@ import { watchInstallProgress, installPhaseMessage } from '../daemon-client/feed
 import { daemonGuardMessage } from '../daemon-client/guard'
 import { sendProgress, sendUpload } from './progress'
 import { capsAfterInstall, capsOrFallback, recordAppliedVars } from './record-sync'
+import { withPrinterVars } from './printer-vars'
 import { reportEvent } from '../analytics'
 import { reportErrorEvent } from '../analytics/errors'
 
@@ -163,7 +164,8 @@ async function runStoreInstall(
   await assertPrinterMeetsPackageFloors(record, entry)
   await installDepsInOrder(win, record, catalog, pluginId, channel, missingDeps)
   sendProgress(win, printerId, pluginId, 'Sending to printer…')
-  const { log, packageTrust } = await sendPackage(win, record, entry, pluginId, vars)
+  const { vars: sentVars } = await withPrinterVars(record, { pluginId, vars })
+  const { log, packageTrust } = await sendPackage(win, record, entry, pluginId, sentVars)
   sendProgress(win, printerId, pluginId, 'Updating plugin list…')
   // The install succeeded on the device, so its source/channel provenance is now true regardless of
   // whether the follow-up capabilities fetch works. Record it independently: a transient post-install
@@ -179,7 +181,7 @@ async function runStoreInstall(
     installLogs: { ...current.installLogs, [pluginId]: log },
     // These installed, so whatever an earlier attempt of them failed at is no longer about anything.
     failedInstallLogs: failedLogsAfter(current, [], [...missingDeps, pluginId], Date.now()),
-    ...recordAppliedVars(current, pluginId, vars, new Date().toISOString()),
+    ...recordAppliedVars(current, pluginId, sentVars, new Date().toISOString()),
   }))
 
   // One plugin, one event: the dependencies that came along with it are not plugins the user chose.

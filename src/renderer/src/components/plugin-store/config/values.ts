@@ -34,3 +34,16 @@ export function configComplete(fields: PluginConfigField[], values: Record<strin
 export function missingRequiredFields(fields: PluginConfigField[], values: Record<string, string>): string[] {
   return fields.filter((field) => field.required && (values[field.key] ?? '').trim().length === 0).map((field) => field.label)
 }
+
+// What an Update of an installed plugin sends from its form: the values the user saved or changed
+// there. A value the form only shows as its seed default stays out, so the printer keeps the setting
+// it already runs instead of having it overwritten by the manifest default.
+export function userGivenValues(
+  formValues: Record<string, string>,
+  seedValues: Record<string, string>,
+  saved: Record<string, string> | undefined,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(formValues).filter(([key, value]) => saved?.[key] !== undefined || value !== seedValues[key]),
+  )
+}
