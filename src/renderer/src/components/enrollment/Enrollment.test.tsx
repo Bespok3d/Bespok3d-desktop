@@ -239,6 +239,14 @@ describe('Enrollment lifecycle dispatch', () => {
   })
 })
 
+async function failTheRebootAfterTheDeactivate(rendered: Awaited<ReturnType<typeof renderAndSayGo>>) {
+  await waitFor(() => expect(rendered.b3d.printers.deactivate).toHaveBeenCalledTimes(1))
+  act(() => rendered.emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing boot hook', stepIndex: 1, totalSteps: 2 })))
+  await waitFor(() => expect(rendered.b3d.printers.reboot).toHaveBeenCalledTimes(1))
+  act(() => rendered.emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'reboot', stepLabel: 'Restarting the printer', error: 'refused', stepIndex: 0 })))
+  await rendered.user.click(screen.getByRole('button', { name: 'More' }))
+}
+
 describe('Enrollment reboots the printer after the ops that need it', () => {
   it('holds the modal on the reboot after a deactivate, so Done means the printer is back', async () => {
     var { emit, b3d, onExpectedRestart } = await renderAndSayGo('deactivate')
@@ -268,6 +276,30 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
     await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22))
     expect(screen.getByText('Bespok3d removed')).toBeInTheDocument()
     expect(screen.getByText('Your printer is rebooting.')).toBeInTheDocument()
+  })
+
+  // The deactivate already finished. Running it again would end on a success that never reboots.
+  it.each(['Start over', 'Start from step'])('runs the failed reboot again, not the deactivate, on %s', async (buttonName) => {
+    var rendered = await renderAndSayGo('deactivate')
+    await failTheRebootAfterTheDeactivate(rendered)
+
+    await rendered.user.click(screen.getByRole('button', { name: buttonName }))
+
+    expect(rendered.b3d.printers.reboot).toHaveBeenCalledTimes(2)
+    expect(rendered.b3d.printers.deactivate).toHaveBeenCalledTimes(1)
+  })
+
+  it('runs the failed reboot again with the login the user typed, instead of asking for it', async () => {
+    var rendered = await renderAndSayGo('deactivate', { customSshCredentials: true })
+    await screen.findByDisplayValue('root')
+    await rendered.user.type(rendered.container.querySelector('input[type="password"]') as HTMLInputElement, 'secret')
+    await rendered.user.click(screen.getByRole('button', { name: 'Deactivate' }))
+    await failTheRebootAfterTheDeactivate(rendered)
+
+    await rendered.user.click(screen.getByRole('button', { name: 'Start over' }))
+
+    expect(rendered.b3d.printers.reboot).toHaveBeenLastCalledWith('printer-1', '10.0.0.1', 'root', 'secret', 22)
+    expect(rendered.b3d.printers.reboot).toHaveBeenCalledTimes(2)
   })
 
   it('leaves the printer alone after an op that changes nothing it is running', async () => {
@@ -373,7 +405,9 @@ describe('Enrollment after a step fails', () => {
     expect(b3d.printers.enroll).toHaveBeenLastCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false)
   })
 
-  it('runs a repair again on Start over', async () => {
+  // The login the app tried was refused. Sending it again would only be refused again, so Start over goes
+  // back to the go-ahead, where the user can give their own.
+  it('goes back to the go-ahead on Start over after a repair, offering their own login', async () => {
     var { user, emit, b3d } = await renderAndSayGo('repair')
     await waitFor(() => expect(b3d.printers.repair).toHaveBeenCalledTimes(1))
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'deploy-daemon', stepLabel: 'Deploy daemon', error: 'refused', stepIndex: 1 })))
@@ -381,7 +415,24 @@ describe('Enrollment after a step fails', () => {
     await user.click(screen.getByRole('button', { name: 'More' }))
     await user.click(screen.getByRole('button', { name: 'Start over' }))
 
+    expect(screen.getByRole('button', { name: en('enroll.creds.own') })).toBeInTheDocument()
+    expect(b3d.printers.repair).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'Repair daemon' }))
+    await waitFor(() => expect(b3d.printers.repair).toHaveBeenCalledTimes(2))
+  })
+
+  // A repair run again restarts the daemon again, so the app must not take the gap for a lost printer.
+  it('tells the app to expect the daemon restart when a repair runs again from its step', async () => {
+    var { user, emit, b3d, onExpectedRestart } = await renderAndSayGo('repair')
+    await waitFor(() => expect(b3d.printers.repair).toHaveBeenCalledTimes(1))
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'deploy-daemon', stepLabel: 'Deploy daemon', error: 'refused', stepIndex: 1 })))
+
+    await user.click(screen.getByRole('button', { name: 'More' }))
+    await user.click(screen.getByRole('button', { name: 'Start from step' }))
+
     expect(b3d.printers.repair).toHaveBeenCalledTimes(2)
+    expect(onExpectedRestart).toHaveBeenCalledTimes(2)
   })
 
   it('goes back to the login form on Start over when the printer has its own login', async () => {

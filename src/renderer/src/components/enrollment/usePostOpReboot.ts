@@ -52,14 +52,21 @@ interface PostOpRebootPlan {
   rebootWithoutTakingOverTheScreen: (creds: SshCredentials) => void
 }
 
+export interface PostOpRebootState {
+  printerIsRebooting: boolean
+  rebootStarted: () => boolean
+}
+
 // Reboots the printer the moment the op reports success, and answers whether the success screen has to
 // say so. A printer seen printing at any point while this modal is open is left alone: stopping or
 // removing bespok3d takes the live print feed away with it, so the print outlives what the app can
 // still see of it.
-export function usePostOpReboot(plan: PostOpRebootPlan): boolean {
+// Once the reboot has started, the op before it has already finished, so a failure on screen is the
+// reboot's own and the reboot is what has to run again.
+export function usePostOpReboot(plan: PostOpRebootPlan): PostOpRebootState {
   const { printActive } = usePrintState(plan.printer)
   const wasPrinting = useRef(false)
-  const rebootStarted = useRef(false)
+  const rebootRun = useRef(false)
 
   function rememberAPrintWasRunning() {
     if (printActive) wasPrinting.current = true
@@ -69,12 +76,16 @@ export function usePostOpReboot(plan: PostOpRebootPlan): boolean {
   const plannedReboot = postOpReboot(plan.mode, printActive || wasPrinting.current)
 
   function rebootOnceTheOpSucceeds() {
-    if (plan.phase !== 'success' || rebootStarted.current || plannedReboot === 'no-reboot') return
-    rebootStarted.current = true
+    if (plan.phase !== 'success' || rebootRun.current || plannedReboot === 'no-reboot') return
+    rebootRun.current = true
     const runIt = plannedReboot === 'wait-for-the-printer' ? plan.startReboot : plan.rebootWithoutTakingOverTheScreen
     runIt(plan.credentials)
   }
   useEffect(rebootOnceTheOpSucceeds, [plan.phase])
 
-  return plan.phase === 'success' && plannedReboot === 'reboot-behind-the-success-screen'
+  function rebootStarted(): boolean {
+    return rebootRun.current
+  }
+
+  return { printerIsRebooting: plan.phase === 'success' && plannedReboot === 'reboot-behind-the-success-screen', rebootStarted }
 }

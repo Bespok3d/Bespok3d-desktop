@@ -154,7 +154,7 @@ function HistoryModal({ printer, onClose }: { printer: Printer; onClose: () => v
         {enrolledAt && <p>Enrolled {formatDateTime(enrolledAt)}</p>}
       </div>
       {event ? (
-        <EnrollmentProgress event={event} phase="success" onDone={onClose} onRetry={() => {}} onReset={() => {}} onCancelOp={() => {}} onClose={onClose} />
+        <EnrollmentProgress event={event} phase="success" onDone={onClose} onRetry={() => {}} onStartOver={() => {}} onCancelOp={() => {}} onClose={onClose} />
       ) : (
         <div className="enroll-body">
           <p className="u-hint-sm">No enrollment log recorded.</p>
@@ -187,7 +187,7 @@ interface EnrollmentBodyProps {
   onClose: () => void
   onDone: () => void
   onRetry: (stepId: string) => void
-  onReset: () => void
+  onStartOver: () => void
   onCancelOp: () => void
   escalation?: FailureEscalation
   printerIsRebooting: boolean
@@ -219,7 +219,7 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
       mode={props.mode}
       onDone={props.onDone}
       onRetry={props.onRetry}
-      onReset={props.onReset}
+      onStartOver={props.onStartOver}
       onCancelOp={props.onCancelOp}
       onClose={props.onClose}
       escalation={props.escalation}
@@ -262,10 +262,8 @@ export function Enrollment({ printer, mode, fromAdd = false, forced = false, onE
   const [adapterInfo, setAdapterInfo] = useState<AdapterInfo | null>(null)
   const autoStarted = useRef(false)
 
-  const printerIsRebooting = usePostOpReboot({
-    printer, mode, phase: state.phase, credentials,
-    ...postOpRebootCalls(printer, startReboot, onExpectedRestart),
-  })
+  const rebootCalls = postOpRebootCalls(printer, startReboot, onExpectedRestart)
+  const rebootAfterTheOp = usePostOpReboot({ printer, mode, phase: state.phase, credentials, ...rebootCalls })
 
   function loadAdapterInfo() {
     window.b3d.printers.adapterGet(printer.adapter).then(setAdapterInfo).catch(adapterReadFailed)
@@ -310,20 +308,21 @@ export function Enrollment({ printer, mode, fromAdd = false, forced = false, onE
   const goAhead = useGoAhead({
     mode, phase: state.phase,
     customSshCredentials: Boolean(printer.customSshCredentials),
-    startWithAdapterDefaults: startOnAdapterDefaults,
+    startWithAdapterDefaults: startOnAdapterDefaults, clearTheOp: reset,
   })
 
   function handleRetry(stepId: string) {
-    const opStart = opStarters[mode]
-    if (opStart) { opStart(credentials);
-
- return }
-    retryFrom(stepId, credentials)
+    if (opStarters[mode]) runTheFailedOpAgain()
+    else retryFrom(stepId, credentials)
   }
-  // Back to the start with no login form to show would leave a bar that nothing drives, so it runs again.
-  function handleStartOver() {
-    if (goAhead.wantsTheirOwnLogin) reset()
+  function runTheFailedOpAgain() {
+    if (rebootAfterTheOp.rebootStarted()) rebootCalls.startReboot(credentials)
     else handleStart(credentials)
+  }
+  // Start over goes back to the first screen. With none to show, a bar nothing drives would sit there, so it runs again.
+  function handleStartOver() {
+    if (goAhead.hasAFirstScreen && !rebootAfterTheOp.rebootStarted()) goAhead.backToTheFirstScreen()
+    else runTheFailedOpAgain()
   }
   function handleDone() {
     savedRecord(printer.id).then((record) => {
@@ -342,8 +341,8 @@ export function Enrollment({ printer, mode, fromAdd = false, forced = false, onE
         printer={printer} mode={mode} state={state} credentials={credentials}
         showCredentialsForm={goAhead.showCredentialsForm} awaitingGoAhead={goAhead.awaiting}
         onStart={handleStart} onGoAhead={goAhead.give} onOwnCredentials={goAhead.askForOwnCredentials} onClose={onClose}
-        onDone={handleDone} onRetry={handleRetry} onReset={handleStartOver} onCancelOp={cancelOp} escalation={nextStepAfterFailure(mode, onEscalateRecovery, onRebuildPrinter)}
-        printerIsRebooting={printerIsRebooting} restartSeconds={adapterInfo?.restartSeconds}
+        onDone={handleDone} onRetry={handleRetry} onStartOver={handleStartOver} onCancelOp={cancelOp} escalation={nextStepAfterFailure(mode, onEscalateRecovery, onRebuildPrinter)}
+        printerIsRebooting={rebootAfterTheOp.printerIsRebooting} restartSeconds={adapterInfo?.restartSeconds}
       />
     </Modal>
   )

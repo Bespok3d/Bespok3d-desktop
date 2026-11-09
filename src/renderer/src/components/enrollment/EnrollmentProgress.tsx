@@ -46,7 +46,7 @@ interface EnrollmentProgressProps {
   credentials?: SshCredentials
   onDone: () => void
   onRetry: (stepId: string) => void
-  onReset: () => void
+  onStartOver: () => void
   escalation?: FailureEscalation
   onReportIssue?: () => void
   mode?: EnrollMode
@@ -144,10 +144,10 @@ function FailureReason({ error }: { error?: string }) {
   return <div className="enroll-step-error">{refusalKey ? t(refusalKey) : error}</div>
 }
 
-function EnrollFooter({ phase, stepId, onReset, onRetry, escalation, onReportIssue, onCancelOp, onClose }: {
+function EnrollFooter({ phase, stepId, onStartOver, onRetry, escalation, onReportIssue, onCancelOp, onClose }: {
   phase: 'enrolling' | 'failed'
   stepId: string
-  onReset: () => void
+  onStartOver: () => void
   onClose: () => void
   onRetry: (stepId: string) => void
   escalation?: FailureEscalation
@@ -191,7 +191,7 @@ function EnrollFooter({ phase, stepId, onReset, onRetry, escalation, onReportIss
       {moreOpen && (
         <>
           <Button variant="outline" onClick={() => onRetry(stepId)}>{t('enroll.progress.start_from_step')}</Button>
-          <Button variant="outline" onClick={onReset}>{t('enroll.progress.start_over')}</Button>
+          <Button variant="outline" onClick={onStartOver}>{t('enroll.progress.start_over')}</Button>
         </>
       )}
       {onReportIssue && (
@@ -216,7 +216,7 @@ export function progressFill(stepsDone: number, stepsTotal: number, stepRunning:
   return Math.round(((stepsDone + (stepRunning ? intoStep : 0)) / stepsTotal) * 100)
 }
 
-export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, escalation, onReportIssue, onCancelOp, onClose, mode, printerIsRebooting, restartSeconds }: EnrollmentProgressProps) {
+export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onStartOver, escalation, onReportIssue, onCancelOp, onClose, mode, printerIsRebooting, restartSeconds }: EnrollmentProgressProps) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState(false)
   const [acting, setActing] = useState(false)
@@ -226,7 +226,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
   if (phase === 'success') return <SuccessView event={event} message={successCopy(mode)} onDone={onDone} printerIsRebooting={printerIsRebooting} />
   if (phase === 'cancelled') return <CancelledView event={event} onClose={onClose} />
 
-  function handleReset() { setExpanded(false); setActing(true); onReset() }
+  function handleStartOver() { setExpanded(false); setActing(true); onStartOver() }
   function handleRetry(stepId: string) { setExpanded(false); setActing(true); onRetry(stepId) }
   function handleEscalate() {
     if (!escalation) return
@@ -284,7 +284,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
       <EnrollFooter
         phase={showFailed ? 'failed' : 'enrolling'}
         stepId={event.stepId}
-        onReset={handleReset}
+        onStartOver={handleStartOver}
         onRetry={handleRetry}
         escalation={escalation ? { labelKey: escalation.labelKey, run: handleEscalate } : undefined}
         onReportIssue={showFailed ? onReportIssue : undefined}
