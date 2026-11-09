@@ -224,3 +224,31 @@ describe('OtaRecoveryResultsModal on the printer setup row', () => {
     expect(screen.queryByText(en('recovery_results.restarting'))).not.toBeInTheDocument()
   })
 })
+
+// The printer calls a recovery fine with a plugin switched off on the way, so the header cannot just
+// repeat the printer's word for it.
+describe('OtaRecoveryResultsModal on a plugin switched off during a recovery the printer calls fine', () => {
+  it('does not say every plugin went back when the safety net switched one off', () => {
+    var switchedOffBySafetyNet = { pluginId: '(services)', ok: true, skipped: false, reason: 'Auto-recovered: deactivated spoolman to keep the printer working', log: [], autoDeactivated: 'spoolman' }
+    setup(<OtaRecoveryResultsModal results={{ ok: true, results: [switchedOffBySafetyNet] }} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getByText(en('recovery_results.title_errors'))).toBeInTheDocument()
+    expect(screen.getByText(en('recovery_results.summary_errors'))).toBeInTheDocument()
+    expect(screen.queryByText(en('recovery_results.summary_ok'))).not.toBeInTheDocument()
+  })
+
+  it('does not say every plugin went back when one was left off because a plugin it needs did not come back', () => {
+    var leftOffForItsDependency = { pluginId: 'spoolman-rfid', ok: false, skipped: true, reason: 'dependency not satisfied: spoolman', log: [] }
+    setup(<OtaRecoveryResultsModal results={{ ok: true, results: [leftOffForItsDependency] }} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getByText(en('recovery_results.title_errors'))).toBeInTheDocument()
+    expect(screen.queryByText(en('recovery_results.summary_ok'))).not.toBeInTheDocument()
+  })
+
+  it('leaves an uninstall that passed over a plugin already gone reading as done', () => {
+    var alreadyGone = { pluginId: 'spoolman', ok: true, skipped: true, reason: 'not installed', log: [] }
+    setup(<OtaRecoveryResultsModal results={{ ok: true, results: [alreadyGone] }} onOpenPlugin={vi.fn()} onClose={vi.fn()} variant="uninstall" />)
+
+    expect(screen.getByText(en('uninstall_results.title_ok'))).toBeInTheDocument()
+  })
+})

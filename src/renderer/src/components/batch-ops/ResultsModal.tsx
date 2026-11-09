@@ -11,6 +11,7 @@ import { BatchReportModal } from './ReportModal'
 import { buildBatchReport } from './report-text'
 import { diagnosisText } from './diagnosis'
 import { PRINTER_SETUP_ROW, isSetupRepairOnly } from './setup-repair'
+import { leftAPluginOff } from './plugins-left-off'
 import './batch-ops.css'
 import type { BatchVariant } from './variant'
 import type { RecoveryRestart } from './recover-op'
@@ -131,10 +132,19 @@ const RESTART_HINT: Record<RecoveryRestart, string | null> = {
   'not-back': 'recovery_results.not_back',
 }
 
+// The printer calls a recovery fine with a plugin switched off on the way: one left out because a
+// plugin it needs did not come back, or one its safety net took off to keep the printer working. The
+// report must not then say every plugin went back.
+function wentWell(variant: BatchVariant, results: BatchResult): boolean {
+  if (variant !== 'recovery') return results.ok
+
+  return results.ok && !results.results.some(leftAPluginOff)
+}
+
 // A recovery that only put the printer's setup right put no plugin back, so its summary and restart
 // note say what it did do instead of speaking of the plugins.
-function summaryKey(prefix: string, results: BatchResult): string {
-  const outcome = results.ok ? 'summary_ok' : 'summary_errors'
+function summaryKey(prefix: string, results: BatchResult, allWentWell: boolean): string {
+  const outcome = allWentWell ? 'summary_ok' : 'summary_errors'
   if (isSetupRepairOnly(results.results)) return `recovery_results.setup_${outcome}`
 
   return `${prefix}.${outcome}`
@@ -151,8 +161,9 @@ export function OtaRecoveryResultsModal({ results, onOpenPlugin, onClose, varian
   const { copied, copy } = useClipboard()
   const prefix = RESULT_PREFIX[variant]
   const restartHint = restartHintKey(restarting, results)
-  const title = results.ok ? t(`${prefix}.title_ok`) : t(`${prefix}.title_errors`)
-  const summary = t(summaryKey(prefix, results))
+  const allWentWell = wentWell(variant, results)
+  const title = allWentWell ? t(`${prefix}.title_ok`) : t(`${prefix}.title_errors`)
+  const summary = t(summaryKey(prefix, results, allWentWell))
   function openItsOwnPage(pluginId: string) {
     onOpenPlugin(pluginId)
     onClose()
@@ -160,14 +171,14 @@ export function OtaRecoveryResultsModal({ results, onOpenPlugin, onClose, varian
   // What the user can send on when the batch ends badly. The rows say what happened in the app's own
   // words; the report carries the printer's, for every plugin, which is what whoever reads the issue
   // needs and what a screenshot of this modal loses.
-  const reportAction = results.ok ? undefined : (
+  const reportAction = allWentWell ? undefined : (
     <Button variant="outline" size="sm" onClick={() => copy(buildBatchReport(variant, results))}>
       {copied ? t('install_error.copied') : t('install_error.copy')}
     </Button>
   )
 
   return (
-    <BatchReportModal title={title} summary={summary} summaryTone={results.ok ? 'ok' : 'bad'} size="size-md" action={reportAction} onClose={onClose}>
+    <BatchReportModal title={title} summary={summary} summaryTone={allWentWell ? 'ok' : 'bad'} size="size-md" action={reportAction} onClose={onClose}>
       {restartHint && <p className="u-hint">{t(restartHint)}</p>}
       <div className="recovery-list">
         {results.manifestWarnings?.map((warning) => (
