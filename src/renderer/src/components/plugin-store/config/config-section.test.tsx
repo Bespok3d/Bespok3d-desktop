@@ -23,7 +23,6 @@ function installedSection(onValuesChange: (values: Record<string, string>) => vo
       pluginId="spoolman"
       onValuesChange={onValuesChange}
     />,
-    { b3d: { net: { probeServiceUrl: vi.fn().mockResolvedValue(200) } } },
   )
 }
 

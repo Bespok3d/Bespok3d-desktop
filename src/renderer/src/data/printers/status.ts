@@ -2,6 +2,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Printer } from '../types'
 
+// The printer's id when the app can talk to its daemon, which is what every printer-side request
+// needs; undefined for no printer or one that is not managed.
+export function managedPrinterId(printer: Printer | null | undefined): string | undefined {
+  return printer?.status === 'managed' ? printer.id : undefined
+}
+
 export function resolvedStatus(printer: Printer): Printer['status'] {
   if (printer.status === 'managed') return 'managed'
 

@@ -30,7 +30,7 @@ export function AddressField({ field, value, onChange }: {
   return (
     <>
       <AddressInput placeholder={field.placeholder} value={value} onChange={onChange} onLeave={tidyWhatWasPasted} />
-      <ReachNote checking={checking} reach={reach} shapeError={serviceAddressError(value)} />
+      <ReachNote checking={checking} reach={reach} shapeError={serviceAddressError(value)} triedFrom="computer" />
     </>
   )
 }

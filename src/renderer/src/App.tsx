@@ -22,6 +22,8 @@ import { usePluginVars } from './app/plugin-vars'
 import { printerKeyFor } from './data/plugin-vars'
 import { AppModals } from './app/AppModals'
 import { InstallGateContext } from './hooks/installGate'
+import { AddressCheckPrinterContext } from './components/plugin-store/config/address-check-printer'
+import { managedPrinterId } from './data/printers'
 import { showsUnreleasedFeatures } from './utils/unreleased-features'
 
 function App() {
@@ -61,7 +63,7 @@ function App() {
 
   return (
     <I18nProvider value={i18n}>
-      <CatalogProvider><InstallGateContext.Provider value={actions.installGate.beforeInstall}>
+      <CatalogProvider><InstallGateContext.Provider value={actions.installGate.beforeInstall}><AddressCheckPrinterContext.Provider value={managedPrinterId(selectedPrinter)}>
       <LocalDropZone selectedPrinter={selectedPrinter} onInstall={openPluginPage} />
       <div className="app" data-theme={resolved} data-platform={window.b3d.platform}>
         <Header
@@ -103,7 +105,7 @@ function App() {
         )}
         <AppModals actions={actions} discovered={discovered} existingPrinters={printers} onOpenPlugin={openPluginPage} />
       </div>
-      </InstallGateContext.Provider></CatalogProvider>
+      </AddressCheckPrinterContext.Provider></InstallGateContext.Provider></CatalogProvider>
     </I18nProvider>
   )
 }
