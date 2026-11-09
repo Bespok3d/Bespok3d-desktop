@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState, useEffect, useRef } from 'react'
 import type { Printer } from '../../data/types'
+import { readPrinterLogin, usesTheirOwnLogin, type PrinterLogin } from '../../data/printers/login'
+import { STANDARD_SSH_PORT } from '../../../../main/printers/ports'
 import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 import { useEnrollment } from '../../hooks/enrollment'
 import type { SshCredentials, EnrollState } from '../../hooks/enrollment'
@@ -185,9 +187,9 @@ interface EnrollmentBodyProps {
   restartSeconds?: number
 }
 
-function StartFailureWords({ startError }: { startError: string }) {
+function StartFailureWords({ startError, sshPort }: { startError: string; sshPort: number }) {
   const { t } = useI18n()
-  const messageKey = knownFailureKey(startError)
+  const messageKey = knownFailureKey(startError, sshPort)
 
   return <p className={cx('u-hint-sm', !messageKey && 'mono')}>{messageKey ? t(messageKey) : startError}</p>
 }
@@ -230,7 +232,7 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
   if (startError) return (
     <div className="enroll-body">
       <p className="u-hint-sm">{t('enroll.start_failed')}</p>
-      <StartFailureWords startError={startError} />
+      <StartFailureWords startError={startError} sshPort={props.credentials.port} />
       <div className="modal-foot">
         <Button variant="outline" onClick={reportThisFailure}>{t('enroll.report_issue')}</Button>
         <Button variant="outline" onClick={props.onClose}>{t('btn.close')}</Button>
@@ -256,7 +258,7 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
 
 export function Enrollment({ printer, mode, fromAdd = false, forced = false, onEnrolled, onClose, onEscalateRecovery, onRebuildPrinter, onExpectedRestart, onOpRecorded, onPluginsLeftOff }: EnrollmentProps) {
   const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp, failStart } = useEnrollment(printer, forced, onPluginsLeftOff)
-  const [credentials, setCredentials] = useState<SshCredentials>({ user: '', password: '', port: 22 })
+  const [credentials, setCredentials] = useState<SshCredentials>({ user: '', password: '', port: STANDARD_SSH_PORT })
   const [adapterInfo, setAdapterInfo] = useState<AdapterInfo | null>(null)
   const autoStarted = useRef(false)
 
@@ -286,27 +288,28 @@ export function Enrollment({ printer, mode, fromAdd = false, forced = false, onE
     autoStarted.current = false
     failStart(mainProcessMessage(error))
   }
-  function startWithAdapterDefaults(adapter: AdapterInfo | null) {
-    if (!adapter) {
+  // A printer with its own login waits on the credentials form instead, so only the factory login starts here.
+  function startWithLogin(login: PrinterLogin) {
+    if (login.source === 'adapter-missing') {
       adapterReadFailed(new Error(printer.adapter))
 
       return
     }
-    handleStart({ user: adapter.defaults.sshUser, password: adapter.defaults.sshPasswordHint, port: adapter.defaults.sshPort })
+    if (login.source === 'factory') handleStart(login.credentials)
   }
   function autoStartWithDefaultCredentials() {
-    if (!autoStartEligible(mode, Boolean(printer.customSshCredentials)) || autoStarted.current) return
+    if (!autoStartEligible(mode, usesTheirOwnLogin(printer)) || autoStarted.current) return
     autoStarted.current = true
-    window.b3d.printers.adapterGet(printer.adapter).then(startWithAdapterDefaults).catch(adapterReadFailed)
+    readPrinterLogin(printer).then(startWithLogin).catch(adapterReadFailed)
   }
   useEffect(autoStartWithDefaultCredentials, [])
 
   function startOnAdapterDefaults() {
-    window.b3d.printers.adapterGet(printer.adapter).then(startWithAdapterDefaults).catch(adapterReadFailed)
+    readPrinterLogin(printer).then(startWithLogin).catch(adapterReadFailed)
   }
   const goAhead = useGoAhead({
     mode, phase: state.phase,
-    customSshCredentials: Boolean(printer.customSshCredentials),
+    customSshCredentials: usesTheirOwnLogin(printer),
     startWithAdapterDefaults: startOnAdapterDefaults, clearTheOp: reset,
   })
 

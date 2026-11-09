@@ -3,6 +3,7 @@
 import { request as httpsRequest, Agent } from 'https'
 import type { ClientRequest, IncomingMessage } from 'http'
 import type { PrinterRecord } from '../printers'
+import { DAEMON_PORT } from '../printers/ports'
 import { printerSaysItIsAtWork } from './printer-at-work'
 import { streamUpload } from './upload'
 
@@ -140,7 +141,7 @@ export async function doRequest(
   contentType?: string,
   timeoutMs: number = DEFAULT_DAEMON_TIMEOUT_MS,
   onUploadProgress?: UploadProgressFn,
-  port = 4269,
+  port = DAEMON_PORT,
 ): Promise<string> {
   const requestOptions = { method, path, body, contentType, timeoutMs, onUploadProgress, port }
   try {

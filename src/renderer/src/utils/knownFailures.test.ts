@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { describe, it, expect } from 'vitest'
 import { failureInUserWords, knownFailureKey } from './knownFailures'
+import { RESET_ACCESS_ALREADY_RUNNING } from '../../../main/ops/reset-access-busy'
 
 const U1_PREFLIGHT = fileURLToPath(new URL('../../../../../adapters/snapmaker-u1/client/enroll-steps/preflight.ts', import.meta.url))
 const EXTENDED_FIRMWARE_THROW = /throw new Error\('([^']*Extended firmware[^']*)'\)/
@@ -36,31 +37,63 @@ describe('the known failures', () => {
 
   // main-index issue 13: a store uninstall whose call to the printer's daemon got no answer.
   it('answer a printer that did not answer the connection in user words', () => {
-    var storeUninstallFailure = "Error invoking remote method 'store:uninstall': Error: connect ETIMEDOUT 192.168.178.192:4269"
+    var storeUninstallFailure = "Error invoking remote method 'store:uninstall': Error: connect ETIMEDOUT 192.0.2.23:4269"
 
     expect(knownFailureKey(storeUninstallFailure)).toBe('failure.printer_no_answer')
   })
 
   it('blame the stopped Bespok3d service when the printer refuses its port', () => {
-    var refusedOnDaemonPort = "Error invoking remote method 'store:install': Error: connect ECONNREFUSED 192.168.178.192:4269"
+    var refusedOnDaemonPort = "Error invoking remote method 'store:install': Error: connect ECONNREFUSED 192.0.2.23:4269"
 
     expect(knownFailureKey(refusedOnDaemonPort)).toBe('failure.bespok3d_not_running')
   })
 
   it('blame the SSH service when the printer refuses the SSH port', () => {
-    var refusedOnSshPort = "Error invoking remote method 'printer:reset-access': Error: connect ECONNREFUSED 192.168.178.192:22"
+    var refusedOnSshPort = "Error invoking remote method 'printer:reset-access': Error: connect ECONNREFUSED 192.0.2.23:22"
 
     expect(knownFailureKey(refusedOnSshPort)).toBe('failure.ssh_refused')
-    expect(knownFailureKey('Error: connect ECONNREFUSED 192.168.178.192:2222')).toBeNull()
+    expect(knownFailureKey('Error: connect ECONNREFUSED 192.0.2.23:2222')).toBeNull()
+  })
+})
+
+describe('the known failures of a login on its own port', () => {
+  it('blame the SSH service on the port its owner chose, and only that port', () => {
+    var refusedOnCustomSshPort = "Error invoking remote method 'printer:reset-access': Error: connect ECONNREFUSED 192.0.2.23:2222"
+
+    expect(knownFailureKey(refusedOnCustomSshPort, 2222)).toBe('failure.ssh_refused')
+    expect(knownFailureKey('Error: connect ECONNREFUSED 192.0.2.23:22', 2222)).toBeNull()
+    expect(failureInUserWords(refusedOnCustomSshPort, bracketedKey, 2222)).toBe('[failure.ssh_refused]')
   })
 
+  it('still blame the stopped Bespok3d service when the SSH login uses another port', () => {
+    expect(knownFailureKey('Error: connect ECONNREFUSED 192.0.2.23:4269', 2222)).toBe('failure.bespok3d_not_running')
+  })
+
+  it('blame the SSH service when its owner moved the SSH login onto the daemon port', () => {
+    expect(knownFailureKey('Error: connect ECONNREFUSED 192.0.2.23:4269', 4269)).toBe('failure.ssh_refused')
+  })
+
+  it('read the port from the end of an IPv6 address, never from a group inside it', () => {
+    expect(knownFailureKey('Error: connect ECONNREFUSED 2001:db8:22::5:4269')).toBe('failure.bespok3d_not_running')
+  })
+})
+
+describe('the known failures of the network', () => {
   it('answer a printer the network cannot reach in user words', () => {
-    expect(knownFailureKey('Error: connect EHOSTUNREACH 192.168.178.192:4269')).toBe('failure.printer_unreachable')
-    expect(knownFailureKey('Error: connect ENETUNREACH 192.168.178.192:22 - Local (0.0.0.0:0)')).toBe('failure.no_network_to_printer')
+    expect(knownFailureKey('Error: connect EHOSTUNREACH 192.0.2.23:4269')).toBe('failure.printer_unreachable')
+    expect(knownFailureKey('Error: connect ENETUNREACH 192.0.2.23:22 - Local (0.0.0.0:0)')).toBe('failure.no_network_to_printer')
   })
 
   it('answer a printer address that names nothing in user words', () => {
     expect(knownFailureKey('Error: getaddrinfo ENOTFOUND u1.local')).toBe('failure.printer_address_not_found')
+  })
+})
+
+describe('the other known failures', () => {
+  it('answer a second reset of access in user words', () => {
+    var secondReset = `Error invoking remote method 'printer:reset-access': Error: ${RESET_ACCESS_ALREADY_RUNNING}`
+
+    expect(knownFailureKey(secondReset)).toBe('failure.reset_access_already_running')
   })
 
   it('leave any other failure in its raw words', () => {

@@ -5,6 +5,7 @@ import type { DaemonMetadata } from '@bespok3d/contract'
 import type { DaemonAccessState } from '../../../../main/daemon-client/status'
 import { applyToId, type SetPrinters } from './list'
 import { statusAfterProbe, type ProbeStatus } from './status'
+import { usesTheirOwnLogin } from './login'
 
 interface DaemonResult extends DaemonMetadata {
   isManaged: boolean
@@ -69,7 +70,7 @@ const writeLayerChecksInFlight = new Set<string>()
 function maybeCheckWriteLayer(printer: Printer, detail: PrinterConnection, set: SetPrinters): void {
   if (detail.reach !== 'recoverable') return
   if (printer.deactivated) return
-  if (!printer.enrollmentLog || printer.customSshCredentials) return
+  if (!printer.enrollmentLog || usesTheirOwnLogin(printer)) return
   if (printer.writeLayerIntact !== undefined) return
   if (writeLayerChecksInFlight.has(printer.id)) return
   writeLayerChecksInFlight.add(printer.id)

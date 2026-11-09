@@ -136,11 +136,11 @@ function CancelledView({ event, onClose }: { event: EnrollProgressEvent; onClose
 
 // The step's own words about why it refused. It used to live only inside the expanded step list, so a
 // failure read as "something went wrong" until the user thought to open it.
-function FailureReason({ error }: { error?: string }) {
+function FailureReason({ error, sshPort }: { error?: string; sshPort?: number }) {
   const { t } = useI18n()
   if (!error) return null
 
-  return <div className="enroll-step-error">{failureInUserWords(error, t)}</div>
+  return <div className="enroll-step-error">{failureInUserWords(error, t, sshPort)}</div>
 }
 
 function EnrollFooter({ phase, stepId, onStartOver, onRetry, escalation, onReportIssue, onCancelOp, onClose }: {
@@ -215,7 +215,7 @@ export function progressFill(stepsDone: number, stepsTotal: number, stepRunning:
   return Math.round(((stepsDone + (stepRunning ? intoStep : 0)) / stepsTotal) * 100)
 }
 
-export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onStartOver, escalation, onReportIssue, onCancelOp, onClose, mode, printerIsRebooting, restartSeconds }: EnrollmentProgressProps) {
+export function EnrollmentProgress({ event, phase, credentials, onDone, onRetry, onStartOver, escalation, onReportIssue, onCancelOp, onClose, mode, printerIsRebooting, restartSeconds }: EnrollmentProgressProps) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState(false)
   const [acting, setActing] = useState(false)
@@ -271,13 +271,13 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
                     <div className={cx('enroll-step-label', currentStepStatus)}>
                       <Explainer brief={stepLabel} detail={detail} />
                     </div>
-                    {showFailed && <FailureReason error={event.error} />}
+                    {showFailed && <FailureReason error={event.error} sshPort={credentials?.port} />}
                   </div>
                 </div>
               </div>
             )}
           </div>
-          {showFailed && !expanded && <FailureReason error={event.error} />}
+          {showFailed && !expanded && <FailureReason error={event.error} sshPort={credentials?.port} />}
         </div>
       </div>
       <EnrollFooter

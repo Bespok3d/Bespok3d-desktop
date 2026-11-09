@@ -4,6 +4,7 @@ import { X509Certificate } from 'crypto'
 import { request as httpsRequest, Agent } from 'https'
 import type { IncomingMessage } from 'http'
 import type { TLSSocket } from 'tls'
+import { DAEMON_PORT } from '../printers/ports'
 
 export interface DaemonLicenseProbe {
   version: string
@@ -63,7 +64,7 @@ function collectLicense(response: IncomingMessage, ip: string, resolve: (probe: 
   })
 }
 
-export function fetchDaemonLicense(ip: string, port = 4269): Promise<DaemonLicenseProbe> {
+export function fetchDaemonLicense(ip: string, port = DAEMON_PORT): Promise<DaemonLicenseProbe> {
   return new Promise((resolve, reject) => {
     const agent = new Agent({ rejectUnauthorized: false })
     const request = httpsRequest({ hostname: ip, port, path: '/license', method: 'GET', agent }, (response) => {

@@ -11,6 +11,7 @@ import WebSocket from 'ws'
 import { makeAgent } from '../client'
 import { reportPrinterWork } from '../printer-at-work'
 import { MAX_FRAME_BYTES } from './feed-pool'
+import { DAEMON_PORT } from '../../printers/ports'
 import type { InstallLogPhase } from '@bespok3d/contract'
 
 interface ProgressTarget {
@@ -52,8 +53,6 @@ export interface UploadProgressEvent {
   sent: number
   total: number
 }
-
-const DAEMON_PORT = 4269
 
 // The app pings the printer on the feed and the printer answers each ping, so a feed that stays
 // silent through three pings means the link or the printer is gone, even though the socket still

@@ -6,11 +6,12 @@ import { Button } from '../../common/Button'
 import { Modal } from '../../common/overlay/Modal'
 import { CredentialsForm } from '../../enrollment/CredentialsForm'
 import { useAsyncEffect } from '../../common/hooks/useAsyncEffect'
-import { errorMessage } from '../../../utils/errorMessage'
+import { mainProcessMessage } from '../../../utils/errorMessage'
 import { failureInUserWords } from '../../../utils/knownFailures'
 import { useI18n } from '../../../i18n/context'
 import type { Printer } from '../../../data/types'
 import type { SshCredentials } from '../../../hooks/enrollment'
+import { useResetAccess } from './useResetAccess'
 
 interface ClientInfo { identity: string; role: string; label: string }
 interface PendingInfo { identity: string; label: string; requested_at: string }
@@ -48,21 +49,6 @@ function PendingRow({ pending, onGrant }: { pending: PendingInfo; onGrant: () =>
   )
 }
 
-function resetAccessWith(printer: Printer, login: SshCredentials, onDone: () => void, onError: (message: string) => void): void {
-  window.b3d.printers
-    .resetAccess(printer.id, printer.ip, login.user, login.password, login.port)
-    .then(onDone)
-    .catch((failure) => onError(errorMessage(failure)))
-}
-
-function resetAccessWithFactoryLogin(printer: Printer, onDone: () => void, onError: (message: string) => void): void {
-  window.b3d.printers.adapterGet(printer.adapter).then((info) => {
-    if (!info) return
-    const factoryLogin = { user: info.defaults.sshUser, password: info.defaults.sshPasswordHint, port: info.defaults.sshPort }
-    resetAccessWith(printer, factoryLogin, onDone, onError)
-  }).catch((failure) => onError(errorMessage(failure)))
-}
-
 // The app never stores a login the user gave, so a printer with its own SSH login is asked for it every reset.
 function TheirLoginModal({ printer, onLogin, onCancel }: { printer: Printer; onLogin: (login: SshCredentials) => void; onCancel: () => void }) {
   const { t } = useI18n()
@@ -81,26 +67,17 @@ function TheirLoginModal({ printer, onLogin, onCancel }: { printer: Printer; onL
 
 function PrinterAccess({ printer, data, onRefresh }: { printer: Printer; data?: AccessData; onRefresh: () => void }) {
   const { t } = useI18n()
-  const [error, setError] = useState<string | null>(null)
-  const [askingTheirLogin, setAskingTheirLogin] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  function actionDone() { setProblem(null); onRefresh() }
+  const reset = useResetAccess(printer, { done: actionDone, problem: setProblem })
   function runPrivileged(action: Promise<unknown>) {
-    action.then(() => { setError(null); onRefresh() }).catch((failure) => setError(errorMessage(failure)))
+    action.then(actionDone).catch((failure) => setProblem(failureInUserWords(mainProcessMessage(failure), t)))
   }
   function grant(identity: string) { runPrivileged(window.b3d.access.grant(printer.id, identity)) }
   function revoke(identity: string) { runPrivileged(window.b3d.access.revoke(printer.id, identity)) }
-  function resetDone() { setError(null); onRefresh() }
   function startReset() {
-    setError(null)
-    if (printer.customSshCredentials) {
-      setAskingTheirLogin(true)
-
-      return
-    }
-    resetAccessWithFactoryLogin(printer, resetDone, setError)
-  }
-  function resetWithTheirLogin(login: SshCredentials) {
-    setAskingTheirLogin(false)
-    resetAccessWith(printer, login, resetDone, setError)
+    setProblem(null)
+    reset.start()
   }
 
   return (
@@ -117,10 +94,11 @@ function PrinterAccess({ printer, data, onRefresh }: { printer: Printer; data?: 
         <div className="set-row-text">
           <div className="set-row-hint">{t('access.reset_hint')}</div>
         </div>
-        <Button variant="outline" size="sm" onClick={startReset}>{t('access.reset')}</Button>
+        <Button variant="outline" size="sm" busy={reset.resetting} onClick={startReset}>{t('access.reset')}</Button>
       </div>
-      {error && <div className="set-error" role="alert">{failureInUserWords(error, t)}</div>}
-      {askingTheirLogin && <TheirLoginModal printer={printer} onLogin={resetWithTheirLogin} onCancel={() => setAskingTheirLogin(false)} />}
+      {reset.resetting && <div className="set-row-hint" role="status">{t('access.resetting')}</div>}
+      {problem && <div className="set-error" role="alert">{problem}</div>}
+      {reset.askingTheirLogin && <TheirLoginModal printer={printer} onLogin={reset.resetWithTheirLogin} onCancel={reset.cancelTheirLogin} />}
     </Group>
   )
 }

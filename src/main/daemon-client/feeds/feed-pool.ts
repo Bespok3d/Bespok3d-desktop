@@ -9,9 +9,9 @@ import WebSocket from 'ws'
 import { makeAgent } from '../client'
 import { loadPrinters } from '../../printers'
 import type { PrinterRecord } from '../../printers/record'
+import { DAEMON_PORT } from '../../printers/ports'
 
 const RECONNECT_MS = 3000
-const DAEMON_PORT = 4269
 // What the daemon actually sends on these feeds is a short list of tokens or a single line of a
 // plugin log. Anything bigger is not one of those, and left uncapped the ws default lets a printer
 // that has been taken over hand this app a hundred megabytes to hold in memory per frame, as fast as
