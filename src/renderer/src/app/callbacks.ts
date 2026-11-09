@@ -109,15 +109,15 @@ function gateHandles(gate: EnrollGate) {
 
 // Every per-printer toolbar/settings action that just opens enrollment in a specific mode. Recovery and
 // repair also come off the Force menu, which hands them forced: a banner calls them with one argument
-// and gets the usual refusals. Repair and uninstall first check that root access is on.
+// and gets the usual refusals. Every mode that works over SSH first checks that root access is on.
 function enrollModeHandlers(openEnrollModal: (id: string, mode: EnrollMode, forced?: boolean) => void, openOverSsh: (id: string, mode: EnrollMode, forced?: boolean) => void) {
   return {
     handleViewEnrollmentLog: (id: string) => openEnrollModal(id, 'history'),
-    handleUpdateDaemon: (id: string) => openEnrollModal(id, 'update-daemon'),
-    handleUpdateJinni: (id: string) => openEnrollModal(id, 'update-jinni'),
-    handleRecoverPrinter: (id: string, forced?: boolean) => openEnrollModal(id, 'recovery', forced),
+    handleUpdateDaemon: (id: string) => openOverSsh(id, 'update-daemon'),
+    handleUpdateJinni: (id: string) => openOverSsh(id, 'update-jinni'),
+    handleRecoverPrinter: (id: string, forced?: boolean) => openOverSsh(id, 'recovery', forced),
     handleRepairPrinter: (id: string, forced?: boolean) => openOverSsh(id, 'repair', forced),
-    handleDeactivatePrinter: (id: string) => openEnrollModal(id, 'deactivate'),
+    handleDeactivatePrinter: (id: string) => openOverSsh(id, 'deactivate'),
     handleReactivatePrinter: (id: string) => openEnrollModal(id, 'reactivate'),
     handleUninstallPrinter: (id: string) => openOverSsh(id, 'uninstall'),
   }

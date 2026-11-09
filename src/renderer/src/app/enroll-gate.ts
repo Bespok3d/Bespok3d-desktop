@@ -24,8 +24,8 @@ function startEnrollWhenSshOpen(printer: Printer, fromAdd: boolean, forced: bool
   })
 }
 
-// Repair and uninstall run over SSH just as enrollment does, so a closed port 22 gets the same
-// root-access gate instead of a raw connection error out of the first step.
+// Recovery, repair, the updates, deactivation and uninstall run over SSH just as enrollment does, so a
+// closed port 22 gets the same root-access gate instead of a raw connection error out of the first step.
 function openWhenSshOpen(printer: Printer, mode: EnrollMode, forced: boolean, setRootAccessGate: (value: RootAccessGate | null) => void, setEnrollModal: (value: EnrollModal | null) => void) {
   window.b3d.printers.checkSshOpen(printer.ip).then((sshOpen) => {
     if (sshOpen) setEnrollModal({ printer, mode, forced })

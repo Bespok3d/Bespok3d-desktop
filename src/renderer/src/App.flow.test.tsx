@@ -269,6 +269,67 @@ describe('App flow: repair and uninstall check root access first', () => {
   })
 })
 
+// Recovery, the updates and deactivation run over SSH too, so they stop at the same root-access window.
+async function openPrintersSettings(user: ReturnType<typeof renderApp>['user']) {
+  await user.click(screen.getByRole('button', { name: en('header.settings') }))
+  await user.click(screen.getByRole('button', { name: en('set.printers') }))
+}
+
+// The row's Update menu sits next to its Deactivate button; other buttons named Update are on screen too.
+async function chooseDeployItem(user: ReturnType<typeof renderApp>['user'], itemKey: string) {
+  const printerActions = (await screen.findByRole('button', { name: en('printers.deactivate') })).parentElement as HTMLElement
+  await user.click(within(printerActions).getByRole('button', { name: en('printers.deploy') }))
+  await user.click(screen.getByRole('button', { name: en(itemKey) }))
+}
+
+describe('App flow: recovery, updates and deactivation check root access first', () => {
+  it('a recovery with root access off shows the root-access window, and Retry opens the recovery', async () => {
+    var { user, b3d } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }),
+      checkWriteLayer: vi.fn().mockResolvedValue(false),
+      checkSshOpen: vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true),
+    })
+    await user.click(await screen.findByRole('button', { name: en('banner.recover_action') }, AFTER_THE_CONFIRMING_PROBE))
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(b3d.printers.enroll).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: en('enroll.ssh_retry') }))
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
+  })
+
+  it.each([
+    { action: 'daemon update', itemKey: 'printers.update_daemon', call: 'updateDaemon' },
+    { action: 'adapter update', itemKey: 'printers.update_jinni', call: 'updateJinni' },
+  ] as const)('a $action with root access off shows the root-access window and runs nothing', async ({ itemKey, call }) => {
+    var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
+    var { user, b3d } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }),
+      checkSshOpen: vi.fn().mockResolvedValue(false),
+    }, [managedRecord])
+    await openPrintersSettings(user)
+    await chooseDeployItem(user, itemKey)
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers[call]).not.toHaveBeenCalled()
+  })
+
+  it('a deactivation with root access off shows the root-access window and runs nothing', async () => {
+    var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
+    var { user, b3d } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }),
+      checkSshOpen: vi.fn().mockResolvedValue(false),
+    }, [managedRecord])
+    await openPrintersSettings(user)
+    await user.click(await screen.findByRole('button', { name: en('printers.deactivate') }))
+    const deactivateConfirm = (await screen.findByText(en('printers.deactivate_title', { name: 'Alpha' }))).closest('[role="dialog"]') as HTMLElement
+    await user.click(within(deactivateConfirm).getByRole('button', { name: en('printers.deactivate') }))
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(b3d.printers.deactivate).not.toHaveBeenCalled()
+  })
+})
+
 describe('App flow: a managed printer whose plugin state drifted (group 5)', () => {
   it('shows the drift banner and recovers plugins on click', async () => {
     var recover = vi.fn().mockResolvedValue({ ok: true, results: [] })
