@@ -5,7 +5,7 @@ import type { BrowserWindow } from 'electron'
 import type { SshSession } from './ssh'
 import type { EnrollStep } from './adapter-loader'
 
-vi.mock('./ssh', () => ({ connect: vi.fn(), createPersistentSession: vi.fn() }))
+vi.mock('./ssh', async () => ({ connect: vi.fn(), createPersistentSession: vi.fn(), shellQuote: (await vi.importActual<typeof import('./ssh')>('./ssh')).shellQuote }))
 vi.mock('./adapter-loader', () => ({ getAdapter: vi.fn() }))
 vi.mock('./printers', () => ({ updatePrinter: vi.fn(), loadPrinters: vi.fn(() => []) }))
 vi.mock('./analytics', () => ({ reportEvent: vi.fn() }))

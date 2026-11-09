@@ -110,7 +110,7 @@ describe('watchInstallProgress', () => {
     sockets[0].emit('error', new Error('Opening handshake has timed out'))
     await close
 
-    expect(vi.mocked(WebSocket)).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ handshakeTimeout: expect.any(Number) }))
+    expect(vi.mocked(WebSocket)).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ handshakeTimeout: 10_000 }))
   })
 })
 

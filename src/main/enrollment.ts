@@ -204,7 +204,8 @@ function makeContext(
     clientLabel: hostname(),
     clientPublicKey: printerKey?.publicKey,
     clientFingerprint: printerKey?.fingerprint,
-    // A recovery finds the daemon's files still there, so only the ones whose checksum differs travel.
+    // A recovery finds the daemon's files still there and sends only what changed; a first enrollment
+    // finds none there, so the printer reports no checksums and every file is sent.
     sendChangedFilesOnly: true,
   }
 }

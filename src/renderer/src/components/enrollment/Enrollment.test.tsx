@@ -14,6 +14,12 @@ import { makeT } from '../../i18n'
 
 const en = makeT('en')
 
+// A wrong call to the app would come after the saved printer is read back, a few promises later, so
+// a check that it never came waits for those first.
+async function letPendingWorkSettle(): Promise<void> {
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+}
+
 function renderEnroll(mode: EnrollMode, printerOverrides = {}, handlers: Record<string, ReturnType<typeof vi.fn>> = {}) {
   var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online', ...printerOverrides })
   var onEnrolled = handlers.onEnrolled ?? vi.fn()
@@ -329,6 +335,7 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
     act(() => rendered.emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing boot hook', stepIndex: 1, totalSteps: 2 })))
 
     await waitFor(() => expect(rendered.onOpRecorded).toHaveBeenCalledWith(expect.objectContaining({ id: 'printer-1', status: 'deactivated' })))
+    await letPendingWorkSettle()
     expect(rendered.b3d.printers.reboot).toHaveBeenCalled()
     expect(rendered.onEnrolled).not.toHaveBeenCalled()
   })
@@ -339,9 +346,12 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
     var rendered = await renderAndSayGo(rebootingOp, {}, { onClose })
     vi.mocked(rendered.b3d.printers.load).mockResolvedValue([{ id: 'printer-1', status: 'managed' }] as unknown as PrinterRecord[])
     await failTheRebootAfterTheOp(rendered, rebootingOp)
-    await waitFor(() => expect(rendered.onOpRecorded).toHaveBeenCalledOnce())
+    await waitFor(() => expect(rendered.onOpRecorded).toHaveBeenCalled())
+    await letPendingWorkSettle()
+    expect(rendered.onOpRecorded).toHaveBeenCalledOnce()
 
     await rendered.user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await letPendingWorkSettle()
 
     expect(onClose).toHaveBeenCalledOnce()
     expect(rendered.onEnrolled).not.toHaveBeenCalled()
@@ -506,7 +516,7 @@ describe('Enrollment on an Extended-firmware printer', () => {
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'preflight', stepLabel: 'Checking the printer', error: ADAPTER_REFUSAL, stepIndex: 0 })))
 
     expect(screen.getByText(en('enroll.refusal.extended_firmware'))).toBeInTheDocument()
-    expect(screen.queryByText(ADAPTER_REFUSAL)).toBeNull()
+    expect(screen.queryByText(ADAPTER_REFUSAL, { exact: false })).toBeNull()
   })
 
   it('keeps the step words for any other refusal', async () => {

@@ -362,6 +362,7 @@ describe('App flow: a deactivation waiting on the reboot', () => {
     await user.click(within(deactivateWindow).getByRole('button', { name: 'Deactivate' }))
     await waitFor(() => expect(b3d.printers.deactivate).toHaveBeenCalled())
     vi.mocked(b3d.printers.load).mockResolvedValue([{ ...managedRecord, status: 'deactivated', deactivated: true }] as unknown as PrinterRecord[])
+    vi.mocked(b3d.printers.reboot).mockReturnValue(new Promise<never>(() => {}))
 
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing boot hook', stepIndex: 1, totalSteps: 2 })))
 

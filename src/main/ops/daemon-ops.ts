@@ -70,13 +70,13 @@ function redeployDaemon(adapter: AdapterDefinition, forced: boolean, ssh: SshSes
 }
 
 function diagnoseDaemon(adapter: AdapterDefinition, ssh: SshSession): Promise<string> {
-  const bespok3d = shellQuote(bespok3dRootOn(adapter))
+  const quotedBespok3dRoot = shellQuote(bespok3dRootOn(adapter))
 
   return ssh.exec(
     `out=""; ` +
-    `[ -d ${bespok3d}/var/lib/demon ] && out="$out stale-demon-dir"; ` +
-    `[ -f ${bespok3d}/var/lib/daemon/daemon.py ] || out="$out missing-daemon.py"; ` +
-    `grep -q 'var/lib/demon' ${bespok3d}/etc/init.d/autostart/s10bespok3d-daemon 2>/dev/null && out="$out wrong-autostart-path"; ` +
+    `[ -d ${quotedBespok3dRoot}/var/lib/demon ] && out="$out stale-demon-dir"; ` +
+    `[ -f ${quotedBespok3dRoot}/var/lib/daemon/daemon.py ] || out="$out missing-daemon.py"; ` +
+    `grep -q 'var/lib/demon' ${quotedBespok3dRoot}/etc/init.d/autostart/s10bespok3d-daemon 2>/dev/null && out="$out wrong-autostart-path"; ` +
     `netstat -ltnp 2>/dev/null | grep -q ':4269 ' && out="$out port-4269-occupied"; ` +
     `[ -z "$out" ] && out=" no-issues-detected"; ` +
     `echo "Diagnosis:$out"`

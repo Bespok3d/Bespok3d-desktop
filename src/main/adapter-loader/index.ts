@@ -84,8 +84,8 @@ export interface EnrollContext {
   // inside one long step; a phase that cannot measure itself sends the hint alone.
   onProgress?: (hint: string, stepFraction?: number) => void
   overlayWasActive?: boolean
-  // Every app op that puts the daemon or the jinni on a printer sets it: only the files whose hash
-  // differs from what the printer holds are sent. Left out, every file is sent.
+  // The printer's link can be slow, and a daemon repair or update mostly finds the same files already
+  // there, so only the files whose checksum differs from the printer's copy are sent.
   sendChangedFilesOnly?: boolean
 }
 
