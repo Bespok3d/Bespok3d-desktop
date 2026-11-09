@@ -84,6 +84,9 @@ export interface EnrollContext {
   // inside one long step; a phase that cannot measure itself sends the hint alone.
   onProgress?: (hint: string, stepFraction?: number) => void
   overlayWasActive?: boolean
+  // An update of the daemon or the jinni sets it: only the files whose hash differs from what the
+  // printer holds are sent. Left out, every file is sent, which is what enrollment and repair need.
+  sendChangedFilesOnly?: boolean
 }
 
 export interface EnrollStep {

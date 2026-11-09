@@ -4,7 +4,7 @@ import type { PrinterRecord } from '../printers'
 import type { InstallLogPhase, InstallLog } from '@bespok3d/contract'
 import type { BatchResult } from './batch-result'
 import { manifestWarningsIn } from './batch-result'
-import { doRequest, LONG_OP_TIMEOUT_MS, type UploadProgressFn } from './transport'
+import { DaemonHttpError, doRequest, LONG_OP_TIMEOUT_MS, type UploadProgressFn } from './transport'
 
 function toInstallLog(text: string): InstallLog {
   const result = JSON.parse(text) as { plugin_id: string; ok: boolean; log: InstallLogPhase[] }
@@ -111,8 +111,31 @@ function parseBatchResult(text: string): BatchResult {
   }
 }
 
-export async function recoverPackages(record: PrinterRecord): Promise<BatchResult> {
-  return parseBatchResult(await doRequest(record, 'POST', '/packages/recover', undefined, undefined, LONG_OP_TIMEOUT_MS))
+// A caller that reboots the printer right after says so: the reboot restarts every service, so the
+// printer skips its own services restart instead of running it only to have the reboot do it again.
+export async function recoverPackages(record: PrinterRecord, rebootFollows = false): Promise<BatchResult> {
+  const body = rebootFollows ? Buffer.from(JSON.stringify({ reboot_follows: true })) : undefined
+  const contentType = rebootFollows ? 'application/json' : undefined
+
+  return parseBatchResult(await doRequest(record, 'POST', '/packages/recover', body, contentType, LONG_OP_TIMEOUT_MS))
+}
+
+function printerAskedForTheFullRecover(error: unknown): boolean {
+  return error instanceof DaemonHttpError && error.statusCode === 409
+    && (error.detail as { error?: string } | null)?.error === 'needs_recover'
+}
+
+// A printer that only lost its setup (the include lines) gets just that put back, with no plugin
+// re-applied. The printer refuses that smaller repair whenever its selfcheck reports anything more, and
+// only then is every plugin put back (Bespok3d-desktop#30).
+export async function repairOrRecover(record: PrinterRecord, rebootFollows: boolean): Promise<BatchResult> {
+  try {
+    return parseBatchResult(await doRequest(record, 'POST', '/packages/repair-setup', undefined, undefined, LONG_OP_TIMEOUT_MS))
+  } catch (error) {
+    if (!printerAskedForTheFullRecover(error)) throw error
+
+    return recoverPackages(record, rebootFollows)
+  }
 }
 
 export interface BatchUpdatePackage {

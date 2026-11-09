@@ -37,7 +37,7 @@ function enrolledPatch() {
 }
 
 function mockSession(overrides: Partial<SshSession> = {}): SshSession {
-  return { host: 'test.local', exec: vi.fn().mockResolvedValue('ok'), getContent: vi.fn(), putContent: vi.fn(), putBytes: vi.fn(), close: vi.fn(), ...overrides }
+  return { host: 'test.local', exec: vi.fn().mockResolvedValue('ok'), execWithInput: vi.fn(), getContent: vi.fn(), putContent: vi.fn(), putBytes: vi.fn(), close: vi.fn(), ...overrides }
 }
 
 function mockStep(id: string, runImpl = vi.fn().mockResolvedValue(undefined)): EnrollStep {

@@ -3,9 +3,13 @@
 import { useState } from 'react'
 import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 
+// What the report says about the restart after recovery: none was made by the app, the app restarted
+// the printer and it answered again, or the wait ran out before the printer's daemon answered.
+export type RecoveryRestart = 'none' | 'restarted' | 'not-back'
+
 interface RecoveryReportHandlers {
-  waitForPrinterBack: (printerId: string) => Promise<void>
-  setRestartingAfterRecovery: (restarting: boolean) => void
+  waitForPrinterBack: (printerId: string) => Promise<boolean>
+  setRestartingAfterRecovery: (restart: RecoveryRestart) => void
   showReport: (results: BatchResult) => void
 }
 
@@ -15,16 +19,19 @@ interface RecoveryReportHandlers {
 //
 // The restart answers whether the app is making it itself. A printer the user gave their own SSH login
 // for is not restarted unattended, so there is nothing to wait for and that one is reported at once.
+// A wait that runs out still shows the report, saying the daemon did not answer, and starts nothing else.
 function reportWhenThePrinterIsBack(printerId: string, results: BatchResult, handlers: RecoveryReportHandlers) {
   return function holdTheReport(restarting: boolean) {
-    handlers.setRestartingAfterRecovery(restarting)
     if (!restarting) {
+      handlers.setRestartingAfterRecovery('none')
       handlers.showReport(results)
 
       return undefined
     }
+    handlers.setRestartingAfterRecovery('restarted')
 
-    return handlers.waitForPrinterBack(printerId).then(function nowItCanBeRead() {
+    return handlers.waitForPrinterBack(printerId).then(function nowItCanBeRead(back) {
+      if (!back) handlers.setRestartingAfterRecovery('not-back')
       handlers.showReport(results)
     })
   }
@@ -33,6 +40,8 @@ function reportWhenThePrinterIsBack(printerId: string, results: BatchResult, han
 // Recovery, the one batch operation that ends by restarting the printer: putting every plugin back
 // leaves services restarted one after another, and the touchscreen is known to come back dead from
 // that, so the printer is restarted every time rather than only when something says it must be.
+// When the app will make that restart itself, the printer is told so before recovery runs and skips
+// its own services restart, which the reboot replaces.
 //
 // The restarting screen goes up when the restart is ASKED FOR, never when it answers: the answer only
 // comes once the printer has gone down and rejoined the network, minutes later. Waiting for it left the
@@ -42,12 +51,13 @@ function reportWhenThePrinterIsBack(printerId: string, results: BatchResult, han
 export function useRecoverOp(
   restartAfterReapply: (printerId: string) => Promise<boolean>,
   recoveryDidNotRun: (printerId: string, setBusy: (busy: boolean) => void) => (error: unknown) => void,
-  waitForPrinterBack: (printerId: string) => Promise<void>,
+  waitForPrinterBack: (printerId: string) => Promise<boolean>,
   restartSecondsOf: (printerId: string) => Promise<number | null>,
+  appRestartsItself: (printerId: string) => Promise<boolean>,
 ) {
   const [recoveryResults, setRecoveryResults] = useState<BatchResult | null>(null)
   const [recovering, setRecovering] = useState(false)
-  const [restartingAfterRecovery, setRestartingAfterRecovery] = useState(false)
+  const [restartingAfterRecovery, setRestartingAfterRecovery] = useState<RecoveryRestart>('none')
   const [printerRestarting, setPrinterRestarting] = useState(false)
   const [restartSeconds, setRestartSeconds] = useState<number | null>(null)
   function showReport(results: BatchResult) {
@@ -57,9 +67,10 @@ export function useRecoverOp(
   function runRecover(printerId: string) {
     setRecovering(true)
     restartSecondsOf(printerId).then(setRestartSeconds)
-    setRestartingAfterRecovery(false)
+    setRestartingAfterRecovery('none')
     setPrinterRestarting(false)
-    window.b3d.store.recover(printerId)
+    appRestartsItself(printerId)
+      .then((rebootFollows) => window.b3d.store.recover(printerId, rebootFollows))
       .then((results) => {
         setRecovering(false)
         setPrinterRestarting(true)

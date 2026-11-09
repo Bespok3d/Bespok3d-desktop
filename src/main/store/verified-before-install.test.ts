@@ -56,6 +56,7 @@ describe('nothing installs unchecked after a firmware update', () => {
 
   it('recovers by re-applying what is already on the printer, sending no archive with the request', () => {
     const source = readFileSync(join(MAIN_DIR, 'daemon-client/packages-client.ts'), 'utf8')
-    expect(source).toContain("'/packages/recover', undefined")
+    expect(source).toContain("'/packages/recover', body")
+    expect(source).toContain('Buffer.from(JSON.stringify({ reboot_follows: true }))')
   })
 })

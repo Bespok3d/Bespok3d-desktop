@@ -10,11 +10,17 @@ import { fetchDiskRegistry } from './disk-transport'
 import { isHttpUrl, fetchHttpRegistry } from './http-transport'
 import { toGitHubListRef, fetchGitHubRegistry } from './github-transport'
 import { toReleaseAssetListRef, fetchReleaseAssetRegistry } from './release-asset-transport'
+import { withLastListed } from './last-listed'
+
+// A failed list carries the names its last good copy listed, so the store can say what it hides.
+export function fetchGitHostRegistry(ref: RegistryRef): Promise<FetchedRegistry> {
+  return routedToTransport(ref).catch((error: Error) => withLastListed(ref, error))
+}
 
 // Ordered by specificity: the `github:` scheme first, then a release-download url (an http url whose
 // path names an asset of a repo's latest release), then plain http(s), and a disk path is what is left
 // when no scheme claims the ref.
-export function fetchGitHostRegistry(ref: RegistryRef): Promise<FetchedRegistry> {
+function routedToTransport(ref: RegistryRef): Promise<FetchedRegistry> {
   const gitHubList = toGitHubListRef(ref.url)
   if (gitHubList) return fetchGitHubRegistry(ref, gitHubList)
   const releaseAsset = toReleaseAssetListRef(ref.url)

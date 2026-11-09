@@ -52,7 +52,7 @@ function assetNamed(path: string): string {
 // `github:` ref pins one to a branch, so which one answers depends on the publisher, not on us. Going
 // through `/releases/latest/` means the newest release is found by the url itself, with no API call
 // spent discovering a version.
-function anonymousAvenues(list: GitHubListRef): string[] {
+export function anonymousAvenues(list: GitHubListRef): string[] {
   if (list.branch === 'dev') return [`${RAW_FILE_BASE}/${list.owner}/${list.repo}/dev/${list.path}`]
 
   return [

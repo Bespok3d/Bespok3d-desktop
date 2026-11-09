@@ -25,28 +25,39 @@ import { withPrinterVars } from './printer-vars'
 import { reportEvent } from '../analytics'
 import { reportErrorEvent } from '../analytics/errors'
 
+// Every dependency is looked up and weighed against this printer before the first one goes on. Done one
+// at a time, a dependency missing from the catalog or too new for this daemon was only found after the
+// ones ahead of it had installed, leaving the owner a half install for a plugin that never arrived
+// (main-index#6). A dependency is pulled in by the app rather than chosen by the owner, so nothing on
+// screen ever showed him its floors: this is the only place they can be caught.
+async function checkedDependencies(
+  record: PrinterRecord,
+  catalog: readonly MergedEntry[],
+  channel: ReleaseChannel | undefined,
+  depIds: readonly string[],
+): Promise<MergedEntry[]> {
+  const depEntries = depIds.map((depId) => findCatalogVariant(catalog, depId, undefined, channel))
+  await Promise.all(depEntries.map((depEntry) => assertPrinterMeetsPackageFloors(record, depEntry)))
+
+  return depEntries
+}
+
 // Deps install one at a time, in order (a dependency must be on the printer before the plugin that
 // needs it), so this walks the list head-then-tail by recursion rather than firing them concurrently.
 async function installDepsInOrder(
   win: BrowserWindow,
   record: PrinterRecord,
-  catalog: readonly MergedEntry[],
   pluginId: string,
-  channel: ReleaseChannel | undefined,
-  remaining: readonly string[],
+  remaining: readonly MergedEntry[],
 ): Promise<void> {
-  const [depId, ...rest] = remaining
-  if (depId === undefined) return
+  const [depEntry, ...rest] = remaining
+  if (depEntry === undefined) return
 
+  const depId = depEntry.name
   sendProgress(win, record.id, pluginId, `Installing dependency ${depId}…`)
   // A dependency is a package like any other and reaches the printer the same way, so it faces the
   // same verification. Its derived tier is not recorded: provenance is tracked for what the user chose
   // to install, and a refusal here aborts the whole install before anything of the plugin itself lands.
-  const depEntry = findCatalogVariant(catalog, depId, undefined, channel)
-  // A dependency faces the compatibility floors the same way the plugin does. It is pulled in by the
-  // app rather than chosen by the owner, so nothing on screen ever showed him its floors: this is the
-  // only place it can be caught.
-  await assertPrinterMeetsPackageFloors(record, depEntry)
   const depArchive = await resolveArchiveBytes(depEntry)
   // The dependency is the plugin that did not install here, so it keeps its own failed attempt, the
   // way it would if the user had installed it first by hand; the plugin waiting on it fails right after.
@@ -57,7 +68,7 @@ async function installDepsInOrder(
       throw new DependencyDidNotInstall(depId, error)
     })
 
-  return installDepsInOrder(win, record, catalog, pluginId, channel, rest)
+  return installDepsInOrder(win, record, pluginId, rest)
 }
 
 // The dependencies this printer does not have yet, which are the ones this install will put on it: a
@@ -162,7 +173,8 @@ async function runStoreInstall(
   // printer misses is refused here, so the Update button on that card cannot hand a printer a daemon
   // that will then refuse to be driven by the adapter already on it.
   await assertPrinterMeetsPackageFloors(record, entry)
-  await installDepsInOrder(win, record, catalog, pluginId, channel, missingDeps)
+  const depEntries = await checkedDependencies(record, catalog, channel, missingDeps)
+  await installDepsInOrder(win, record, pluginId, depEntries)
   sendProgress(win, printerId, pluginId, 'Sending to printer…')
   const { vars: sentVars } = await withPrinterVars(record, { pluginId, vars })
   const { log, packageTrust } = await sendPackage(win, record, entry, pluginId, sentVars)

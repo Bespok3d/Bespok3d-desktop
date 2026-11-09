@@ -30,7 +30,13 @@ describe('findCatalogEntry', () => {
   })
 
   it('throws when no entry matches', () => {
-    expect(() => findCatalogEntry([catalogEntry({ name: 'spoolman' })], 'remote-screen')).toThrow('bundled plugin not found: remote-screen')
+    expect(() => findCatalogEntry([catalogEntry({ name: 'spoolman' })], 'remote-screen')).toThrow('remote-screen is not in any plugin list')
+  })
+
+  // Most lists are online, so "bundled" sent the user looking inside the app for a package that was
+  // missing from a list on the internet (main-index#6).
+  it('does not call a package missing from the catalog bundled', () => {
+    expect(() => findCatalogEntry([catalogEntry({ name: 'spoolman' })], 'remote-screen')).not.toThrow(/bundled/)
   })
 })
 

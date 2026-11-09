@@ -60,6 +60,16 @@ describe('waiting for a printer that was told to restart', () => {
     const waiting = waitForPrinterBack('printer-1')
     await vi.advanceTimersByTimeAsync(200_000)
 
-    await expect(waiting).resolves.toBeUndefined()
+    await expect(waiting).resolves.toBe(false)
+  })
+
+  it('says the printer is back when its daemon answers', async () => {
+    vi.useFakeTimers()
+    installB3d({ printers: { checkDaemon: vi.fn().mockResolvedValue(serving()) } })
+
+    const waiting = waitForPrinterBack('printer-1')
+    await vi.advanceTimersByTimeAsync(STILL_GOING_DOWN_MS)
+
+    await expect(waiting).resolves.toBe(true)
   })
 })

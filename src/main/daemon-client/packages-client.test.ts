@@ -7,10 +7,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('./transport', () => ({
   doRequest: vi.fn().mockResolvedValue(JSON.stringify({ ok: true, results: [] })),
   LONG_OP_TIMEOUT_MS: 1,
+  DaemonHttpError: class DaemonHttpError extends Error {
+    statusCode: number
+    detail: unknown
+    constructor(statusCode: number, detail: unknown, message: string) {
+      super(message)
+      this.statusCode = statusCode
+      this.detail = detail
+    }
+  },
 }))
 
-import { doRequest } from './transport'
-import { installBatchPackages, updateBatchPackages } from './packages-client'
+import { DaemonHttpError, doRequest } from './transport'
+import { installBatchPackages, recoverPackages, repairOrRecover, updateBatchPackages } from './packages-client'
 import type { PrinterRecord } from '../printers'
 
 const record = { ip: '127.0.0.1', daemonCert: 'C', daemonToken: 'T' } as unknown as PrinterRecord
@@ -31,6 +40,58 @@ describe('batch package routes', () => {
   it('routes update-all to the update-batch route', async () => {
     await updateBatchPackages(record, packages)
     expect(postedPath()).toBe('/packages/update-batch')
+  })
+})
+
+function postedPaths(): string[] {
+  return vi.mocked(doRequest).mock.calls.map((call) => call[2])
+}
+
+function postedBody(callIndex: number): unknown {
+  const body = vi.mocked(doRequest).mock.calls[callIndex][3] as Buffer | undefined
+
+  return body ? JSON.parse(body.toString()) : undefined
+}
+
+// Bespok3d-desktop#30: a printer that only lost its include lines was getting every plugin put back,
+// with its services restarted one by one and then the printer rebooted on top.
+describe('repairing a printer after an OTA', () => {
+  beforeEach(() => vi.mocked(doRequest).mockReset().mockResolvedValue(JSON.stringify({ ok: true, results: [] })))
+
+  it('asks for the setup repair first, and stops there when the printer takes it', async () => {
+    await repairOrRecover(record, true)
+
+    expect(postedPaths()).toEqual(['/packages/repair-setup'])
+  })
+
+  it('puts every plugin back only when the printer says the setup repair is not enough', async () => {
+    vi.mocked(doRequest).mockRejectedValueOnce(new DaemonHttpError(409, { error: 'needs_recover' }, 'conflict'))
+
+    await repairOrRecover(record, true)
+
+    expect(postedPaths()).toEqual(['/packages/repair-setup', '/packages/recover'])
+    expect(postedBody(1)).toEqual({ reboot_follows: true })
+  })
+
+  it('does not fall back to the full recover on any other refusal', async () => {
+    vi.mocked(doRequest).mockRejectedValueOnce(new DaemonHttpError(409, { error: 'printing' }, 'conflict'))
+
+    await expect(repairOrRecover(record, true)).rejects.toThrow('conflict')
+    expect(postedPaths()).toEqual(['/packages/repair-setup'])
+  })
+
+  it('tells the printer nothing about a reboot when no reboot follows, so it keeps its services restart', async () => {
+    await recoverPackages(record)
+
+    expect(postedBody(0)).toBeUndefined()
+  })
+
+  it('gives both calls the long time limit, so neither waits forever', async () => {
+    vi.mocked(doRequest).mockRejectedValueOnce(new DaemonHttpError(409, { error: 'needs_recover' }, 'conflict'))
+
+    await repairOrRecover(record, false)
+
+    expect(vi.mocked(doRequest).mock.calls.map((call) => call[5])).toEqual([1, 1])
   })
 })
 

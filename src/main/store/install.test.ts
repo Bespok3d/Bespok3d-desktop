@@ -493,6 +493,46 @@ describe('the compatibility floor on the install path itself', () => {
 
 })
 
+const SECOND_DEP_ID = 'print-prefs-extras'
+
+function installWithTwoDependencies(): Promise<unknown> {
+  return installGuarded({} as BrowserWindow, 'printer-1', 'idle-timeout', undefined, [DEP_ID, SECOND_DEP_ID])
+}
+
+// The dependencies used to be looked up one at a time while installing, so a dependency missing or too
+// new halfway down the list was found only after the ones ahead of it were already on the printer: the
+// owner kept things he never chose, for a plugin that never arrived (main-index#6).
+describe('every dependency is checked before the first one installs', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('installs nothing when a later dependency is missing from every plugin list', async () => {
+    stubADependencyResolvingTo(packageWith({ ...HONEST_MANIFEST, name: DEP_ID }), packageWith(HONEST_MANIFEST))
+    vi.mocked(findCatalogVariant).mockImplementation((_catalog, pluginId) => {
+      if (pluginId === SECOND_DEP_ID) throw new Error(`${pluginId} is not in any plugin list`)
+
+      return { ...LISTED_ENTRY, name: pluginId }
+    })
+
+    await expect(installWithTwoDependencies()).rejects.toThrow(`${SECOND_DEP_ID} is not in any plugin list`)
+    expect(vi.mocked(installPlugin)).not.toHaveBeenCalled()
+  })
+
+  it('installs nothing when a later dependency is too new for the daemon on this printer', async () => {
+    stubADependencyResolvingTo(packageWith({ ...HONEST_MANIFEST, name: DEP_ID }), packageWith(HONEST_MANIFEST))
+    vi.mocked(findCatalogVariant).mockImplementation((_catalog, pluginId) => ({
+      ...LISTED_ENTRY,
+      name: pluginId,
+      ...(pluginId === SECOND_DEP_ID ? { min_daemon_version: '0.12.22' } : {}),
+    }))
+    vi.mocked(fetchDaemonStatus).mockResolvedValue({ version: '0.12.19' } as never)
+
+    await expect(installWithTwoDependencies()).rejects.toThrow('Update the daemon on this printer')
+    expect(vi.mocked(installPlugin)).not.toHaveBeenCalled()
+  })
+})
+
 // The pair only used to be asked in one direction: is this printer's daemon new enough for the
 // package? Nothing asked the reverse, so the daemon's own Update button could hand a printer a daemon
 // that then refuses to be driven by the support package already on it, leaving the printer enrolled

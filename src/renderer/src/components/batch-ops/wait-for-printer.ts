@@ -25,18 +25,18 @@ function printerIsServingAgain(printerId: string): Promise<boolean> {
     .catch(() => false)
 }
 
-function askUntilItAnswers(printerId: string, stopAt: number, clock: () => number): Promise<void> {
+function askUntilItAnswers(printerId: string, stopAt: number, clock: () => number): Promise<boolean> {
   return printerIsServingAgain(printerId).then(function askAgainUnlessItIsBack(back) {
-    if (back || clock() >= stopAt) return undefined
+    if (back || clock() >= stopAt) return back
 
     return pause(ASK_AGAIN_MS).then(() => askUntilItAnswers(printerId, stopAt, clock))
   })
 }
 
-// Resolves when the printer is serving again, or when the wait has gone on too long. It never rejects:
-// the caller has a recovery report to show either way, and a failed question is just one more printer
-// that is not back yet.
-export function waitForPrinterBack(printerId: string, clock: () => number = Date.now): Promise<void> {
+// Resolves true when the printer is serving again, false when the wait has gone on too long, so the
+// report can say the printer's daemon did not answer. It never rejects: the caller has a recovery report
+// to show either way, and a failed question is just one more printer that is not back yet.
+export function waitForPrinterBack(printerId: string, clock: () => number = Date.now): Promise<boolean> {
   const stopAt = clock() + STOP_WAITING_MS
 
   return pause(GOING_DOWN_MS).then(() => askUntilItAnswers(printerId, stopAt, clock))

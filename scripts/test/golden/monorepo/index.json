@@ -71,7 +71,7 @@
     {
       "name": "bespok3d-daemon",
       "title": "Bespok3d daemon",
-      "version": "0.14.0",
+      "version": "0.14.1",
       "description": "The on-printer daemon for the Bespok3d plugin manager: a small FastAPI service that installs, updates, and removes plugins, reports printer capabilities, refuses any operation mid-print, and self-heals a plugin that breaks a service so the printer is never left unusable. It is plugin zero: the adapter bootstraps it over SSH at enrollment (cert-pinned HTTPS, bearer-token auth), not through the normal plugin install pipeline, so the install block below is intentionally empty. This package is the publishable, versioned artifact the app reads to know when a newer daemon is available.",
       "tagline": "The on-printer service that installs plugins and keeps the printer safe.",
       "category": "system",
@@ -89,7 +89,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "bespok3d-daemon/doc/README.md",
-      "download_url": "bespok3d-daemon-0.14.0.b3",
+      "download_url": "bespok3d-daemon-0.14.1.b3",
       "min_jinni_version": "0.1.10",
       "changelog_url": "bespok3d-daemon/doc/CHANGELOG.md"
     },
@@ -644,7 +644,7 @@
     {
       "name": "rfid-ntag",
       "title": "RFID Spool Reader",
-      "version": "0.1.15+dev.local",
+      "version": "0.1.17+dev.local",
       "description": "USB RFID reader picks up OpenSpool-encoded NTAG215 cards. Writes the current spool's metadata to rfid_data.json on every card event so the rest of the stack just knows.",
       "tagline": "NTAG215/OpenSpool RFID: your filament knows what it is.",
       "category": "filament",
@@ -668,7 +668,7 @@
       ],
       "conflicts": [],
       "doc_url": "rfid-ntag/doc/README.md",
-      "download_url": "rfid-ntag-0.1.15.b3",
+      "download_url": "rfid-ntag-0.1.17.b3",
       "min_daemon_version": "0.14.0",
       "homepage": "https://github.com/Bespok3d/u1-enhanced-rfid",
       "config": [],

@@ -226,7 +226,7 @@ describe('App flow: canceled access and re-enrollment choices', () => {
 
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Finished', stepIndex: 13, totalSteps: 14 })))
     await user.click(await screen.findByRole('button', { name: 'Done' }))
-    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1'))
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', true))
   })
 })
 
@@ -241,7 +241,7 @@ describe('App flow: a managed printer whose plugin state drifted (group 5)', () 
       } },
     })
     await user.click(await screen.findByRole('button', { name: en('banner.drift_action') }))
-    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1'))
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', true))
   })
 })
 

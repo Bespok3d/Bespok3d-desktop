@@ -4,7 +4,7 @@
 // one cohesive module, data/collections.ts; CatalogPayload below carries the wire entries.
 import type { CollectionEntry } from './collections'
 import type { PluginConfigField, IndexConfigField } from './plugin-config'
-import type { RegistryTrust } from '../../../main/registry/model'
+import type { RegistryTrust, SourceFailure } from '../../../main/registry/model'
 
 // The renderer's name for the trust a SOURCE was granted. It is an alias, not a copy: the list of
 // tiers is declared once, where the registry decides them (main/registry/model.ts), so a tier added
@@ -240,6 +240,8 @@ export interface CatalogPayload {
   registries: RegistrySummary[]
   sources: SourceRow[]
   drops: string[]
+  // Every list that failed to load, root or sub-list, with the plugins its last good copy listed.
+  failures: SourceFailure[]
 }
 
 // One sideloaded (drag-dropped) package after ingest. `metadataComplete` is false when catalog fields

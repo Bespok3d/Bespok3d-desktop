@@ -280,14 +280,14 @@ describe('store batch installs the plugins it can and reports the ones it cannot
   it('installs the rest when one plugin is not in the catalog at all', async () => {
     stubTheBatchAround(packageWith(HONEST_MANIFEST))
     vi.mocked(findCatalogVariant).mockImplementation((_plugins, pluginId) => {
-      if (pluginId !== LISTED_ENTRY.name) throw new Error(`bundled plugin not found: ${pluginId}`)
+      if (pluginId !== LISTED_ENTRY.name) throw new Error(`${pluginId} is not in any plugin list`)
 
       return LISTED_ENTRY
     })
 
     const result = await runStoreUpdateBatch({} as BrowserWindow, 'printer-1', [{ pluginId: 'idle-timeout' }, { pluginId: 'ghost-plugin' }])
     expect(pluginIdsSentToThePrinter()).toEqual(['idle-timeout'])
-    expect(reasonFor(result, 'ghost-plugin')).toMatch(/bundled plugin not found/)
+    expect(reasonFor(result, 'ghost-plugin')).toMatch(/not in any plugin list/)
   })
 })
 

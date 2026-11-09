@@ -122,7 +122,7 @@ export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip:
   // Update is not a Force flow: it exists to move a printer forward, so it keeps the version question.
   await assertSafeToMoveDaemon(record, false)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
-    { id: 'deploy-daemon', label: 'Uploading fresh daemon code', detail: 'Uploads the latest daemon source and adapter jinni; the cert and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-daemon', ssh, { ...ctx, onProgress: progress }) },
+    { id: 'deploy-daemon', label: 'Uploading fresh daemon code', detail: 'Uploads the latest daemon source and adapter jinni; the cert and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-daemon', ssh, { ...ctx, onProgress: progress, sendChangedFilesOnly: true }) },
     { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Deploys the autostart script, frees port 4269, and restarts the daemon', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
@@ -138,7 +138,7 @@ export async function runUpdateJinni(win: BrowserWindow, printerId: string, ip: 
   // is no daemon version to be put backwards here.
   assertPrinterNotPrinting(printerId)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
-    { id: 'deploy-jinni', label: 'Updating the adapter jinni', detail: 'Re-uploads only the device-side adapter; the daemon source, cert, and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-jinni', ssh, { ...ctx, onProgress: progress }) },
+    { id: 'deploy-jinni', label: 'Updating the adapter jinni', detail: 'Re-uploads only the device-side adapter; the daemon source, cert, and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-jinni', ssh, { ...ctx, onProgress: progress, sendChangedFilesOnly: true }) },
     { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Restarts the daemon so it loads the updated jinni', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => tailDaemonLog(ssh)) },
   ])

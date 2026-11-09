@@ -11,11 +11,11 @@ import { pingAndUpdate, refreshEndpoints } from '../../data/printers'
 import { mainProcessMessage } from '../../utils/errorMessage'
 import { reduceBatchProgress } from './progress'
 import { usePendingUpdate } from './pending-update'
-import { useRecoverOp } from './recover-op'
+import { useRecoverOp, type RecoveryRestart } from './recover-op'
 import { migrateRunner } from './migrate-op'
 import { updateAllRunner } from './update-all-op'
 import { waitForPrinterBack } from './wait-for-printer'
-import { restartSecondsOf } from './restart-after-reapply'
+import { appRestartsItself, restartSecondsOf } from './restart-after-reapply'
 import { PrinterRestartingModal } from './PrinterRestarting'
 import { batchSources } from './sources'
 import './batch-ops.css'
@@ -67,9 +67,9 @@ export function BatchOpModal({ variant, busy, result, progress, restarting, prin
   busy: boolean
   result: BatchResult | null
   progress?: BatchProgressState | null
-  // Whether the app restarted this printer itself. A printer the user gave their own SSH login for is
-  // not restarted unattended, so the report must not claim it was.
-  restarting?: boolean
+  // Whether the app restarted this printer itself, and whether it answered again in time. A printer the
+  // user gave their own SSH login for is not restarted unattended, so the report must not claim it was.
+  restarting?: RecoveryRestart
   // The printer is restarting right now and the report is waiting behind it.
   printerRestarting?: boolean
   // How long this printer takes to come back, from its adapter. Null until the adapter has answered,
@@ -105,6 +105,13 @@ export function BatchOpModal({ variant, busy, result, progress, restarting, prin
 // A single batch op: update-all or install-selected, each posting its set of plugins to the daemon and
 // returning per-plugin results.
 type BatchPoster = (printerId: string, specs: PluginUpdateSpec[]) => Promise<BatchResult>
+
+// A printer no longer in the list gets the answer that asks nothing of it.
+function askAboutPrinter<Answer>(printers: Printer[], printerId: string, ask: (printer: Printer) => Promise<Answer>, unknownPrinter: Answer): Promise<Answer> {
+  const printer = printers.find((candidate) => candidate.id === printerId)
+
+  return printer ? ask(printer) : Promise.resolve(unknownPrinter)
+}
 
 // The daemon batch operations (OTA recover, update-all, install-selected, uninstall-selected). Recover
 // has its own daemon route; update-all rides update-batch and install-selected rides install-batch (a
@@ -145,12 +152,9 @@ export function useBatchOps(
     if (printer) pingAndUpdate(printer, setPrinters)
     refreshEndpoints(printerId, setPrinters)
   }
-  function restartSecondsOfPrinter(printerId: string): Promise<number | null> {
-    const printer = printers.find((candidate) => candidate.id === printerId)
-
-    return printer ? restartSecondsOf(printer) : Promise.resolve(null)
-  }
-  const recoverOp = useRecoverOp(restartAfterReapply, (printerId, setBusy) => batchDidNotRun('recovery', printerId, setBusy), waitForPrinterBack, restartSecondsOfPrinter)
+  const recoverOp = useRecoverOp(restartAfterReapply, (printerId, setBusy) => batchDidNotRun('recovery', printerId, setBusy), waitForPrinterBack,
+    (printerId) => askAboutPrinter(printers, printerId, restartSecondsOf, null),
+    (printerId) => askAboutPrinter(printers, printerId, appRestartsItself, false))
   function runRecover(printerId: string) {
     setBatchFailure(null)
     setBatchProgress(null)

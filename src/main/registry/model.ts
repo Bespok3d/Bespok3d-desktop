@@ -66,6 +66,9 @@ export interface RegistryRef {
   // Configured root that led to this list. Nested lists keep their own url for package provenance.
   sourceUrl?: string
   sourceName?: string
+  // The name a parent list gives this sub-list, so a failure names the list that failed rather than
+  // the configured root it was reached through.
+  listName?: string
 }
 
 // An index exactly as a transport handed it over, plus its detached signature when one was served
@@ -137,16 +140,23 @@ export class RegistryFetchError extends Error {
   constructor(
     readonly reason: SourceFailureReason,
     message: string,
+    // Plugin names the last good cached copy of this list carried, for telling the user what the
+    // failure hides. Names only: they never enter the catalog, so they never become installable.
+    readonly lastListed: string[] | null = null,
   ) {
     super(message)
     this.name = 'RegistryFetchError'
   }
 }
 
+// `name` is what the user knows the list as. `lastListed` is null when no good copy was ever saved,
+// which the store tells as "unreachable" rather than as a list that hides nothing.
 export interface SourceFailure {
   url: string
+  name: string
   reason: SourceFailureReason
   message: string
+  lastListed: string[] | null
 }
 
 export interface CatalogResult {

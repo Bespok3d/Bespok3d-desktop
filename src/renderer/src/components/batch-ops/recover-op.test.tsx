@@ -8,11 +8,16 @@ import { useRecoverOp } from './recover-op'
 
 // A printer that never answers again: the report must stay behind it rather than appear anyway.
 function neverAnswers() {
-  return new Promise<void>(() => {})
+  return new Promise<boolean>(() => {})
 }
 
 function answersAtOnce() {
-  return Promise.resolve()
+  return Promise.resolve(true)
+}
+
+// The wait ran to its time limit and the printer's daemon never answered.
+function waitRanOut() {
+  return Promise.resolve(false)
 }
 
 // The restart the app makes itself does not answer until the printer has gone down and come back,
@@ -28,8 +33,12 @@ function refusalIsNotUnderTest() {
 
 // The recovery, its restart and its wait, wired the way the app wires them, so what the test reads is
 // what the user would be looking at.
-function RecoverOpHarness({ restart, waitForBack }: { restart: () => Promise<boolean>; waitForBack: () => Promise<void> }) {
-  const recoverOp = useRecoverOp(restart, refusalIsNotUnderTest, waitForBack, () => Promise.resolve(42))
+function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Promise.resolve(true) }: {
+  restart: () => Promise<boolean>
+  waitForBack: () => Promise<boolean>
+  appRestartsItself?: () => Promise<boolean>
+}) {
+  const recoverOp = useRecoverOp(restart, refusalIsNotUnderTest, waitForBack, () => Promise.resolve(42), appRestartsItself)
 
   return (
     <>
@@ -37,6 +46,7 @@ function RecoverOpHarness({ restart, waitForBack }: { restart: () => Promise<boo
       {recoverOp.recovering && <p>putting the plugins back</p>}
       {recoverOp.printerRestarting && <p>the printer is restarting</p>}
       {recoverOp.recoveryResults && <p>the recovery report</p>}
+      {recoverOp.recoveryResults && <p>restart: {recoverOp.restartingAfterRecovery}</p>}
     </>
   )
 }
@@ -95,5 +105,47 @@ describe('the recovery report', () => {
     await waitFor(() => expect(screen.getByText('the recovery report')).toBeInTheDocument())
     expect(screen.queryByText('the printer is restarting')).not.toBeInTheDocument()
     expect(waitForBack).not.toHaveBeenCalled()
+  })
+
+  it('says the printer did not answer when the wait runs out, and runs nothing more', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const restart = vi.fn().mockResolvedValue(true)
+    const { user } = setup(
+      <RecoverOpHarness restart={restart} waitForBack={waitRanOut} />,
+      { b3d: { store: { recover } } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+
+    await waitFor(() => expect(screen.getByText('restart: not-back')).toBeInTheDocument())
+    expect(recover).toHaveBeenCalledTimes(1)
+    expect(restart).toHaveBeenCalledTimes(1)
+  })
+})
+
+// Bespok3d-desktop#30: the printer restarted its services one by one and was then rebooted by the app.
+describe('telling the printer a reboot follows', () => {
+  it('tells it when the app will restart the printer itself', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(true)} waitForBack={answersAtOnce} appRestartsItself={() => Promise.resolve(true)} />,
+      { b3d: { store: { recover } } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', true))
+  })
+
+  it('does not tell it when the restart waits on the user, so the printer keeps its services restart', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} appRestartsItself={() => Promise.resolve(false)} />,
+      { b3d: { store: { recover } } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', false))
   })
 })

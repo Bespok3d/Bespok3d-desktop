@@ -42,7 +42,7 @@ describe('buildSources', () => {
   })
 
   it('surfaces the classified failure reason and message on a failed source', () => {
-    const failures = [{ url, reason: 'auth' as const, message: 'Sign in to GitHub to load this private list' }]
+    const failures = [{ url, name: 'Private List', reason: 'auth' as const, message: 'Sign in to GitHub to load this private list', lastListed: null }]
     const rows = buildSources([configured(url)], catalogResult([], [], failures), new Set())
     expect(rows[0]).toMatchObject({ status: 'failed', reason: 'auth', error: 'Sign in to GitHub to load this private list' })
   })

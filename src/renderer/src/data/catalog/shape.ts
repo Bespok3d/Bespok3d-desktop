@@ -222,7 +222,7 @@ export function indexToCollections(entries: CollectionEntry[]): Collection[] {
 // The trust boundary between the wire and the renderer's domain. The main-process resolver relays the
 // published index untyped (MergedEntry is name + version + passthrough, so one unreachable list never
 // breaks the merge), so here, at the single point the catalog enters the renderer, we assert the
-// ADR-0012 entry schema and drop the main-only `failures` field the UI does not consume.
+// ADR-0012 entry schema.
 export function toCatalogPayload(wire: Catalog): CatalogPayload {
   return {
     name: wire.name,
@@ -234,6 +234,7 @@ export function toCatalogPayload(wire: Catalog): CatalogPayload {
     registries: wire.registries,
     sources: wire.sources,
     drops: wire.drops,
+    failures: wire.failures,
   }
 }
 

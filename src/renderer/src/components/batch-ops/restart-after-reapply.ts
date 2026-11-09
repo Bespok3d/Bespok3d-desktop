@@ -29,6 +29,21 @@ export function restartAfterReapply(
     .catch(restartDidNotHappen(printer.id, askForTheirLogin))
 }
 
+// Whether recovery will be followed by the app's own restart, asked BEFORE recovery runs: only then may
+// the printer leave its services restart to that reboot. A printer that waits on the user's login may
+// never be restarted, so it keeps its services restart (Bespok3d-desktop#30).
+export function appRestartsItself(printer: Printer): Promise<boolean> {
+  if (printer.customSshCredentials) return Promise.resolve(false)
+
+  return window.b3d.printers.adapterGet(printer.adapter)
+    .then((adapter) => adapter !== null)
+    .catch(function keepTheServicesRestart(error: unknown) {
+      console.error('[recovery] the adapter could not be read, so the printer restarts its own services', error)
+
+      return false
+    })
+}
+
 // How long this printer says it takes to come back, for the bar the user watches during the restart.
 // Null when the adapter cannot be read: a wait with no declared length is shown without a bar, never
 // with a made-up one.

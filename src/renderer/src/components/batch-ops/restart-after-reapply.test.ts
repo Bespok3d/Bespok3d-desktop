@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { installB3d } from '../../test/b3d-mock'
 import { makePrinter, makeAdapterInfo } from '../../test/fixtures'
-import { restartAfterReapply, restartSecondsOf } from './restart-after-reapply'
+import { appRestartsItself, restartAfterReapply, restartSecondsOf } from './restart-after-reapply'
 
 describe('the printer is restarted once its plugins are back on it', () => {
   it('restarts it on the login the adapter ships, without asking the user for anything', async () => {
@@ -68,6 +68,36 @@ describe('a printer the app cannot restart on its own', () => {
 
     expect(askForTheirLogin).toHaveBeenCalledWith('printer-1')
     expect(restarting).toBe(false)
+  })
+})
+
+// Bespok3d-desktop#30: the printer is told a reboot follows only when the app will really do it.
+describe('whether the app will restart the printer itself', () => {
+  it('says yes for a printer on the login its adapter ships', async () => {
+    installB3d({ printers: { adapterGet: vi.fn().mockResolvedValue(makeAdapterInfo()) } })
+
+    expect(await appRestartsItself(makePrinter())).toBe(true)
+  })
+
+  it('says no for a printer on the user own login, since the restart waits on them', async () => {
+    const adapterGet = vi.fn().mockResolvedValue(makeAdapterInfo())
+    installB3d({ printers: { adapterGet } })
+
+    expect(await appRestartsItself(makePrinter({ customSshCredentials: true }))).toBe(false)
+    expect(adapterGet).not.toHaveBeenCalled()
+  })
+
+  it('says no when the adapter is gone', async () => {
+    installB3d({ printers: { adapterGet: vi.fn().mockResolvedValue(null) } })
+
+    expect(await appRestartsItself(makePrinter())).toBe(false)
+  })
+
+  it('says no when the adapter cannot be read, so the printer keeps its services restart', async () => {
+    installB3d({ printers: { adapterGet: vi.fn().mockRejectedValue(new Error('no adapter on disk')) } })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(await appRestartsItself(makePrinter())).toBe(false)
   })
 })
 

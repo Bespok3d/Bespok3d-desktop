@@ -30,7 +30,7 @@ describe('refusalSentence', () => {
   })
 
   it('leaves an ordinary failure alone', () => {
-    expect(refusalSentence(new Error('bundled plugin not found: ghost-plugin'))).toBe('bundled plugin not found: ghost-plugin')
+    expect(refusalSentence(new Error('ghost-plugin is not in any plugin list'))).toBe('ghost-plugin is not in any plugin list')
   })
 })
 

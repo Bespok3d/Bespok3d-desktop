@@ -131,12 +131,25 @@ describe('resolveCatalog list-of-lists', () => {
       throw new RegistryFetchError('auth', 'sign in to load this private list')
     }
     const result = await resolveCatalog([root('root')], fetcher, DEFAULT_LIMITS, noop)
-    expect(result.failures).toEqual([{ url: 'root', reason: 'auth', message: 'sign in to load this private list' }])
+    expect(result.failures).toEqual([{ url: 'root', name: 'root', reason: 'auth', message: 'sign in to load this private list', lastListed: null }])
   })
 
   it('classifies an unrecognised fetch error as unknown', async () => {
     const result = await resolveCatalog([root('root')], fetcherFrom({}), DEFAULT_LIMITS, noop)
     expect(result.failures[0]).toMatchObject({ url: 'root', reason: 'unknown' })
+  })
+})
+
+describe('resolveCatalog naming a failed list', () => {
+  it('names a failed sub-list by the name its parent gives it, with the plugins its last good copy listed', async () => {
+    const parent = { ...index('Root', [entry('one')]), lists: [{ name: 'Example List', url: 'child' }] }
+    async function fetcher(ref: RegistryRef): Promise<FetchedRegistry> {
+      if (ref.url === 'root') return { ref, index: parent, fromCache: false, signature: { proof: 'unsigned' } }
+      throw new RegistryFetchError('network', 'offline', ['Camera', 'Spool Tracker'])
+    }
+    const result = await resolveCatalog([{ ...root('root'), sourceName: 'Root Source' }], fetcher, DEFAULT_LIMITS, noop)
+    expect(result.failures).toEqual([{ url: 'child', name: 'Example List', reason: 'network', message: 'offline', lastListed: ['Camera', 'Spool Tracker'] }])
+    expect(pluginNames(result)).toEqual(['one'])
   })
 })
 

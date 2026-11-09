@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Plugin, Repository, SourceRow, CatalogPayload } from '../types'
+import type { SourceFailure } from '../../../../main/registry/model'
 import type { Collection } from '../collections'
 import { indexToPlugins, indexToCollections, payloadToRegistry, toCatalogPayload } from './shape'
 
@@ -11,6 +12,7 @@ interface CatalogData {
   collections: Collection[]
   registry: Repository | null
   sources: SourceRow[]
+  failures: SourceFailure[]
   loading: boolean
   error: string | null
 }
@@ -23,7 +25,7 @@ export interface CatalogState extends CatalogData {
   refresh: () => Promise<void>
 }
 
-const INITIAL: CatalogData = { plugins: [], collections: [], registry: null, sources: [], loading: true, error: null }
+const INITIAL: CatalogData = { plugins: [], collections: [], registry: null, sources: [], failures: [], loading: true, error: null }
 const CatalogContext = createContext<CatalogState>({ ...INITIAL, setSourceEnabled: () => {}, refresh: () => Promise.resolve() })
 
 export function useCatalog(): CatalogState {
@@ -33,11 +35,11 @@ export function useCatalog(): CatalogState {
 type SetData = (next: CatalogData) => void
 
 function applyPayload(setData: SetData, payload: CatalogPayload): void {
-  setData({ plugins: indexToPlugins(payload.plugins, payload.sources), collections: indexToCollections(payload.collections), registry: payloadToRegistry(payload), sources: payload.sources, loading: false, error: null })
+  setData({ plugins: indexToPlugins(payload.plugins, payload.sources), collections: indexToCollections(payload.collections), registry: payloadToRegistry(payload), sources: payload.sources, failures: payload.failures, loading: false, error: null })
 }
 
 function fail(setData: SetData, error: Error): void {
-  setData({ plugins: [], collections: [], registry: null, sources: [], loading: false, error: error.message })
+  setData({ plugins: [], collections: [], registry: null, sources: [], failures: [], loading: false, error: error.message })
 }
 
 function fetchCatalog(setData: SetData): Promise<void> {

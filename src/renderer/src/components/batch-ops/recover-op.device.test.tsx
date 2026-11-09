@@ -90,7 +90,7 @@ function refusalIsNotUnderTest() {
 // The recovery modals the user actually looks at, driven by the real hook, the real wait and a real
 // printer restart.
 function RecoveryOnARealPrinter() {
-  const recoverOp = useRecoverOp(restartTheRealPrinter, refusalIsNotUnderTest, waitForPrinterBack, () => Promise.resolve(42))
+  const recoverOp = useRecoverOp(restartTheRealPrinter, refusalIsNotUnderTest, waitForPrinterBack, () => Promise.resolve(42), () => Promise.resolve(true))
 
   return (
     <>

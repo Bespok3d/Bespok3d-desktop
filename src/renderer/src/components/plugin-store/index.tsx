@@ -25,6 +25,7 @@ import { deriveStoreView, activeSelection } from './browse/view-model'
 import { StoreMain } from './browse/grid'
 import type { StoreCardContext, Density } from './browse/grid'
 import { CollectionSection } from './browse/CollectionSection'
+import { FailedLists } from './browse/FailedLists'
 import { CollectionDetailPanel } from './detail/CollectionDetailPanel'
 import { StoreDetailPanel } from './detail/StoreDetailPanel'
 import type { TabRequest } from './detail/StoreDetailPanel'
@@ -102,7 +103,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
   const [panelCollection, setPanelCollection] = useState<Collection | null>(null)
   const [tabRequest, setTabRequest] = useState<TabRequest | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const { plugins: catalogPlugins, collections, loading, refresh, sources } = useCatalog()
+  const { plugins: catalogPlugins, collections, loading, refresh, sources, failures } = useCatalog()
   const channelPrefs = useChannelPrefs()
   const { disabledChannels, ceilingFor } = channelPrefs
   const { liveInstalledIds, liveInstalledVersions, liveDeactivatedIds, pluginHistory, onOperationDone, safetyNotice, dismissSafetyNotice } = useInstallState(printer, onPrinterUpdate, installingSelected || uninstallingSelected || updatingAll)
@@ -147,6 +148,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
         onSelectInstall={() => { uninstall.exit(); batch.enter() }} onSelectUninstall={() => { batch.exit(); uninstall.enter() }} onExitSelect={() => { batch.exit(); uninstall.exit() }}
         refreshing={refreshing} onRefresh={handleRefresh} onQuery={setQuery} onLayout={setLayout} onToggleFilters={() => setFiltersOpen(!filtersOpen)} onSort={onSort}
       />
+      <FailedLists failures={failures} />
       <div className="store-body">
         <FilterShoulder open={filtersOpen} {...facets} />
         {matchingPlugins.length === 0 ? (

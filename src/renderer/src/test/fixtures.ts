@@ -62,17 +62,16 @@ export function makeCollectionEntry(overrides: Partial<CollectionEntry> = {}): C
 export function makeCatalogPayload(plugins: IndexEntry[], overrides: Partial<CatalogPayload> = {}): CatalogPayload {
   return {
     name: 'Bespok3d Official', publisher: 'Bespok3d', updated: '2026-01-01', trust: 'project',
-    plugins, collections: [], registries: [], sources: [], drops: [],
+    plugins, collections: [], registries: [], sources: [], drops: [], failures: [],
     ...overrides,
   }
 }
 
-// The over-the-wire catalog (what registry.catalog resolves to): the renderer payload plus the
-// main-only `failures` list the trust boundary drops. The wire types plugins loosely (MergedEntry),
+// The over-the-wire catalog (what registry.catalog resolves to). The wire types plugins loosely (MergedEntry),
 // so a test building them from the strict IndexEntry asserts across the same boundary toCatalogPayload
 // crosses the other way.
 export function makeCatalog(plugins: IndexEntry[], overrides: Partial<CatalogPayload> = {}): Catalog {
-  return { ...makeCatalogPayload(plugins, overrides), failures: [] } as unknown as Catalog
+  return makeCatalogPayload(plugins, overrides) as unknown as Catalog
 }
 
 export function makeCapabilities(installed: Record<string, string>, overrides: Partial<CapabilitiesResult> = {}): CapabilitiesResult {

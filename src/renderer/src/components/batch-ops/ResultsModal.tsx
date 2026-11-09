@@ -12,6 +12,7 @@ import { buildBatchReport } from './report-text'
 import { diagnosisText } from './diagnosis'
 import './batch-ops.css'
 import type { BatchVariant } from './variant'
+import type { RecoveryRestart } from './recover-op'
 
 type RowStatus = 'ok' | 'skipped' | 'failed'
 
@@ -120,10 +121,17 @@ const RESULT_PREFIX: Record<BatchVariant, string> = {
   'migration-in-place': 'migration_change_results',
 }
 
-export function OtaRecoveryResultsModal({ results, onOpenPlugin, onClose, variant = 'recovery', restarting }: { results: BatchResult; onOpenPlugin: (pluginId: string) => void; onClose: () => void; variant?: BatchVariant; restarting?: boolean }) {
+const RESTART_HINT: Record<RecoveryRestart, string | null> = {
+  none: null,
+  restarted: 'recovery_results.restarting',
+  'not-back': 'recovery_results.not_back',
+}
+
+export function OtaRecoveryResultsModal({ results, onOpenPlugin, onClose, variant = 'recovery', restarting = 'none' }: { results: BatchResult; onOpenPlugin: (pluginId: string) => void; onClose: () => void; variant?: BatchVariant; restarting?: RecoveryRestart }) {
   const { t } = useI18n()
   const { copied, copy } = useClipboard()
   const prefix = RESULT_PREFIX[variant]
+  const restartHint = RESTART_HINT[restarting]
   const title = results.ok ? t(`${prefix}.title_ok`) : t(`${prefix}.title_errors`)
   const summary = results.ok ? t(`${prefix}.summary_ok`) : t(`${prefix}.summary_errors`)
   function openItsOwnPage(pluginId: string) {
@@ -141,7 +149,7 @@ export function OtaRecoveryResultsModal({ results, onOpenPlugin, onClose, varian
 
   return (
     <BatchReportModal title={title} summary={summary} summaryTone={results.ok ? 'ok' : 'bad'} size="size-md" action={reportAction} onClose={onClose}>
-      {restarting && <p className="u-hint">{t('recovery_results.restarting')}</p>}
+      {restartHint && <p className="u-hint">{t(restartHint)}</p>}
       <div className="recovery-list">
         {results.manifestWarnings?.map((warning) => (
           <UnreadablePluginRow key={warning.plugin} warning={warning} />

@@ -26,7 +26,7 @@ export function findCatalogVariant(
 }
 
 function listedOrRefused(entry: MergedEntry | undefined, pluginId: string): MergedEntry {
-  if (!entry) throw new Error(`bundled plugin not found: ${pluginId}`)
+  if (!entry) throw new Error(`${pluginId} is not in any plugin list`)
 
   return entry
 }

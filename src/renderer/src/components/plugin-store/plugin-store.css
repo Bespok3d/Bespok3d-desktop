@@ -919,3 +919,20 @@ button.install-zone:hover {
   border-top: 1px solid var(--line);
 }
 .config-req { color: var(--err-fg); margin-left: 2px; }
+
+/* One line per plugin list that failed to load, above the grid, naming what it hides. */
+.store-failed-lists {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font-size: var(--text-sm);
+}
+.store-failed-list {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

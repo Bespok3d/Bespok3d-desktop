@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { Client, type SFTPWrapper } from 'ssh2'
+import type { Readable } from 'stream'
+
+import { Client, type ClientChannel, type SFTPWrapper } from 'ssh2'
 
 // Single-quote a value for safe use inside a POSIX shell command (`exec` runs through a shell on the
 // device). Use this for ANY path or value interpolated into an `exec` string that is not a fixed
@@ -12,6 +14,9 @@ export function shellQuote(value: string): string {
 export interface SshSession {
   host: string
   exec: (cmd: string) => Promise<string>
+  // The same command with `input` piped to its stdin, ended when `input` ends: how many files travel to
+  // the printer as one stream instead of one transfer each.
+  execWithInput: (cmd: string, input: Readable) => Promise<string>
   getContent: (remotePath: string) => Promise<string>
   putContent: (remotePath: string, content: string) => Promise<void>
   putBytes: (remotePath: string, data: Buffer) => Promise<void>
@@ -53,23 +58,46 @@ function writeRemoteBytes(sftp: SFTPWrapper, remotePath: string, data: Buffer): 
   })
 }
 
-function runExec(client: Client, cmd: string): Promise<string> {
+function openExecChannel(client: Client, cmd: string): Promise<ClientChannel> {
   return new Promise((resolve, reject) => {
-    client.exec(cmd, (execError, stream) => {
-      var stdout = ''
-      var stderr = ''
-      if (execError) return reject(execError)
-      stream.on('data', (data: Buffer) => { stdout += data.toString() })
-      stream.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
-      stream.on('close', (code: number) => {
-        if (code !== 0) {
-          reject(new Error(stderr.trim() || `Command exited with code ${code}`))
-        } else {
-          resolve(stdout)
-        }
-      })
+    client.exec(cmd, (execError, stream) => execError ? reject(execError) : resolve(stream))
+  })
+}
+
+function commandOutput(stream: ClientChannel): Promise<string> {
+  return new Promise((resolve, reject) => {
+    var stdout = ''
+    var stderr = ''
+    stream.on('data', (data: Buffer) => { stdout += data.toString() })
+    stream.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
+    stream.on('close', (code: number) => {
+      if (code !== 0) {
+        reject(new Error(stderr.trim() || `Command exited with code ${code}`))
+      } else {
+        resolve(stdout)
+      }
     })
   })
+}
+
+async function runExec(client: Client, cmd: string): Promise<string> {
+  return commandOutput(await openExecChannel(client, cmd))
+}
+
+// A failing input closes the channel, so the remote command sees a cut stream and fails rather than
+// taking a truncated one for the whole.
+async function runExecWithInput(client: Client, cmd: string, input: Readable): Promise<string> {
+  const stream = await openExecChannel(client, cmd)
+  const output = commandOutput(stream)
+  const inputFailure = new Promise<never>((_, reject) => {
+    input.on('error', (inputError) => {
+      stream.destroy()
+      reject(inputError)
+    })
+  })
+  input.pipe(stream)
+
+  return Promise.race([output, inputFailure])
 }
 
 // One SFTP channel per connection, opened once and reused for every transfer. Opening a fresh channel
@@ -88,6 +116,7 @@ function makeSession(client: Client, host: string): SshSession {
   return {
     host,
     exec: (cmd) => runExec(client, cmd),
+    execWithInput: (cmd, input) => runExecWithInput(client, cmd, input),
     getContent: async (remotePath) => readRemoteFile(await sharedSftp(), remotePath),
     putContent: async (remotePath, content) => { await writeRemoteFile(await sharedSftp(), remotePath, content) },
     putBytes: async (remotePath, data) => { await writeRemoteBytes(await sharedSftp(), remotePath, data) },
@@ -116,6 +145,7 @@ export function createPersistentSession(getOpts: () => SshConnectOptions): SshSe
   return {
     host: getOpts().host,
     exec: (cmd) => attempt((inner) => inner.exec(cmd)),
+    execWithInput: (cmd, input) => attempt((inner) => inner.execWithInput(cmd, input)),
     getContent: (path) => attempt((inner) => inner.getContent(path)),
     putContent: (path, content) => attempt((inner) => inner.putContent(path, content)),
     putBytes: (path, data) => attempt((inner) => inner.putBytes(path, data)),

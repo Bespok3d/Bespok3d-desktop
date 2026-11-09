@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-289 exported components + hooks across 22 areas.
+290 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -213,6 +213,7 @@ as you touch the file.
 - `CollectionCard` (component) - [components/plugin-store/browse/CollectionCard.tsx](../src/renderer/src/components/plugin-store/browse/CollectionCard.tsx) - A 2x-wide store tile for a collection (`.collection-card` spans two grid columns). It reuses the
 - `CollectionDetailPanel` (component) - [components/plugin-store/detail/CollectionDetailPanel.tsx](../src/renderer/src/components/plugin-store/detail/CollectionDetailPanel.tsx) - The collection detail modal: a brief readme, the member list with installed members marked, and one
 - `CollectionSection` (component) - [components/plugin-store/browse/CollectionSection.tsx](../src/renderer/src/components/plugin-store/browse/CollectionSection.tsx) - The leading "Collections" shelf at the top of the store (mirrors CategorySection). Each collection is
+- `FailedLists` (component) - [components/plugin-store/browse/FailedLists.tsx](../src/renderer/src/components/plugin-store/browse/FailedLists.tsx) - A list that failed to load takes its plugins out of the store without a trace, and the other lists
 - `FieldInput` (component) - [components/plugin-store/config/field-input.tsx](../src/renderer/src/components/plugin-store/config/field-input.tsx)
 - `FilterShoulder` (component) - [components/plugin-store/browse/FilterShoulder.tsx](../src/renderer/src/components/plugin-store/browse/FilterShoulder.tsx) - The left filter shoulder, opened by the funnel. Channels here is the explicit override that surfaces
 - `HistoryZone` (component) - [components/plugin-store/panel/install-log/history.tsx](../src/renderer/src/components/plugin-store/panel/install-log/history.tsx)

@@ -41,6 +41,16 @@ function classifyFetchError(error: Error): SourceFailureReason {
   return error instanceof RegistryFetchError ? error.reason : 'unknown'
 }
 
+function failureOf(ref: RegistryRef, error: Error): SourceFailure {
+  return {
+    url: ref.url,
+    name: ref.listName ?? ref.sourceName ?? ref.url,
+    reason: classifyFetchError(error),
+    message: error.message,
+    lastListed: error instanceof RegistryFetchError ? error.lastListed : null,
+  }
+}
+
 // A tier is what a curator CLAIMS a source is, and a claim is worth the signature behind it: without
 // one, anybody who can serve those bytes can call themselves the project. So a curated tier survives
 // only when a signature over the served bytes checked out. A source nobody signed reads 'unknown'; a
@@ -95,7 +105,7 @@ function toSummary(registry: FetchedRegistry): RegistrySummary {
 // not make an external list project. Undeclared falls to the lowest curated tier.
 function childRefs(registry: FetchedRegistry): RegistryRef[] {
   return (registry.index.lists ?? []).map((ref) => ({
-    url: ref.url, trust: ref.trust ?? UNDECLARED_TRUST, locked: false,
+    url: ref.url, listName: ref.name, trust: ref.trust ?? UNDECLARED_TRUST, locked: false,
     sourceUrl: registry.ref.sourceUrl ?? registry.ref.url,
     sourceName: registry.ref.sourceName,
   }))
@@ -121,7 +131,7 @@ function absorbCollections(state: ResolveState, registry: FetchedRegistry): void
 
 async function fetchOne(state: ResolveState, ref: RegistryRef, fetcher: RegistryFetcher): Promise<FetchedRegistry | null> {
   const fetched = await fetcher(ref).catch((error: Error) => {
-    state.failures.push({ url: ref.url, reason: classifyFetchError(error), message: error.message })
+    state.failures.push(failureOf(ref, error))
     state.drops.push(`fetch failed: ${ref.url} (${error.message})`)
     state.log(`skipped ${ref.url}: ${error.message}`)
 
