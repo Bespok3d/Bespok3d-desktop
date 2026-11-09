@@ -37,6 +37,12 @@ describe('the daemon the printer has on its disk', () => {
     expect(printer.exec).toHaveBeenCalledWith(expect.stringContaining('/opt/bespok3d-example/var/lib/daemon/version.py'))
   })
 
+  it('is read past a trailing comment, single quotes and a Windows line end', async () => {
+    var printer = printerWhoseVersionFileSays("DAEMON_VERSION = '0.14.1'  # released\r\n")
+
+    await expect(installedDaemonVersion(printer, PRINTER_BESPOK3D_ROOT)).resolves.toBe('0.14.1')
+  })
+
   it('is none when the printer has no daemon files', async () => {
     await expect(installedDaemonVersion(printerWhoseVersionFileSays(''), PRINTER_BESPOK3D_ROOT)).resolves.toBeNull()
   })
@@ -52,20 +58,29 @@ function deployLands(deployingVersion: string): void {
   vi.mocked(openSystemPackage).mockResolvedValue({ version: deployingVersion } as BundledPackage)
 }
 
-async function runDeployOn(installedVersionFileText: string): Promise<ReturnType<typeof vi.fn>> {
+async function runDeployOn(installedVersionFileText: string, onProgress = vi.fn()): Promise<ReturnType<typeof vi.fn>> {
   var deployRun = vi.fn()
   var deployStep = keepingNewerInstalledDaemon({ id: 'deploy-daemon', label: 'Deploy', detail: '', run: deployRun }, PRINTER_BESPOK3D_ROOT)
 
-  await deployStep.run(printerWhoseVersionFileSays(installedVersionFileText), ENROLLING_PRINTER)
+  await deployStep.run(printerWhoseVersionFileSays(installedVersionFileText), { ...ENROLLING_PRINTER, onProgress })
 
   return deployRun
 }
 
 describe('the daemon deploy of an enrollment', () => {
   it('keeps a daemon newer than the one it would land, which is this app\'s own copy when the download fails', async () => {
+    var onProgress = vi.fn()
     deployLands('0.14.0')
 
-    expect(await runDeployOn('DAEMON_VERSION = "0.14.1"\n')).not.toHaveBeenCalled()
+    expect(await runDeployOn('DAEMON_VERSION = "0.14.1"\n', onProgress)).not.toHaveBeenCalled()
+    expect(onProgress).toHaveBeenCalledWith(expect.stringContaining('0.14.1'))
+  })
+
+  it('deploys on a printer with no daemon without opening the package first', async () => {
+    vi.mocked(openSystemPackage).mockClear()
+
+    expect(await runDeployOn('')).toHaveBeenCalledOnce()
+    expect(openSystemPackage).not.toHaveBeenCalled()
   })
 
   it('moves the printer forward when the daemon it would land is newer', async () => {

@@ -19,7 +19,7 @@ import type { SshSession } from '../ssh'
 import { openSystemPackage } from '../store/system-package'
 
 const DAEMON_VERSION_FILE_IN_ROOT = 'var/lib/daemon/version.py'
-const DAEMON_VERSION_LINE = /^DAEMON_VERSION = "([^"]+)"$/m
+const DAEMON_VERSION_LINE = /^DAEMON_VERSION\s*=\s*["']([^"']+)["']/m
 
 export async function installedDaemonVersion(ssh: SshSession, bespok3dRoot: string): Promise<string | null> {
   const versionSource = await ssh.exec(`cat ${bespok3dRoot}/${DAEMON_VERSION_FILE_IN_ROOT} 2>/dev/null; true`)
