@@ -11,3 +11,6 @@ export const DAEMON_START_STEP_ID = 'start-daemon'
 
 // Puts only the adapter's jinni on the printer.
 export const JINNI_DEPLOY_STEP_ID = 'deploy-jinni'
+
+// Installs the packages of the daemon already on the printer, from the files that daemon brought.
+export const DAEMON_VENV_REFRESH_STEP_ID = 'refresh-daemon-venv'

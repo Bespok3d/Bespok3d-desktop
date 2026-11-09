@@ -212,6 +212,16 @@ describe('a recovery after a firmware update', () => {
     expect(deployDaemon.run).toHaveBeenCalledOnce()
   })
 
+  it('sends only the daemon files whose checksum differs from the printer\'s', async () => {
+    var deployDaemon = mockStep('deploy-daemon')
+    printerWithDaemonOnDisk('0.14.0')
+    mockGetAdapter.mockReturnValue(mockAdapter([deployDaemon]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS)
+
+    expect(deployDaemon.run).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ sendChangedFilesOnly: true }))
+  })
+
   it('deploys this app\'s daemon over a newer one when the owner forced it', async () => {
     var deployDaemon = mockStep('deploy-daemon')
     printerWithDaemonOnDisk('0.14.1')

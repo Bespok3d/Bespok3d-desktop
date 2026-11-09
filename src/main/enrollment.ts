@@ -7,7 +7,6 @@ import { connect, createPersistentSession } from './ssh'
 import type { SshSession } from './ssh'
 import { getAdapter } from './adapter-loader'
 import type { SshCredentials, EnrollContext, EnrollStep } from './adapter-loader'
-import { bespok3dRootOn } from './adapter-loader/bespok3d-root'
 import { listKeys } from './keys'
 import { loadSettings, clientId } from './settings'
 import { updatePrinter } from './printers'
@@ -205,6 +204,8 @@ function makeContext(
     clientLabel: hostname(),
     clientPublicKey: printerKey?.publicKey,
     clientFingerprint: printerKey?.fingerprint,
+    // A recovery finds the daemon's files still there, so only the ones whose checksum differs travel.
+    sendChangedFilesOnly: true,
   }
 }
 
@@ -233,8 +234,7 @@ export async function enrollPrinter(
   // Recovery after a firmware update runs this same path against a printer that may already have a
   // newer daemon than this app ships. Launched from Force, the owner has said he wants this app's daemon
   // on it whatever it has now.
-  const bespok3dRoot = bespok3dRootOn(adapter)
-  const steps = forced ? adapter.enrollSteps : adapter.enrollSteps.map((step) => keepingNewerInstalledDaemon(step, bespok3dRoot))
+  const steps = forced ? adapter.enrollSteps : adapter.enrollSteps.map((step) => keepingNewerInstalledDaemon(step, adapter))
   const startIndex = retryFromStepId
     ? Math.max(0, steps.findIndex((step) => step.id === retryFromStepId))
     : 0

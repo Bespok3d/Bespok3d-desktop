@@ -8,15 +8,18 @@
 // would land, opened the same way the deploy opens it: the published daemon, or this build's own copy
 // when the published one cannot be downloaded. Only a daemon newer than that package is kept.
 //
-// The same version is deployed again on purpose. A deploy that stopped part way may already have
-// written the new version file, and only running the step again finishes it; the same step also brings
-// the adapter's jinni up to date.
+// The same version still runs the deploy, which sends only the files whose checksum differs from the
+// printer's: a deploy that stopped part way may already have written the new version file, and this
+// finishes it without sending the daemon again. A kept daemon still gets its jinni and its packages
+// brought up to date.
 import { isNewerVersion, reportedVersionOrNull } from '@bespok3d/contract'
-import type { EnrollContext, EnrollStep } from '../adapter-loader'
+import type { AdapterDefinition, EnrollContext, EnrollStep } from '../adapter-loader'
+import { bespok3dRootOn } from '../adapter-loader/bespok3d-root'
 import { DAEMON_DEPLOY_STEP_ID } from '../adapter-loader/step-ids'
 import { DAEMON_PACKAGE } from '../daemon-client/version'
 import type { SshSession } from '../ssh'
 import { openSystemPackage } from '../store/system-package'
+import { refreshKeptDaemon } from './kept-daemon'
 
 const DAEMON_VERSION_FILE_IN_ROOT = 'var/lib/daemon/version.py'
 const DAEMON_VERSION_LINE = /^DAEMON_VERSION\s*=\s*["']([^"']+)["']/m
@@ -34,15 +37,16 @@ async function isNewerThanDeploying(installedVersion: string | null): Promise<bo
   return isNewerVersion(installedVersion, deployingPackage.version)
 }
 
-async function deployUnlessInstalledIsNewer(deployStep: EnrollStep, bespok3dRoot: string, ssh: SshSession, ctx: EnrollContext): Promise<void> {
-  const installedVersion = await installedDaemonVersion(ssh, bespok3dRoot)
+async function deployUnlessInstalledIsNewer(deployStep: EnrollStep, adapter: AdapterDefinition, ssh: SshSession, ctx: EnrollContext): Promise<void> {
+  const installedVersion = await installedDaemonVersion(ssh, bespok3dRootOn(adapter))
   if (!(await isNewerThanDeploying(installedVersion))) return deployStep.run(ssh, ctx)
 
   ctx.onProgress?.(`This printer already has a newer Bespok3d daemon (${installedVersion}), so it is kept.`)
+  await refreshKeptDaemon(adapter, ssh, ctx)
 }
 
-export function keepingNewerInstalledDaemon(step: EnrollStep, bespok3dRoot: string): EnrollStep {
+export function keepingNewerInstalledDaemon(step: EnrollStep, adapter: AdapterDefinition): EnrollStep {
   if (step.id !== DAEMON_DEPLOY_STEP_ID) return step
 
-  return { ...step, run: (ssh, ctx) => deployUnlessInstalledIsNewer(step, bespok3dRoot, ssh, ctx) }
+  return { ...step, run: (ssh, ctx) => deployUnlessInstalledIsNewer(step, adapter, ssh, ctx) }
 }
