@@ -69,7 +69,7 @@ vi.mock('./dev-tools/patch-engine', () => ({ buildSession: vi.fn() }))
 vi.mock('./dev-tools/patch-apply', () => ({ applyPatch: vi.fn() }))
 
 import { registerIpc } from './ipc'
-import { fetchCapabilities, reconfigurePlugin, fetchAccessClients, grantAccess, revokeAccess } from './daemon-client/client'
+import { fetchCapabilities, reconfigurePlugin, recoverAfterReboot, fetchAccessClients, grantAccess, revokeAccess } from './daemon-client/client'
 import { enrollPrinter } from './enrollment'
 import { updatePrinter, loadPrinters } from './printers'
 import { checkDaemonRecord } from './daemon-client/status'
@@ -219,6 +219,12 @@ describe('store + access handlers reach their daemon-client calls', () => {
     vi.mocked(reconfigurePlugin).mockResolvedValue({ pluginId: 'spoolman', timestamp: 1, ok: true, phases: [] })
     await handlerFor('store:reconfigure')({}, 'printer-1', 'spoolman', { MODE: 'on' })
     expect(reconfigurePlugin).toHaveBeenCalledWith(managed, 'spoolman', { MODE: 'on' })
+  })
+
+  it('store:recoverAfterReboot calls recoverAfterReboot with the saved printer', async () => {
+    vi.mocked(recoverAfterReboot).mockResolvedValue({ ok: true, manifestWarnings: [], results: [] } as never)
+    await handlerFor('store:recoverAfterReboot')({}, 'printer-1')
+    expect(recoverAfterReboot).toHaveBeenCalledWith(managed)
   })
 
   it('access:clients calls fetchAccessClients', async () => {
