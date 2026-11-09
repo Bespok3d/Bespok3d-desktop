@@ -56,8 +56,60 @@ and download the private half for signing your releases. The Published mark now 
 that repository really is this key; if something else sits there instead, the app says so instead of
 claiming publication.
 
+### Installing a plugin also installs the plugins it needs
+
+A plugin that needs another plugin could be installed without it. The app now installs the plugins it
+needs along with it. If one of them cannot be found, nothing is installed and the app says which one
+is missing.
+
+### Recovery after a firmware update keeps a newer Bespok3d on the printer
+
+After a firmware update, recovery could put an older Bespok3d service back over a newer one already
+on the printer. It now keeps the newer one, and still brings the rest of the setup up to date.
+Recovery, repair and updates also send only the files that changed, so they finish faster, and update
+and repair now put back the script that starts Bespok3d when the printer boots.
+
+### The recovery report tells the truth about every plugin
+
+The recovery report said "Recovery complete" even when a plugin was switched off to keep the printer
+working, was left off because a plugin it needs did not come back, or could not be read. It now says
+some plugins could not be put back and names them, and the copied report says the same as the
+window. Reactivate shows the same report, so a plugin it could not put back no longer reads as fine.
+
+When the app asks you to restart the printer yourself, the safety check now runs after your restart
+too, even if you closed and opened the app in between. A plugin that breaks the printer then is
+switched off and shown in the report. The restart bar shows how long that printer takes to restart.
+
+### The install list follows what the printer is really doing
+
+The printer installs plugins in its own order, so the list could show the wrong plugin as installing
+or done, and put an error on the wrong one. The list now follows the plugin the printer names. A
+plugin the printer left out shows as skipped, never ticked; one switched off by the restart at the
+end turns to failed; and the count matches the rows.
+
+### Plain messages when the app cannot reach or log in to the printer
+
+A refused or stuck SSH login, a printer that cannot be reached, no network to the printer and an
+address that does not exist now show plain messages in all 10 languages. The raw error is still there
+behind the technical details.
+
+Resetting access on a printer with its own SSH password now asks for that password instead of trying
+the factory one, and the login form no longer fills in the factory password.
+
+### The Spoolman address is checked from the printer
+
+The Spoolman address, and any other web address in a plugin's settings, was tried from your
+computer, but the plugin uses it from the printer. The check now asks the printer to try it and shows
+what the printer got.
+
 ### Smaller things
 
+- Long jobs no longer give up after five minutes while the printer says it is still working on them.
+- Start over and retry after a failed step now do what they say: a failed printer restart is tried again, and Start over goes back to the first screen, so a refused login can be swapped for yours.
+- A failed repair of the printer setup no longer says the setup was put right.
+- If the printer's Bespok3d service does not answer within 3 minutes after a restart, recovery stops and says so.
+- A plugin list that does not load now names the plugins it would have shown.
+- Electron 43.8.1 and other security updates.
 - Plugins stay connected after a reboot: enrolling and "Put it back" now switch on the screen's Advanced mode, which makes the printer keep its settings files at startup instead of restoring its own copies. Seeing Advanced mode on is expected.
 - Wi-Fi is kept after a firmware-update recovery: the step that keeps the printer's Wi-Fi across reboots now checks its work and stops with a clear message if it could not, instead of showing done.
 - Enrolling a printer on firmware 2.0 now also adds Bespok3d to the firmware's own saved copy of its settings, so plugins stay after a reboot. Thanks to olavgm.
