@@ -3,6 +3,7 @@
 import { ipcMain, type BrowserWindow } from 'electron'
 import { updatePrinter, removePrinter, resolveLiveAddress } from '../printers'
 import { getAdapter } from '../adapter-loader'
+import { bespok3dRootOn } from '../adapter-loader/bespok3d-root'
 import {
   bespok3dIncludeCommand,
   KLIPPER_INCLUDE,
@@ -50,7 +51,7 @@ async function reactivateBootHook(ssh: SshSession): Promise<void> {
 async function runReactivate(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
   const record = recordOrThrow(printerId)
   const adapter = getAdapter(record.adapter)
-  const bespok3d = adapter?.envVars.find((envVar) => envVar.name === 'BESPOK3D')?.value ?? '/userdata/bespok3d'
+  const bespok3d = bespok3dRootOn(adapter)
   const printerData = adapter?.envVars.find((envVar) => envVar.name === 'PRINTER_DATA')?.value ?? '/oem/printer_data'
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'remove-marker', label: 'Removing deactivated marker', detail: 'Clears the deactivated flag from the printer workspace', run: async () => { await ssh.exec(`rm -f ${bespok3d}/etc/deactivated`) } },
