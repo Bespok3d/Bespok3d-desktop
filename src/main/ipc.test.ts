@@ -196,24 +196,26 @@ describe('printers:checkWriteLayer handler (repair vs recover)', () => {
 // (reconfigure / access*) that the './daemon/client' mock used to omit. Nothing invoked them, so the
 // gap was invisible. These invoke each one through its registered handler, so an incomplete mock makes
 // the call throw "X is not a function" and the test fails - the gap can no longer hide.
-describe('store + access handlers reach their daemon-client calls', () => {
-  const managed = hoisted.managedRecord
-  const progressWindow = { webContents: { send: vi.fn() }, isDestroyed: () => false } as unknown as BrowserWindow
+const managed = hoisted.managedRecord
+const progressWindow = { webContents: { send: vi.fn() }, isDestroyed: () => false } as unknown as BrowserWindow
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    registeredHandlers.clear()
-    vi.mocked(loadPrinters).mockReturnValue([managed as never])
-    vi.mocked(fetchCapabilities).mockResolvedValue({ installed: {}, endpoints: [] } as never)
-  })
+function registerWithTheManagedPrinterSaved() {
+  vi.clearAllMocks()
+  registeredHandlers.clear()
+  vi.mocked(loadPrinters).mockReturnValue([managed as never])
+  vi.mocked(fetchCapabilities).mockResolvedValue({ installed: {}, endpoints: [] } as never)
+}
 
-  function handlerFor(channel: string) {
-    registerIpc(() => progressWindow)
-    const handler = registeredHandlers.get(channel)
-    if (!handler) throw new Error(`${channel} handler not registered`)
+function handlerFor(channel: string) {
+  registerIpc(() => progressWindow)
+  const handler = registeredHandlers.get(channel)
+  if (!handler) throw new Error(`${channel} handler not registered`)
 
-    return handler
-  }
+  return handler
+}
+
+describe('store handlers reach their daemon-client calls', () => {
+  beforeEach(registerWithTheManagedPrinterSaved)
 
   it('store:reconfigure calls reconfigurePlugin', async () => {
     vi.mocked(reconfigurePlugin).mockResolvedValue({ pluginId: 'spoolman', timestamp: 1, ok: true, phases: [] })
@@ -226,6 +228,10 @@ describe('store + access handlers reach their daemon-client calls', () => {
     await handlerFor('store:recoverAfterReboot')({}, 'printer-1')
     expect(recoverAfterReboot).toHaveBeenCalledWith(managed)
   })
+})
+
+describe('access handlers reach their daemon-client calls', () => {
+  beforeEach(registerWithTheManagedPrinterSaved)
 
   it('access:clients calls fetchAccessClients', async () => {
     vi.mocked(fetchAccessClients).mockResolvedValue({ clients: [] } as never)

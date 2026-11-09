@@ -72,9 +72,8 @@ describe('a daemon repair', () => {
   })
 
   it('records the newer daemon it kept, not the one this app ships', async () => {
-    vi.mocked(reportedDaemonVersion).mockResolvedValueOnce('0.14.1')
-
     var deployDaemon = adapterStep('deploy-daemon')
+    vi.mocked(reportedDaemonVersion).mockResolvedValueOnce('0.14.1')
 
     await repairOn(printerWithDaemonOnDisk('0.14.1'), deployDaemon)
 
