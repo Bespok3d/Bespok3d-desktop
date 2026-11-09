@@ -29,6 +29,7 @@ interface GoAheadRequest {
 export interface GoAhead {
   awaiting: boolean
   showCredentialsForm: boolean
+  wantsTheirOwnLogin: boolean
   dismissable: boolean
   give: () => void
   askForOwnCredentials: () => void
@@ -55,5 +56,5 @@ export function useGoAhead(request: GoAheadRequest): GoAhead {
   const wantsTheirOwnLogin = request.customSshCredentials || ownCredentialsWanted
   const showCredentialsForm = request.phase === 'credentials' && wantsTheirOwnLogin && !awaiting
 
-  return { awaiting, showCredentialsForm, dismissable: showCredentialsForm || awaiting, give, askForOwnCredentials }
+  return { awaiting, showCredentialsForm, wantsTheirOwnLogin, dismissable: showCredentialsForm || awaiting, give, askForOwnCredentials }
 }

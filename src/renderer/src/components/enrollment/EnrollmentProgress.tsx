@@ -141,10 +141,11 @@ function FailureReason({ error }: { error?: string }) {
   return <div className="enroll-step-error">{error}</div>
 }
 
-function EnrollFooter({ phase, stepId, onReset, onRetry, escalation, onReportIssue, onCancelOp }: {
+function EnrollFooter({ phase, stepId, onReset, onRetry, escalation, onReportIssue, onCancelOp, onClose }: {
   phase: 'enrolling' | 'failed'
   stepId: string
   onReset: () => void
+  onClose: () => void
   onRetry: (stepId: string) => void
   escalation?: FailureEscalation
   onReportIssue?: () => void
@@ -171,7 +172,7 @@ function EnrollFooter({ phase, stepId, onReset, onRetry, escalation, onReportIss
 
   return (
     <div className="modal-foot">
-      <Button variant="ghost" className="u-mr-auto" onClick={onReset}>{t('btn.cancel')}</Button>
+      <Button variant="ghost" className="u-mr-auto" onClick={onClose}>{t('btn.cancel')}</Button>
       <Button
         type="button"
         size="sm"
@@ -285,6 +286,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
         escalation={escalation ? { labelKey: escalation.labelKey, run: handleEscalate } : undefined}
         onReportIssue={showFailed ? onReportIssue : undefined}
         onCancelOp={onCancelOp}
+        onClose={onClose}
       />
     </>
   )

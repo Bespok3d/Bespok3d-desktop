@@ -16,8 +16,9 @@ function renderEnroll(mode: EnrollMode, printerOverrides = {}, handlers: Record<
   var onEscalateRecovery = handlers.onEscalateRecovery ?? vi.fn()
   var onRebuildPrinter = handlers.onRebuildPrinter ?? vi.fn()
   var onExpectedRestart = handlers.onExpectedRestart ?? vi.fn()
+  var onClose = handlers.onClose ?? vi.fn()
   var rendered = setup(
-    <Enrollment printer={printer} mode={mode} onEnrolled={onEnrolled as (updated: Printer) => void} onClose={vi.fn() as () => void} onEscalateRecovery={onEscalateRecovery as () => void} onRebuildPrinter={onRebuildPrinter as () => void} onExpectedRestart={onExpectedRestart as (printerId: string) => void} />,
+    <Enrollment printer={printer} mode={mode} onEnrolled={onEnrolled as (updated: Printer) => void} onClose={onClose as () => void} onEscalateRecovery={onEscalateRecovery as () => void} onRebuildPrinter={onRebuildPrinter as () => void} onExpectedRestart={onExpectedRestart as (printerId: string) => void} />,
   )
 
   return { ...rendered, onEnrolled, onEscalateRecovery, onRebuildPrinter, onExpectedRestart }
@@ -340,6 +341,58 @@ describe('Enrollment operation that never starts', () => {
     expect(await screen.findByText('This could not be started on the printer.')).toBeInTheDocument()
     expect(screen.getByText('printer is busy printing')).toBeInTheDocument()
     expect(container.querySelector('.progress-bar.indeterminate')).toBeNull()
+  })
+})
+
+// A failed step used to send Cancel and Start over back to the first screen. With no login form to show,
+// that screen was a bar nothing would ever move, whose Cancel did nothing and which had no Close.
+describe('Enrollment after a step fails', () => {
+  it('closes the window on Cancel', async () => {
+    var onClose = vi.fn()
+    var { user, emit, b3d } = renderEnroll('enroll', {}, { onClose })
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledTimes(1))
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'preflight', stepLabel: 'Checking the printer', error: 'refused', stepIndex: 0 })))
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('runs the enrollment again from the first step on Start over', async () => {
+    var { user, emit, b3d } = renderEnroll('enroll')
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledTimes(1))
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'preflight', stepLabel: 'Checking the printer', error: 'refused', stepIndex: 0 })))
+
+    await user.click(screen.getByRole('button', { name: 'More' }))
+    await user.click(screen.getByRole('button', { name: 'Start over' }))
+
+    expect(b3d.printers.enroll).toHaveBeenCalledTimes(2)
+    expect(b3d.printers.enroll).toHaveBeenLastCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false)
+  })
+
+  it('runs a repair again on Start over', async () => {
+    var { user, emit, b3d } = await renderAndSayGo('repair')
+    await waitFor(() => expect(b3d.printers.repair).toHaveBeenCalledTimes(1))
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'deploy-daemon', stepLabel: 'Deploy daemon', error: 'refused', stepIndex: 1 })))
+
+    await user.click(screen.getByRole('button', { name: 'More' }))
+    await user.click(screen.getByRole('button', { name: 'Start over' }))
+
+    expect(b3d.printers.repair).toHaveBeenCalledTimes(2)
+  })
+
+  it('goes back to the login form on Start over when the printer has its own login', async () => {
+    var { user, emit, b3d, container } = renderEnroll('enroll', { customSshCredentials: true })
+    await screen.findByDisplayValue('root')
+    await user.type(container.querySelector('input[type="password"]') as HTMLInputElement, 'secret')
+    await user.click(screen.getByRole('button', { name: 'Start enrollment' }))
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'preflight', stepLabel: 'Checking the printer', error: 'refused', stepIndex: 0 })))
+
+    await user.click(screen.getByRole('button', { name: 'More' }))
+    await user.click(screen.getByRole('button', { name: 'Start over' }))
+
+    expect(await screen.findByRole('button', { name: 'Start enrollment' })).toBeInTheDocument()
+    expect(b3d.printers.enroll).toHaveBeenCalledTimes(1)
   })
 })
 

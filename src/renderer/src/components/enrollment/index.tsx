@@ -320,6 +320,11 @@ export function Enrollment({ printer, mode, fromAdd = false, forced = false, onE
  return }
     retryFrom(stepId, credentials)
   }
+  // Back to the start with no login form to show would leave a bar that nothing drives, so it runs again.
+  function handleStartOver() {
+    if (goAhead.wantsTheirOwnLogin) reset()
+    else handleStart(credentials)
+  }
   function handleDone() {
     savedRecord(printer.id).then((record) => {
       onEnrolled(record ? { ...printer, ...record } : { ...printer, status: 'managed' })
@@ -337,7 +342,7 @@ export function Enrollment({ printer, mode, fromAdd = false, forced = false, onE
         printer={printer} mode={mode} state={state} credentials={credentials}
         showCredentialsForm={goAhead.showCredentialsForm} awaitingGoAhead={goAhead.awaiting}
         onStart={handleStart} onGoAhead={goAhead.give} onOwnCredentials={goAhead.askForOwnCredentials} onClose={onClose}
-        onDone={handleDone} onRetry={handleRetry} onReset={reset} onCancelOp={cancelOp} escalation={nextStepAfterFailure(mode, onEscalateRecovery, onRebuildPrinter)}
+        onDone={handleDone} onRetry={handleRetry} onReset={handleStartOver} onCancelOp={cancelOp} escalation={nextStepAfterFailure(mode, onEscalateRecovery, onRebuildPrinter)}
         printerIsRebooting={printerIsRebooting} restartSeconds={adapterInfo?.restartSeconds}
       />
     </Modal>
