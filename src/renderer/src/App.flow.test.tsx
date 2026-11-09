@@ -3,7 +3,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'fs'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, act, waitFor } from '@testing-library/react'
+import { screen, act, waitFor, within } from '@testing-library/react'
 import { setup } from './test/harness'
 import { makeEnrollEvent } from './test/fixtures'
 import { makeT } from './i18n'
@@ -227,6 +227,44 @@ describe('App flow: canceled access and re-enrollment choices', () => {
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Finished', stepIndex: 13, totalSteps: 14 })))
     await user.click(await screen.findByRole('button', { name: 'Done' }))
     await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', true))
+  })
+})
+
+// Repair and uninstall run over SSH just as enrollment does. With root access off they must stop at the
+// same root-access window enrollment shows, never open and fail on a raw connection error.
+describe('App flow: repair and uninstall check root access first', () => {
+  it('a repair with root access off shows the root-access window, and Retry opens the repair', async () => {
+    var repair = vi.fn().mockResolvedValue(undefined)
+    var { user } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }),
+      checkWriteLayer: vi.fn().mockResolvedValue(true),
+      checkSshOpen: vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true),
+      repair,
+    })
+    await user.click(await screen.findByRole('button', { name: en('banner.repair_action') }, AFTER_THE_CONFIRMING_PROBE))
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(screen.queryAllByRole('button', { name: 'Repair daemon' })).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: en('enroll.ssh_retry') }))
+    await user.click((await screen.findAllByRole('button', { name: 'Repair daemon' }))[1])
+    await waitFor(() => expect(repair).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22, false))
+  })
+
+  it('an uninstall with root access off shows the root-access window and removes nothing', async () => {
+    var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
+    var { user, b3d } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }),
+      checkSshOpen: vi.fn().mockResolvedValue(false),
+    }, [managedRecord])
+    await user.click(screen.getByRole('button', { name: en('header.settings') }))
+    await user.click(screen.getByRole('button', { name: en('set.printers') }))
+    await user.click(await screen.findByRole('button', { name: en('printers.uninstall') }))
+    const uninstallConfirm = (await screen.findByText(en('printers.uninstall_title', { name: 'Alpha' }))).closest('[role="dialog"]') as HTMLElement
+    await user.click(within(uninstallConfirm).getByRole('button', { name: en('printers.uninstall') }))
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers.uninstall).not.toHaveBeenCalled()
   })
 })
 
