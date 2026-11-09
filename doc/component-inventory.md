@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-291 exported components + hooks across 22 areas.
+292 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -170,6 +170,7 @@ as you touch the file.
 - `EnrollmentProgress` (component) - [components/enrollment/EnrollmentProgress.tsx](../src/renderer/src/components/enrollment/EnrollmentProgress.tsx)
 - `GoAheadStep` (component) - [components/enrollment/GoAheadStep.tsx](../src/renderer/src/components/enrollment/GoAheadStep.tsx) - The screen the user says yes on. The title above it already says what is about to happen, so this
 - `useGoAhead` (hook) - [components/enrollment/useGoAhead.ts](../src/renderer/src/components/enrollment/useGoAhead.ts) - Holds the op on its go-ahead screen, and answers which screen the modal shows once the user has
+- `useOpOutcome` (hook) - [components/enrollment/useOpOutcome.ts](../src/renderer/src/components/enrollment/useOpOutcome.ts) - How the app hears that the op is done. Done tells it once, however often it is pressed. Once the op
 - `usePostOpReboot` (hook) - [components/enrollment/usePostOpReboot.ts](../src/renderer/src/components/enrollment/usePostOpReboot.ts) - Reboots the printer the moment the op reports success, and answers whether the success screen has to
 
 ## Feature: header
