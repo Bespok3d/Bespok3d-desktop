@@ -6,13 +6,14 @@ import { screen } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makeT } from '../../i18n'
 import { BatchInstallProgress } from './InstallProgress'
+import { reduceBatchProgress } from './progress'
 import type { BatchProgressState } from './progress'
 
 const en = makeT('en')
 
 function state(over: Partial<BatchProgressState>): BatchProgressState {
   return {
-    printerId: 'p1', ids: ['spoolman', 'fluidd', 'mainsail'], startedIndex: 1,
+    printerId: 'p1', ids: ['spoolman', 'fluidd', 'mainsail'], startedIds: ['spoolman', 'fluidd'], current: 'fluidd',
     failedIds: [], phaseLabel: 'Place config', restarting: false, done: false, ...over,
   }
 }
@@ -30,7 +31,7 @@ describe('BatchInstallProgress', () => {
 
   it('marks a plugin failed and shows the restarting row once the restart step begins', () => {
     const { container } = setup(
-      <BatchInstallProgress title="Installing plugins" state={state({ startedIndex: 3, restarting: true, phaseLabel: null, failedIds: ['fluidd'] })} />,
+      <BatchInstallProgress title="Installing plugins" state={state({ startedIds: ['spoolman', 'fluidd', 'mainsail'], current: null, restarting: true, phaseLabel: null, failedIds: ['fluidd'] })} />,
     )
     expect(screen.getByText(en('batch_progress.restarting'))).toBeInTheDocument()
     expect(container.querySelector('.batch-row.failed')?.textContent).toContain('fluidd')
@@ -38,8 +39,18 @@ describe('BatchInstallProgress', () => {
 
   it('scrolls the plugin being worked on into view as the run moves down the list', () => {
     const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView')
-    const { container, rerender } = setup(<BatchInstallProgress title="Installing plugins" state={state({ startedIndex: 1 })} />)
-    rerender(<BatchInstallProgress title="Installing plugins" state={state({ startedIndex: 2 })} />)
+    const { container, rerender } = setup(<BatchInstallProgress title="Installing plugins" state={state({})} />)
+    rerender(<BatchInstallProgress title="Installing plugins" state={state({ startedIds: ['spoolman', 'fluidd', 'mainsail'], current: 'mainsail' })} />)
+    expect(scrolled.mock.instances.at(-1)).toBe(container.querySelector('.batch-row.installing'))
+    scrolled.mockRestore()
+  })
+
+  it('keeps the plugin the printer started in view when it sits lower in the list', () => {
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView')
+    const planned = reduceBatchProgress(null, 'p1', { type: 'plan', ids: ['spoolman', 'fluidd', 'mainsail'] })
+    const startedLast = reduceBatchProgress(planned, 'p1', { type: 'plugin', pluginId: 'mainsail', index: 0, total: 3 })!
+    const { container } = setup(<BatchInstallProgress title="Installing plugins" state={startedLast} />)
+    expect(container.querySelector('.batch-row.installing')?.textContent).toContain('mainsail')
     expect(scrolled.mock.instances.at(-1)).toBe(container.querySelector('.batch-row.installing'))
     scrolled.mockRestore()
   })

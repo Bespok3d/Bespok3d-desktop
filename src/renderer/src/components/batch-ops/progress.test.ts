@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
-import { reduceBatchProgress, rowStatus, completedCount } from './progress'
+import { reduceBatchProgress, rowStatus, completedCount, activeRowIndex } from './progress'
 import type { BatchProgressState } from './progress'
 
 function plan(ids: string[]): BatchProgressState {
@@ -13,14 +13,14 @@ describe('reduceBatchProgress transitions', () => {
     const state = plan(['a', 'b', 'c'])
     expect(state.ids).toEqual(['a', 'b', 'c'])
     expect(completedCount(state)).toBe(0)
-    expect(['a', 'b', 'c'].map((_id, index) => rowStatus(state, index))).toEqual(['pending', 'pending', 'pending'])
+    expect(state.ids.map((pluginId) => rowStatus(state, pluginId))).toEqual(['pending', 'pending', 'pending'])
   })
 
   it('ticks earlier plugins done as a later one starts', () => {
     var state = plan(['a', 'b', 'c'])
     state = reduceBatchProgress(state, 'printer-1', { type: 'plugin', pluginId: 'a', index: 0, total: 3 })!
     state = reduceBatchProgress(state, 'printer-1', { type: 'plugin', pluginId: 'b', index: 1, total: 3 })!
-    expect([0, 1, 2].map((index) => rowStatus(state, index))).toEqual(['done', 'installing', 'pending'])
+    expect(state.ids.map((pluginId) => rowStatus(state, pluginId))).toEqual(['done', 'installing', 'pending'])
     expect(completedCount(state)).toBe(1)
   })
 
@@ -44,7 +44,7 @@ describe('reduceBatchProgress phases and restart', () => {
     var state = plan(['a', 'b'])
     state = reduceBatchProgress(state, 'printer-1', { type: 'plugin', pluginId: 'a', index: 0, total: 2 })!
     state = reduceBatchProgress(state, 'printer-1', { type: 'phase', label: 'Patch failed', ok: false })!
-    expect(rowStatus(state, 0)).toBe('failed')
+    expect(rowStatus(state, 'a')).toBe('failed')
   })
 
   it('marks every plugin done and counts all once the restart step starts', () => {
@@ -53,6 +53,35 @@ describe('reduceBatchProgress phases and restart', () => {
     state = reduceBatchProgress(state, 'printer-1', { type: 'plugin', pluginId: '(services)', index: 2, total: 2 })!
     expect(state.restarting).toBe(true)
     expect(completedCount(state)).toBe(2)
-    expect([0, 1].map((index) => rowStatus(state, index))).toEqual(['done', 'done'])
+    expect(state.ids.map((pluginId) => rowStatus(state, pluginId))).toEqual(['done', 'done'])
+  })
+})
+
+// The printer installs a batch providers first, so it can start on a plugin that sits lower in the list.
+describe('reduceBatchProgress when the printer works in another order than the list', () => {
+  it('ticks the plugin the printer names, not the row at its position', () => {
+    var state = plan(['a', 'b', 'c'])
+    state = reduceBatchProgress(state, 'printer-1', { type: 'plugin', pluginId: 'c', index: 0, total: 3 })!
+    expect(state.ids.map((pluginId) => rowStatus(state, pluginId))).toEqual(['pending', 'pending', 'installing'])
+    state = reduceBatchProgress(state, 'printer-1', { type: 'plugin', pluginId: 'a', index: 1, total: 3 })!
+    expect(state.ids.map((pluginId) => rowStatus(state, pluginId))).toEqual(['installing', 'pending', 'done'])
+    expect(completedCount(state)).toBe(1)
+  })
+
+  it('marks the plugin the printer is on failed, not the one at its position', () => {
+    var state = plan(['a', 'b'])
+    state = reduceBatchProgress(state, 'printer-1', { type: 'plugin', pluginId: 'b', index: 0, total: 2 })!
+    state = reduceBatchProgress(state, 'printer-1', { type: 'phase', label: 'Patch failed', ok: false })!
+    expect(state.failedIds).toEqual(['b'])
+    expect(state.ids.map((pluginId) => rowStatus(state, pluginId))).toEqual(['pending', 'failed'])
+  })
+
+  it('keeps the plugin the printer is on in view, then the restart row', () => {
+    var state = plan(['a', 'b', 'c'])
+    expect(activeRowIndex(state)).toBe(-1)
+    state = reduceBatchProgress(state, 'printer-1', { type: 'plugin', pluginId: 'c', index: 0, total: 3 })!
+    expect(activeRowIndex(state)).toBe(2)
+    state = reduceBatchProgress(state, 'printer-1', { type: 'plugin', pluginId: '(services)', index: 3, total: 3 })!
+    expect(activeRowIndex(state)).toBe(3)
   })
 })
