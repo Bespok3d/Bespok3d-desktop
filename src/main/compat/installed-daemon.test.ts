@@ -33,12 +33,12 @@ describe('the daemon the printer has on its disk', () => {
     await expect(installedDaemonVersion(printer, PRINTER_BESPOK3D_ROOT)).resolves.toBe('0.14.1')
   })
 
-  it('is read under the bespok3d folder the printer\'s adapter names', async () => {
+  it('is read under the bespok3d folder the printer\'s adapter names, quoted for the shell', async () => {
     var printer = printerWhoseVersionFileSays('')
 
     await installedDaemonVersion(printer, PRINTER_BESPOK3D_ROOT)
 
-    expect(printer.exec).toHaveBeenCalledWith(expect.stringContaining('/opt/bespok3d-example/var/lib/daemon/version.py'))
+    expect(printer.exec).toHaveBeenCalledWith(expect.stringContaining("'/opt/bespok3d-example/var/lib/daemon/version.py'"))
   })
 
   it('is read past a trailing comment, single quotes and a Windows line end', async () => {
@@ -94,7 +94,7 @@ describe('the daemon deploy of an enrollment', () => {
 
     await keepingNewerInstalledDaemon({ id: 'deploy-daemon', label: 'Deploy', detail: '', run: vi.fn() }, PRINTER_ADAPTER).run(printer, ENROLLING_PRINTER)
 
-    expect(printer.exec).toHaveBeenCalledWith(expect.stringContaining('/opt/bespok3d-example/var/lib/daemon/version.py'))
+    expect(printer.exec).toHaveBeenCalledWith(expect.stringContaining("'/opt/bespok3d-example/var/lib/daemon/version.py'"))
   })
 
   it('deploys on a printer with no daemon without opening the package first', async () => {

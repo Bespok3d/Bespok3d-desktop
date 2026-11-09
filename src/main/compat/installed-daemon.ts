@@ -17,6 +17,7 @@ import type { AdapterDefinition, EnrollContext, EnrollStep } from '../adapter-lo
 import { bespok3dRootOn } from '../adapter-loader/bespok3d-root'
 import { DAEMON_DEPLOY_STEP_ID } from '../adapter-loader/step-ids'
 import { DAEMON_PACKAGE } from '../daemon-client/version'
+import { shellQuote } from '../ssh'
 import type { SshSession } from '../ssh'
 import { openSystemPackage } from '../store/system-package'
 import { refreshKeptDaemon } from './kept-daemon'
@@ -25,7 +26,7 @@ const DAEMON_VERSION_FILE_IN_ROOT = 'var/lib/daemon/version.py'
 const DAEMON_VERSION_LINE = /^DAEMON_VERSION\s*=\s*["']([^"']+)["']/m
 
 export async function installedDaemonVersion(ssh: SshSession, bespok3dRoot: string): Promise<string | null> {
-  const versionSource = await ssh.exec(`cat ${bespok3dRoot}/${DAEMON_VERSION_FILE_IN_ROOT} 2>/dev/null; true`)
+  const versionSource = await ssh.exec(`cat ${shellQuote(`${bespok3dRoot}/${DAEMON_VERSION_FILE_IN_ROOT}`)} 2>/dev/null; true`)
 
   return reportedVersionOrNull(versionSource.match(DAEMON_VERSION_LINE)?.[1])
 }
