@@ -34,6 +34,7 @@ vi.mock('ws', () => ({
 }))
 vi.mock('../client', () => ({ makeAgent: vi.fn(() => ({})) }))
 
+import WebSocket from 'ws'
 import { watchInstallProgress, parseEvent, batchEventFrom, installPhaseMessage } from './install-progress'
 import { printerSaysItIsAtWork } from '../printer-at-work'
 import type { InstallLogPhase } from '@bespok3d/contract'
@@ -102,6 +103,14 @@ describe('watchInstallProgress', () => {
     sockets[0].emit('error', new Error('no route'))
     await expect(close).resolves.toBeTypeOf('function')
     expect(sockets[0].closed).toBe(true)
+  })
+
+  it('gives up opening the feed after a bounded wait, so a printer dropping packets cannot hold the install back', async () => {
+    const close = watchInstallProgress({ id: 'printer-1', ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }, vi.fn())
+    sockets[0].emit('error', new Error('Opening handshake has timed out'))
+    await close
+
+    expect(vi.mocked(WebSocket)).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ handshakeTimeout: expect.any(Number) }))
   })
 })
 

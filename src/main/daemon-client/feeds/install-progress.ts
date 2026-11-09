@@ -60,6 +60,9 @@ const DAEMON_PORT = 4269
 // looks open (a printer that drops off the network never says goodbye).
 const FEED_PING_MS = 15000
 const FEED_SILENCE_LIMIT_MS = 45000
+// A printer that drops packets never refuses the connection, so without a limit the opening handshake
+// waits for the system's own connect timeout, holding the install back before it is even sent.
+const FEED_HANDSHAKE_LIMIT_MS = 10000
 
 // A run is under way from its first event until its terminal done.
 interface RunWatch {
@@ -108,7 +111,7 @@ export function watchInstallProgress(record: ProgressTarget, onEvent: (event: In
   return new Promise((resolve) => {
     if (!record.daemonCert || !record.daemonToken) return resolve(() => {})
     const url = `wss://${record.ip}:${DAEMON_PORT}/ws/install-progress?token=${encodeURIComponent(record.daemonToken)}`
-    const socket = new WebSocket(url, { agent: makeAgent(record.daemonCert), maxPayload: MAX_FRAME_BYTES })
+    const socket = new WebSocket(url, { agent: makeAgent(record.daemonCert), maxPayload: MAX_FRAME_BYTES, handshakeTimeout: FEED_HANDSHAKE_LIMIT_MS })
     const runWatch: RunWatch = { runUnderWay: false, lastHeardAt: Date.now() }
     const stopReporting = reportWorkWhileOpen(record.id, socket, runWatch)
     function close(): void { stopReporting(); closeSocket(socket) }
