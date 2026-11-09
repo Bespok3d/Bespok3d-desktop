@@ -171,7 +171,7 @@ export function OtaRecoveryResultsModal({ results, onOpenPlugin, onClose, varian
   // words; the report carries the printer's, for every plugin, which is what whoever reads the issue
   // needs and what a screenshot of this modal loses.
   const reportAction = allWentWell ? undefined : (
-    <Button variant="outline" size="sm" onClick={() => copy(buildBatchReport(variant, results))}>
+    <Button variant="outline" size="sm" onClick={() => copy(buildBatchReport(variant, results, allWentWell))}>
       {copied ? t('install_error.copied') : t('install_error.copy')}
     </Button>
   )

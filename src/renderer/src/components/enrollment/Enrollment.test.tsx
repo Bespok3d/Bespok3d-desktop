@@ -10,7 +10,7 @@ import { Enrollment } from './index'
 import type { EnrollMode } from './index'
 import type { Printer } from '../../data/types'
 import type { PrinterRecord } from '../../env'
-import type { PluginRecoveryResult } from '@bespok3d/contract'
+import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 import { makeT } from '../../i18n'
 
 const en = makeT('en')
@@ -379,7 +379,7 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
   // own services row, which is ok because the printer is working again; every plugin row stays ok.
   const switchedOffBySafetyNet = { pluginId: '(services)', ok: true, skipped: false, reason: 'Auto-recovered: deactivated example-spoolman to keep the printer working', log: [], autoDeactivated: 'example-spoolman' }
 
-  async function reactivateAnswering(reapplied: { ok: boolean, results: Array<PluginRecoveryResult>, manifestWarnings?: Array<{ plugin: string, problem: string, detail: string }> }) {
+  async function reactivateAnswering(reapplied: BatchResult) {
     var onPluginsLeftOff = vi.fn()
     var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
     var rendered = setup(

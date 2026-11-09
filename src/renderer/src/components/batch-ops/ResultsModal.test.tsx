@@ -8,6 +8,7 @@ import { makeT } from '../../i18n'
 import { OtaRecoveryResultsModal } from './ResultsModal'
 
 const en = makeT('en')
+const unreadable = { plugin: 'rfid-ntag', problem: 'manifest-unreadable', detail: 'manifest.json: Expecting value: line 1 column 1' }
 
 function results() {
   return {
@@ -104,8 +105,6 @@ describe('OtaRecoveryResultsModal', () => {
 // read. The report names that plugin and what the printer could not make sense of. A printer that
 // reports nothing shows nothing: that is the ordinary answer, not something to render as a fault.
 describe('OtaRecoveryResultsModal, plugins the printer could not read', () => {
-  var unreadable = { plugin: 'rfid-ntag', problem: 'manifest-unreadable', detail: 'manifest.json: Expecting value: line 1 column 1' }
-
   // A batch that ends badly used to end HERE: a failed row, the printer's reason, and a Close button.
   // The plugin's own page is where installing it resolves what it is missing, so a plugin that did not
   // go through has to be one click from it.
@@ -225,6 +224,10 @@ describe('OtaRecoveryResultsModal on the printer setup row', () => {
   })
 })
 
+function walkedPast() {
+  return { ok: true, results: [{ pluginId: 'spoolman', ok: true, skipped: false, reason: '', log: [] }], manifestWarnings: [unreadable] }
+}
+
 // The printer calls a recovery fine with a plugin switched off on the way, so the header cannot just
 // repeat the printer's word for it.
 describe('OtaRecoveryResultsModal on a plugin switched off during a recovery the printer calls fine', () => {
@@ -246,11 +249,20 @@ describe('OtaRecoveryResultsModal on a plugin switched off during a recovery the
   })
 
   it('does not say every plugin went back when the printer walked past one it could not read', () => {
-    var walkedPast = { ok: true, results: [{ pluginId: 'spoolman', ok: true, skipped: false, reason: '', log: [] }], manifestWarnings: [{ plugin: 'rfid-ntag', problem: 'manifest-unreadable', detail: 'manifest.json: Expecting value: line 1 column 1' }] }
-    setup(<OtaRecoveryResultsModal results={walkedPast} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
+    setup(<OtaRecoveryResultsModal results={walkedPast()} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
 
     expect(screen.getByText(en('recovery_results.title_errors'))).toBeInTheDocument()
+    expect(screen.getByText(en('recovery_results.summary_errors'))).toBeInTheDocument()
     expect(screen.queryByText(en('recovery_results.summary_ok'))).not.toBeInTheDocument()
+  })
+
+  it('hands over a report that does not call that recovery ok either', async () => {
+    var { user } = setup(<OtaRecoveryResultsModal results={walkedPast()} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: en('install_error.copy') }))
+    const report = await navigator.clipboard.readText()
+    expect(report).toContain('- outcome: finished with errors')
+    expect(report).toContain('- rfid-ntag: unreadable')
   })
 
   it('leaves an uninstall that passed over a plugin already gone reading as done', () => {

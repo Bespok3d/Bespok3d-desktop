@@ -44,13 +44,15 @@ function unreadableLine(warning: ManifestWarning): string {
   return `- ${warning.plugin}: unreadable (${warning.problem}) ${warning.detail}`
 }
 
-export function buildBatchReport(operation: string, results: BatchResult): string {
+// The outcome is the verdict the modal gave, not the printer's own ok: the printer calls a recovery fine
+// with a plugin switched off or walked past, and the report must not say ok over the modal's errors.
+export function buildBatchReport(operation: string, results: BatchResult, wentWell: boolean): string {
   const unreadable = (results.manifestWarnings ?? []).map(unreadableLine)
 
   return [
     `### Bespok3d ${operation} batch`,
     `- app: ${appVersion()}`,
-    `- outcome: ${results.ok ? 'ok' : 'finished with errors'}`,
+    `- outcome: ${wentWell ? 'ok' : 'finished with errors'}`,
     '',
     '### Plugins',
     ...results.results.flatMap(pluginLines),
