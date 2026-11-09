@@ -7,10 +7,11 @@ import { getAdapter } from '../adapter-loader'
 import type { AdapterDefinition, EnrollContext, EnrollStep, SshCredentials } from '../adapter-loader'
 import { findAdapterStep } from '../adapter-loader/adapter-step'
 import { bespok3dRootOn } from '../adapter-loader/bespok3d-root'
-import { DAEMON_DEPLOY_STEP_ID, DAEMON_START_STEP_ID, JINNI_DEPLOY_STEP_ID } from '../adapter-loader/step-ids'
+import { BOOT_SCRIPT_DEPLOY_STEP_ID, DAEMON_DEPLOY_STEP_ID, DAEMON_START_STEP_ID, JINNI_DEPLOY_STEP_ID } from '../adapter-loader/step-ids'
 import { connect, shellQuote } from '../ssh'
 import type { SshSession } from '../ssh'
 import { runSshOp } from './op-runner'
+import type { OpStep } from './op-runner'
 import { waitForDaemon, tailDaemonLog } from './daemon-log'
 import { recordOrThrow, verifyDaemonVersion } from '../daemon-client/status'
 import { expectedDaemonVersion } from '../daemon-client/expected-version'
@@ -67,6 +68,17 @@ function redeployDaemon(adapter: AdapterDefinition, forced: boolean, ssh: SshSes
   const repairDeploy = forced ? deployStep : keepingNewerInstalledDaemon(deployStep, adapter)
 
   return repairDeploy.run(ssh, { ...ctx, sendChangedFilesOnly: true })
+}
+
+// The boot script comes with the daemon, so a daemon that changed it brings the change only once the
+// script is copied out again. Without this, a fixed boot script never reached a printer by update or repair.
+function bootScriptStep(adapter: AdapterDefinition, ssh: SshSession, ctx: EnrollContext): OpStep {
+  return {
+    id: 'refresh-boot-script',
+    label: 'Updating the startup script',
+    detail: 'Puts back the printer\'s bespok3d startup script from the daemon now in place, so a changed one reaches the printer',
+    run: () => findAdapterStep(adapter, BOOT_SCRIPT_DEPLOY_STEP_ID)?.run(ssh, ctx) ?? Promise.resolve(),
+  }
 }
 
 function diagnoseDaemon(adapter: AdapterDefinition, ssh: SshSession): Promise<string> {
@@ -133,6 +145,7 @@ export async function runRepair(win: BrowserWindow, printerId: string, ip: strin
     { id: 'check-write-layer', label: 'Checking the write layer', detail: 'A firmware update resets the printer overlay; when that happens a daemon repair would not survive a reboot, so the printer needs full recovery instead', run: async () => { await guardWriteLayer(adapter, ssh) } },
     { id: 'diagnose', label: 'Diagnosing the daemon', detail: 'Checks for a stale demon directory, a wrong autostart path, a missing daemon, or an occupied port', run: async (progress) => { progress((await diagnoseDaemon(adapter, ssh)).trim()) } },
     { id: 'redeploy-daemon', label: 'Re-deploying a fresh daemon', detail: 'Uploads fresh daemon source and removes the stale demon directory', run: (progress) => redeployDaemon(adapter, forced, ssh, { ...ctx, onProgress: progress }) },
+    bootScriptStep(adapter, ssh, ctx),
     { id: 'start-daemon', label: 'Starting the daemon', detail: 'Deploys the corrected autostart script, frees port 4269, and starts the daemon', run: () => runAdapterStep(adapter, DAEMON_START_STEP_ID, ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
@@ -146,6 +159,7 @@ export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip:
   await assertSafeToMoveDaemon(record, false)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'deploy-daemon', label: 'Uploading fresh daemon code', detail: 'Uploads the latest daemon source and adapter jinni; the cert and plugins are left untouched', run: (progress) => runAdapterStep(adapter, DAEMON_DEPLOY_STEP_ID, ssh, { ...ctx, onProgress: progress, sendChangedFilesOnly: true }) },
+    bootScriptStep(adapter, ssh, ctx),
     { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Deploys the autostart script, frees port 4269, and restarts the daemon', run: () => runAdapterStep(adapter, DAEMON_START_STEP_ID, ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])

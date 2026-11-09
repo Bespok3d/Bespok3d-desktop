@@ -22,7 +22,7 @@ vi.mock('../compat', async () => ({
   keepingNewerInstalledDaemon: (await vi.importActual<typeof import('../compat/installed-daemon')>('../compat/installed-daemon')).keepingNewerInstalledDaemon,
 }))
 
-import { runRepair } from './daemon-ops'
+import { runRepair, runUpdateDaemon } from './daemon-ops'
 import { getAdapter } from '../adapter-loader'
 import { runSshOp } from './op-runner'
 import { updatePrinter } from '../printers'
@@ -39,11 +39,11 @@ function adapterStep(id: string): EnrollStep {
   return { id, label: id, detail: '', run: vi.fn() }
 }
 
-function repairAdapter(deployDaemon: EnrollStep): AdapterDefinition {
+function repairAdapter(deployDaemon: EnrollStep, deployBootScript = adapterStep('deploy-s99')): AdapterDefinition {
   return {
     id: 'example', jinniVersion: '0.1.12', jinniPackage: 'bespok3d-jinni-example',
     defaults: { runtimeUser: 'user' }, envVars: [{ name: 'BESPOK3D', value: PRINTER_BESPOK3D_ROOT }],
-    enrollSteps: [deployDaemon, adapterStep('start-daemon')], verifyEnrolled: vi.fn(async () => true),
+    enrollSteps: [deployDaemon, deployBootScript, adapterStep('start-daemon')], verifyEnrolled: vi.fn(async () => true),
   } as unknown as AdapterDefinition
 }
 
@@ -51,9 +51,13 @@ async function runOpStepsOn(printer: SshSession, buildSteps: (ssh: SshSession) =
   await buildSteps(printer).reduce((previous, step) => previous.then(() => step.run(vi.fn())), Promise.resolve())
 }
 
-async function repairOn(printer: SshSession, deployDaemon: EnrollStep, forced = false): Promise<void> {
-  vi.mocked(getAdapter).mockReturnValue(repairAdapter(deployDaemon))
+function stepsRunOn(printer: SshSession, deployDaemon: EnrollStep, deployBootScript?: EnrollStep): void {
+  vi.mocked(getAdapter).mockReturnValue(repairAdapter(deployDaemon, deployBootScript))
   vi.mocked(runSshOp).mockImplementation((_win, _printerId, _credentials, buildSteps) => runOpStepsOn(printer, buildSteps))
+}
+
+async function repairOn(printer: SshSession, deployDaemon: EnrollStep, forced = false, deployBootScript?: EnrollStep): Promise<void> {
+  stepsRunOn(printer, deployDaemon, deployBootScript)
 
   await runRepair(REPAIRING_WINDOW, 'printer-1', '192.0.2.10', 'root', 'example', 22, forced)
 }
@@ -104,5 +108,40 @@ describe('a daemon repair', () => {
     await repairOn(printer, adapterStep('deploy-daemon'))
 
     expect(printer.exec).toHaveBeenCalledWith(expect.stringContaining(`'${PRINTER_BESPOK3D_ROOT}'/var/lib/daemon/daemon.py`))
+  })
+})
+
+describe('the startup script after a daemon repair', () => {
+  it('puts the startup script back from the daemon it left on the printer', async () => {
+    var deployDaemon = adapterStep('deploy-daemon')
+    var deployBootScript = adapterStep('deploy-s99')
+    var printer = printerWithDaemonOnDisk('0.13.9')
+
+    await repairOn(printer, deployDaemon, false, deployBootScript)
+
+    expect(deployBootScript.run).toHaveBeenCalledWith(printer, expect.anything())
+    expect(vi.mocked(deployBootScript.run).mock.invocationCallOrder[0]).toBeGreaterThan(vi.mocked(deployDaemon.run).mock.invocationCallOrder[0])
+  })
+
+  it('puts the startup script back from the newer daemon it kept', async () => {
+    var deployBootScript = adapterStep('deploy-s99')
+
+    await repairOn(printerWithDaemonOnDisk('0.14.1'), adapterStep('deploy-daemon'), false, deployBootScript)
+
+    expect(deployBootScript.run).toHaveBeenCalledOnce()
+  })
+})
+
+describe('a daemon update', () => {
+  it('puts the startup script back from the daemon it just sent', async () => {
+    var deployDaemon = adapterStep('deploy-daemon')
+    var deployBootScript = adapterStep('deploy-s99')
+    var printer = printerWithDaemonOnDisk('0.13.9')
+    stepsRunOn(printer, deployDaemon, deployBootScript)
+
+    await runUpdateDaemon(REPAIRING_WINDOW, 'printer-1', '192.0.2.10', 'root', 'example', 22)
+
+    expect(deployBootScript.run).toHaveBeenCalledWith(printer, expect.anything())
+    expect(vi.mocked(deployBootScript.run).mock.invocationCallOrder[0]).toBeGreaterThan(vi.mocked(deployDaemon.run).mock.invocationCallOrder[0])
   })
 })

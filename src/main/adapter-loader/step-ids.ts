@@ -14,3 +14,7 @@ export const JINNI_DEPLOY_STEP_ID = 'deploy-jinni'
 
 // Installs the packages of the daemon already on the printer, from the files that daemon brought.
 export const DAEMON_VENV_REFRESH_STEP_ID = 'refresh-daemon-venv'
+
+// Installs the printer's boot script that starts bespok3d, from the daemon now on the printer. An
+// adapter whose printer starts bespok3d some other way has no such step.
+export const BOOT_SCRIPT_DEPLOY_STEP_ID = 'deploy-s99'
