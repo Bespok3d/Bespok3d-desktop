@@ -16,7 +16,6 @@ import { pairRefusal } from './floors'
 import { askPrinterCompat, reportedDaemonVersion } from './reported'
 import { expectedDaemonVersion } from '../daemon-client/expected-version'
 import { reportedBlockedActions } from '../daemon-client/feeds/print-state'
-import { loadPrinters } from '../printers'
 import type { PrinterRecord } from '../printers'
 
 // An operation the app declined to start, or declined to call finished. Distinct from a failure: the
@@ -40,16 +39,6 @@ export async function assertNotADaemonDowngrade(record: PrinterRecord, forced = 
     `This printer already runs the Bespok3d daemon ${running} and this app ships ${expectedDaemonVersion()}, ` +
     `so deploying would put it back onto the older daemon. Update Bespok3d itself first.`,
   )
-}
-
-// The same question for a path that is handed an id rather than a record, which is how enrollment
-// arrives: recovery after a firmware update re-enrolls a printer the app already knows. An id the app
-// has no record for is a first enrollment and has nothing to be put backwards.
-export async function assertKnownPrinterNotDowngraded(printerId: string, forced = false): Promise<void> {
-  const record = loadPrinters().find((known) => known.id === printerId)
-  if (!record) return
-
-  await assertNotADaemonDowngrade(record, forced)
 }
 
 // Moving either half restarts the daemon and the printer services it drives, so it never happens while

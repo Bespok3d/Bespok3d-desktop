@@ -25,7 +25,7 @@ export const printersApi = {
     ipcRenderer.invoke('printers:adapters:list'),
   checkSsh: (ip: string, user: string, password: string, port: number): Promise<SshCheckResult> =>
     ipcRenderer.invoke('printers:checkSsh', ip, user, password, port),
-  // forced: launched from the Force menu, so the daemon-version question is waived. See move-guard.
+  // forced: launched from the Force menu, so a printer's newer daemon is not kept. See compat/installed-daemon.
   enroll: (printerId: string, ip: string, adapterId: string, user: string, password: string, port: number, retryFromStepId?: string, forced?: boolean): Promise<void> =>
     ipcRenderer.invoke('printers:enroll', printerId, ip, adapterId, user, password, port, retryFromStepId, forced),
   // Stop the operation running on this printer at the next step boundary.

@@ -11,7 +11,7 @@ export type { PackageFloors } from './guard'
 export {
   DaemonMoveRefused,
   assertNotADaemonDowngrade,
-  assertKnownPrinterNotDowngraded,
   assertPrinterNotPrinting,
   assertPairLandedTogether,
 } from './move-guard'
+export { keepingNewerInstalledDaemon } from './installed-daemon'

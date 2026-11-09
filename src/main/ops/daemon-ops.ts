@@ -5,6 +5,7 @@ import { updatePrinter, loadPrinters } from '../printers'
 import type { PrinterRecord } from '../printers'
 import { getAdapter } from '../adapter-loader'
 import type { AdapterDefinition, EnrollContext, SshCredentials } from '../adapter-loader'
+import { DAEMON_DEPLOY_STEP_ID } from '../adapter-loader/step-ids'
 import { connect } from '../ssh'
 import type { SshSession } from '../ssh'
 import { runSshOp } from './op-runner'
@@ -109,7 +110,7 @@ export async function runRepair(win: BrowserWindow, printerId: string, ip: strin
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'check-write-layer', label: 'Checking the write layer', detail: 'A firmware update resets the printer overlay; when that happens a daemon repair would not survive a reboot, so the printer needs full recovery instead', run: async () => { await guardWriteLayer(adapter, ssh) } },
     { id: 'diagnose', label: 'Diagnosing the daemon', detail: 'Checks for a stale demon directory, a wrong autostart path, a missing daemon, or an occupied port', run: async (progress) => { progress((await diagnoseDaemon(ssh)).trim()) } },
-    { id: 'redeploy-daemon', label: 'Re-deploying a fresh daemon', detail: 'Uploads fresh daemon source and removes the stale demon directory', run: (progress) => runAdapterStep(adapter, 'deploy-daemon', ssh, { ...ctx, onProgress: progress }) },
+    { id: 'redeploy-daemon', label: 'Re-deploying a fresh daemon', detail: 'Uploads fresh daemon source and removes the stale demon directory', run: (progress) => runAdapterStep(adapter, DAEMON_DEPLOY_STEP_ID, ssh, { ...ctx, onProgress: progress }) },
     { id: 'start-daemon', label: 'Starting the daemon', detail: 'Deploys the corrected autostart script, frees port 4269, and starts the daemon', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
@@ -122,7 +123,7 @@ export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip:
   // Update is not a Force flow: it exists to move a printer forward, so it keeps the version question.
   await assertSafeToMoveDaemon(record, false)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
-    { id: 'deploy-daemon', label: 'Uploading fresh daemon code', detail: 'Uploads the latest daemon source and adapter jinni; the cert and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-daemon', ssh, { ...ctx, onProgress: progress, sendChangedFilesOnly: true }) },
+    { id: 'deploy-daemon', label: 'Uploading fresh daemon code', detail: 'Uploads the latest daemon source and adapter jinni; the cert and plugins are left untouched', run: (progress) => runAdapterStep(adapter, DAEMON_DEPLOY_STEP_ID, ssh, { ...ctx, onProgress: progress, sendChangedFilesOnly: true }) },
     { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Deploys the autostart script, frees port 4269, and restarts the daemon', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])

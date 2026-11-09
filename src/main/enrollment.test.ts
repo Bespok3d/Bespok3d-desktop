@@ -9,6 +9,7 @@ vi.mock('./ssh', () => ({ connect: vi.fn(), createPersistentSession: vi.fn() }))
 vi.mock('./adapter-loader', () => ({ getAdapter: vi.fn() }))
 vi.mock('./printers', () => ({ updatePrinter: vi.fn(), loadPrinters: vi.fn(() => []) }))
 vi.mock('./analytics', () => ({ reportEvent: vi.fn() }))
+vi.mock('./daemon-client/expected-version', () => ({ expectedDaemonVersion: () => '0.14.0' }))
 vi.mock('./analytics/errors', () => ({ reportErrorEvent: vi.fn() }))
 vi.mock('./keys', () => ({ listKeys: vi.fn().mockReturnValue([]) }))
 vi.mock('./settings', () => ({
@@ -167,5 +168,57 @@ describe('an enrollment that did not work', () => {
     await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS)
 
     expect(vi.mocked(reportErrorEvent)).not.toHaveBeenCalled()
+  })
+})
+
+// After a firmware update the printer's daemon is not running, so only the files it left on the disk
+// can say which daemon it has.
+function printerWithDaemonOnDisk(installedVersion: string): void {
+  mockCreatePersistentSession.mockReturnValue(mockSession({
+    exec: vi.fn(async (command: string) => (command.includes('version.py') ? `DAEMON_VERSION = "${installedVersion}"\n` : 'ok')),
+  }))
+}
+
+describe('a recovery after a firmware update', () => {
+  it('keeps the newer daemon the printer already has instead of putting an older one over it', async () => {
+    var deployDaemon = mockStep('deploy-daemon')
+    var startDaemon = mockStep('start-daemon')
+    printerWithDaemonOnDisk('0.14.1')
+    mockGetAdapter.mockReturnValue(mockAdapter([deployDaemon, startDaemon]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS)
+
+    expect(deployDaemon.run).not.toHaveBeenCalled()
+    expect(startDaemon.run).toHaveBeenCalledOnce()
+    expect(enrolledPatch()).toMatchObject({ status: 'managed' })
+  })
+
+  it.each(['0.14.0', '0.13.9'])('deploys over a printer that has daemon %s, the same or older', async (installedVersion) => {
+    var deployDaemon = mockStep('deploy-daemon')
+    printerWithDaemonOnDisk(installedVersion)
+    mockGetAdapter.mockReturnValue(mockAdapter([deployDaemon]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS)
+
+    expect(deployDaemon.run).toHaveBeenCalledOnce()
+  })
+
+  it('deploys on a printer with no daemon on it', async () => {
+    var deployDaemon = mockStep('deploy-daemon')
+    mockGetAdapter.mockReturnValue(mockAdapter([deployDaemon]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS)
+
+    expect(deployDaemon.run).toHaveBeenCalledOnce()
+  })
+
+  it('deploys this app\'s daemon over a newer one when the owner forced it', async () => {
+    var deployDaemon = mockStep('deploy-daemon')
+    printerWithDaemonOnDisk('0.14.1')
+    mockGetAdapter.mockReturnValue(mockAdapter([deployDaemon]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS, undefined, true)
+
+    expect(deployDaemon.run).toHaveBeenCalledOnce()
   })
 })
