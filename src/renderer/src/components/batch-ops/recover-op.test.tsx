@@ -48,6 +48,7 @@ function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Prom
       {recoverOp.recoveryResults && <p>the recovery report</p>}
       {recoverOp.recoveryResults && <p>restart: {recoverOp.restartingAfterRecovery}</p>}
       {recoverOp.recoveryResults && <p>rows: {recoverOp.recoveryResults.results.map((row) => row.reason).join(', ')}</p>}
+      {recoverOp.recoveryResults && <p>report ok: {String(recoverOp.recoveryResults.ok)}</p>}
     </>
   )
 }
@@ -173,12 +174,13 @@ describe('the check the reboot replaced', () => {
 
     await waitFor(() => expect(screen.getByText('rows: camera back, spoolman taken off')).toBeInTheDocument())
     expect(recoverAfterReboot).toHaveBeenCalledWith('printer-1')
+    expect(screen.getByText('report ok: false')).toBeInTheDocument()
   })
 
   it('leaves the report as the recover gave it when the check still did not run', async () => {
     const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
     const recoverAfterReboot = vi.fn().mockRejectedValue(new Error('the printer is printing'))
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { user } = setup(
       <RecoverOpHarness restart={vi.fn().mockResolvedValue(true)} waitForBack={answersAtOnce} />,
       { b3d: { store: { recover, recoverAfterReboot } } },
@@ -187,6 +189,9 @@ describe('the check the reboot replaced', () => {
     await user.click(screen.getByRole('button', { name: 'recover' }))
 
     await waitFor(() => expect(screen.getByText('rows: camera back, the printer reboot replaces the services restart')).toBeInTheDocument())
+    expect(recoverAfterReboot).toHaveBeenCalledWith('printer-1')
+    expect(errorLog).toHaveBeenCalled()
+    errorLog.mockRestore()
   })
 
   it('is not asked for when the recover left nothing to the reboot', async () => {
