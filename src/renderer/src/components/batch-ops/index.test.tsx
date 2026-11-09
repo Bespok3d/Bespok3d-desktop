@@ -24,7 +24,7 @@ function ignoreRestart() {
 // The update-all button and its modal, wired exactly as the app wires them, so the test exercises the
 // path from a rejected batch call to what the user is left looking at.
 function UpdateAllHarness({ onRepairPrinter = ignoreRepair }: { onRepairPrinter?: (printerId: string) => void }) {
-  const batchOps = useBatchOps([], () => {}, (startInstall) => startInstall(), ignoreRestart)
+  const batchOps = useBatchOps([], () => {}, (startInstall) => startInstall(), ignoreRestart, false)
 
   return (
     <>
@@ -47,7 +47,7 @@ function UpdateAllHarness({ onRepairPrinter = ignoreRepair }: { onRepairPrinter?
 // Recover wired the way the app wires it, so the test exercises what happens after the plugins are
 // back on the printer, report included.
 function RecoverHarness({ onRestart }: { onRestart: (printerId: string) => Promise<boolean> }) {
-  const batchOps = useBatchOps([], () => {}, (startInstall) => startInstall(), onRestart)
+  const batchOps = useBatchOps([], () => {}, (startInstall) => startInstall(), onRestart, false)
 
   return (
     <>
@@ -71,7 +71,7 @@ function RecoverHarness({ onRestart }: { onRestart: (printerId: string) => Promi
 // A plugin that became a collection migrates in one run: the retired plugin comes off the printer
 // first, then the member plugins go on. Wired the way the app wires it, uninstall report included.
 function MigrateHarness({ specs }: { specs: PluginUpdateSpec[] }) {
-  const batchOps = useBatchOps([], () => {}, (startInstall) => startInstall(), ignoreRestart)
+  const batchOps = useBatchOps([], () => {}, (startInstall) => startInstall(), ignoreRestart, false)
 
   return (
     <>

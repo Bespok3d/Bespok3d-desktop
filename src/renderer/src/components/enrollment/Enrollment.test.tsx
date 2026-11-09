@@ -14,6 +14,9 @@ import type { Printer } from '../../data/types'
 import type { PrinterRecord } from '../../env'
 import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 import { makeT } from '../../i18n'
+import { useBatchOps } from '../batch-ops'
+import { HELD_REPORTS_KEY } from '../batch-ops/kept-over-a-quit'
+import { usePrinterSync } from '../../hooks/printers'
 
 const en = makeT('en')
 
@@ -752,5 +755,123 @@ describe('Enrollment operation that goes quiet', () => {
 
     expect(screen.getByText(NO_ANSWER)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+  })
+})
+
+// Quitting the app ends it where it stands: nothing it would have done on the way down runs, and what
+// it kept stays as it was. A test can only take the window down, which hands the report over, so what
+// was kept is put back as the quit left it.
+function quitTheApp(rendered: { unmount: () => void }) {
+  var keptAtTheQuit = localStorage.getItem(HELD_REPORTS_KEY)
+  rendered.unmount()
+  if (keptAtTheQuit !== null) localStorage.setItem(HELD_REPORTS_KEY, keptAtTheQuit)
+}
+
+function ignoreRestart() {
+  return Promise.resolve(false)
+}
+
+// The app's next launch, its batch ops wired the way the app wires them: the report of the plugins a
+// reactivate left off, the close the user makes on it, and the removal of the printer.
+function NextLaunch({ printerStatus, enrollWindowUp = false }: { printerStatus: Printer['status']; enrollWindowUp?: boolean }) {
+  var batchOps = useBatchOps([makePrinter({ id: 'printer-1', status: printerStatus })], () => {}, (startInstall) => startInstall(), ignoreRestart, enrollWindowUp)
+  var printerSync = usePrinterSync()
+
+  return (
+    <>
+      {batchOps.recoveryResults && <p>left off: {batchOps.recoveryResults.results.map((row) => row.reason).join(', ')}</p>}
+      <button type="button" onClick={() => batchOps.setRecoveryResults(null)}>close the report</button>
+      <button type="button" onClick={() => printerSync.handleRemovePrinter('printer-1')}>remove the printer</button>
+    </>
+  )
+}
+
+const LEFT_OFF_REPORT = 'left off: back on, switched off: its service did not start'
+
+// The app quit while the window on the reactivate's reboot was up, and is launched again.
+async function launchAfterAQuitDuringTheReboot(printerStatus: Printer['status'], { reactStrictMode = false, enrollWindowUp = false } = {}) {
+  quitTheApp(await reactivateUntilItsReboot({ ok: false, results: [putBack, leftOff] }))
+
+  return setup(<NextLaunch printerStatus={printerStatus} enrollWindowUp={enrollWindowUp} />, { reactStrictMode })
+}
+
+// The user may quit the app while the window on the reactivate's reboot is still up.
+describe('Enrollment keeps the reactivate report over a quit', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('shows it on the next launch once the printer answers, and not before', async () => {
+    var nextLaunch = await launchAfterAQuitDuringTheReboot('offline')
+
+    await letPendingWorkSettle()
+    expect(screen.queryByText(LEFT_OFF_REPORT)).not.toBeInTheDocument()
+    nextLaunch.rerender(<NextLaunch printerStatus="managed" />)
+
+    await waitFor(() => expect(screen.getByText(LEFT_OFF_REPORT)).toBeInTheDocument())
+  })
+
+  it('shows it once a switched-off printer answers', async () => {
+    await launchAfterAQuitDuringTheReboot('deactivated')
+
+    await waitFor(() => expect(screen.getByText(LEFT_OFF_REPORT)).toBeInTheDocument())
+  })
+
+  it('waits for a window on a printer to close, which may be following a reboot itself', async () => {
+    var nextLaunch = await launchAfterAQuitDuringTheReboot('managed', { enrollWindowUp: true })
+
+    await letPendingWorkSettle()
+    expect(screen.queryByText(LEFT_OFF_REPORT)).not.toBeInTheDocument()
+    nextLaunch.rerender(<NextLaunch printerStatus="managed" />)
+
+    await waitFor(() => expect(screen.getByText(LEFT_OFF_REPORT)).toBeInTheDocument())
+  })
+
+  it('shows it only once', async () => {
+    var nextLaunch = await launchAfterAQuitDuringTheReboot('managed', { reactStrictMode: true })
+    await waitFor(() => expect(screen.getByText(LEFT_OFF_REPORT)).toBeInTheDocument())
+    await nextLaunch.user.click(screen.getByRole('button', { name: 'close the report' }))
+    nextLaunch.unmount()
+
+    setup(<NextLaunch printerStatus="managed" />)
+    await letPendingWorkSettle()
+
+    expect(screen.queryByText(LEFT_OFF_REPORT)).not.toBeInTheDocument()
+  })
+
+  it('leaves nothing for the next launch once the window has shown it', async () => {
+    var rendered = await reactivateUntilItsReboot({ ok: false, results: [putBack, leftOff] })
+    rendered.unmount()
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
+
+    setup(<NextLaunch printerStatus="managed" />)
+    await letPendingWorkSettle()
+
+    expect(screen.queryByText(LEFT_OFF_REPORT)).not.toBeInTheDocument()
+  })
+
+  it('gives way to a newer report of the printer that was shown at once', async () => {
+    var answerTheReactivate!: (answer: BatchResult) => void
+    var reactivateAnswer = new Promise<BatchResult>(function capture(resolve) { answerTheReactivate = resolve })
+    var laterReactivate: Awaited<ReturnType<typeof reactivateStarted>>
+    quitTheApp(await reactivateUntilItsReboot({ ok: false, results: [putBack, leftOff] }))
+    laterReactivate = await reactivateStarted(() => reactivateAnswer)
+    laterReactivate.unmount()
+    await act(async () => answerTheReactivate({ ok: false, results: [leftOff] }))
+    expect(laterReactivate.onPluginsLeftOff).toHaveBeenCalledOnce()
+
+    setup(<NextLaunch printerStatus="managed" />)
+    await letPendingWorkSettle()
+
+    expect(screen.queryByText(LEFT_OFF_REPORT)).not.toBeInTheDocument()
+  })
+
+  it('goes with the printer when the printer is removed', async () => {
+    var nextLaunch = await launchAfterAQuitDuringTheReboot('offline')
+    await nextLaunch.user.click(screen.getByRole('button', { name: 'remove the printer' }))
+    nextLaunch.unmount()
+
+    setup(<NextLaunch printerStatus="managed" />)
+    await letPendingWorkSettle()
+
+    expect(screen.queryByText(LEFT_OFF_REPORT)).not.toBeInTheDocument()
   })
 })

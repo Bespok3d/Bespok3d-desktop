@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-293 exported components + hooks across 22 areas.
+294 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -135,6 +135,7 @@ as you touch the file.
 - `useListFollowsActiveRow` (hook) - [components/batch-ops/follow-active-row.ts](../src/renderer/src/components/batch-ops/follow-active-row.ts) - Keeps the row being worked on in view. A run longer than the modal scrolls itself as each plugin
 - `usePendingUpdate` (hook) - [components/batch-ops/pending-update.ts](../src/renderer/src/components/batch-ops/pending-update.ts) - An update batch waits for the user to read it before it runs. Both entry points (the store's Update
 - `useRecoverOp` (hook) - [components/batch-ops/recover-op.ts](../src/renderer/src/components/batch-ops/recover-op.ts) - Recovery, the one batch operation that ends by restarting the printer: putting every plugin back
+- `useReportsHeldOverAQuit` (hook) - [components/batch-ops/reports-held-over-a-quit.ts](../src/renderer/src/components/batch-ops/reports-held-over-a-quit.ts) - The plugins a reactivate left off are reported once its window on the printer's reboot is gone. A
 
 ## Feature: create
 

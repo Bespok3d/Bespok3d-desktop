@@ -247,7 +247,7 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
 }
 
 export function Enrollment({ printer, mode, fromAdd = false, forced = false, onEnrolled, onClose, onEscalateRecovery, onRebuildPrinter, onExpectedRestart, onOpRecorded, onPluginsLeftOff }: EnrollmentProps) {
-  const holdThePluginsLeftOffReport = useReportOnceTheWindowCloses(onPluginsLeftOff)
+  const holdThePluginsLeftOffReport = useReportOnceTheWindowCloses(printer.id, onPluginsLeftOff)
   const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp, failStart } = useEnrollment(printer, forced, holdThePluginsLeftOffReport)
   const [credentials, setCredentials] = useState<SshCredentials>({ user: '', password: '', port: 22 })
   const [adapterInfo, setAdapterInfo] = useState<AdapterInfo | null>(null)

@@ -23,7 +23,7 @@ function ignoreRestart() {
 // One press of Update All, wired the way the app wires it: whatever the plan holds goes to the printer
 // in one run and comes back as one report the user reads.
 function UpdatePlanHarness({ plan, onOpenPlugin = () => {} }: { plan: UpdateAllPlan; onOpenPlugin?: (pluginId: string) => void }) {
-  const batchOps = useBatchOps([], () => {}, (startInstall) => startInstall(), ignoreRestart)
+  const batchOps = useBatchOps([], () => {}, (startInstall) => startInstall(), ignoreRestart, false)
 
   return (
     <>
