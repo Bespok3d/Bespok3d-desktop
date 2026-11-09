@@ -10,6 +10,7 @@ import { Enrollment } from './index'
 import type { EnrollMode } from './index'
 import type { Printer } from '../../data/types'
 import type { PrinterRecord } from '../../env'
+import type { PluginRecoveryResult } from '@bespok3d/contract'
 import { makeT } from '../../i18n'
 
 const en = makeT('en')
@@ -374,7 +375,11 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
   const putBack = { pluginId: 'example-camera', ok: true, skipped: false, reason: 'back on', log: [] }
   const leftOff = { pluginId: 'example-spoolman', ok: false, skipped: false, reason: 'switched off: its service did not start', log: [] }
 
-  async function reactivateAnswering(reapplied: { ok: boolean, results: Array<typeof putBack> }) {
+  // The printer's safety net switches the plugin off after the services restart and reports it on its
+  // own services row, which is ok because the printer is working again; every plugin row stays ok.
+  const switchedOffBySafetyNet = { pluginId: '(services)', ok: true, skipped: false, reason: 'Auto-recovered: deactivated example-spoolman to keep the printer working', log: [], autoDeactivated: 'example-spoolman' }
+
+  async function reactivateAnswering(reapplied: { ok: boolean, results: Array<PluginRecoveryResult> }) {
     var onPluginsLeftOff = vi.fn()
     var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
     var rendered = setup(
@@ -390,6 +395,14 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
 
   it('names the plugins the printer could not put back', async () => {
     var reapplied = { ok: false, results: [putBack, leftOff] }
+
+    var onPluginsLeftOff = await reactivateAnswering(reapplied)
+
+    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('names the plugin the printer\'s safety net switched off once the services restarted', async () => {
+    var reapplied = { ok: true, results: [putBack, switchedOffBySafetyNet] }
 
     var onPluginsLeftOff = await reactivateAnswering(reapplied)
 

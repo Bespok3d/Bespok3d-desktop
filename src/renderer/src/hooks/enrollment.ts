@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { mainProcessMessage } from '../utils/errorMessage'
 import type { Printer } from '../data/types'
+import type { PluginRecoveryResult } from '@bespok3d/contract'
 import type { BatchResult } from '../../../main/daemon-client/batch-result'
 
 export interface SshCredentials {
@@ -61,11 +62,17 @@ function nextEnrollPhase(status: EnrollProgressEvent['status'], isLastStep: bool
   return 'enrolling'
 }
 
+// The printer's safety net reports the plugins it switched off on its own services row, which is ok
+// once the printer works again, so a row being ok does not mean nothing was switched off.
+function leftAPluginOff(row: PluginRecoveryResult): boolean {
+  return !row.ok || Boolean(row.autoDeactivated)
+}
+
 // Putting the plugins back switches off each one the printer could not put back, and the op still
 // succeeds, so its own success screen cannot be the only word on it.
 function tellOfPluginsLeftOff(onPluginsLeftOff?: (reapplied: BatchResult) => void) {
   return function reportAnyLeftOff(reapplied: BatchResult): void {
-    if (onPluginsLeftOff && reapplied.results.some((row) => !row.ok)) onPluginsLeftOff(reapplied)
+    if (onPluginsLeftOff && (!reapplied.ok || reapplied.results.some(leftAPluginOff))) onPluginsLeftOff(reapplied)
   }
 }
 
@@ -76,10 +83,13 @@ function sshLifecycleStarters(printer: Printer, startOp: (invoke: () => Promise<
   function starterFor(op: SshLifecycleOp): (creds: SshCredentials) => void {
     return (creds) => startOp(() => op(printer.id, printer.ip, creds.user, creds.password, creds.port))
   }
+  function reactivateThenTellOfPluginsLeftOff(...opArguments: Parameters<SshLifecycleOp>): Promise<void> {
+    return printers.reactivate(...opArguments).then(tellOfPluginsLeftOff(onPluginsLeftOff))
+  }
 
   return {
     startDeactivate: starterFor(printers.deactivate),
-    startReactivate: (creds: SshCredentials) => startOp(() => printers.reactivate(printer.id, printer.ip, creds.user, creds.password, creds.port).then(tellOfPluginsLeftOff(onPluginsLeftOff))),
+    startReactivate: starterFor(reactivateThenTellOfPluginsLeftOff),
     startUninstall: starterFor(printers.uninstall),
     startReboot: starterFor(printers.reboot),
     // Repair is the one op on this list the Force menu launches, so it is the one that carries the flag.
