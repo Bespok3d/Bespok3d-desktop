@@ -426,6 +426,7 @@
   "enroll.ssh_closed_summary": "{name} no acepta conexiones SSH, así que Bespok3d aún no puede configurarla.",
   "enroll.ssh_closed_detail": "La vinculación funciona por SSH (puerto 22), que está cerrado. En la pantalla de la impresora, activa el acceso root (modo desarrollador / SSH) en los ajustes y pulsa Reintentar. Si lo acabas de activar, dale unos segundos a la impresora para arrancar el servicio SSH.",
   "enroll.ssh_retry": "Reintentar",
+  "enroll.refusal.extended_firmware": "Esta impresora usa el firmware Extended. Con Bespok3d no necesitas un firmware personalizado: tu impresora es un ordenador, así que le añadimos plugins en lugar de instalar un sistema nuevo. Vuelve a poner el firmware original de Snapmaker y prueba de nuevo.",
   "gen.startup": "Inicio",
   "gen.default_printer": "Impresora predeterminada",
   "gen.default_printer_hint": "Se selecciona al abrir Bespok3d.",

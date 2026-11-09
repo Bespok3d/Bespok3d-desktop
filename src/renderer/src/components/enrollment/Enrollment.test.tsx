@@ -9,6 +9,9 @@ import { makePrinter, makeEnrollEvent } from '../../test/fixtures'
 import { Enrollment } from './index'
 import type { EnrollMode } from './index'
 import type { Printer } from '../../data/types'
+import { makeT } from '../../i18n'
+
+const en = makeT('en')
 
 function renderEnroll(mode: EnrollMode, printerOverrides = {}, handlers: Record<string, ReturnType<typeof vi.fn>> = {}) {
   var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online', ...printerOverrides })
@@ -393,6 +396,29 @@ describe('Enrollment after a step fails', () => {
 
     expect(await screen.findByRole('button', { name: 'Start enrollment' })).toBeInTheDocument()
     expect(b3d.printers.enroll).toHaveBeenCalledTimes(1)
+  })
+})
+
+// The adapter refuses an Extended-firmware printer in English only, and with nothing about why a
+// custom firmware is not needed. The app answers it in the owner's own language instead.
+describe('Enrollment on an Extended-firmware printer', () => {
+  const ADAPTER_REFUSAL = 'This printer runs the Extended firmware, which Bespok3d is not compatible with. Please revert to the stock Snapmaker firmware, then enroll.'
+
+  it('explains that no custom firmware is needed, in place of the adapter sentence', async () => {
+    var { emit, b3d } = renderEnroll('enroll')
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledTimes(1))
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'preflight', stepLabel: 'Checking the printer', error: ADAPTER_REFUSAL, stepIndex: 0 })))
+
+    expect(screen.getByText(en('enroll.refusal.extended_firmware'))).toBeInTheDocument()
+    expect(screen.queryByText(ADAPTER_REFUSAL)).toBeNull()
+  })
+
+  it('keeps the step words for any other refusal', async () => {
+    var { emit, b3d } = renderEnroll('enroll')
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledTimes(1))
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'preflight', stepLabel: 'Checking the printer', error: 'The printer is printing or paused.', stepIndex: 0 })))
+
+    expect(screen.getByText('The printer is printing or paused.')).toBeInTheDocument()
   })
 })
 

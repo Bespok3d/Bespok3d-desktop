@@ -426,6 +426,7 @@
   "enroll.ssh_closed_summary": "{name} SSH bağlantılarını kabul etmiyor; bu yüzden Bespok3d onu henüz kuramıyor.",
   "enroll.ssh_closed_detail": "Kurulum SSH (port 22) üzerinden çalışır ve bu port kapalı. Yazıcının ekranında, yazıcı ayarlarından root erişimini (geliştirici modu / SSH) açın, sonra Tekrar dene'ye basın. Yeni açtıysanız, SSH servisinin başlaması için yazıcıya birkaç saniye verin.",
   "enroll.ssh_retry": "Tekrar dene",
+  "enroll.refusal.extended_firmware": "Bu yazıcı Extended yazılımını kullanıyor. Bespok3d ile özel yazılıma gerek yok: yazıcınız bir bilgisayar, bu yüzden yeni bir sistem yüklemek yerine ona eklentiler ekliyoruz. Orijinal Snapmaker yazılımına geri dönün, sonra tekrar deneyin.",
   "gen.startup": "Başlangıç",
   "gen.default_printer": "Varsayılan yazıcı",
   "gen.default_printer_hint": "Bespok3d açıldığında seçilir.",

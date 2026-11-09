@@ -426,6 +426,7 @@
   "enroll.ssh_closed_summary": "{name} 不接受 SSH 连接，Bespok3d 暂时无法设置它。",
   "enroll.ssh_closed_detail": "接入通过 SSH（端口 22）进行，而该端口目前是关闭的。请在打印机屏幕上进入打印机设置，开启 root 权限（开发者模式 / SSH），然后点击“重试”。如果你刚刚开启，请给打印机几秒钟来启动 SSH 服务。",
   "enroll.ssh_retry": "重试",
+  "enroll.refusal.extended_firmware": "这台打印机运行的是 Extended 固件。使用 Bespok3d 无需自定义固件：打印机本身就是一台电脑，我们为它添加插件，而不是刷入新系统。请先恢复 Snapmaker 原厂固件，然后再试一次。",
   "gen.startup": "启动",
   "gen.default_printer": "默认打印机",
   "gen.default_printer_hint": "打开 Bespok3d 时自动选中。",
