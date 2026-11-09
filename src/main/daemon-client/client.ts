@@ -18,6 +18,7 @@ export {
   deactivateAll,
   teardownDaemon,
   recoverPackages,
+  recoverAfterReboot,
   repairOrRecover,
   uninstallBatch,
   updateBatchPackages,

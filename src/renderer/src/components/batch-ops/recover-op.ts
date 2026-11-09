@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState } from 'react'
+import type { PluginRecoveryResult } from '@bespok3d/contract'
 import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 
 // What the report says about the restart after recovery: none was made by the app, the app restarted
@@ -11,6 +12,35 @@ interface RecoveryReportHandlers {
   waitForPrinterBack: (printerId: string) => Promise<boolean>
   setRestartingAfterRecovery: (restart: RecoveryRestart) => void
   showReport: (results: BatchResult) => void
+}
+
+// The printer's row saying the reboot replaced its services restart. The check those restarts would
+// have had runs only once the printer is back, and its answer takes this row's place in the report.
+const REBOOT_REPLACES_RESTART_PHASE = 'reboot-replaces-restart'
+
+function leftItsCheckToTheReboot(row: PluginRecoveryResult): boolean {
+  return row.log.some((logPhase) => logPhase.id === REBOOT_REPLACES_RESTART_PHASE)
+}
+
+function withTheCheckAfterTheReboot(results: BatchResult, check: BatchResult): BatchResult {
+  return {
+    ...results,
+    ok: results.ok && check.ok,
+    results: results.results.flatMap((row) => (leftItsCheckToTheReboot(row) ? check.results : [row])),
+  }
+}
+
+// A check that still did not run leaves the report as the recover gave it.
+function checkedAfterTheReboot(printerId: string, results: BatchResult): Promise<BatchResult> {
+  if (!results.results.some(leftItsCheckToTheReboot)) return Promise.resolve(results)
+
+  return window.b3d.store.recoverAfterReboot(printerId)
+    .then((check) => withTheCheckAfterTheReboot(results, check))
+    .catch(function reportWithoutTheCheck(error) {
+      console.error('[recover] the check after the reboot did not run', error)
+
+      return results
+    })
 }
 
 // The report is held until the printer answers again. Showing it the moment the plugins were back is
@@ -31,8 +61,11 @@ function reportWhenThePrinterIsBack(printerId: string, results: BatchResult, han
     handlers.setRestartingAfterRecovery('restarted')
 
     return handlers.waitForPrinterBack(printerId).then(function nowItCanBeRead(back) {
-      if (!back) handlers.setRestartingAfterRecovery('not-back')
+      if (back) return checkedAfterTheReboot(printerId, results).then(handlers.showReport)
+      handlers.setRestartingAfterRecovery('not-back')
       handlers.showReport(results)
+
+      return undefined
     })
   }
 }

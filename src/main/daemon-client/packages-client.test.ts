@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Drive the route choice without a socket: the batch posters differ only in the path they POST to, and
 // that path is the Bug A app-side fix (install-selected must hit install-batch, not update-batch).
@@ -19,7 +19,7 @@ vi.mock('./transport', () => ({
 }))
 
 import { DaemonHttpError, doRequest } from './transport'
-import { installBatchPackages, recoverPackages, repairOrRecover, updateBatchPackages } from './packages-client'
+import { installBatchPackages, recoverAfterReboot, recoverPackages, repairOrRecover, updateBatchPackages } from './packages-client'
 import type { PrinterRecord } from '../printers'
 
 const record = { ip: '127.0.0.1', daemonCert: 'C', daemonToken: 'T' } as unknown as PrinterRecord
@@ -124,5 +124,56 @@ describe('what the printer says about plugins it could not read', () => {
     const batch = await updateBatchPackages(record, packages)
 
     expect(batch.manifestWarnings?.map((warning) => warning.plugin)).toEqual(['rfid-ntag'])
+  })
+})
+
+// daemon 0.14.3: once the printer is back from the reboot a recover left its services restart to, the
+// app asks for the check that restart would have had.
+describe('the check after the reboot', () => {
+  // A block body: a hook that returns a function has vitest run it as the teardown, and the mock left
+  // refusing would then fail the test after it passed.
+  beforeEach(() => {
+    vi.mocked(doRequest).mockReset().mockResolvedValue(JSON.stringify({ ok: true, results: [] }))
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('is asked of the printer with the same time limit as the recover', async () => {
+    await recoverAfterReboot(record)
+
+    expect(postedPaths()).toEqual(['/packages/recover/after-reboot'])
+    expect(vi.mocked(doRequest).mock.calls[0][5]).toBe(1)
+  })
+
+  it('is asked again later when the printer is printing or its services are still coming up', async () => {
+    vi.useFakeTimers()
+    vi.mocked(doRequest)
+      .mockRejectedValueOnce(new DaemonHttpError(409, { error: 'blocked' }, 'blocked'))
+      .mockRejectedValueOnce(new DaemonHttpError(422, 'no reply', 'fault'))
+      .mockResolvedValueOnce(JSON.stringify({ ok: false, results: [{ plugin_id: '(services)', ok: false, skipped: false, reason: '', log: [], auto_deactivated: 'spoolman' }] }))
+
+    const check = recoverAfterReboot(record)
+    await vi.runAllTimersAsync()
+
+    expect((await check).results[0].autoDeactivated).toBe('spoolman')
+    expect(postedPaths()).toHaveLength(3)
+  })
+
+  it('gives up after a few refusals, so the report is not held for ever', async () => {
+    vi.useFakeTimers()
+    vi.mocked(doRequest).mockRejectedValue(new DaemonHttpError(409, { error: 'blocked' }, 'blocked'))
+
+    const check = recoverAfterReboot(record)
+    const refused = expect(check).rejects.toThrow('blocked')
+    await vi.runAllTimersAsync()
+
+    await refused
+    expect(postedPaths()).toHaveLength(4)
+  })
+
+  it('is not asked again for any other failure', async () => {
+    vi.mocked(doRequest).mockRejectedValueOnce(new DaemonHttpError(404, null, 'not found'))
+
+    await expect(recoverAfterReboot(record)).rejects.toThrow('not found')
+    expect(postedPaths()).toHaveLength(1)
   })
 })

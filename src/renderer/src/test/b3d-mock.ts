@@ -172,7 +172,7 @@ function mockStore(channels: Channels, override: Partial<B3d['store']> = {}): B3
     uninstall: resolved([]),
     reconfigure: resolved({ installedIds: [], log: makeInstallLog('plugin') }),
     pluginConfig: resolved(null),
-    recover: resolved({ ok: true, results: [] }), updateBatch: resolved({ ok: true, results: [] }),
+    recover: resolved({ ok: true, results: [] }), recoverAfterReboot: resolved({ ok: true, results: [] }), updateBatch: resolved({ ok: true, results: [] }),
     installBatch: resolved({ ok: true, results: [] }),
     uninstallBatch: resolved({ ok: true, results: [] }),
     onPluginProgress: sub(channels.pluginProgress),

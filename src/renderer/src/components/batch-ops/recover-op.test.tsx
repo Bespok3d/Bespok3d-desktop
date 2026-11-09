@@ -47,6 +47,7 @@ function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Prom
       {recoverOp.printerRestarting && <p>the printer is restarting</p>}
       {recoverOp.recoveryResults && <p>the recovery report</p>}
       {recoverOp.recoveryResults && <p>restart: {recoverOp.restartingAfterRecovery}</p>}
+      {recoverOp.recoveryResults && <p>rows: {recoverOp.recoveryResults.results.map((row) => row.reason).join(', ')}</p>}
     </>
   )
 }
@@ -147,5 +148,72 @@ describe('telling the printer a reboot follows', () => {
     await user.click(screen.getByRole('button', { name: 'recover' }))
 
     await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', false))
+  })
+})
+
+const pluginBack = { pluginId: 'camera', ok: true, skipped: false, reason: 'camera back', log: [] }
+const rebootReplacesRestart = {
+  pluginId: '(services)', ok: true, skipped: false, reason: 'the printer reboot replaces the services restart',
+  log: [{ id: 'reboot-replaces-restart', label: 'the printer reboot replaces the services restart', ok: true, items: [] }],
+}
+const takenOffAfterTheReboot = { pluginId: '(services)', ok: false, skipped: false, reason: 'spoolman taken off', log: [], autoDeactivated: 'spoolman' }
+
+// daemon 0.14.3: a recover the app reboots after leaves the check its services restart would have had
+// to that reboot, and the app asks for it once the printer is back.
+describe('the check the reboot replaced', () => {
+  it('is asked for once the printer is back, and its row takes the place of the one saying the reboot replaced the restart', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockResolvedValue({ ok: false, results: [takenOffAfterTheReboot] })
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(true)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+
+    await waitFor(() => expect(screen.getByText('rows: camera back, spoolman taken off')).toBeInTheDocument())
+    expect(recoverAfterReboot).toHaveBeenCalledWith('printer-1')
+  })
+
+  it('leaves the report as the recover gave it when the check still did not run', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockRejectedValue(new Error('the printer is printing'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(true)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+
+    await waitFor(() => expect(screen.getByText('rows: camera back, the printer reboot replaces the services restart')).toBeInTheDocument())
+  })
+
+  it('is not asked for when the recover left nothing to the reboot', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack] })
+    const recoverAfterReboot = vi.fn()
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(true)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+
+    await waitFor(() => expect(screen.getByText('the recovery report')).toBeInTheDocument())
+    expect(recoverAfterReboot).not.toHaveBeenCalled()
+  })
+
+  it('is not asked for when the printer did not come back', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn()
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(true)} waitForBack={waitRanOut} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+
+    await waitFor(() => expect(screen.getByText('restart: not-back')).toBeInTheDocument())
+    expect(recoverAfterReboot).not.toHaveBeenCalled()
   })
 })

@@ -56,7 +56,7 @@ vi.mock('./git-host', () => ({ activeConnector: vi.fn(), readSettings: vi.fn(), 
 vi.mock('./daemon-client/client', () => ({
   fetchCapabilities: vi.fn(), fetchDaemonStatus: vi.fn(), fetchSelfCheck: vi.fn(),
   installPlugin: vi.fn(), uninstallPlugin: vi.fn(), uninstallBatch: vi.fn(),
-  reconfigurePlugin: vi.fn(), recoverPackages: vi.fn(), updateBatchPackages: vi.fn(),
+  reconfigurePlugin: vi.fn(), recoverPackages: vi.fn(), recoverAfterReboot: vi.fn(), updateBatchPackages: vi.fn(),
   deactivateAll: vi.fn(), teardownDaemon: vi.fn(), setAddressResolver: vi.fn(),
   requestAccess: vi.fn(), fetchAccessClients: vi.fn(), grantAccess: vi.fn(), revokeAccess: vi.fn(), isAccessGranted: vi.fn(),
 }))
