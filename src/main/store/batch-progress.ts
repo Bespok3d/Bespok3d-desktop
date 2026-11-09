@@ -6,6 +6,7 @@ import { watchInstallProgress, batchEventFrom } from '../daemon-client/feeds/ins
 import type { BatchProgressEvent } from '../daemon-client/feeds/install-progress'
 
 interface ProgressTarget {
+  id: string
   ip: string
   daemonCert?: string
   daemonToken?: string

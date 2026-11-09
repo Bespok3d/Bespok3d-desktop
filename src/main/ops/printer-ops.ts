@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ipcMain, type BrowserWindow } from 'electron'
-import { updatePrinter, removePrinter, resolveLiveAddress } from '../printers'
+import { updatePrinter, removePrinter, resolveLiveAddress, type PrinterRecord } from '../printers'
 import { getAdapter } from '../adapter-loader'
 import { bespok3dRootOn } from '../adapter-loader/bespok3d-root'
 import {
@@ -15,6 +15,7 @@ import { runSshOp } from './op-runner'
 import { waitForDaemon, tailDaemonLog } from './daemon-log'
 import { getManagedRecord, recordOrThrow } from '../daemon-client/status'
 import { deactivateAll, teardownDaemon, recoverPackages } from '../daemon-client/client'
+import { watchInstallProgress } from '../daemon-client/feeds/install-progress'
 import { runRepair, runUpdateDaemon, runUpdateJinni } from './daemon-ops'
 import { waitForThePrinterToComeBack } from './reboot-wait'
 
@@ -48,6 +49,13 @@ async function reactivateBootHook(ssh: SshSession): Promise<void> {
   if (patched !== s90lmdContent) await ssh.putContent('/etc/init.d/S90lmd', patched)
 }
 
+// The printer's live feed stays open for the whole recovery: it is how the request knows the printer
+// is still at work, and keeps waiting through a long safety net instead of reporting a failure.
+async function reapplyPlugins(record: PrinterRecord): Promise<void> {
+  const closeProgress = await watchInstallProgress(record, () => {})
+  await recoverPackages(record).finally(closeProgress)
+}
+
 async function runReactivate(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
   const record = recordOrThrow(printerId)
   const adapter = getAdapter(record.adapter)
@@ -59,7 +67,7 @@ async function runReactivate(win: BrowserWindow, printerId: string, ip: string, 
     { id: 'restore-boot-hook', label: 'Restoring boot hook', detail: 'Re-patches S90lmd to invoke S99bespok3d at boot', run: () => reactivateBootHook(ssh) },
     { id: 'start-daemon', label: 'Starting the daemon', detail: 'Starts the bespok3d daemon process', run: async () => { await ssh.exec(`${bespok3d}/etc/init.d/autostart/s10bespok3d-daemon start`) } },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => tailDaemonLog(ssh, `${bespok3d}/var/log/daemon.log`)) },
-    { id: 're-apply-plugins', label: 'Re-applying plugins', detail: 'Rebuilds plugin links and dependencies, then restarts services once', run: async () => { await recoverPackages(record) } },
+    { id: 're-apply-plugins', label: 'Re-applying plugins', detail: 'Rebuilds plugin links and dependencies, then restarts services once', run: () => reapplyPlugins(record) },
   ])
   updatePrinter(printerId, { deactivated: false, status: 'managed', deactivatedAt: undefined })
 }

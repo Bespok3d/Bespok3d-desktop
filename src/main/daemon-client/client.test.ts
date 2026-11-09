@@ -16,6 +16,7 @@ import {
   DEFAULT_DAEMON_TIMEOUT_MS,
   LONG_OP_TIMEOUT_MS,
 } from './client'
+import { reportPrinterWork } from './printer-at-work'
 import type { PrinterRecord } from '../printers'
 
 interface FakeReq {
@@ -85,5 +86,50 @@ describe('daemon request timeout', () => {
     req.fireTimeout?.()
 
     return expect(pending).rejects.toThrow(/timed out/)
+  })
+})
+
+describe('a long op while the printer says it is still at work', () => {
+  beforeEach(() => vi.mocked(httpsRequest).mockReset())
+
+  const atWorkRecord = { id: 'printer-at-work', ip: '127.0.0.1', daemonCert: 'CERT', daemonToken: 'T' } as unknown as PrinterRecord
+
+  function settledState(pending: Promise<unknown>): { settled: boolean } {
+    const state = { settled: false }
+    pending.then(() => { state.settled = true }, () => { state.settled = true })
+
+    return state
+  }
+
+  it('keeps waiting through the silence, then fails once the printer stops working', async () => {
+    // The printer's safety net can run close to ten minutes inside a recovery: the app must not show
+    // a failure while the printer is still fixing itself.
+    const work = { underWay: true }
+    const withdrawReport = reportPrinterWork('printer-at-work', () => work.underWay)
+    const req = fakeReq()
+    vi.mocked(httpsRequest).mockReturnValue(req as never)
+    const pending = recoverPackages(atWorkRecord)
+    const state = settledState(pending)
+
+    req.fireTimeout?.()
+    // A give-up settles only after the retry path resolves the printer's address: let it run out.
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(state.settled).toBe(false)
+    expect(req.armedTimeoutMs).toBe(LONG_OP_TIMEOUT_MS)
+
+    work.underWay = false
+    req.fireTimeout?.()
+    withdrawReport()
+    await expect(pending).rejects.toThrow(/timed out/)
+  })
+
+  it('still fails a quick read fast, whatever the printer reports', async () => {
+    const withdrawReport = reportPrinterWork('printer-at-work', () => true)
+    const req = fakeReq()
+    vi.mocked(httpsRequest).mockReturnValue(req as never)
+    const pending = fetchDaemonStatus(atWorkRecord, 50)
+    req.fireTimeout?.()
+    withdrawReport()
+    await expect(pending).rejects.toThrow(/timed out/)
   })
 })
