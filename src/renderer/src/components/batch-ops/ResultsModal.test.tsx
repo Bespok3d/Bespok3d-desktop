@@ -182,7 +182,7 @@ describe('OtaRecoveryResultsModal, plugins the printer could not read', () => {
 
 // A printer that only lost its setup gets just that put right, with no plugin put back. The report
 // must say so, never that every plugin was re-applied, and must not offer a plugin page for the setup.
-describe('OtaRecoveryResultsModal after a repair of the printer setup only', () => {
+describe('OtaRecoveryResultsModal on the printer setup row', () => {
   function setupRepair(ok: boolean) {
     return { ok, results: [{ pluginId: '(printer setup)', ok, skipped: false, reason: ok ? '' : 'selfcheck still reports a problem after the repair', log: [] }] }
   }
@@ -203,6 +203,16 @@ describe('OtaRecoveryResultsModal after a repair of the printer setup only', () 
     expect(screen.getByText(en('recovery_results.setup_summary_errors'))).toBeInTheDocument()
     expect(screen.queryByText(en('recovery_results.summary_errors'))).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: en('btn.fix') })).not.toBeInTheDocument()
+  })
+
+  // Beside plugin rows the summary is the plugins' one, so the setup row itself must say what went wrong.
+  it('a setup that could not be put right beside plugins says why on its row and offers no plugin page for it', () => {
+    var setupFailed = setupRepair(false).results[0]
+    var pluginFailed = { pluginId: 'fluidd', ok: false, skipped: false, reason: 'failed to symlink config', log: [] }
+    setup(<OtaRecoveryResultsModal results={{ ok: false, results: [setupFailed, pluginFailed] }} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getByText(setupFailed.reason)).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: en('btn.fix') })).toHaveLength(1)
   })
 
   it('a setup that could not be put right gets a restart note that does not say it was', () => {

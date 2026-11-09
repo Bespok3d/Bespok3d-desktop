@@ -90,18 +90,18 @@ function RecoveryResultItem({ result, onOpenPluginPage }: { result: PluginRecove
   const status = rowStatus(ok, skipped)
   const icon = ROW_ICON[status]
   const iconColor = ROW_COLOR[status]
-  // The printer's own setup is not a plugin: it has no page to open, and the summary above already says
-  // in plain words when it could not be put right.
+  // The printer's own setup is not a plugin: it has no page to open.
   const isSetupRow = pluginId === PRINTER_SETUP_ROW
-  // A plugin that did not go through and the printer said why. A plugin the printer simply walked past
+  // A row that did not go through and the printer said why. A plugin the printer simply walked past
   // says nothing and needs nothing: there is nothing for the user to put right.
-  const needsPuttingRight = !ok && Boolean(reason) && !isSetupRow
+  const failedWithReason = !ok && Boolean(reason)
+  const offersPluginPage = failedWithReason && !isSetupRow
 
   return (
     <div className="recovery-row">
       <span style={{ color: iconColor, fontWeight: 600, width: 16 }}>{icon}</span>
       <span className="u-flex-1">{isSetupRow ? t('recovery_results.setup_row') : pluginId}</span>
-      {needsPuttingRight && (
+      {failedWithReason && (
         <span className="u-hint">{diagnosisText(t, reason)}</span>
       )}
       {/* A plugin that did not go through is a dead end in this list: the batch is over and it will not
@@ -109,7 +109,7 @@ function RecoveryResultItem({ result, onOpenPluginPage }: { result: PluginRecove
           out offered here, rather than leaving the user with a failed row and a Close button. A plugin
           the printer left out because something it needs is not there is the same dead end as one that
           failed outright, and its page is the same way out: it is where that missing plugin is fetched. */}
-      {needsPuttingRight && (
+      {offersPluginPage && (
         <Button variant="outline" size="sm" onClick={() => onOpenPluginPage(pluginId)}>{t('btn.fix')}</Button>
       )}
     </div>

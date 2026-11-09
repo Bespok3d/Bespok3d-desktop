@@ -302,6 +302,18 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
     expect(rendered.b3d.printers.reboot).toHaveBeenCalledTimes(2)
   })
 
+  // The deactivate went through. Closing on the failed reboot must not leave the app showing it active.
+  it('tells the app the deactivate is done when the window is closed on a failed reboot after it', async () => {
+    var onClose = vi.fn()
+    var rendered = await renderAndSayGo('deactivate', {}, { onClose })
+    await failTheRebootAfterTheDeactivate(rendered)
+
+    await rendered.user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(rendered.onEnrolled).toHaveBeenCalledOnce())
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it('leaves the printer alone after an op that changes nothing it is running', async () => {
     var { emit, b3d } = await renderAndSayGo('repair')
     await waitFor(() => expect(b3d.printers.repair).toHaveBeenCalled())

@@ -325,22 +325,25 @@ export function Enrollment({ printer, mode, fromAdd = false, forced = false, onE
     else runTheFailedOpAgain()
   }
   function handleDone() {
-    savedRecord(printer.id).then((record) => {
-      onEnrolled(record ? { ...printer, ...record } : { ...printer, status: 'managed' })
-    })
+    savedRecord(printer.id).then((record) => onEnrolled(record ? { ...printer, ...record } : { ...printer, status: 'managed' }))
+  }
+  // A reboot only runs once the op went through, so closing on its failure must still tell the app the op is done.
+  function closeTheWindow() {
+    if (rebootAfterTheOp.rebootStarted()) handleDone()
+    else onClose()
   }
 
   if (mode === 'history') return <HistoryModal printer={printer} onClose={onClose} />
 
   return (
-    <Modal onClose={goAhead.dismissable ? onClose : undefined} className="enrollment">
+    <Modal onClose={goAhead.dismissable ? closeTheWindow : undefined} className="enrollment">
       <div className="modal-head">
         <EnrollModalTitle printer={printer} mode={mode} fromAdd={fromAdd} bundledJinniVersion={adapterInfo?.jinniVersion} />
       </div>
       <EnrollmentBody
         printer={printer} mode={mode} state={state} credentials={credentials}
         showCredentialsForm={goAhead.showCredentialsForm} awaitingGoAhead={goAhead.awaiting}
-        onStart={handleStart} onGoAhead={goAhead.give} onOwnCredentials={goAhead.askForOwnCredentials} onClose={onClose}
+        onStart={handleStart} onGoAhead={goAhead.give} onOwnCredentials={goAhead.askForOwnCredentials} onClose={closeTheWindow}
         onDone={handleDone} onRetry={handleRetry} onStartOver={handleStartOver} onCancelOp={cancelOp} escalation={nextStepAfterFailure(mode, onEscalateRecovery, onRebuildPrinter)}
         printerIsRebooting={rebootAfterTheOp.printerIsRebooting} restartSeconds={adapterInfo?.restartSeconds}
       />
