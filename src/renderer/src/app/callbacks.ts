@@ -127,7 +127,7 @@ function enrollModeHandlers(openEnrollModal: (id: string, mode: EnrollMode, forc
     handleRecoverPrinter: (id: string, forced?: boolean) => openOverSsh(id, 'recovery', forced),
     handleRepairPrinter: (id: string, forced?: boolean) => openOverSsh(id, 'repair', forced),
     handleDeactivatePrinter: (id: string) => openOverSsh(id, 'deactivate'),
-    handleReactivatePrinter: (id: string) => openEnrollModal(id, 'reactivate'),
+    handleReactivatePrinter: (id: string) => openOverSsh(id, 'reactivate'),
     handleUninstallPrinter: (id: string) => openOverSsh(id, 'uninstall'),
   }
 }
@@ -190,7 +190,7 @@ export function useAppCallbacks(
   const installGate = useInstallGate()
   const batchOps = useBatchOps(printers, setPrinters, installGate.beforeInstall, recoveryRestart(printers, {
     markExpectedRestart: (printerId) => markExpectedRestart(printerId, POST_OPERATION_GRACE_MS),
-    askForTheirLogin: (printerId) => openEnrollModal(printerId, 'reboot'),
+    askForTheirLogin: (printerId) => openOverSsh(printerId, 'reboot'),
   }))
   function markExpectedRestart(printerId: string, durationMs: number) {
     setPrinters(applyToId(printerId, { expectedRestartUntil: Date.now() + durationMs }))
@@ -205,7 +205,7 @@ export function useAppCallbacks(
     addPrinterModal, setAddPrinterModal, markExpectedRestart, installGate,
     openAdd: (pickedId?: string) => setAddPrinterModal({ tab: 'scan', pickedId }),
     openManual: () => setAddPrinterModal({ tab: 'manual' }),
-    handleReboot: (id: string) => openEnrollModal(id, 'reboot'),
+    handleReboot: (id: string) => openOverSsh(id, 'reboot'),
     ...actions,
     ...gateHandles(enrollGate),
     ...enrollModeHandlers(openEnrollModal, openOverSsh),

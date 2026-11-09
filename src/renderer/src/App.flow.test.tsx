@@ -331,6 +331,23 @@ describe('App flow: recovery, updates and deactivation check root access first',
   })
 })
 
+describe('App flow: reactivation and the reboot check root access first', () => {
+  it.each([
+    { action: 'reactivation', actionKey: 'printers.reactivate', daemonAnswer: { switchedOff: true }, call: 'reactivate' },
+    { action: 'reboot', actionKey: 'banner.reboot_action', daemonAnswer: { rebootRequired: ['unknown-reason'] }, call: 'reboot' },
+  ] as const)('a $action with root access off shows the root-access window and runs nothing', async ({ actionKey, daemonAnswer, call }) => {
+    var { user, b3d } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true, ...daemonAnswer }),
+      checkSshOpen: vi.fn().mockResolvedValue(false),
+    })
+    await user.click(await screen.findByRole('button', { name: en(actionKey) }))
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers[call]).not.toHaveBeenCalled()
+  })
+})
+
 // The deactivation is saved before the window starts waiting on the printer's reboot, which can take
 // minutes or never end. The printer list must say so right away, not only once the window closes.
 describe('App flow: a deactivation waiting on the reboot', () => {
