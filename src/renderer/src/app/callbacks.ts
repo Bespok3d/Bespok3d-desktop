@@ -49,6 +49,10 @@ export function leavesThePluginsToPutBack(mode: EnrollMode | undefined, forced?:
   return MODES_THAT_LEAVE_THE_PLUGINS_TO_PUT_BACK.has(mode)
 }
 
+function showThePrinter(updatedPrinter: Printer, setPrinters: SetPrinters) {
+  setPrinters((prev) => prev.map((printer) => (printer.id === updatedPrinter.id ? updatedPrinter : printer)))
+}
+
 // Persist the just-enrolled printer and follow up per mode: uninstall removes it, the restart-bearing
 // modes mark an expected-restart window, and the modes that left the plugins off kick off a recover.
 function applyEnrolledOutcome(updatedPrinter: Printer, mode: EnrollMode | undefined, deps: PrinterActionDeps) {
@@ -58,7 +62,7 @@ function applyEnrolledOutcome(updatedPrinter: Printer, mode: EnrollMode | undefi
     return
   }
   window.b3d.printers.patch(updatedPrinter.id, toRecord(updatedPrinter))
-  deps.setPrinters((prev) => prev.map((printer) => (printer.id === updatedPrinter.id ? updatedPrinter : printer)))
+  showThePrinter(updatedPrinter, deps.setPrinters)
   if (mode && isDaemonRestartMode(mode)) deps.markExpectedRestart(updatedPrinter.id, POST_OPERATION_GRACE_MS)
   pingAndUpdate(updatedPrinter, deps.setPrinters)
   if (leavesThePluginsToPutBack(mode, deps.enrollForced)) deps.runRecover(updatedPrinter.id)
@@ -85,6 +89,11 @@ function buildPrinterActions(deps: PrinterActionDeps) {
     deps.setEnrollModal(null)
     applyEnrolledOutcome(updatedPrinter, deps.enrollMode, deps)
   }
+  // The op is already saved while its window waits on the printer's reboot, so only the list catches up:
+  // the window stays, and nothing restarts or re-applies until Done.
+  function handleOpRecorded(updatedPrinter: Printer) {
+    showThePrinter(updatedPrinter, deps.setPrinters)
+  }
   function handleRescan() {
     deps.setDiscovered([])
     window.b3d.mdns.stop().then(() => window.b3d.mdns.start())
@@ -94,7 +103,7 @@ function buildPrinterActions(deps: PrinterActionDeps) {
     if (printer) deps.enrollGate.openEnrollOrAccess(printer, false, forced)
   }
 
-  return { handleAccessGranted, handleAddPrinter, handleEnrolled, handleRescan, handleEnrollPrinter }
+  return { handleAccessGranted, handleAddPrinter, handleEnrolled, handleOpRecorded, handleRescan, handleEnrollPrinter }
 }
 
 // The six enroll-gate passthrough fields the modals read (the gate's openEnrollOrAccess stays private).

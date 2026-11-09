@@ -54,6 +54,7 @@ interface PostOpRebootPlan {
 
 export interface PostOpRebootState {
   printerIsRebooting: boolean
+  waitsForThePrinter: boolean
   rebootStarted: () => boolean
 }
 
@@ -87,5 +88,9 @@ export function usePostOpReboot(plan: PostOpRebootPlan): PostOpRebootState {
     return rebootRun.current
   }
 
-  return { printerIsRebooting: plan.phase === 'success' && plannedReboot === 'reboot-behind-the-success-screen', rebootStarted }
+  return {
+    printerIsRebooting: plan.phase === 'success' && plannedReboot === 'reboot-behind-the-success-screen',
+    waitsForThePrinter: plannedReboot === 'wait-for-the-printer',
+    rebootStarted,
+  }
 }

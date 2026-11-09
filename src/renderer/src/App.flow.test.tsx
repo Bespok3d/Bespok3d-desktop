@@ -244,6 +244,7 @@ describe('App flow: repair and uninstall check root access first', () => {
     await user.click(await screen.findByRole('button', { name: en('banner.repair_action') }, AFTER_THE_CONFIRMING_PROBE))
 
     expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    await act(async () => { await Promise.resolve() })
     expect(screen.queryByRole('heading', { name: 'Repair Alpha' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: en('enroll.ssh_retry') }))
     const repairWindow = (await screen.findByRole('heading', { name: 'Repair Alpha' })).closest('[role="dialog"]') as HTMLElement
@@ -327,6 +328,30 @@ describe('App flow: recovery, updates and deactivation check root access first',
 
     expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
     expect(b3d.printers.deactivate).not.toHaveBeenCalled()
+  })
+})
+
+// The deactivation is saved before the window starts waiting on the printer's reboot, which can take
+// minutes or never end. The printer list must say so right away, not only once the window closes.
+describe('App flow: a deactivation waiting on the reboot', () => {
+  it('shows the printer deactivated while the window still waits on the reboot', async () => {
+    var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
+    var { user, b3d, emit } = renderApp({ checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }) }, [managedRecord])
+    await openPrintersSettings(user)
+    await user.click(await screen.findByRole('button', { name: en('printers.deactivate') }))
+    const deactivateConfirm = (await screen.findByText(en('printers.deactivate_title', { name: 'Alpha' }))).closest('[role="dialog"]') as HTMLElement
+    await user.click(within(deactivateConfirm).getByRole('button', { name: en('printers.deactivate') }))
+    const deactivateWindow = (await screen.findByRole('heading', { name: 'Deactivate Alpha' })).closest('[role="dialog"]') as HTMLElement
+    await user.click(within(deactivateWindow).getByRole('button', { name: 'Deactivate' }))
+    await waitFor(() => expect(b3d.printers.deactivate).toHaveBeenCalled())
+    vi.mocked(b3d.printers.load).mockResolvedValue([{ ...managedRecord, status: 'deactivated', deactivated: true }] as unknown as PrinterRecord[])
+
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing boot hook', stepIndex: 1, totalSteps: 2 })))
+
+    await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalled())
+    expect(await screen.findByText(en('printers.deactivated_hint'))).toBeInTheDocument()
+    expect(screen.getByText(en('banner.deactivated_hint'))).toBeInTheDocument()
+    expect(deactivateWindow).toBeInTheDocument()
   })
 })
 

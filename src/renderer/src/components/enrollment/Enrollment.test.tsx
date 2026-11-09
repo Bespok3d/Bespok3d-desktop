@@ -21,11 +21,12 @@ function renderEnroll(mode: EnrollMode, printerOverrides = {}, handlers: Record<
   var onRebuildPrinter = handlers.onRebuildPrinter ?? vi.fn()
   var onExpectedRestart = handlers.onExpectedRestart ?? vi.fn()
   var onClose = handlers.onClose ?? vi.fn()
+  var onOpRecorded = handlers.onOpRecorded ?? vi.fn()
   var rendered = setup(
-    <Enrollment printer={printer} mode={mode} onEnrolled={onEnrolled as (updated: Printer) => void} onClose={onClose as () => void} onEscalateRecovery={onEscalateRecovery as () => void} onRebuildPrinter={onRebuildPrinter as () => void} onExpectedRestart={onExpectedRestart as (printerId: string) => void} />,
+    <Enrollment printer={printer} mode={mode} onEnrolled={onEnrolled as (updated: Printer) => void} onOpRecorded={onOpRecorded as (updated: Printer) => void} onClose={onClose as () => void} onEscalateRecovery={onEscalateRecovery as () => void} onRebuildPrinter={onRebuildPrinter as () => void} onExpectedRestart={onExpectedRestart as (printerId: string) => void} />,
   )
 
-  return { ...rendered, onEnrolled, onEscalateRecovery, onRebuildPrinter, onExpectedRestart }
+  return { ...rendered, onEnrolled, onOpRecorded, onEscalateRecovery, onRebuildPrinter, onExpectedRestart }
 }
 
 // The ops that stop plugins, re-deploy the daemon or restart the printer wait on their go-ahead
@@ -61,6 +62,19 @@ describe('Enrollment happy path', () => {
 
     await user.click(screen.getByRole('button', { name: 'Done' }))
     await waitFor(() => expect(onEnrolled).toHaveBeenCalledWith(expect.objectContaining({ id: 'printer-1', status: 'managed' })))
+  })
+
+  // A second press before the window goes away used to run everything after Done twice.
+  it('reports the printer once when Done is pressed twice', async () => {
+    var { user, emit, b3d, onEnrolled } = renderEnroll('enroll')
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalled())
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Finished', stepIndex: 13, totalSteps: 14 })))
+
+    await user.dblClick(screen.getByRole('button', { name: 'Done' }))
+
+    await waitFor(() => expect(onEnrolled).toHaveBeenCalled())
+    await act(async () => { await Promise.resolve() })
+    expect(onEnrolled).toHaveBeenCalledOnce()
   })
 })
 
@@ -240,8 +254,10 @@ describe('Enrollment lifecycle dispatch', () => {
   })
 })
 
-async function failTheRebootAfterTheDeactivate(rendered: Awaited<ReturnType<typeof renderAndSayGo>>) {
-  await waitFor(() => expect(rendered.b3d.printers.deactivate).toHaveBeenCalledTimes(1))
+type RebootingOp = 'deactivate' | 'reactivate'
+
+async function failTheRebootAfterTheOp(rendered: Awaited<ReturnType<typeof renderAndSayGo>>, rebootingOp: RebootingOp = 'deactivate') {
+  await waitFor(() => expect(rendered.b3d.printers[rebootingOp]).toHaveBeenCalledTimes(1))
   act(() => rendered.emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing boot hook', stepIndex: 1, totalSteps: 2 })))
   await waitFor(() => expect(rendered.b3d.printers.reboot).toHaveBeenCalledTimes(1))
   act(() => rendered.emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'reboot', stepLabel: 'Restarting the printer', error: 'refused', stepIndex: 0 })))
@@ -282,7 +298,7 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
   // The deactivate already finished. Running it again would end on a success that never reboots.
   it.each(['Start over', 'Start from step'])('runs the failed reboot again, not the deactivate, on %s', async (buttonName) => {
     var rendered = await renderAndSayGo('deactivate')
-    await failTheRebootAfterTheDeactivate(rendered)
+    await failTheRebootAfterTheOp(rendered)
 
     await rendered.user.click(screen.getByRole('button', { name: buttonName }))
 
@@ -295,7 +311,7 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
     await screen.findByDisplayValue('root')
     await rendered.user.type(rendered.container.querySelector('input[type="password"]') as HTMLInputElement, 'secret')
     await rendered.user.click(screen.getByRole('button', { name: 'Deactivate' }))
-    await failTheRebootAfterTheDeactivate(rendered)
+    await failTheRebootAfterTheOp(rendered)
 
     await rendered.user.click(screen.getByRole('button', { name: 'Start over' }))
 
@@ -303,18 +319,32 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
     expect(rendered.b3d.printers.reboot).toHaveBeenCalledTimes(2)
   })
 
-  // The deactivate went through. Closing on the failed reboot must not leave the app showing it active.
-  it('tells the app the deactivate is done when the window is closed on a failed reboot after it', async () => {
+  // The op is saved the moment its reboot starts, so the app shows the printer as it now is right
+  // then, without closing the window or waiting for a Done the user may never press.
+  it('shows the app the deactivated printer as soon as its reboot starts', async () => {
+    var rendered = await renderAndSayGo('deactivate')
+    await waitFor(() => expect(rendered.b3d.printers.deactivate).toHaveBeenCalled())
+    vi.mocked(rendered.b3d.printers.load).mockResolvedValue([{ id: 'printer-1', status: 'deactivated', deactivated: true }] as unknown as PrinterRecord[])
+
+    act(() => rendered.emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing boot hook', stepIndex: 1, totalSteps: 2 })))
+
+    await waitFor(() => expect(rendered.onOpRecorded).toHaveBeenCalledWith(expect.objectContaining({ id: 'printer-1', status: 'deactivated' })))
+    expect(rendered.b3d.printers.reboot).toHaveBeenCalled()
+    expect(rendered.onEnrolled).not.toHaveBeenCalled()
+  })
+
+  // The app already knows. Reporting the op done again would expect a restart that is not coming.
+  it.each(['deactivate', 'reactivate'] as RebootingOp[])('only closes the window on a failed reboot after a %s', async (rebootingOp) => {
     var onClose = vi.fn()
-    var rendered = await renderAndSayGo('deactivate', {}, { onClose })
-    await failTheRebootAfterTheDeactivate(rendered)
-    vi.mocked(rendered.b3d.printers.load).mockResolvedValue([{ id: 'printer-1', status: 'deactivated' }] as unknown as PrinterRecord[])
+    var rendered = await renderAndSayGo(rebootingOp, {}, { onClose })
+    vi.mocked(rendered.b3d.printers.load).mockResolvedValue([{ id: 'printer-1', status: 'managed' }] as unknown as PrinterRecord[])
+    await failTheRebootAfterTheOp(rendered, rebootingOp)
+    await waitFor(() => expect(rendered.onOpRecorded).toHaveBeenCalledOnce())
 
     await rendered.user.click(screen.getByRole('button', { name: 'Cancel' }))
 
-    await waitFor(() => expect(rendered.onEnrolled).toHaveBeenCalledWith(expect.objectContaining({ id: 'printer-1', status: 'deactivated' })))
-    expect(rendered.onEnrolled).toHaveBeenCalledOnce()
-    expect(onClose).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(rendered.onEnrolled).not.toHaveBeenCalled()
   })
 
   it('leaves the printer alone after an op that changes nothing it is running', async () => {
