@@ -205,13 +205,14 @@ describe('OtaRecoveryResultsModal on the printer setup row', () => {
     expect(screen.queryByRole('button', { name: en('btn.fix') })).not.toBeInTheDocument()
   })
 
-  // Beside plugin rows the summary is the plugins' one, so the setup row itself must say what went wrong.
-  it('a setup that could not be put right beside plugins says why on its row and offers no plugin page for it', () => {
+  // Beside plugin rows, only the plugin that failed gets a way out; the setup row shows its cross alone.
+  it('a setup that could not be put right beside plugins shows no internal reason and offers no plugin page for it', () => {
     var setupFailed = setupRepair(false).results[0]
     var pluginFailed = { pluginId: 'fluidd', ok: false, skipped: false, reason: 'failed to symlink config', log: [] }
     setup(<OtaRecoveryResultsModal results={{ ok: false, results: [setupFailed, pluginFailed] }} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
 
-    expect(screen.getByText(setupFailed.reason)).toBeInTheDocument()
+    expect(screen.getByText(en('recovery_results.setup_row'))).toBeInTheDocument()
+    expect(screen.queryByText(setupFailed.reason)).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: en('btn.fix') })).toHaveLength(1)
   })
 

@@ -9,6 +9,7 @@ import { makePrinter, makeEnrollEvent } from '../../test/fixtures'
 import { Enrollment } from './index'
 import type { EnrollMode } from './index'
 import type { Printer } from '../../data/types'
+import type { PrinterRecord } from '../../env'
 import { makeT } from '../../i18n'
 
 const en = makeT('en')
@@ -307,10 +308,12 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
     var onClose = vi.fn()
     var rendered = await renderAndSayGo('deactivate', {}, { onClose })
     await failTheRebootAfterTheDeactivate(rendered)
+    vi.mocked(rendered.b3d.printers.load).mockResolvedValue([{ id: 'printer-1', status: 'deactivated' }] as unknown as PrinterRecord[])
 
     await rendered.user.click(screen.getByRole('button', { name: 'Cancel' }))
 
-    await waitFor(() => expect(rendered.onEnrolled).toHaveBeenCalledOnce())
+    await waitFor(() => expect(rendered.onEnrolled).toHaveBeenCalledWith(expect.objectContaining({ id: 'printer-1', status: 'deactivated' })))
+    expect(rendered.onEnrolled).toHaveBeenCalledOnce()
     expect(onClose).not.toHaveBeenCalled()
   })
 

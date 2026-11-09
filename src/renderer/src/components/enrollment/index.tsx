@@ -325,7 +325,7 @@ export function Enrollment({ printer, mode, fromAdd = false, forced = false, onE
     else runTheFailedOpAgain()
   }
   function handleDone() {
-    savedRecord(printer.id).then((record) => onEnrolled(record ? { ...printer, ...record } : { ...printer, status: 'managed' }))
+    savedRecord(printer.id).then((record) => onEnrolled(record ? { ...printer, ...record } : { ...printer, status: 'managed' })).catch(onClose)
   }
   // A reboot only runs once the op went through, so closing on its failure must still tell the app the op is done.
   function closeTheWindow() {
