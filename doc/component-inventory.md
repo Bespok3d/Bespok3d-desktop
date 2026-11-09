@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-290 exported components + hooks across 22 areas.
+291 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -345,6 +345,7 @@ as you touch the file.
 - `useAppCallbacks` (hook) - [app/callbacks.ts](../src/renderer/src/app/callbacks.ts)
 - `useAppI18n` (hook) - [app/locale.ts](../src/renderer/src/app/locale.ts) - The stored preference is either a locale code or 'system' (follow the OS), and 'system' is what a
 - `useB3dDeepLinks` (hook) - [app/deep-links.ts](../src/renderer/src/app/deep-links.ts) - A b3d:// link the OS handed us (window.b3d.onB3dOpen) maps to an in-app navigation; every route is
+- `useEnrollGate` (hook) - [app/enroll-gate.ts](../src/renderer/src/app/enroll-gate.ts) - Decide whether adding/enrolling a printer opens enrollment, the access request, or the root-access
 - `usePaneSelection` (hook) - [app/pane-selection.ts](../src/renderer/src/app/pane-selection.ts) - Which pane the window shows (the plugin store or the workbench) and which plugin page the store
 - `usePluginVars` (hook) - [app/plugin-vars.ts](../src/renderer/src/app/plugin-vars.ts) - The renderer's one owner of the scoped plugin-vars store: boot migration (v1 flat map to v2
 
