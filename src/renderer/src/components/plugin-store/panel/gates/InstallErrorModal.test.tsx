@@ -8,6 +8,9 @@ import { makePlugin } from '../../../../test/fixtures'
 import { InstallErrorModal } from './InstallErrorModal'
 import { PACKAGE_REFUSED_PREFIX } from '../../../../../../main/store/package-refused'
 import { malformedPackageMessage } from '../../../../../../main/store/malformed-package'
+import { makeT } from '../../../../i18n'
+
+const en = makeT('en')
 
 const plugin = makePlugin({ id: 'webcam-usb', name: 'webcam-usb', title: 'USB Camera' })
 
@@ -31,6 +34,16 @@ describe('InstallErrorModal', () => {
   it('shows the generic failure with a Technical-details toggle', () => {
     setup(<InstallErrorModal plugin={plugin} kind="install" errorMsg="boom" onRetry={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByText('Technical details')).toBeInTheDocument()
+  })
+
+  // main-index issue 13: a store uninstall whose call to the printer got no answer.
+  it('tells a printer that never answered in user words, keeping the raw words behind the toggle', async () => {
+    const errorMsg = "Error invoking remote method 'store:uninstall': Error: connect ETIMEDOUT 192.168.178.192:4269"
+    const { user } = setup(<InstallErrorModal plugin={plugin} kind="uninstall" errorMsg={errorMsg} onRetry={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByText(en('failure.printer_no_answer'))).toBeInTheDocument()
+    expect(screen.queryByText(/ETIMEDOUT/)).toBeNull()
+    await user.click(screen.getByText('Technical details'))
+    expect(screen.getByText(/connect ETIMEDOUT 192\.168\.178\.192:4269/)).toBeInTheDocument()
   })
 
   it('renders a package refusal as tamper-specific copy with the reason as primary text and no toggle', () => {

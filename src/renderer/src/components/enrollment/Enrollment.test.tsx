@@ -489,6 +489,26 @@ describe('Enrollment operation that never starts', () => {
     expect(container.querySelector('.progress-bar.indeterminate')).toBeNull()
   })
 
+  // Desktop issue 40: the printer refused the SSH login of a repair.
+  it('tells a refused SSH login in user words instead of the SSH library words', async () => {
+    var { user, b3d } = renderEnroll('repair')
+    vi.mocked(b3d.printers.repair).mockRejectedValue(new Error("Error invoking remote method 'printers:repair': Error: All configured authentication methods failed"))
+    await user.click(screen.getByRole('button', { name: 'Repair daemon' }))
+
+    expect(await screen.findByText(en('failure.ssh_login_refused'))).toBeInTheDocument()
+    expect(screen.queryByText(/All configured authentication methods failed/)).toBeNull()
+  })
+
+  // Desktop issue 55: the SSH login of an uninstall never finished.
+  it('tells an SSH login that never finished in user words instead of the SSH library words', async () => {
+    var { user, b3d } = renderEnroll('uninstall')
+    vi.mocked(b3d.printers.uninstall).mockRejectedValue(new Error("Error invoking remote method 'printers:uninstall': Error: Timed out while waiting for handshake"))
+    await user.click(screen.getByRole('button', { name: 'Remove Bespok3d' }))
+
+    expect(await screen.findByText(en('failure.ssh_no_handshake'))).toBeInTheDocument()
+    expect(screen.queryByText(/Timed out while waiting for handshake/)).toBeNull()
+  })
+
   it('says so when the printer refuses the operation', async () => {
     var { container } = renderWithPrinters({ enroll: vi.fn().mockRejectedValue(new Error('printer is busy printing')) })
 

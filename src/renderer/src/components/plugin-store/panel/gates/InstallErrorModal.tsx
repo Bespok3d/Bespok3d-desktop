@@ -8,6 +8,7 @@ import { useBugReport } from '../../safety/useBugReport'
 import { BugReportModal } from '../../safety/BugReportModal'
 import { isPackageRefusal, refusalReason } from './refusal'
 import { isMalformedPackage, malformedPackageDetail, type MalformedPackageDetail } from './malformed'
+import { knownFailureKey } from '../../../../utils/knownFailures'
 
 // Shown when an install OR uninstall fails, replacing the terse footer line. Progressive disclosure for
 // the 3 user tiers: a plain headline + reassurance + retry for the novice; the plain guidance for the
@@ -62,13 +63,21 @@ function refusedCopy(t: Translate, plugin: Plugin, errorMsg: string): ErrorCopy 
   }
 }
 
+// A failure the app knows (the printer did not answer, say) is told in its own words; any other keeps
+// the generic advice, with the raw words behind the Technical-details toggle either way.
+function failureGuidance(t: Translate, prefix: string, errorMsg: string): string {
+  const messageKey = knownFailureKey(errorMsg)
+
+  return t(messageKey ?? `${prefix}.guidance`)
+}
+
 function genericCopy(t: Translate, plugin: Plugin, kind: 'install' | 'uninstall', errorMsg: string): ErrorCopy {
   const prefix = kind === 'uninstall' ? 'uninstall_error' : 'install_error'
 
   return {
     title: t(`${prefix}.title`, { name: plugin.title }),
     subtitle: t(`${prefix}.subtitle`),
-    guidance: t(`${prefix}.guidance`),
+    guidance: failureGuidance(t, prefix, errorMsg),
     tech: errorMsg,
     showRetry: true,
   }

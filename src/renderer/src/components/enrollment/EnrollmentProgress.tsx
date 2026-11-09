@@ -10,7 +10,7 @@ import { useI18n } from '../../i18n/context'
 import type { SshCredentials } from '../../hooks/enrollment'
 import type { EnrollMode } from './index'
 import type { FailureEscalation } from './failure-escalation'
-import { refusalMessageKey } from './known-refusals'
+import { failureInUserWords } from '../../utils/knownFailures'
 import './enrollment.css'
 
 interface SuccessCopy {
@@ -139,9 +139,8 @@ function CancelledView({ event, onClose }: { event: EnrollProgressEvent; onClose
 function FailureReason({ error }: { error?: string }) {
   const { t } = useI18n()
   if (!error) return null
-  const refusalKey = refusalMessageKey(error)
 
-  return <div className="enroll-step-error">{refusalKey ? t(refusalKey) : error}</div>
+  return <div className="enroll-step-error">{failureInUserWords(error, t)}</div>
 }
 
 function EnrollFooter({ phase, stepId, onStartOver, onRetry, escalation, onReportIssue, onCancelOp, onClose }: {

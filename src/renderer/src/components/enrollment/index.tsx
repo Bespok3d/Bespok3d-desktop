@@ -8,6 +8,8 @@ import type { SshCredentials, EnrollState } from '../../hooks/enrollment'
 import { useI18n } from '../../i18n/context'
 import { formatDateTime } from '../../utils/datetime'
 import { mainProcessMessage } from '../../utils/errorMessage'
+import { knownFailureKey } from '../../utils/knownFailures'
+import cx from '../../utils/cx'
 import { Modal } from '../common/overlay/Modal'
 import { Button } from '../common/Button'
 import { CredentialsForm } from './CredentialsForm'
@@ -183,6 +185,13 @@ interface EnrollmentBodyProps {
   restartSeconds?: number
 }
 
+function StartFailureWords({ startError }: { startError: string }) {
+  const { t } = useI18n()
+  const messageKey = knownFailureKey(startError)
+
+  return <p className={cx('u-hint-sm', !messageKey && 'mono')}>{messageKey ? t(messageKey) : startError}</p>
+}
+
 function EnrollmentBody(props: EnrollmentBodyProps) {
   const { t } = useI18n()
   const { latestEvent, startError } = props.state
@@ -221,7 +230,7 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
   if (startError) return (
     <div className="enroll-body">
       <p className="u-hint-sm">{t('enroll.start_failed')}</p>
-      <p className="u-hint-sm mono">{startError}</p>
+      <StartFailureWords startError={startError} />
       <div className="modal-foot">
         <Button variant="outline" onClick={reportThisFailure}>{t('enroll.report_issue')}</Button>
         <Button variant="outline" onClick={props.onClose}>{t('btn.close')}</Button>

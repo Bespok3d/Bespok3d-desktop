@@ -1,0 +1,52 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { existsSync, readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { describe, it, expect } from 'vitest'
+import { failureInUserWords, knownFailureKey } from './knownFailures'
+
+const U1_PREFLIGHT = fileURLToPath(new URL('../../../../../adapters/snapmaker-u1/client/enroll-steps/preflight.ts', import.meta.url))
+const EXTENDED_FIRMWARE_THROW = /throw new Error\('([^']*Extended firmware[^']*)'\)/
+
+function adapterExtendedFirmwareRefusal(): string {
+  return readFileSync(U1_PREFLIGHT, 'utf-8').match(EXTENDED_FIRMWARE_THROW)?.[1] ?? ''
+}
+
+function bracketedKey(messageKey: string): string {
+  return `[${messageKey}]`
+}
+
+describe('the known failures', () => {
+  it.skipIf(!existsSync(U1_PREFLIGHT))('still recognise the words the U1 adapter refuses an Extended-firmware printer with', () => {
+    var adapterRefusal = adapterExtendedFirmwareRefusal()
+
+    expect(adapterRefusal).not.toBe('')
+    expect(knownFailureKey(adapterRefusal)).toBe('enroll.refusal.extended_firmware')
+  })
+
+  // Desktop issue 40: a repair whose SSH login the printer refused.
+  it('answer a refused SSH login in user words', () => {
+    expect(knownFailureKey('Error: All configured authentication methods failed')).toBe('failure.ssh_login_refused')
+  })
+
+  // Desktop issue 55: an uninstall whose SSH login never finished.
+  it('answer an SSH login that never finished in user words', () => {
+    expect(knownFailureKey('Error: Timed out while waiting for handshake')).toBe('failure.ssh_no_handshake')
+  })
+
+  // main-index issue 13: a store uninstall whose call to the printer's daemon got no answer.
+  it('answer a printer that did not answer the connection in user words', () => {
+    var storeUninstallFailure = "Error invoking remote method 'store:uninstall': Error: connect ETIMEDOUT 192.168.178.192:4269"
+
+    expect(knownFailureKey(storeUninstallFailure)).toBe('failure.printer_no_answer')
+  })
+
+  it('leave any other failure in its raw words', () => {
+    expect(knownFailureKey('Permission denied (publickey,password).')).toBeNull()
+    expect(failureInUserWords('Permission denied (publickey,password).', bracketedKey)).toBe('Permission denied (publickey,password).')
+  })
+
+  it('give the translated sentence for a known failure', () => {
+    expect(failureInUserWords('Error: Timed out while waiting for handshake', bracketedKey)).toBe('[failure.ssh_no_handshake]')
+  })
+})
