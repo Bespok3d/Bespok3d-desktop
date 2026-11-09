@@ -43,6 +43,12 @@ describe('fetchWebReach', () => {
     expect(await fetchWebReach(record, SPOOLMAN)).toEqual({ asked: true, httpCode: null })
   })
 
+  it('refuses a reply that carries no code about the address', async () => {
+    vi.mocked(doRequest).mockResolvedValue(JSON.stringify({ code: 200 }))
+
+    await expect(fetchWebReach(record, SPOOLMAN)).rejects.toThrow(/without http_code/)
+  })
+
   it('treats a daemon from before the route as not asked', async () => {
     vi.mocked(doRequest).mockRejectedValue(new DaemonHttpError(404, 'Not Found', 'daemon 404'))
 
