@@ -14,6 +14,7 @@ import { CredentialsForm } from './CredentialsForm'
 import { EnrollmentProgress } from './EnrollmentProgress'
 import { nextStepAfterFailure } from './failure-escalation'
 import type { FailureEscalation } from './failure-escalation'
+import { buildHistoryEvent } from './history-event'
 import { reportOpFailure } from './failure-report'
 import { GoAheadStep } from './GoAheadStep'
 import { usePostOpReboot, postOpRebootCalls } from './usePostOpReboot'
@@ -51,23 +52,6 @@ const DAEMON_RESTART_MODES: ReadonlySet<EnrollMode> = new Set<EnrollMode>(['upda
 
 export function isDaemonRestartMode(mode: EnrollMode): boolean {
   return DAEMON_RESTART_MODES.has(mode)
-}
-
-function buildHistoryEvent(printer: Printer): EnrollProgressEvent | null {
-  const log = printer.enrollmentLog
-  if (!log || log.steps.length === 0) return null
-  const last = log.steps[log.steps.length - 1]
-
-  return {
-    printerId: printer.id,
-    stepId: last.id,
-    stepLabel: last.label,
-    stepDetail: last.detail,
-    status: 'done',
-    stepIndex: log.steps.length - 1,
-    totalSteps: log.steps.length,
-    completedSteps: log.steps,
-  }
 }
 
 function EnrollModalTitle({ printer, mode, fromAdd, bundledJinniVersion }: { printer: Printer; mode: EnrollMode; fromAdd: boolean; bundledJinniVersion?: string }) {
