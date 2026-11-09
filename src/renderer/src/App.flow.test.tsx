@@ -246,7 +246,8 @@ describe('App flow: repair and uninstall check root access first', () => {
     expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
     expect(screen.queryAllByRole('button', { name: 'Repair daemon' })).toHaveLength(1)
     await user.click(screen.getByRole('button', { name: en('enroll.ssh_retry') }))
-    await user.click((await screen.findAllByRole('button', { name: 'Repair daemon' }))[1])
+    const repairWindow = (await screen.findByRole('heading', { name: 'Repair Alpha' })).closest('[role="dialog"]') as HTMLElement
+    await user.click(within(repairWindow).getByRole('button', { name: 'Repair daemon' }))
     await waitFor(() => expect(repair).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22, false))
   })
 
