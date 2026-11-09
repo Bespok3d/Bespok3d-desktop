@@ -15,7 +15,7 @@ import { waitForDaemon, tailDaemonLog } from './daemon-log'
 import { recordOrThrow, verifyDaemonVersion } from '../daemon-client/status'
 import { expectedDaemonVersion } from '../daemon-client/expected-version'
 import { offeredJinniVersion } from '../compat/jinni-baseline'
-import { assertNotADaemonDowngrade, assertPairLandedTogether, assertPrinterNotPrinting, keepingNewerInstalledDaemon } from '../compat'
+import { assertNotADaemonDowngrade, assertPairLandedTogether, assertPrinterNotPrinting, keepingNewerInstalledDaemon, reportedDaemonVersion } from '../compat'
 
 // Asked before a single byte moves, so a refused op never touches the printer at all: it is not
 // printing, and this app is not about to put it back onto an older daemon than it is running.
@@ -121,6 +121,11 @@ export async function checkWriteLayer(printerId: string): Promise<boolean | null
   }
 }
 
+// A repair can keep a newer daemon than this app ships, so the record takes the version that answered.
+async function runningDaemonVersion(record: PrinterRecord): Promise<string> {
+  return (await reportedDaemonVersion(record)) ?? expectedDaemonVersion()
+}
+
 export async function runRepair(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number, forced = false): Promise<void> {
   const { record, adapter, ctx } = daemonOpContext(printerId, ip, { user, password, port })
   await assertSafeToMoveDaemon(record, forced)
@@ -132,7 +137,7 @@ export async function runRepair(win: BrowserWindow, printerId: string, ip: strin
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
   await assertPairLandedTogether(record)
-  updatePrinter(printerId, { status: 'managed', daemonVersion: expectedDaemonVersion(), daemonUpdateAvailable: false })
+  updatePrinter(printerId, { status: 'managed', daemonVersion: await runningDaemonVersion(record), daemonUpdateAvailable: false })
 }
 
 export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {

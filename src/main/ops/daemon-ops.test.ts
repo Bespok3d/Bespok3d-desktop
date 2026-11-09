@@ -18,12 +18,15 @@ vi.mock('../compat', async () => ({
   assertNotADaemonDowngrade: vi.fn(),
   assertPairLandedTogether: vi.fn(),
   assertPrinterNotPrinting: vi.fn(),
+  reportedDaemonVersion: vi.fn(async () => null),
   keepingNewerInstalledDaemon: (await vi.importActual<typeof import('../compat/installed-daemon')>('../compat/installed-daemon')).keepingNewerInstalledDaemon,
 }))
 
 import { runRepair } from './daemon-ops'
 import { getAdapter } from '../adapter-loader'
 import { runSshOp } from './op-runner'
+import { updatePrinter } from '../printers'
+import { reportedDaemonVersion } from '../compat'
 
 const PRINTER_BESPOK3D_ROOT = '/opt/bespok3d-example'
 const REPAIRING_WINDOW = { webContents: { send: vi.fn() } } as unknown as BrowserWindow
@@ -66,6 +69,14 @@ describe('a daemon repair', () => {
     await repairOn(printerWithDaemonOnDisk('0.14.1'), deployDaemon)
 
     expect(deployDaemon.run).not.toHaveBeenCalled()
+  })
+
+  it('records the newer daemon it kept, not the one this app ships', async () => {
+    vi.mocked(reportedDaemonVersion).mockResolvedValueOnce('0.14.1')
+
+    await repairOn(printerWithDaemonOnDisk('0.14.1'), adapterStep('deploy-daemon'))
+
+    expect(updatePrinter).toHaveBeenCalledWith('printer-1', expect.objectContaining({ daemonVersion: '0.14.1' }))
   })
 
   it('puts this app\'s daemon over a newer one when the owner forced it', async () => {
