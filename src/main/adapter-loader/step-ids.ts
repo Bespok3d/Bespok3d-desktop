@@ -5,3 +5,9 @@
 
 // Puts the daemon and the adapter's jinni on the printer.
 export const DAEMON_DEPLOY_STEP_ID = 'deploy-daemon'
+
+// Starts, or restarts, the daemon on the printer.
+export const DAEMON_START_STEP_ID = 'start-daemon'
+
+// Puts only the adapter's jinni on the printer.
+export const JINNI_DEPLOY_STEP_ID = 'deploy-jinni'

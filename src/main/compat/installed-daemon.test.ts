@@ -4,12 +4,18 @@ import { existsSync, readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { describe, it, expect, vi } from 'vitest'
 import type { SshSession } from '../ssh'
+import type { EnrollContext } from '../adapter-loader'
 
-vi.mock('../daemon-client/expected-version', () => ({ shippedDaemonVersion: () => '0.14.0' }))
+vi.mock('../store/system-package', () => ({ openSystemPackage: vi.fn() }))
 
 import { installedDaemonVersion, keepingNewerInstalledDaemon } from './installed-daemon'
+import { openSystemPackage } from '../store/system-package'
+import type { BundledPackage } from '../store/bundled-package'
 
 const PRINTER_BESPOK3D_ROOT = '/opt/bespok3d-example'
+const ENROLLING_PRINTER: EnrollContext = {
+  printerId: 'printer-1', ip: '192.0.2.10', credentials: { port: 22, user: 'root', password: 'example' }, runtimeUser: 'user',
+}
 const DAEMON_VERSION_SOURCE = fileURLToPath(new URL('../../../../daemon/version.py', import.meta.url))
 
 function printerWhoseVersionFileSays(versionFileText: string): SshSession {
@@ -39,6 +45,39 @@ describe('the daemon the printer has on its disk', () => {
     var printer = printerWhoseVersionFileSays(readFileSync(DAEMON_VERSION_SOURCE, 'utf-8'))
 
     await expect(installedDaemonVersion(printer, PRINTER_BESPOK3D_ROOT)).resolves.toMatch(/^\d+\.\d+\.\d+/)
+  })
+})
+
+function deployLands(deployingVersion: string): void {
+  vi.mocked(openSystemPackage).mockResolvedValue({ version: deployingVersion } as BundledPackage)
+}
+
+async function runDeployOn(installedVersionFileText: string): Promise<ReturnType<typeof vi.fn>> {
+  var deployRun = vi.fn()
+  var deployStep = keepingNewerInstalledDaemon({ id: 'deploy-daemon', label: 'Deploy', detail: '', run: deployRun }, PRINTER_BESPOK3D_ROOT)
+
+  await deployStep.run(printerWhoseVersionFileSays(installedVersionFileText), ENROLLING_PRINTER)
+
+  return deployRun
+}
+
+describe('the daemon deploy of an enrollment', () => {
+  it('keeps a daemon newer than the one it would land, which is this app\'s own copy when the download fails', async () => {
+    deployLands('0.14.0')
+
+    expect(await runDeployOn('DAEMON_VERSION = "0.14.1"\n')).not.toHaveBeenCalled()
+  })
+
+  it('moves the printer forward when the daemon it would land is newer', async () => {
+    deployLands('0.15.0')
+
+    expect(await runDeployOn('DAEMON_VERSION = "0.14.1"\n')).toHaveBeenCalledOnce()
+  })
+
+  it('finishes a deploy of that same daemon that was cut short', async () => {
+    deployLands('0.15.0')
+
+    expect(await runDeployOn('DAEMON_VERSION = "0.15.0"\n')).toHaveBeenCalledOnce()
   })
 })
 

@@ -9,7 +9,7 @@ vi.mock('./ssh', () => ({ connect: vi.fn(), createPersistentSession: vi.fn() }))
 vi.mock('./adapter-loader', () => ({ getAdapter: vi.fn() }))
 vi.mock('./printers', () => ({ updatePrinter: vi.fn(), loadPrinters: vi.fn(() => []) }))
 vi.mock('./analytics', () => ({ reportEvent: vi.fn() }))
-vi.mock('./daemon-client/expected-version', () => ({ expectedDaemonVersion: () => '0.15.0', shippedDaemonVersion: () => '0.14.0' }))
+vi.mock('./store/system-package', () => ({ openSystemPackage: vi.fn(async () => ({ version: '0.14.0' })) }))
 vi.mock('./analytics/errors', () => ({ reportErrorEvent: vi.fn() }))
 vi.mock('./keys', () => ({ listKeys: vi.fn().mockReturnValue([]) }))
 vi.mock('./settings', () => ({
@@ -191,16 +191,6 @@ describe('a recovery after a firmware update', () => {
     expect(deployDaemon.run).not.toHaveBeenCalled()
     expect(startDaemon.run).toHaveBeenCalledOnce()
     expect(enrolledPatch()).toMatchObject({ status: 'managed' })
-  })
-
-  it('keeps it even when a still newer published daemon is offered, since the deploy may land this app\'s own copy', async () => {
-    var deployDaemon = mockStep('deploy-daemon')
-    printerWithDaemonOnDisk('0.14.2')
-    mockGetAdapter.mockReturnValue(mockAdapter([deployDaemon]))
-
-    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', CREDS)
-
-    expect(deployDaemon.run).not.toHaveBeenCalled()
   })
 
   it.each(['0.14.0', '0.13.9'])('deploys over a printer that has daemon %s, the same or older', async (installedVersion) => {

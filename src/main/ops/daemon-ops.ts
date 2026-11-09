@@ -5,7 +5,7 @@ import { updatePrinter, loadPrinters } from '../printers'
 import type { PrinterRecord } from '../printers'
 import { getAdapter } from '../adapter-loader'
 import type { AdapterDefinition, EnrollContext, SshCredentials } from '../adapter-loader'
-import { DAEMON_DEPLOY_STEP_ID } from '../adapter-loader/step-ids'
+import { DAEMON_DEPLOY_STEP_ID, DAEMON_START_STEP_ID, JINNI_DEPLOY_STEP_ID } from '../adapter-loader/step-ids'
 import { connect } from '../ssh'
 import type { SshSession } from '../ssh'
 import { runSshOp } from './op-runner'
@@ -111,7 +111,7 @@ export async function runRepair(win: BrowserWindow, printerId: string, ip: strin
     { id: 'check-write-layer', label: 'Checking the write layer', detail: 'A firmware update resets the printer overlay; when that happens a daemon repair would not survive a reboot, so the printer needs full recovery instead', run: async () => { await guardWriteLayer(adapter, ssh) } },
     { id: 'diagnose', label: 'Diagnosing the daemon', detail: 'Checks for a stale demon directory, a wrong autostart path, a missing daemon, or an occupied port', run: async (progress) => { progress((await diagnoseDaemon(ssh)).trim()) } },
     { id: 'redeploy-daemon', label: 'Re-deploying a fresh daemon', detail: 'Uploads fresh daemon source and removes the stale demon directory', run: (progress) => runAdapterStep(adapter, DAEMON_DEPLOY_STEP_ID, ssh, { ...ctx, onProgress: progress }) },
-    { id: 'start-daemon', label: 'Starting the daemon', detail: 'Deploys the corrected autostart script, frees port 4269, and starts the daemon', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
+    { id: 'start-daemon', label: 'Starting the daemon', detail: 'Deploys the corrected autostart script, frees port 4269, and starts the daemon', run: () => runAdapterStep(adapter, DAEMON_START_STEP_ID, ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
   await assertPairLandedTogether(record)
@@ -124,7 +124,7 @@ export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip:
   await assertSafeToMoveDaemon(record, false)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'deploy-daemon', label: 'Uploading fresh daemon code', detail: 'Uploads the latest daemon source and adapter jinni; the cert and plugins are left untouched', run: (progress) => runAdapterStep(adapter, DAEMON_DEPLOY_STEP_ID, ssh, { ...ctx, onProgress: progress, sendChangedFilesOnly: true }) },
-    { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Deploys the autostart script, frees port 4269, and restarts the daemon', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
+    { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Deploys the autostart script, frees port 4269, and restarts the daemon', run: () => runAdapterStep(adapter, DAEMON_START_STEP_ID, ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
   ])
   await assertPairLandedTogether(record)
@@ -139,8 +139,8 @@ export async function runUpdateJinni(win: BrowserWindow, printerId: string, ip: 
   // is no daemon version to be put backwards here.
   assertPrinterNotPrinting(printerId)
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
-    { id: 'deploy-jinni', label: 'Updating the adapter jinni', detail: 'Re-uploads only the device-side adapter; the daemon source, cert, and plugins are left untouched', run: (progress) => runAdapterStep(adapter, 'deploy-jinni', ssh, { ...ctx, onProgress: progress, sendChangedFilesOnly: true }) },
-    { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Restarts the daemon so it loads the updated jinni', run: () => runAdapterStep(adapter, 'start-daemon', ssh, ctx) },
+    { id: 'deploy-jinni', label: 'Updating the adapter jinni', detail: 'Re-uploads only the device-side adapter; the daemon source, cert, and plugins are left untouched', run: (progress) => runAdapterStep(adapter, JINNI_DEPLOY_STEP_ID, ssh, { ...ctx, onProgress: progress, sendChangedFilesOnly: true }) },
+    { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Restarts the daemon so it loads the updated jinni', run: () => runAdapterStep(adapter, DAEMON_START_STEP_ID, ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => tailDaemonLog(ssh)) },
   ])
   await assertPairLandedTogether(record)

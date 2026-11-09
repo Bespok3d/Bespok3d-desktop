@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { AdapterDefinition } from '.'
 
-// Where every adapter so far keeps bespok3d's files, for a printer whose adapter is not loaded.
+// Where every adapter so far keeps bespok3d's files, for a printer whose adapter is not loaded or
+// does not say.
 const DEFAULT_BESPOK3D_ROOT = '/userdata/bespok3d'
 
 // Where bespok3d keeps its files on a printer: a fact of the printer model, so its adapter says it.

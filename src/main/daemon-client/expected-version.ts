@@ -8,12 +8,6 @@ import { bundledRegistryDir } from '../registry/bundled-dir'
 import { installableVersion } from '../registry/offered-versions'
 import { DAEMON_PACKAGE, daemonVersionInRegistry } from './version'
 
-// The daemon this build carries. A deploy that cannot download the published daemon puts this one on
-// the printer instead, so it is the oldest daemon a deploy can land.
-export function shippedDaemonVersion(): string {
-  return daemonVersionInRegistry(bundledRegistryDir())
-}
-
 export function expectedDaemonVersion(): string {
-  return installableVersion(DAEMON_PACKAGE, shippedDaemonVersion())
+  return installableVersion(DAEMON_PACKAGE, daemonVersionInRegistry(bundledRegistryDir()))
 }
