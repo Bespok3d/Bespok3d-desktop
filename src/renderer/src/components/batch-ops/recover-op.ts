@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type { PluginRecoveryResult } from '@bespok3d/contract'
 import type { BatchResult } from '../../../../main/daemon-client/batch-result'
+import { readStoredJson, writeStoredJson } from '../common/hooks/useLocalStorageState'
 
 // What the report says about the restart after recovery: none was made by the app, the app restarted
 // the printer and it answered again, or the wait ran out before the printer's daemon answered.
@@ -22,11 +23,25 @@ function leftItsCheckToTheReboot(row: PluginRecoveryResult): boolean {
   return row.log.some((logPhase) => logPhase.id === REBOOT_REPLACES_RESTART_PHASE)
 }
 
+// The check answers again for each plugin it switched off, so that plugin's earlier row, which said it
+// was back, gives way to the check's. The rest of the check takes the place of the reboot's own row.
+function laterWordOn(check: BatchResult, recoveredRow: PluginRecoveryResult): PluginRecoveryResult {
+  return check.results.find((checkRow) => checkRow.pluginId === recoveredRow.pluginId) ?? recoveredRow
+}
+
+function rowsOnlyTheCheckHas(results: BatchResult, check: BatchResult): PluginRecoveryResult[] {
+  const recoveredPluginIds = new Set(results.results.filter((row) => !leftItsCheckToTheReboot(row)).map((row) => row.pluginId))
+
+  return check.results.filter((checkRow) => !recoveredPluginIds.has(checkRow.pluginId))
+}
+
 function withTheCheckAfterTheReboot(results: BatchResult, check: BatchResult): BatchResult {
+  const checkOnlyRows = rowsOnlyTheCheckHas(results, check)
+
   return {
     ...results,
     ok: results.ok && check.ok,
-    results: results.results.flatMap((row) => (leftItsCheckToTheReboot(row) ? check.results : [row])),
+    results: results.results.flatMap((row) => (leftItsCheckToTheReboot(row) ? checkOnlyRows : [laterWordOn(check, row)])),
   }
 }
 
@@ -92,25 +107,36 @@ function useRecoveryReport() {
 
 type ChecksLeftByPrinter = ReadonlyMap<string, BatchResult>
 
+// Kept where it outlives the app, not in its memory: the user may quit the app between the recover and
+// the restart they make, and the check must still run once they make it.
+const CHECKS_LEFT_KEY = 'b3d.checksLeftToTheirRestart'
+
+function storedChecksLeft(): ChecksLeftByPrinter {
+  return new Map(readStoredJson<[string, BatchResult][]>(CHECKS_LEFT_KEY, []))
+}
+
+function storeChecksLeft(checksLeft: ChecksLeftByPrinter) {
+  writeStoredJson(CHECKS_LEFT_KEY, [...checksLeft])
+}
+
 function withoutThePrinter(checksLeft: ChecksLeftByPrinter, printerId: string): ChecksLeftByPrinter {
   return new Map([...checksLeft].filter(([checkedPrinterId]) => checkedPrinterId !== printerId))
 }
 
 // When the app could not restart the printer itself, the user restarts it from the window it opens
 // instead, and only the app ever asks the printer for the check the recover left to that restart. It
-// is kept here, per printer, until that restart is done, or a plugin that breaks the printer once it is
+// is kept, per printer, until that restart is done, or a plugin that breaks the printer once it is
 // back would be neither taken off nor reported. A new recover of that printer replaces it, as it does
 // on the printer. The restart bar is that printer's own length, whichever printer was recovered last.
 function useCheckLeftToTheirRestart(handlers: RecoveryReportHandlers, report: ReturnType<typeof useRecoveryReport>, readRestartSeconds: (printerId: string) => void) {
-  const checksLeft = useRef<ChecksLeftByPrinter>(new Map())
   function keepForTheirRestart(printerId: string, results: BatchResult, restarting: boolean) {
-    if (!restarting && results.results.some(leftItsCheckToTheReboot)) checksLeft.current = new Map(checksLeft.current).set(printerId, results)
+    if (!restarting && results.results.some(leftItsCheckToTheReboot)) storeChecksLeft(new Map(storedChecksLeft()).set(printerId, results))
   }
   function forgetTheCheckLeft(printerId: string) {
-    checksLeft.current = withoutThePrinter(checksLeft.current, printerId)
+    storeChecksLeft(withoutThePrinter(storedChecksLeft(), printerId))
   }
   function checkAfterTheirRestart(printerId: string) {
-    const left = checksLeft.current.get(printerId)
+    const left = storedChecksLeft().get(printerId)
     if (!left) return
     forgetTheCheckLeft(printerId)
     readRestartSeconds(printerId)

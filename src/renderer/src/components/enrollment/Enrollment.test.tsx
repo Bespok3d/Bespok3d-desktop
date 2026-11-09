@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { useState } from 'react'
+import type { ReactElement } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 import { screen, act, waitFor, fireEvent } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { makePrinter, makeEnrollEvent } from '../../test/fixtures'
@@ -369,28 +371,60 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
   })
 })
 
+const putBack = { pluginId: 'example-camera', ok: true, skipped: false, reason: 'back on', log: [] }
+const leftOff = { pluginId: 'example-spoolman', ok: false, skipped: false, reason: 'switched off: its service did not start', log: [] }
+
+interface ReactivateListeners {
+  onPluginsLeftOff: Mock<(reapplied: BatchResult) => void>
+  onEnrolled: Mock<(updated: Printer) => void>
+  onClose: Mock<() => void>
+}
+
+function reactivateWindow(listeners: ReactivateListeners): ReactElement {
+  var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+
+  return <Enrollment printer={printer} mode="reactivate" onOpRecorded={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} {...listeners} />
+}
+
+async function reactivateStarted(reactivate: () => Promise<BatchResult>, reactStrictMode = false) {
+  var listeners: ReactivateListeners = { onPluginsLeftOff: vi.fn<(reapplied: BatchResult) => void>(), onEnrolled: vi.fn<(updated: Printer) => void>(), onClose: vi.fn<() => void>() }
+  var rendered = setup(reactivateWindow(listeners), { b3d: { printers: { reactivate: vi.fn(reactivate) } }, reactStrictMode })
+  vi.mocked(rendered.b3d.printers.load).mockResolvedValue([{ id: 'printer-1', status: 'managed' }] as unknown as PrinterRecord[])
+  await rendered.user.click(screen.getByRole('button', { name: 'Reactivate' }))
+  await waitFor(() => expect(rendered.b3d.printers.reactivate).toHaveBeenCalled())
+
+  return { ...rendered, ...listeners }
+}
+
+async function reactivateUntilItsReboot(reapplied: BatchResult, reactStrictMode = false) {
+  var rendered = await reactivateStarted(() => Promise.resolve(reapplied), reactStrictMode)
+  act(() => rendered.emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Re-applying plugins', stepIndex: 5, totalSteps: 6 })))
+  await waitFor(() => expect(rendered.b3d.printers.reboot).toHaveBeenCalled())
+  await letPendingWorkSettle()
+
+  return rendered
+}
+
+async function doneOnceThePrinterIsBack(rendered: Awaited<ReturnType<typeof reactivateUntilItsReboot>>) {
+  act(() => rendered.emit.enrollProgress(makeEnrollEvent({ status: 'done', stepId: 'reboot', stepLabel: 'Restarting the printer', stepIndex: 0, totalSteps: 1 })))
+  await rendered.user.click(screen.getByRole('button', { name: 'Done' }))
+  await waitFor(() => expect(rendered.onEnrolled).toHaveBeenCalled())
+  await letPendingWorkSettle()
+}
+
 // Restarting the plugins switches off each one the printer could not put back, and the op still ends
 // on its own success screen, so the app has to be told which ones were left off.
 describe('Enrollment tells the app which plugins a reactivate left off', () => {
-  const putBack = { pluginId: 'example-camera', ok: true, skipped: false, reason: 'back on', log: [] }
-  const leftOff = { pluginId: 'example-spoolman', ok: false, skipped: false, reason: 'switched off: its service did not start', log: [] }
-
   // The printer's safety net switches the plugin off after the services restart and reports it on its
   // own services row, which is ok because the printer is working again; every plugin row stays ok.
   const switchedOffBySafetyNet = { pluginId: '(services)', ok: true, skipped: false, reason: 'Auto-recovered: deactivated example-spoolman to keep the printer working', log: [], autoDeactivated: 'example-spoolman' }
 
   async function reactivateAnswering(reapplied: BatchResult) {
-    var onPluginsLeftOff = vi.fn()
-    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
-    var rendered = setup(
-      <Enrollment printer={printer} mode="reactivate" onEnrolled={vi.fn()} onClose={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} onPluginsLeftOff={onPluginsLeftOff} />,
-      { b3d: { printers: { reactivate: vi.fn().mockResolvedValue(reapplied) } } },
-    )
-    await rendered.user.click(screen.getByRole('button', { name: 'Reactivate' }))
-    await waitFor(() => expect(rendered.b3d.printers.reactivate).toHaveBeenCalled())
-    await letPendingWorkSettle()
+    var rendered = await reactivateUntilItsReboot(reapplied)
+    await doneOnceThePrinterIsBack(rendered)
+    rendered.unmount()
 
-    return onPluginsLeftOff
+    return rendered.onPluginsLeftOff
   }
 
   it('names the plugins the printer could not put back', async () => {
@@ -429,6 +463,85 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
     var onPluginsLeftOff = await reactivateAnswering({ ok: true, results: [putBack] })
 
     expect(onPluginsLeftOff).not.toHaveBeenCalled()
+  })
+})
+
+// The app takes the window down once it is told the op is done or the window was closed, so each test
+// here unmounts it at that point, as the app does.
+describe('Enrollment holds the reactivate report until its window is gone', () => {
+  // The report opened over the reboot window while the printer was still restarting.
+  it('holds the report until the window on the reboot is gone', async () => {
+    var reapplied = { ok: false, results: [putBack, leftOff] }
+    var rendered = await reactivateUntilItsReboot(reapplied)
+
+    expect(rendered.onPluginsLeftOff).not.toHaveBeenCalled()
+    await doneOnceThePrinterIsBack(rendered)
+    expect(rendered.onPluginsLeftOff).not.toHaveBeenCalled()
+    rendered.unmount()
+
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('shows the report when the user closes the window on a reboot that failed', async () => {
+    var reapplied = { ok: false, results: [putBack, leftOff] }
+    var rendered = await reactivateUntilItsReboot(reapplied)
+    act(() => rendered.emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'reboot', stepLabel: 'Restarting the printer', error: 'refused', stepIndex: 0 })))
+    expect(rendered.onPluginsLeftOff).not.toHaveBeenCalled()
+
+    await rendered.user.click(screen.getByRole('button', { name: 'More' }))
+    await rendered.user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(rendered.onClose).toHaveBeenCalledOnce()
+    rendered.unmount()
+
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('shows the report when the window is taken down without being closed', async () => {
+    var reapplied = { ok: false, results: [putBack, leftOff] }
+    var rendered = await reactivateUntilItsReboot(reapplied)
+
+    rendered.unmount()
+
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('gives the report to the app as it is when the window goes, not as it was when it opened', async () => {
+    var reapplied = { ok: false, results: [putBack, leftOff] }
+    var rendered = await reactivateUntilItsReboot(reapplied)
+    var onPluginsLeftOffNow = vi.fn()
+    rendered.rerender(reactivateWindow({ onEnrolled: rendered.onEnrolled, onClose: rendered.onClose, onPluginsLeftOff: onPluginsLeftOffNow }))
+
+    rendered.unmount()
+
+    expect(rendered.onPluginsLeftOff).not.toHaveBeenCalled()
+    expect(onPluginsLeftOffNow).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('shows at once a report that answers after the window is gone', async () => {
+    var reapplied = { ok: false, results: [putBack, leftOff] }
+    var answerTheReactivate!: (answer: BatchResult) => void
+    var reactivateAnswer = new Promise<BatchResult>(function capture(resolve) { answerTheReactivate = resolve })
+    var rendered = await reactivateStarted(() => reactivateAnswer)
+    rendered.unmount()
+
+    await act(async () => answerTheReactivate(reapplied))
+
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('holds the report in a development build too, where the window is mounted twice', async () => {
+    var reapplied = { ok: false, results: [putBack, leftOff] }
+    var rendered = await reactivateUntilItsReboot(reapplied, true)
+
+    expect(rendered.onPluginsLeftOff).not.toHaveBeenCalled()
+    rendered.unmount()
+
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
   })
 })
 

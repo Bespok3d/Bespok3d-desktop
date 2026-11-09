@@ -132,10 +132,10 @@ const RESTART_HINT: Record<RecoveryRestart, string | null> = {
   'not-back': 'recovery_results.not_back',
 }
 
-// The printer calls a recovery fine with some plugins not put back, and the report must not then say
-// every plugin went back.
+// The printer calls a batch fine with a plugin it could not read, and calls a recovery fine with some
+// plugins not put back; the report must say neither went through.
 function wentWell(variant: BatchVariant, results: BatchResult): boolean {
-  if (variant !== 'recovery') return results.ok
+  if (variant !== 'recovery') return results.ok && !results.manifestWarnings?.length
 
   return !somePluginNotPutBack(results)
 }

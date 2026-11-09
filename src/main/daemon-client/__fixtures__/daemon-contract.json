@@ -164,5 +164,59 @@
     "vars": {
       "SPOOLMAN_SERVER": "http://spoolman.example:7912"
     }
-  }
+  },
+  "install_progress": [
+    {
+      "type": "plan",
+      "ids": [
+        "spoolman",
+        "zerotier"
+      ]
+    },
+    {
+      "type": "plugin",
+      "plugin_id": "spoolman",
+      "index": 0,
+      "total": 2
+    },
+    {
+      "type": "phase",
+      "phase": {
+        "id": "extract",
+        "label": "Unpack package",
+        "ok": true,
+        "items": [
+          {
+            "label": "extract files",
+            "ok": true,
+            "output": ""
+          }
+        ]
+      }
+    },
+    {
+      "type": "outcome",
+      "plugin_id": "spoolman",
+      "ok": true,
+      "skipped": false
+    },
+    {
+      "type": "plugin",
+      "plugin_id": "zerotier",
+      "index": 1,
+      "total": 2
+    },
+    {
+      "type": "outcome",
+      "plugin_id": "zerotier",
+      "ok": false,
+      "skipped": true
+    },
+    {
+      "type": "plugin",
+      "plugin_id": "(services)",
+      "index": 2,
+      "total": 2
+    }
+  ]
 }

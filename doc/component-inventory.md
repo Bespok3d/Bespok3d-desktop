@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-292 exported components + hooks across 22 areas.
+293 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -172,6 +172,7 @@ as you touch the file.
 - `useGoAhead` (hook) - [components/enrollment/useGoAhead.ts](../src/renderer/src/components/enrollment/useGoAhead.ts) - Holds the op on its go-ahead screen, and answers which screen the modal shows once the user has
 - `useOpOutcome` (hook) - [components/enrollment/useOpOutcome.ts](../src/renderer/src/components/enrollment/useOpOutcome.ts) - How the app hears that the op is done. Done tells it once, however often it is pressed. Once the op
 - `usePostOpReboot` (hook) - [components/enrollment/usePostOpReboot.ts](../src/renderer/src/components/enrollment/usePostOpReboot.ts) - Reboots the printer the moment the op reports success, and answers whether the success screen has to
+- `useReportOnceTheWindowCloses` (hook) - [components/enrollment/useReportOnceTheWindowCloses.ts](../src/renderer/src/components/enrollment/useReportOnceTheWindowCloses.ts) - Restarting the plugins answers which ones it left off before the printer's reboot even starts, and
 
 ## Feature: header
 

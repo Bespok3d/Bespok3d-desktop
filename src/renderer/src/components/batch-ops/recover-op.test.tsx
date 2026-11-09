@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, screen, waitFor } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { useRecoverOp } from './recover-op'
@@ -68,6 +68,9 @@ function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Prom
     </>
   )
 }
+
+// The check left to the user's restart outlives the app, so no test may hand its own to the next.
+beforeEach(() => localStorage.clear())
 
 describe('the recovery report', () => {
   it('leaves nothing on screen for the user to read: the restarting screen is up for the whole restart', async () => {
@@ -190,6 +193,21 @@ describe('the check the reboot replaced', () => {
 
     await waitFor(() => expect(screen.getByText('rows: camera back, spoolman taken off')).toBeInTheDocument())
     expect(recoverAfterReboot).toHaveBeenCalledWith('printer-1')
+    expect(screen.getByText('report ok: false')).toBeInTheDocument()
+  })
+
+  it('puts the check row of a plugin it switched off in place of the row that said the plugin was back', async () => {
+    const cameraSwitchedOff = { pluginId: 'camera', ok: false, skipped: false, reason: 'camera switched off', log: [], autoDeactivated: 'camera' }
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockResolvedValue({ ok: false, results: [cameraSwitchedOff, takenOffAfterTheReboot] })
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(true)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+
+    await waitFor(() => expect(screen.getByText('rows: camera switched off, spoolman taken off')).toBeInTheDocument())
     expect(screen.getByText('report ok: false')).toBeInTheDocument()
   })
 
@@ -338,6 +356,25 @@ describe('the check left to the restart the user makes', () => {
     await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
     await letPendingWorkSettle()
 
+    expect(recoverAfterReboot).toHaveBeenCalledTimes(1)
+  })
+})
+
+// The user may quit the app between the recover and the restart they make.
+describe('the check left to the restart the user makes, across an app restart', () => {
+  it('still runs when the app was restarted between the recover and their restart', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockResolvedValue({ ok: false, results: [takenOffAfterTheReboot] })
+    const store = { b3d: { store: { recover, recoverAfterReboot } } }
+    const appBeforeItsRestart = setup(<RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />, store)
+    await appBeforeItsRestart.user.click(screen.getByRole('button', { name: 'recover' }))
+    await waitFor(() => expect(screen.getByText('restart: none')).toBeInTheDocument())
+    appBeforeItsRestart.unmount()
+
+    const { user } = setup(<RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />, store)
+    await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
+
+    await waitFor(() => expect(screen.getByText('rows: camera back, spoolman taken off')).toBeInTheDocument())
     expect(recoverAfterReboot).toHaveBeenCalledTimes(1)
   })
 })

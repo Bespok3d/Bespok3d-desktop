@@ -21,7 +21,7 @@ interface ProgressTarget {
 }
 
 export interface InstallProgressEvent {
-  type: 'phase' | 'plugin' | 'plan' | 'done'
+  type: 'phase' | 'plugin' | 'plan' | 'outcome' | 'done'
   phase?: InstallLogPhase
   // The ordered set a run will work through. Only recovery sends one: the printer decides which
   // plugins it puts back and in what order, where a batch's set is decided in the app.
@@ -32,16 +32,19 @@ export interface InstallProgressEvent {
   index?: number
   total?: number
   ok?: boolean
+  // On an 'outcome', that the plugin's turn was left out: such a plugin is skipped, never done.
+  skipped?: boolean
   error?: string
 }
 
 // The renderer-facing batch progress vocabulary: the ordered plan up front, then each plugin as it
-// starts, each phase as it finishes, and a terminal done. Translated from the daemon feed by
-// batchEventFrom so the renderer never parses raw phase shapes.
+// starts, each phase as it finishes, how each plugin's turn ended, and a terminal done. Translated
+// from the daemon feed by batchEventFrom so the renderer never parses raw phase shapes.
 export type BatchProgressEvent =
   | { type: 'plan'; ids: string[] }
   | { type: 'plugin'; pluginId: string; index: number; total: number }
   | { type: 'phase'; label: string; ok: boolean }
+  | { type: 'outcome'; pluginId: string; ok: boolean; skipped: boolean }
   | { type: 'done'; ok: boolean }
 
 // The client-side upload stage: bytes written to the daemon over the wire, reported by main as it
@@ -143,11 +146,12 @@ function relay(data: WebSocket.RawData, onEvent: (event: InstallProgressEvent) =
 
 export function parseEvent(data: WebSocket.RawData): InstallProgressEvent | null {
   try {
-    const obj = JSON.parse(data.toString())
-    if (obj.type === 'phase' && obj.phase) return { type: 'phase', phase: obj.phase as InstallLogPhase }
-    if (obj.type === 'plan' && Array.isArray(obj.ids)) return { type: 'plan', ids: obj.ids as string[] }
-    if (obj.type === 'plugin' && typeof obj.plugin_id === 'string') return { type: 'plugin', pluginId: obj.plugin_id, index: obj.index ?? 0, total: obj.total ?? 0 }
-    if (obj.type === 'done') return { type: 'done', ok: !!obj.ok, error: typeof obj.error === 'string' ? obj.error : undefined }
+    const daemonEvent = JSON.parse(data.toString())
+    if (daemonEvent.type === 'phase' && daemonEvent.phase) return { type: 'phase', phase: daemonEvent.phase as InstallLogPhase }
+    if (daemonEvent.type === 'plan' && Array.isArray(daemonEvent.ids)) return { type: 'plan', ids: daemonEvent.ids as string[] }
+    if (daemonEvent.type === 'plugin' && typeof daemonEvent.plugin_id === 'string') return { type: 'plugin', pluginId: daemonEvent.plugin_id, index: daemonEvent.index ?? 0, total: daemonEvent.total ?? 0 }
+    if (daemonEvent.type === 'outcome' && typeof daemonEvent.plugin_id === 'string') return { type: 'outcome', pluginId: daemonEvent.plugin_id, ok: !!daemonEvent.ok, skipped: !!daemonEvent.skipped }
+    if (daemonEvent.type === 'done') return { type: 'done', ok: !!daemonEvent.ok, error: typeof daemonEvent.error === 'string' ? daemonEvent.error : undefined }
 
     return null
   } catch {
@@ -155,14 +159,15 @@ export function parseEvent(data: WebSocket.RawData): InstallProgressEvent | null
   }
 }
 
-// Translate one daemon feed event into the renderer-facing batch event, or null for events the batch
-// view does not show (a non-plugin/phase/done message).
+// Translate one daemon feed event into the renderer-facing batch event, or null for an event missing
+// the field the batch view needs.
 export function batchEventFrom(event: InstallProgressEvent): BatchProgressEvent | null {
   if (event.type === 'plan' && event.ids) return { type: 'plan', ids: event.ids }
   if (event.type === 'plugin' && event.pluginId) {
     return { type: 'plugin', pluginId: event.pluginId, index: event.index ?? 0, total: event.total ?? 0 }
   }
   if (event.type === 'phase' && event.phase) return { type: 'phase', label: installPhaseMessage(event.phase), ok: event.phase.ok }
+  if (event.type === 'outcome' && event.pluginId) return { type: 'outcome', pluginId: event.pluginId, ok: !!event.ok, skipped: !!event.skipped }
   if (event.type === 'done') return { type: 'done', ok: !!event.ok }
 
   return null

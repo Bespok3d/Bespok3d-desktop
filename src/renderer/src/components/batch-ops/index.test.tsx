@@ -212,7 +212,7 @@ describe('recovery while it is putting the plugins back', () => {
   it('names the plugin it is on, instead of leaving the user at a spinner', () => {
     const inFlight = {
       printerId: 'printer-1', ids: ['rfid-ntag', 'spoolman'], startedIds: ['rfid-ntag', 'spoolman'], current: 'spoolman',
-      failedIds: [], phaseLabel: 'Place config', restarting: false, done: false,
+      failedIds: [], skippedIds: [], turnEndedIds: [], phaseLabel: 'Place config', restarting: false, done: false,
     }
     const { container } = setup(
       <BatchOpModal

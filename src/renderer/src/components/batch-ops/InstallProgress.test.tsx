@@ -14,7 +14,7 @@ const en = makeT('en')
 function state(over: Partial<BatchProgressState>): BatchProgressState {
   return {
     printerId: 'p1', ids: ['spoolman', 'fluidd', 'mainsail'], startedIds: ['spoolman', 'fluidd'], current: 'fluidd',
-    failedIds: [], phaseLabel: 'Place config', restarting: false, done: false, ...over,
+    failedIds: [], skippedIds: [], turnEndedIds: [], phaseLabel: 'Place config', restarting: false, done: false, ...over,
   }
 }
 
@@ -35,6 +35,17 @@ describe('BatchInstallProgress', () => {
     )
     expect(screen.getByText(en('batch_progress.restarting'))).toBeInTheDocument()
     expect(container.querySelector('.batch-row.failed')?.textContent).toContain('fluidd')
+  })
+
+  it('shows a plugin the printer left out without a tick', () => {
+    const planned = reduceBatchProgress(null, 'p1', { type: 'plan', ids: ['spoolman', 'fluidd'] })
+    const started = reduceBatchProgress(planned, 'p1', { type: 'plugin', pluginId: 'fluidd', index: 0, total: 2 })
+    const leftOut = reduceBatchProgress(started, 'p1', { type: 'outcome', pluginId: 'fluidd', ok: false, skipped: true })!
+    const { container } = setup(<BatchInstallProgress title="Installing plugins" state={leftOut} />)
+    const skippedRow = container.querySelector('.batch-row.skipped')
+    expect(skippedRow?.textContent).toContain('fluidd')
+    expect(skippedRow?.textContent).not.toContain('✓')
+    expect(skippedRow?.textContent).toContain('−')
   })
 
   it('scrolls the plugin being worked on into view as the run moves down the list', () => {

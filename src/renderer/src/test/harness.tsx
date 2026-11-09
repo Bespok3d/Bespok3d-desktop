@@ -31,6 +31,9 @@ export interface ProviderOptions {
   withCatalog?: boolean
   catalog?: IndexEntry[]
   b3d?: B3dOverrides
+  // The app mounts under StrictMode at its root, where a development build runs every effect twice.
+  // A StrictMode nested inside the providers does not run them twice here, so it goes at the root.
+  reactStrictMode?: boolean
 }
 
 function catalogOverride(options: ProviderOptions): B3dOverrides {
@@ -59,7 +62,7 @@ export interface Harness {
 export function setup(ui: ReactElement, options: ProviderOptions = {}): Harness & ReturnType<typeof render> {
   var installed = installB3d(catalogOverride(options))
   var user = userEvent.setup()
-  var result = render(ui, { wrapper: makeWrapper(options.withCatalog ?? false) })
+  var result = render(ui, { wrapper: makeWrapper(options.withCatalog ?? false), reactStrictMode: options.reactStrictMode })
 
   return { user, emit: installed.emit, b3d: installed.b3d, ...result }
 }
