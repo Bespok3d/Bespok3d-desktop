@@ -41,6 +41,28 @@ describe('the known failures', () => {
     expect(knownFailureKey(storeUninstallFailure)).toBe('failure.printer_no_answer')
   })
 
+  it('blame the stopped Bespok3d service when the printer refuses its port', () => {
+    var refusedOnDaemonPort = "Error invoking remote method 'store:install': Error: connect ECONNREFUSED 192.168.178.192:4269"
+
+    expect(knownFailureKey(refusedOnDaemonPort)).toBe('failure.bespok3d_not_running')
+  })
+
+  it('blame the SSH service when the printer refuses the SSH port', () => {
+    var refusedOnSshPort = "Error invoking remote method 'printer:reset-access': Error: connect ECONNREFUSED 192.168.178.192:22"
+
+    expect(knownFailureKey(refusedOnSshPort)).toBe('failure.ssh_refused')
+    expect(knownFailureKey('Error: connect ECONNREFUSED 192.168.178.192:2222')).toBeNull()
+  })
+
+  it('answer a printer the network cannot reach in user words', () => {
+    expect(knownFailureKey('Error: connect EHOSTUNREACH 192.168.178.192:4269')).toBe('failure.printer_unreachable')
+    expect(knownFailureKey('Error: connect ENETUNREACH 192.168.178.192:22 - Local (0.0.0.0:0)')).toBe('failure.no_network_to_printer')
+  })
+
+  it('answer a printer address that names nothing in user words', () => {
+    expect(knownFailureKey('Error: getaddrinfo ENOTFOUND u1.local')).toBe('failure.printer_address_not_found')
+  })
+
   it('leave any other failure in its raw words', () => {
     expect(knownFailureKey('Permission denied (publickey,password).')).toBeNull()
     expect(failureInUserWords('Permission denied (publickey,password).', bracketedKey)).toBe('Permission denied (publickey,password).')

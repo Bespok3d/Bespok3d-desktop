@@ -73,7 +73,6 @@ export function CredentialsForm({ printerId: _printerId, ip, adapterId, actionLa
       if (!info) return
       setUser(info.defaults.sshUser)
       setPort(info.defaults.sshPort)
-      setPassword(info.defaults.sshPasswordHint)
     })
   }
   useEffect(loadAdapterDefaults, [adapterId])

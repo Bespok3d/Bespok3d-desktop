@@ -18,6 +18,16 @@ const KNOWN_FAILURES: readonly KnownFailure[] = [
   { rawWords: /Timed out while waiting for handshake/, messageKey: 'failure.ssh_no_handshake' },
   // The operating system gave up opening a connection to the printer's address: nothing answered.
   { rawWords: /\bconnect ETIMEDOUT\b/, messageKey: 'failure.printer_no_answer' },
+  // The printer's address answered, but nothing listens on 4269, the Bespok3d daemon's port.
+  { rawWords: /\bconnect ECONNREFUSED \S*:4269\b/, messageKey: 'failure.bespok3d_not_running' },
+  // The printer's address answered, but nothing listens on 22, the SSH login's port.
+  { rawWords: /\bconnect ECONNREFUSED \S*:22\b/, messageKey: 'failure.ssh_refused' },
+  // The operating system has a network, but no device at the printer's address answers on it.
+  { rawWords: /\bconnect EHOSTUNREACH\b/, messageKey: 'failure.printer_unreachable' },
+  // The operating system has no network that leads to the printer's address at all.
+  { rawWords: /\bconnect ENETUNREACH\b/, messageKey: 'failure.no_network_to_printer' },
+  // A printer added by hand keeps whatever address was typed, and a name that resolves to nothing ends here.
+  { rawWords: /\bgetaddrinfo ENOTFOUND\b/, messageKey: 'failure.printer_address_not_found' },
 ]
 
 // The message key the app shows in place of the raw words, or null when the raw words are all there is.
