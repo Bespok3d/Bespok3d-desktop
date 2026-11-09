@@ -61,6 +61,10 @@ claiming publication.
 - Plugins stay connected after a reboot: enrolling and "Put it back" now switch on the screen's Advanced mode, which makes the printer keep its settings files at startup instead of restoring its own copies. Seeing Advanced mode on is expected.
 - Wi-Fi is kept after a firmware-update recovery: the step that keeps the printer's Wi-Fi across reboots now checks its work and stops with a clear message if it could not, instead of showing done.
 - Enrolling a printer on firmware 2.0 now also adds Bespok3d to the firmware's own saved copy of its settings, so plugins stay after a reboot. Thanks to olavgm.
+- A printer running the Extended firmware is now told why it does not need it: Bespok3d adds plugins to the printer you have, so there is no new firmware to flash.
+- The setup window can be closed after a step fails: Cancel and Close work again instead of leaving the window stuck.
+- Repairing, uninstalling, recovering after a firmware update, updating and deactivating Bespok3d on a printer now first check that root access is on, and show the same "Turn on root access first" window as setup when it is off, instead of a raw connection error.
+- After repairing the printer setup, the result says what was repaired instead of speaking of all plugins.
 
 ---
 
