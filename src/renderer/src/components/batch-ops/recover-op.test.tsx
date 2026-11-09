@@ -31,6 +31,11 @@ function refusalIsNotUnderTest() {
   return function ignoreRefusal() {}
 }
 
+const reactivateLeftOff = {
+  ok: false,
+  results: [{ pluginId: 'spoolman', ok: false, skipped: false, reason: 'spoolman switched off', log: [] }],
+}
+
 // The recovery, its restart and its wait, wired the way the app wires them, so what the test reads is
 // what the user would be looking at.
 function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Promise.resolve(true) }: {
@@ -43,6 +48,7 @@ function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Prom
   return (
     <>
       <button type="button" onClick={() => recoverOp.runRecover('printer-1')}>recover</button>
+      <button type="button" onClick={() => recoverOp.showPluginsLeftOff(reactivateLeftOff)}>reactivate left plugins off</button>
       {recoverOp.recovering && <p>putting the plugins back</p>}
       {recoverOp.printerRestarting && <p>the printer is restarting</p>}
       {recoverOp.recoveryResults && <p>the recovery report</p>}
@@ -220,5 +226,18 @@ describe('the check the reboot replaced', () => {
 
     await waitFor(() => expect(screen.getByText('restart: not-back')).toBeInTheDocument())
     expect(recoverAfterReboot).not.toHaveBeenCalled()
+  })
+})
+
+// A reactivate ends on its own success screen; the plugins it switched off are told in this report.
+describe('the plugins a reactivate left off', () => {
+  it('are shown in the report, with no restart to wait for', async () => {
+    const { user } = setup(<RecoverOpHarness restart={stillRestarting} waitForBack={neverAnswers} />)
+
+    await user.click(screen.getByRole('button', { name: 'reactivate left plugins off' }))
+
+    expect(screen.getByText('rows: spoolman switched off')).toBeInTheDocument()
+    expect(screen.getByText('restart: none')).toBeInTheDocument()
+    expect(screen.queryByText('the printer is restarting')).not.toBeInTheDocument()
   })
 })

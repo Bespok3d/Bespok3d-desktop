@@ -7,6 +7,7 @@ import type { AdapterInfo } from '../main/adapter-loader'
 import type { EnrollProgressEvent, SshCheckResult } from '../main/enrollment'
 import type { PrintStateEvent } from '../main/daemon-client/feeds/print-state'
 import type { CheckDaemonResult } from '../main/daemon-client/status'
+import type { BatchResult } from '../main/daemon-client/batch-result'
 
 export const printersApi = {
   load: (): Promise<PublicPrinterRecord[]> => ipcRenderer.invoke('printers:load'),
@@ -32,7 +33,8 @@ export const printersApi = {
   cancelOp: (printerId: string): Promise<void> => ipcRenderer.invoke('printers:cancelOp', printerId),
   deactivate: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
     ipcRenderer.invoke('printer:deactivate', printerId, ip, user, password, port),
-  reactivate: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
+  // Answers what re-applying the plugins did to each one, so a plugin left switched off can be reported.
+  reactivate: (printerId: string, ip: string, user: string, password: string, port: number): Promise<BatchResult> =>
     ipcRenderer.invoke('printer:reactivate', printerId, ip, user, password, port),
   uninstall: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
     ipcRenderer.invoke('printer:uninstall', printerId, ip, user, password, port),

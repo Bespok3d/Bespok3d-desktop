@@ -70,6 +70,26 @@ function reportWhenThePrinterIsBack(printerId: string, results: BatchResult, han
   }
 }
 
+// The report and the screen held up in front of it while the printer restarts.
+function useRecoveryReport() {
+  const [recoveryResults, setRecoveryResults] = useState<BatchResult | null>(null)
+  const [restartingAfterRecovery, setRestartingAfterRecovery] = useState<RecoveryRestart>('none')
+  const [printerRestarting, setPrinterRestarting] = useState(false)
+  function showReport(results: BatchResult) {
+    setPrinterRestarting(false)
+    setRecoveryResults(results)
+  }
+  // Restarting the plugins (reactivate) switches off each one the printer could not put back and still
+  // ends on its own success screen, so this report is the one place the user is told which. Nothing
+  // restarts the printer after it here.
+  function showPluginsLeftOff(reapplied: BatchResult) {
+    setRestartingAfterRecovery('none')
+    showReport(reapplied)
+  }
+
+  return { recoveryResults, setRecoveryResults, restartingAfterRecovery, setRestartingAfterRecovery, printerRestarting, setPrinterRestarting, showReport, showPluginsLeftOff }
+}
+
 // Recovery, the one batch operation that ends by restarting the printer: putting every plugin back
 // leaves services restarted one after another, and the touchscreen is known to come back dead from
 // that, so the printer is restarted every time rather than only when something says it must be.
@@ -88,33 +108,32 @@ export function useRecoverOp(
   restartSecondsOf: (printerId: string) => Promise<number | null>,
   appRestartsItself: (printerId: string) => Promise<boolean>,
 ) {
-  const [recoveryResults, setRecoveryResults] = useState<BatchResult | null>(null)
+  const report = useRecoveryReport()
   const [recovering, setRecovering] = useState(false)
-  const [restartingAfterRecovery, setRestartingAfterRecovery] = useState<RecoveryRestart>('none')
-  const [printerRestarting, setPrinterRestarting] = useState(false)
   const [restartSeconds, setRestartSeconds] = useState<number | null>(null)
-  function showReport(results: BatchResult) {
-    setPrinterRestarting(false)
-    setRecoveryResults(results)
+  const handlers = { waitForPrinterBack, setRestartingAfterRecovery: report.setRestartingAfterRecovery, showReport: report.showReport }
+  function restartThenReport(printerId: string, results: BatchResult) {
+    setRecovering(false)
+    report.setPrinterRestarting(true)
+
+    return restartAfterReapply(printerId).then(reportWhenThePrinterIsBack(printerId, results, handlers))
   }
   function runRecover(printerId: string) {
     setRecovering(true)
     restartSecondsOf(printerId).then(setRestartSeconds)
-    setRestartingAfterRecovery('none')
-    setPrinterRestarting(false)
+    report.setRestartingAfterRecovery('none')
+    report.setPrinterRestarting(false)
     appRestartsItself(printerId)
       .then((rebootFollows) => window.b3d.store.recover(printerId, rebootFollows))
-      .then((results) => {
-        setRecovering(false)
-        setPrinterRestarting(true)
-
-        return restartAfterReapply(printerId).then(reportWhenThePrinterIsBack(printerId, results, { waitForPrinterBack, setRestartingAfterRecovery, showReport }))
-      })
+      .then((results) => restartThenReport(printerId, results))
       .catch(recoveryDidNotRun(printerId, function clearBothWaits(busy: boolean) {
         setRecovering(busy)
-        setPrinterRestarting(busy)
+        report.setPrinterRestarting(busy)
       }))
   }
 
-  return { recoveryResults, setRecoveryResults, recovering, restartingAfterRecovery, printerRestarting, restartSeconds, runRecover }
+  return {
+    recoveryResults: report.recoveryResults, setRecoveryResults: report.setRecoveryResults, recovering, restartingAfterRecovery: report.restartingAfterRecovery,
+    printerRestarting: report.printerRestarting, restartSeconds, runRecover, showPluginsLeftOff: report.showPluginsLeftOff,
+  }
 }

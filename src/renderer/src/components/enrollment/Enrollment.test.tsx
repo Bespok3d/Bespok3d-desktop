@@ -368,6 +368,41 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
   })
 })
 
+// Restarting the plugins switches off each one the printer could not put back, and the op still ends
+// on its own success screen, so the app has to be told which ones were left off.
+describe('Enrollment tells the app which plugins a reactivate left off', () => {
+  const putBack = { pluginId: 'example-camera', ok: true, skipped: false, reason: 'back on', log: [] }
+  const leftOff = { pluginId: 'example-spoolman', ok: false, skipped: false, reason: 'switched off: its service did not start', log: [] }
+
+  async function reactivateAnswering(reapplied: { ok: boolean, results: Array<typeof putBack> }) {
+    var onPluginsLeftOff = vi.fn()
+    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+    var rendered = setup(
+      <Enrollment printer={printer} mode="reactivate" onEnrolled={vi.fn()} onClose={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} onPluginsLeftOff={onPluginsLeftOff} />,
+      { b3d: { printers: { reactivate: vi.fn().mockResolvedValue(reapplied) } } },
+    )
+    await rendered.user.click(screen.getByRole('button', { name: 'Reactivate' }))
+    await waitFor(() => expect(rendered.b3d.printers.reactivate).toHaveBeenCalled())
+    await letPendingWorkSettle()
+
+    return onPluginsLeftOff
+  }
+
+  it('names the plugins the printer could not put back', async () => {
+    var reapplied = { ok: false, results: [putBack, leftOff] }
+
+    var onPluginsLeftOff = await reactivateAnswering(reapplied)
+
+    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('says nothing when every plugin went back on', async () => {
+    var onPluginsLeftOff = await reactivateAnswering({ ok: true, results: [putBack] })
+
+    expect(onPluginsLeftOff).not.toHaveBeenCalled()
+  })
+})
+
 describe('Enrollment cancel', () => {
   it('stops the work on the printer instead of throwing the user back to the start', async () => {
     var { user, emit, b3d } = renderEnroll('recovery')

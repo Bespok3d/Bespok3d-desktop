@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { mainProcessMessage } from '../utils/errorMessage'
 import type { Printer } from '../data/types'
+import type { BatchResult } from '../../../main/daemon-client/batch-result'
 
 export interface SshCredentials {
   user: string
@@ -60,9 +61,17 @@ function nextEnrollPhase(status: EnrollProgressEvent['status'], isLastStep: bool
   return 'enrolling'
 }
 
+// Putting the plugins back switches off each one the printer could not put back, and the op still
+// succeeds, so its own success screen cannot be the only word on it.
+function tellOfPluginsLeftOff(onPluginsLeftOff?: (reapplied: BatchResult) => void) {
+  return function reportAnyLeftOff(reapplied: BatchResult): void {
+    if (onPluginsLeftOff && reapplied.results.some((row) => !row.ok)) onPluginsLeftOff(reapplied)
+  }
+}
+
 // Every lifecycle op the app runs over SSH takes the same arguments and reports on the same progress
 // feed, so they are all the one shape: name the op, get the starter that runs it on this printer.
-function sshLifecycleStarters(printer: Printer, startOp: (invoke: () => Promise<void>) => void, forced: boolean) {
+function sshLifecycleStarters(printer: Printer, startOp: (invoke: () => Promise<void>) => void, forced: boolean, onPluginsLeftOff?: (reapplied: BatchResult) => void) {
   const printers = window.b3d.printers
   function starterFor(op: SshLifecycleOp): (creds: SshCredentials) => void {
     return (creds) => startOp(() => op(printer.id, printer.ip, creds.user, creds.password, creds.port))
@@ -70,7 +79,7 @@ function sshLifecycleStarters(printer: Printer, startOp: (invoke: () => Promise<
 
   return {
     startDeactivate: starterFor(printers.deactivate),
-    startReactivate: starterFor(printers.reactivate),
+    startReactivate: (creds: SshCredentials) => startOp(() => printers.reactivate(printer.id, printer.ip, creds.user, creds.password, creds.port).then(tellOfPluginsLeftOff(onPluginsLeftOff))),
     startUninstall: starterFor(printers.uninstall),
     startReboot: starterFor(printers.reboot),
     // Repair is the one op on this list the Force menu launches, so it is the one that carries the flag.
@@ -89,7 +98,8 @@ function afterOpFailure(previous: EnrollState, error: unknown): EnrollState {
 
 // forced: the user launched this from the Force menu, which waives the check that refuses to put a
 // printer back onto an older daemon than it is running. It never waives the running-print refusal.
-export function useEnrollment(printer: Printer, forced = false) {
+// onPluginsLeftOff: told which plugins restarting them could not put back, and so switched off.
+export function useEnrollment(printer: Printer, forced = false, onPluginsLeftOff?: (reapplied: BatchResult) => void) {
   const [state, setState] = useState<EnrollState>({ phase: 'credentials', latestEvent: null })
 
   useEffect(() => {
@@ -137,5 +147,5 @@ export function useEnrollment(printer: Printer, forced = false) {
     printers.cancelOp(printer.id).catch((error) => console.error('[enroll] cancel IPC failed', error))
   }
 
-  return { state, startEnrollment, retryFrom, reset, cancelOp, failStart, ...sshLifecycleStarters(printer, startOp, forced) }
+  return { state, startEnrollment, retryFrom, reset, cancelOp, failStart, ...sshLifecycleStarters(printer, startOp, forced, onPluginsLeftOff) }
 }

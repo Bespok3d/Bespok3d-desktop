@@ -16,6 +16,7 @@ import { waitForDaemon, tailDaemonLog } from './daemon-log'
 import { getManagedRecord, recordOrThrow } from '../daemon-client/status'
 import { deactivateAll, teardownDaemon, recoverPackages } from '../daemon-client/client'
 import { watchInstallProgress } from '../daemon-client/feeds/install-progress'
+import type { BatchResult } from '../daemon-client/batch-result'
 import { runRepair, runUpdateDaemon, runUpdateJinni } from './daemon-ops'
 import { waitForThePrinterToComeBack } from './reboot-wait'
 
@@ -51,12 +52,16 @@ async function reactivateBootHook(ssh: SshSession): Promise<void> {
 
 // The printer's live feed stays open for the whole recovery: it is how the request knows the printer
 // is still at work, and keeps waiting through a long safety net instead of reporting a failure.
-async function reapplyPlugins(record: PrinterRecord): Promise<void> {
+async function reapplyPlugins(record: PrinterRecord): Promise<BatchResult> {
   const closeProgress = await watchInstallProgress(record, () => {})
-  await recoverPackages(record).finally(closeProgress)
+
+  return recoverPackages(record).finally(closeProgress)
 }
 
-async function runReactivate(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
+// Answers what re-applying the plugins did to each one. A plugin the printer could not put back is
+// switched off, and the step itself still passes, so this answer is the only place the user learns of it.
+async function runReactivate(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<BatchResult> {
+  var reapplied: BatchResult = { ok: true, results: [] }
   const record = recordOrThrow(printerId)
   const adapter = getAdapter(record.adapter)
   const bespok3d = bespok3dRootOn(adapter)
@@ -67,9 +72,11 @@ async function runReactivate(win: BrowserWindow, printerId: string, ip: string, 
     { id: 'restore-boot-hook', label: 'Restoring boot hook', detail: 'Re-patches S90lmd to invoke S99bespok3d at boot', run: () => reactivateBootHook(ssh) },
     { id: 'start-daemon', label: 'Starting the daemon', detail: 'Starts the bespok3d daemon process', run: async () => { await ssh.exec(`${bespok3d}/etc/init.d/autostart/s10bespok3d-daemon start`) } },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => tailDaemonLog(ssh, `${bespok3d}/var/log/daemon.log`)) },
-    { id: 're-apply-plugins', label: 'Re-applying plugins', detail: 'Rebuilds plugin links and dependencies, then restarts services once', run: () => reapplyPlugins(record) },
+    { id: 're-apply-plugins', label: 'Re-applying plugins', detail: 'Rebuilds plugin links and dependencies, then restarts services once', run: async () => { reapplied = await reapplyPlugins(record) } },
   ])
   updatePrinter(printerId, { deactivated: false, status: 'managed', deactivatedAt: undefined })
+
+  return reapplied
 }
 
 // The SSH-side reversal of enrollment for a clean removal. Kept as one named, testable string because a

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState, useEffect, useRef } from 'react'
 import type { Printer } from '../../data/types'
+import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 import { useEnrollment } from '../../hooks/enrollment'
 import type { SshCredentials, EnrollState } from '../../hooks/enrollment'
 import { useI18n } from '../../i18n/context'
@@ -48,6 +49,8 @@ interface EnrollmentProps {
   onExpectedRestart?: (printerId: string) => void
   // The op is done and saved, but the window stays up on the printer's reboot: show the app the printer as it now is.
   onOpRecorded?: (updated: Printer) => void
+  // Restarting the plugins switched off the ones the printer could not put back: show which.
+  onPluginsLeftOff?: (reapplied: BatchResult) => void
 }
 
 const DAEMON_RESTART_MODES: ReadonlySet<EnrollMode> = new Set<EnrollMode>(['update-daemon', 'update-jinni', 'repair', 'reactivate', 'recovery', 'enroll', 'reboot'])
@@ -242,8 +245,8 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
   )
 }
 
-export function Enrollment({ printer, mode, fromAdd = false, forced = false, onEnrolled, onClose, onEscalateRecovery, onRebuildPrinter, onExpectedRestart, onOpRecorded }: EnrollmentProps) {
-  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp, failStart } = useEnrollment(printer, forced)
+export function Enrollment({ printer, mode, fromAdd = false, forced = false, onEnrolled, onClose, onEscalateRecovery, onRebuildPrinter, onExpectedRestart, onOpRecorded, onPluginsLeftOff }: EnrollmentProps) {
+  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp, failStart } = useEnrollment(printer, forced, onPluginsLeftOff)
   const [credentials, setCredentials] = useState<SshCredentials>({ user: '', password: '', port: 22 })
   const [adapterInfo, setAdapterInfo] = useState<AdapterInfo | null>(null)
   const autoStarted = useRef(false)

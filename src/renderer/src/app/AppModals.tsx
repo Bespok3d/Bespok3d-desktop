@@ -70,6 +70,7 @@ export function AppModals({ actions, discovered, existingPrinters, onOpenPlugin 
           forced={enrollModal.forced}
           onEnrolled={actions.handleEnrolled}
           onOpRecorded={actions.handleOpRecorded}
+          onPluginsLeftOff={actions.showPluginsLeftOff}
           onClose={() => actions.setEnrollModal(null)}
           onEscalateRecovery={() => actions.handleRecoverPrinter(enrollModal.printer.id, enrollModal.forced)} onRebuildPrinter={() => actions.handleEnrollPrinter(enrollModal.printer.id, true)}
           onExpectedRestart={(printerId) => actions.markExpectedRestart(printerId, EXPECTED_RESTART_GRACE_MS)}

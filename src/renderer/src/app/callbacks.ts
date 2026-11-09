@@ -140,6 +140,7 @@ function batchOpHandles(batchOps: BatchOps) {
     installBatchResult: batchOps.installBatchResult, setInstallBatchResult: batchOps.setInstallBatchResult, installingBatch: batchOps.installingBatch, installBatchVariant: batchOps.installBatchVariant, batchProgress: batchOps.batchProgress, uninstallBatchResult: batchOps.uninstallBatchResult, setUninstallBatchResult: batchOps.setUninstallBatchResult, uninstallingBatch: batchOps.uninstallingBatch, handleUninstallBatch: batchOps.runUninstallBatch,
     batchFailure: batchOps.batchFailure, dismissBatchFailure: batchOps.dismissBatchFailure,
     handleRecoverDrift: batchOps.runRecover,
+    showPluginsLeftOff: batchOps.showPluginsLeftOff,
     handleUpdateAll: batchOps.askUpdateAll,
     pendingUpdate: batchOps.pendingUpdate, confirmUpdateAll: batchOps.confirmUpdateAll, cancelUpdateAll: batchOps.cancelUpdateAll,
     handleInstallBatch: batchOps.runInstallBatch,
