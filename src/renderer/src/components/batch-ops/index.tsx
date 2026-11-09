@@ -200,7 +200,7 @@ export function useBatchOps(
     updateAllResult, setUpdateAllResult, updatingAll, runUpdateAll, ...updateConfirm,
     installBatchResult, setInstallBatchResult, installingBatch, runInstallBatch, installBatchVariant,
     uninstallBatchResult, setUninstallBatchResult, uninstallingBatch, runUninstallBatch,
-    batchProgress, runRecover, runMigrateBatch, showPluginsLeftOff: recoverOp.showPluginsLeftOff,
+    batchProgress, runRecover, runMigrateBatch, showPluginsLeftOff: recoverOp.showPluginsLeftOff, checkAfterTheirRestart: recoverOp.checkAfterTheirRestart,
     batchFailure, dismissBatchFailure: () => setBatchFailure(null),
   }
 }

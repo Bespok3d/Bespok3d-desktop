@@ -30,6 +30,7 @@ interface PrinterActionDeps {
   enrollForced: boolean | undefined
   markExpectedRestart: (id: string, durationMs: number) => void
   runRecover: (id: string) => void
+  checkAfterTheirRestart: (id: string) => void
 }
 
 // Recovery and repair leave a working daemon with the plugins still to put back, so the app re-applies
@@ -54,8 +55,9 @@ function showThePrinter(updatedPrinter: Printer, setPrinters: SetPrinters) {
 }
 
 // Persist the just-enrolled printer and follow up per mode: uninstall removes it, the restart-bearing
-// modes mark an expected-restart window, and the modes that left the plugins off kick off a recover.
-function applyEnrolledOutcome(updatedPrinter: Printer, mode: EnrollMode | undefined, deps: PrinterActionDeps) {
+// modes mark an expected-restart window, the modes that left the plugins off kick off a recover, and a
+// restart the user made runs the check a recover left to it.
+export function applyEnrolledOutcome(updatedPrinter: Printer, mode: EnrollMode | undefined, deps: PrinterActionDeps) {
   if (mode === 'uninstall') {
     deps.removePrinter(updatedPrinter.id)
 
@@ -66,6 +68,7 @@ function applyEnrolledOutcome(updatedPrinter: Printer, mode: EnrollMode | undefi
   if (mode && isDaemonRestartMode(mode)) deps.markExpectedRestart(updatedPrinter.id, POST_OPERATION_GRACE_MS)
   pingAndUpdate(updatedPrinter, deps.setPrinters)
   if (leavesThePluginsToPutBack(mode, deps.enrollForced)) deps.runRecover(updatedPrinter.id)
+  if (mode === 'reboot') deps.checkAfterTheirRestart(updatedPrinter.id)
 }
 
 // The printer-lifecycle handlers (add / access-granted / enrolled / rescan / enroll). Built from the
@@ -199,6 +202,7 @@ export function useAppCallbacks(
   const actions = buildPrinterActions({
     printers, setPrinters, setSelectedId, setDiscovered, setAddPrinterModal, setEnrollModal,
     removePrinter, enrollGate, enrollMode: enrollModal?.mode, enrollForced: enrollModal?.forced, markExpectedRestart, runRecover: batchOps.runRecover,
+    checkAfterTheirRestart: batchOps.checkAfterTheirRestart,
   })
 
   return {

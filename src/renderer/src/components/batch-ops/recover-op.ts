@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { PluginRecoveryResult } from '@bespok3d/contract'
 import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 
@@ -90,6 +90,35 @@ function useRecoveryReport() {
   return { recoveryResults, setRecoveryResults, restartingAfterRecovery, setRestartingAfterRecovery, printerRestarting, setPrinterRestarting, showReport, showPluginsLeftOff }
 }
 
+interface CheckLeftToTheirRestart {
+  printerId: string
+  results: BatchResult
+}
+
+// When the app could not restart the printer itself, the user restarts it from the window it opens
+// instead, and only the app ever asks the printer for the check the recover left to that restart. It
+// is kept here until that restart is done, or a plugin that breaks the printer once it is back would be
+// neither taken off nor reported. A new recover replaces it, as it does on the printer.
+function useCheckLeftToTheirRestart(handlers: RecoveryReportHandlers, report: ReturnType<typeof useRecoveryReport>) {
+  const checkLeft = useRef<CheckLeftToTheirRestart | null>(null)
+  function keepForTheirRestart(printerId: string, results: BatchResult, restarting: boolean) {
+    checkLeft.current = !restarting && results.results.some(leftItsCheckToTheReboot) ? { printerId, results } : null
+  }
+  function forgetTheCheckLeft() {
+    checkLeft.current = null
+  }
+  function checkAfterTheirRestart(printerId: string) {
+    const left = checkLeft.current
+    if (!left || left.printerId !== printerId) return
+    checkLeft.current = null
+    report.setRecoveryResults(null)
+    report.setPrinterRestarting(true)
+    reportWhenThePrinterIsBack(printerId, left.results, handlers)(true)
+  }
+
+  return { keepForTheirRestart, forgetTheCheckLeft, checkAfterTheirRestart }
+}
+
 // Recovery, the one batch operation that ends by restarting the printer: putting every plugin back
 // leaves services restarted one after another, and the touchscreen is known to come back dead from
 // that, so the printer is restarted every time rather than only when something says it must be.
@@ -112,17 +141,23 @@ export function useRecoverOp(
   const [recovering, setRecovering] = useState(false)
   const [restartSeconds, setRestartSeconds] = useState<number | null>(null)
   const handlers = { waitForPrinterBack, setRestartingAfterRecovery: report.setRestartingAfterRecovery, showReport: report.showReport }
+  const theirRestart = useCheckLeftToTheirRestart(handlers, report)
   function restartThenReport(printerId: string, results: BatchResult) {
     setRecovering(false)
     report.setPrinterRestarting(true)
 
-    return restartAfterReapply(printerId).then(reportWhenThePrinterIsBack(printerId, results, handlers))
+    return restartAfterReapply(printerId).then(function reportAfterTheRestart(restarting) {
+      theirRestart.keepForTheirRestart(printerId, results, restarting)
+
+      return reportWhenThePrinterIsBack(printerId, results, handlers)(restarting)
+    })
   }
   function runRecover(printerId: string) {
     setRecovering(true)
     restartSecondsOf(printerId).then(setRestartSeconds)
     report.setRestartingAfterRecovery('none')
     report.setPrinterRestarting(false)
+    theirRestart.forgetTheCheckLeft()
     appRestartsItself(printerId)
       .then((rebootFollows) => window.b3d.store.recover(printerId, rebootFollows))
       .then((results) => restartThenReport(printerId, results))
@@ -134,6 +169,6 @@ export function useRecoverOp(
 
   return {
     recoveryResults: report.recoveryResults, setRecoveryResults: report.setRecoveryResults, recovering, restartingAfterRecovery: report.restartingAfterRecovery,
-    printerRestarting: report.printerRestarting, restartSeconds, runRecover, showPluginsLeftOff: report.showPluginsLeftOff,
+    printerRestarting: report.printerRestarting, restartSeconds, runRecover, showPluginsLeftOff: report.showPluginsLeftOff, checkAfterTheirRestart: theirRestart.checkAfterTheirRestart,
   }
 }

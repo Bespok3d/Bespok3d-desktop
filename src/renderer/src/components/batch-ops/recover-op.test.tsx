@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { useRecoverOp } from './recover-op'
 
@@ -24,6 +24,11 @@ function waitRanOut() {
 // which is minutes. Everything the user is meant to be looking at has to hold for that whole time.
 function stillRestarting() {
   return new Promise<boolean>(() => {})
+}
+
+// Lets a check that should not run have every chance to, before the test says it did not.
+async function letPendingWorkSettle(): Promise<void> {
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 }
 
 // No refusal is under test here; the printer takes the recovery every time.
@@ -49,6 +54,8 @@ function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Prom
     <>
       <button type="button" onClick={() => recoverOp.runRecover('printer-1')}>recover</button>
       <button type="button" onClick={() => recoverOp.showPluginsLeftOff(reactivateLeftOff)}>reactivate left plugins off</button>
+      <button type="button" onClick={() => recoverOp.checkAfterTheirRestart('printer-1')}>they restarted the printer</button>
+      <button type="button" onClick={() => recoverOp.checkAfterTheirRestart('printer-2')}>they restarted another printer</button>
       {recoverOp.recovering && <p>putting the plugins back</p>}
       {recoverOp.printerRestarting && <p>the printer is restarting</p>}
       {recoverOp.recoveryResults && <p>the recovery report</p>}
@@ -239,5 +246,95 @@ describe('the plugins a reactivate left off', () => {
     expect(screen.getByText('rows: spoolman switched off')).toBeInTheDocument()
     expect(screen.getByText('restart: none')).toBeInTheDocument()
     expect(screen.queryByText('the printer is restarting')).not.toBeInTheDocument()
+  })
+})
+
+// The app's own restart failed, so the restart window asked the user to make it instead. The check the
+// recover left to the reboot runs once that restart is done, or a plugin that breaks the printer once it
+// is back is neither taken off nor reported.
+describe('the check left to the restart the user makes', () => {
+  it('runs once they have restarted the printer, and its row takes the place of the one saying the reboot replaced the restart', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockResolvedValue({ ok: false, results: [takenOffAfterTheReboot] })
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+    await waitFor(() => expect(screen.getByText('restart: none')).toBeInTheDocument())
+    expect(recoverAfterReboot).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
+
+    await waitFor(() => expect(screen.getByText('rows: camera back, spoolman taken off')).toBeInTheDocument())
+    expect(recoverAfterReboot).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('restart: restarted')).toBeInTheDocument()
+  })
+
+  it('runs only once, however many times the printer is restarted after', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+    await waitFor(() => expect(screen.getByText('restart: none')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
+    await waitFor(() => expect(screen.getByText('restart: restarted')).toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
+    await letPendingWorkSettle()
+
+    expect(recoverAfterReboot).toHaveBeenCalledTimes(1)
+  })
+
+  it('is not run for a restart of another printer', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn()
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+    await waitFor(() => expect(screen.getByText('restart: none')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'they restarted another printer' }))
+    await letPendingWorkSettle()
+
+    expect(recoverAfterReboot).not.toHaveBeenCalled()
+    expect(screen.getByText('restart: none')).toBeInTheDocument()
+  })
+
+  it('is not run when the recover left nothing to the reboot', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack] })
+    const recoverAfterReboot = vi.fn()
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+    await waitFor(() => expect(screen.getByText('restart: none')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
+    await letPendingWorkSettle()
+
+    expect(recoverAfterReboot).not.toHaveBeenCalled()
+  })
+
+  it('is not run after the app made the restart itself, which already ran it', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(true)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+    await waitFor(() => expect(screen.getByText('restart: restarted')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
+    await letPendingWorkSettle()
+
+    expect(recoverAfterReboot).toHaveBeenCalledTimes(1)
   })
 })
