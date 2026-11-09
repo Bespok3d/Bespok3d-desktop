@@ -90,30 +90,26 @@ function useRecoveryReport() {
   return { recoveryResults, setRecoveryResults, restartingAfterRecovery, setRestartingAfterRecovery, printerRestarting, setPrinterRestarting, showReport, showPluginsLeftOff }
 }
 
-interface CheckLeftToTheirRestart {
-  printerId: string
-  results: BatchResult
-}
-
 // When the app could not restart the printer itself, the user restarts it from the window it opens
 // instead, and only the app ever asks the printer for the check the recover left to that restart. It
-// is kept here until that restart is done, or a plugin that breaks the printer once it is back would be
-// neither taken off nor reported. A new recover replaces it, as it does on the printer.
+// is kept here, per printer, until that restart is done, or a plugin that breaks the printer once it is
+// back would be neither taken off nor reported. A new recover of that printer replaces it, as it does
+// on the printer.
 function useCheckLeftToTheirRestart(handlers: RecoveryReportHandlers, report: ReturnType<typeof useRecoveryReport>) {
-  const checkLeft = useRef<CheckLeftToTheirRestart | null>(null)
+  const checksLeft = useRef(new Map<string, BatchResult>())
   function keepForTheirRestart(printerId: string, results: BatchResult, restarting: boolean) {
-    checkLeft.current = !restarting && results.results.some(leftItsCheckToTheReboot) ? { printerId, results } : null
+    if (!restarting && results.results.some(leftItsCheckToTheReboot)) checksLeft.current.set(printerId, results)
   }
-  function forgetTheCheckLeft() {
-    checkLeft.current = null
+  function forgetTheCheckLeft(printerId: string) {
+    checksLeft.current.delete(printerId)
   }
   function checkAfterTheirRestart(printerId: string) {
-    const left = checkLeft.current
-    if (!left || left.printerId !== printerId) return
-    checkLeft.current = null
+    const left = checksLeft.current.get(printerId)
+    if (!left) return
+    checksLeft.current.delete(printerId)
     report.setRecoveryResults(null)
     report.setPrinterRestarting(true)
-    reportWhenThePrinterIsBack(printerId, left.results, handlers)(true)
+    reportWhenThePrinterIsBack(printerId, left, handlers)(true)
   }
 
   return { keepForTheirRestart, forgetTheCheckLeft, checkAfterTheirRestart }
@@ -157,7 +153,7 @@ export function useRecoverOp(
     restartSecondsOf(printerId).then(setRestartSeconds)
     report.setRestartingAfterRecovery('none')
     report.setPrinterRestarting(false)
-    theirRestart.forgetTheCheckLeft()
+    theirRestart.forgetTheCheckLeft(printerId)
     appRestartsItself(printerId)
       .then((rebootFollows) => window.b3d.store.recover(printerId, rebootFollows))
       .then((results) => restartThenReport(printerId, results))

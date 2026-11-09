@@ -53,6 +53,7 @@ function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Prom
   return (
     <>
       <button type="button" onClick={() => recoverOp.runRecover('printer-1')}>recover</button>
+      <button type="button" onClick={() => recoverOp.runRecover('printer-2')}>recover another printer</button>
       <button type="button" onClick={() => recoverOp.showPluginsLeftOff(reactivateLeftOff)}>reactivate left plugins off</button>
       <button type="button" onClick={() => recoverOp.checkAfterTheirRestart('printer-1')}>they restarted the printer</button>
       <button type="button" onClick={() => recoverOp.checkAfterTheirRestart('printer-2')}>they restarted another printer</button>
@@ -336,5 +337,26 @@ describe('the check left to the restart the user makes', () => {
     await letPendingWorkSettle()
 
     expect(recoverAfterReboot).toHaveBeenCalledTimes(1)
+  })
+})
+
+// Each printer keeps its own check: the user can recover a second printer before restarting the first.
+describe('the check left to the restart the user makes, with more than one printer', () => {
+  it('still runs after another printer was recovered meanwhile', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', true))
+    await user.click(screen.getByRole('button', { name: 'recover another printer' }))
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-2', true))
+    await letPendingWorkSettle()
+
+    await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
+
+    await waitFor(() => expect(recoverAfterReboot).toHaveBeenCalledWith('printer-1'))
   })
 })
