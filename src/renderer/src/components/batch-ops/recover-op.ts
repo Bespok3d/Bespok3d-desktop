@@ -90,29 +90,46 @@ function useRecoveryReport() {
   return { recoveryResults, setRecoveryResults, restartingAfterRecovery, setRestartingAfterRecovery, printerRestarting, setPrinterRestarting, showReport, showPluginsLeftOff }
 }
 
+type ChecksLeftByPrinter = ReadonlyMap<string, BatchResult>
+
+function withoutThePrinter(checksLeft: ChecksLeftByPrinter, printerId: string): ChecksLeftByPrinter {
+  return new Map([...checksLeft].filter(([checkedPrinterId]) => checkedPrinterId !== printerId))
+}
+
 // When the app could not restart the printer itself, the user restarts it from the window it opens
 // instead, and only the app ever asks the printer for the check the recover left to that restart. It
 // is kept here, per printer, until that restart is done, or a plugin that breaks the printer once it is
 // back would be neither taken off nor reported. A new recover of that printer replaces it, as it does
-// on the printer.
-function useCheckLeftToTheirRestart(handlers: RecoveryReportHandlers, report: ReturnType<typeof useRecoveryReport>) {
-  const checksLeft = useRef(new Map<string, BatchResult>())
+// on the printer. The restart bar is that printer's own length, whichever printer was recovered last.
+function useCheckLeftToTheirRestart(handlers: RecoveryReportHandlers, report: ReturnType<typeof useRecoveryReport>, readRestartSeconds: (printerId: string) => void) {
+  const checksLeft = useRef<ChecksLeftByPrinter>(new Map())
   function keepForTheirRestart(printerId: string, results: BatchResult, restarting: boolean) {
-    if (!restarting && results.results.some(leftItsCheckToTheReboot)) checksLeft.current.set(printerId, results)
+    if (!restarting && results.results.some(leftItsCheckToTheReboot)) checksLeft.current = new Map(checksLeft.current).set(printerId, results)
   }
   function forgetTheCheckLeft(printerId: string) {
-    checksLeft.current.delete(printerId)
+    checksLeft.current = withoutThePrinter(checksLeft.current, printerId)
   }
   function checkAfterTheirRestart(printerId: string) {
     const left = checksLeft.current.get(printerId)
     if (!left) return
-    checksLeft.current.delete(printerId)
+    forgetTheCheckLeft(printerId)
+    readRestartSeconds(printerId)
     report.setRecoveryResults(null)
     report.setPrinterRestarting(true)
     reportWhenThePrinterIsBack(printerId, left, handlers)(true)
   }
 
   return { keepForTheirRestart, forgetTheCheckLeft, checkAfterTheirRestart }
+}
+
+// The restart bar's length, read from the printer being restarted.
+function useRestartSeconds(restartSecondsOf: (printerId: string) => Promise<number | null>) {
+  const [restartSeconds, setRestartSeconds] = useState<number | null>(null)
+  function readRestartSeconds(printerId: string) {
+    restartSecondsOf(printerId).then(setRestartSeconds)
+  }
+
+  return { restartSeconds, readRestartSeconds }
 }
 
 // Recovery, the one batch operation that ends by restarting the printer: putting every plugin back
@@ -135,9 +152,9 @@ export function useRecoverOp(
 ) {
   const report = useRecoveryReport()
   const [recovering, setRecovering] = useState(false)
-  const [restartSeconds, setRestartSeconds] = useState<number | null>(null)
+  const { restartSeconds, readRestartSeconds } = useRestartSeconds(restartSecondsOf)
   const handlers = { waitForPrinterBack, setRestartingAfterRecovery: report.setRestartingAfterRecovery, showReport: report.showReport }
-  const theirRestart = useCheckLeftToTheirRestart(handlers, report)
+  const theirRestart = useCheckLeftToTheirRestart(handlers, report, readRestartSeconds)
   function restartThenReport(printerId: string, results: BatchResult) {
     setRecovering(false)
     report.setPrinterRestarting(true)
@@ -150,7 +167,7 @@ export function useRecoverOp(
   }
   function runRecover(printerId: string) {
     setRecovering(true)
-    restartSecondsOf(printerId).then(setRestartSeconds)
+    readRestartSeconds(printerId)
     report.setRestartingAfterRecovery('none')
     report.setPrinterRestarting(false)
     theirRestart.forgetTheCheckLeft(printerId)

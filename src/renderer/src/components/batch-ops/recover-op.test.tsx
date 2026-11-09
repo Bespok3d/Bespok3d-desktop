@@ -43,12 +43,13 @@ const reactivateLeftOff = {
 
 // The recovery, its restart and its wait, wired the way the app wires them, so what the test reads is
 // what the user would be looking at.
-function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Promise.resolve(true) }: {
+function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Promise.resolve(true), restartSecondsOf = () => Promise.resolve(42) }: {
   restart: () => Promise<boolean>
   waitForBack: () => Promise<boolean>
   appRestartsItself?: () => Promise<boolean>
+  restartSecondsOf?: (printerId: string) => Promise<number | null>
 }) {
-  const recoverOp = useRecoverOp(restart, refusalIsNotUnderTest, waitForBack, () => Promise.resolve(42), appRestartsItself)
+  const recoverOp = useRecoverOp(restart, refusalIsNotUnderTest, waitForBack, restartSecondsOf, appRestartsItself)
 
   return (
     <>
@@ -59,6 +60,7 @@ function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Prom
       <button type="button" onClick={() => recoverOp.checkAfterTheirRestart('printer-2')}>they restarted another printer</button>
       {recoverOp.recovering && <p>putting the plugins back</p>}
       {recoverOp.printerRestarting && <p>the printer is restarting</p>}
+      {recoverOp.printerRestarting && <p>restart seconds: {String(recoverOp.restartSeconds)}</p>}
       {recoverOp.recoveryResults && <p>the recovery report</p>}
       {recoverOp.recoveryResults && <p>restart: {recoverOp.restartingAfterRecovery}</p>}
       {recoverOp.recoveryResults && <p>rows: {recoverOp.recoveryResults.results.map((row) => row.reason).join(', ')}</p>}
@@ -356,7 +358,28 @@ describe('the check left to the restart the user makes, with more than one print
     await letPendingWorkSettle()
 
     await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
-
     await waitFor(() => expect(recoverAfterReboot).toHaveBeenCalledWith('printer-1'))
+    await user.click(screen.getByRole('button', { name: 'they restarted another printer' }))
+
+    await waitFor(() => expect(recoverAfterReboot).toHaveBeenCalledWith('printer-2'))
+    expect(recoverAfterReboot).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows the restart length of the printer the user restarted, not of the one recovered last', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const restartLengths: Record<string, number> = { 'printer-1': 42, 'printer-2': 90 }
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={neverAnswers} restartSecondsOf={(printerId) => Promise.resolve(restartLengths[printerId])} />,
+      { b3d: { store: { recover, recoverAfterReboot: vi.fn() } } },
+    )
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', true))
+    await user.click(screen.getByRole('button', { name: 'recover another printer' }))
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-2', true))
+    await letPendingWorkSettle()
+
+    await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
+
+    await waitFor(() => expect(screen.getByText('restart seconds: 42')).toBeInTheDocument())
   })
 })
