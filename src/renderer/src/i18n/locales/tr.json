@@ -367,7 +367,7 @@
   "recovery_results.files_changed_detail": "Kurulu başka bir eklenti ya da doğrudan yazıcıda yapılan bir değişiklik bunları düzenlemiş olabilir. Kendi dosyalarını geri getirmek için {plugin} eklentisini yeniden kurun.",
   "recovery_results.setup_summary_ok": "Yazıcının kurulumu onarıldı. Eklentilerinizin geri yüklenmesi gerekmedi.",
   "recovery_results.setup_summary_errors": "Yazıcının kurulumunun bir kısmı onarılamadı.",
-  "recovery_results.setup_restarting": "Kurulumu onarıldıktan sonra yazıcı yeniden başlatıldı.",
+  "recovery_results.setup_restarting": "Onarımdan sonra yazıcı yeniden başlatıldı.",
   "recovery_results.setup_row": "Yazıcı kurulumu",
   "recovery_failed.title": "Kurtarma yarıda kesildi",
   "batch_failed.mismatch_advice": "Bu yazıcıdaki Bespok3d yazılımı uyumsuz bir çift olduğu için bunu yapamıyor. Onarım uyumlu bir çift yükler ve eklentilerinizi yeniden uygular.",

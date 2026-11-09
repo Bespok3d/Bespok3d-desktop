@@ -367,7 +367,7 @@
   "recovery_results.files_changed_detail": "Potrebbe averli modificati un altro plugin installato, o una modifica fatta direttamente sulla stampante. Reinstalla {plugin} per rimettere i suoi file originali.",
   "recovery_results.setup_summary_ok": "La configurazione della stampante è stata sistemata. Non è stato necessario rimettere i tuoi plugin.",
   "recovery_results.setup_summary_errors": "Una parte della configurazione della stampante non è stata sistemata.",
-  "recovery_results.setup_restarting": "La stampante è stata riavviata dopo che la sua configurazione è stata sistemata.",
+  "recovery_results.setup_restarting": "La stampante è stata riavviata dopo la riparazione.",
   "recovery_results.setup_row": "Configurazione della stampante",
   "recovery_failed.title": "Il ripristino è stato interrotto",
   "batch_failed.mismatch_advice": "Il software Bespok3d su questa stampante è una coppia non compatibile, quindi non può farlo. La riparazione installa una coppia compatibile e riapplica i tuoi plugin.",

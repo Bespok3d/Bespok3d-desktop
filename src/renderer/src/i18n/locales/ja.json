@@ -367,7 +367,7 @@
   "recovery_results.files_changed_detail": "インストール済みの別のプラグイン、またはプリンター上で直接行われた変更が原因の可能性があります。{plugin} を再インストールすると本来のファイルに戻ります。",
   "recovery_results.setup_summary_ok": "プリンターの設定を修復しました。プラグインを戻す必要はありませんでした。",
   "recovery_results.setup_summary_errors": "プリンターの設定の一部を修復できませんでした。",
-  "recovery_results.setup_restarting": "設定を修復したあとプリンターを再起動しました。",
+  "recovery_results.setup_restarting": "修復のあとプリンターを再起動しました。",
   "recovery_results.setup_row": "プリンターの設定",
   "recovery_failed.title": "復旧が中断されました",
   "batch_failed.mismatch_advice": "このプリンターの Bespok3d ソフトウェアは組み合わせが合っていないため、この操作を実行できません。修復すると合った組み合わせがインストールされ、プラグインも元に戻ります。",

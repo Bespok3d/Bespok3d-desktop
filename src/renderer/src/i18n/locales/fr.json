@@ -367,7 +367,7 @@
   "recovery_results.files_changed_detail": "Un autre plugin installé, ou une modification faite directement sur l'imprimante, les a peut-être modifiés. Réinstallez {plugin} pour remettre ses propres fichiers.",
   "recovery_results.setup_summary_ok": "La configuration de l'imprimante a été réparée. Vos plugins n'ont pas eu besoin d'être remis en place.",
   "recovery_results.setup_summary_errors": "Une partie de la configuration de l'imprimante n'a pas pu être réparée.",
-  "recovery_results.setup_restarting": "L'imprimante a redémarré après la réparation de sa configuration.",
+  "recovery_results.setup_restarting": "L'imprimante a redémarré après la réparation.",
   "recovery_results.setup_row": "Configuration de l'imprimante",
   "recovery_failed.title": "La récupération a été interrompue",
   "batch_failed.mismatch_advice": "Le logiciel Bespok3d de cette imprimante forme une paire incompatible, il ne peut donc pas faire cela. La réparation installe une paire compatible et réapplique vos plugins.",

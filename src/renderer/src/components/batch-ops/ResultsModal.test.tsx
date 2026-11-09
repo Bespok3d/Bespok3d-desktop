@@ -204,4 +204,12 @@ describe('OtaRecoveryResultsModal after a repair of the printer setup only', () 
     expect(screen.queryByText(en('recovery_results.summary_errors'))).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: en('btn.fix') })).not.toBeInTheDocument()
   })
+
+  it('a setup that could not be put right gets a restart note that does not say it was', () => {
+    setup(<OtaRecoveryResultsModal results={setupRepair(false)} onOpenPlugin={vi.fn()} onClose={vi.fn()} restarting="restarted" />)
+
+    const restartNote = screen.getByText(en('recovery_results.setup_restarting'))
+    expect(restartNote.textContent).not.toMatch(/put right/)
+    expect(screen.queryByText(en('recovery_results.restarting'))).not.toBeInTheDocument()
+  })
 })

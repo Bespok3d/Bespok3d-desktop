@@ -367,7 +367,7 @@
   "recovery_results.files_changed_detail": "Möglicherweise hat ein anderes installiertes Plugin sie geändert, oder eine Änderung direkt am Drucker. Installieren Sie {plugin} neu, um die eigenen Dateien wiederherzustellen.",
   "recovery_results.setup_summary_ok": "Die Einrichtung des Druckers wurde repariert. Deine Plugins mussten nicht wieder aufgespielt werden.",
   "recovery_results.setup_summary_errors": "Ein Teil der Einrichtung des Druckers konnte nicht repariert werden.",
-  "recovery_results.setup_restarting": "Der Drucker wurde neu gestartet, nachdem seine Einrichtung repariert war.",
+  "recovery_results.setup_restarting": "Der Drucker wurde nach der Reparatur neu gestartet.",
   "recovery_results.setup_row": "Druckereinrichtung",
   "recovery_failed.title": "Wiederherstellung wurde unterbrochen",
   "batch_failed.mismatch_advice": "Die Bespok3d-Software auf diesem Drucker ist ein nicht zusammenpassendes Paar und kann das deshalb nicht ausführen. Die Reparatur installiert ein passendes Paar und setzt Ihre Plugins wieder ein.",
