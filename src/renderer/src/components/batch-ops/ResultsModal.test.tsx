@@ -245,6 +245,14 @@ describe('OtaRecoveryResultsModal on a plugin switched off during a recovery the
     expect(screen.queryByText(en('recovery_results.summary_ok'))).not.toBeInTheDocument()
   })
 
+  it('does not say every plugin went back when the printer walked past one it could not read', () => {
+    var walkedPast = { ok: true, results: [{ pluginId: 'spoolman', ok: true, skipped: false, reason: '', log: [] }], manifestWarnings: [{ plugin: 'rfid-ntag', problem: 'manifest-unreadable', detail: 'manifest.json: Expecting value: line 1 column 1' }] }
+    setup(<OtaRecoveryResultsModal results={walkedPast} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getByText(en('recovery_results.title_errors'))).toBeInTheDocument()
+    expect(screen.queryByText(en('recovery_results.summary_ok'))).not.toBeInTheDocument()
+  })
+
   it('leaves an uninstall that passed over a plugin already gone reading as done', () => {
     var alreadyGone = { pluginId: 'spoolman', ok: true, skipped: true, reason: 'not installed', log: [] }
     setup(<OtaRecoveryResultsModal results={{ ok: true, results: [alreadyGone] }} onOpenPlugin={vi.fn()} onClose={vi.fn()} variant="uninstall" />)

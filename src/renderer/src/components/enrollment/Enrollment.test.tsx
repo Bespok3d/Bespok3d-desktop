@@ -379,7 +379,7 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
   // own services row, which is ok because the printer is working again; every plugin row stays ok.
   const switchedOffBySafetyNet = { pluginId: '(services)', ok: true, skipped: false, reason: 'Auto-recovered: deactivated example-spoolman to keep the printer working', log: [], autoDeactivated: 'example-spoolman' }
 
-  async function reactivateAnswering(reapplied: { ok: boolean, results: Array<PluginRecoveryResult> }) {
+  async function reactivateAnswering(reapplied: { ok: boolean, results: Array<PluginRecoveryResult>, manifestWarnings?: Array<{ plugin: string, problem: string, detail: string }> }) {
     var onPluginsLeftOff = vi.fn()
     var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
     var rendered = setup(
@@ -403,6 +403,22 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
 
   it('names the plugin the printer\'s safety net switched off once the services restarted', async () => {
     var reapplied = { ok: true, results: [putBack, switchedOffBySafetyNet] }
+
+    var onPluginsLeftOff = await reactivateAnswering(reapplied)
+
+    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('names the plugin the printer walked past because it could not read its manifest', async () => {
+    var reapplied = { ok: true, results: [putBack], manifestWarnings: [{ plugin: 'example-rfid', problem: 'manifest-unreadable', detail: 'manifest.json: Expecting value' }] }
+
+    var onPluginsLeftOff = await reactivateAnswering(reapplied)
+
+    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('tells the app when the printer says putting the plugins back failed, even with no plugin row', async () => {
+    var reapplied = { ok: false, results: [] }
 
     var onPluginsLeftOff = await reactivateAnswering(reapplied)
 

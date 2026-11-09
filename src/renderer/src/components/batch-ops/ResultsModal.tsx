@@ -11,7 +11,7 @@ import { BatchReportModal } from './ReportModal'
 import { buildBatchReport } from './report-text'
 import { diagnosisText } from './diagnosis'
 import { PRINTER_SETUP_ROW, isSetupRepairOnly } from './setup-repair'
-import { leftAPluginOff } from './plugins-left-off'
+import { somePluginNotPutBack } from '../../utils/plugins-left-off'
 import './batch-ops.css'
 import type { BatchVariant } from './variant'
 import type { RecoveryRestart } from './recover-op'
@@ -132,13 +132,12 @@ const RESTART_HINT: Record<RecoveryRestart, string | null> = {
   'not-back': 'recovery_results.not_back',
 }
 
-// The printer calls a recovery fine with a plugin switched off on the way: one left out because a
-// plugin it needs did not come back, or one its safety net took off to keep the printer working. The
-// report must not then say every plugin went back.
+// The printer calls a recovery fine with some plugins not put back, and the report must not then say
+// every plugin went back.
 function wentWell(variant: BatchVariant, results: BatchResult): boolean {
   if (variant !== 'recovery') return results.ok
 
-  return results.ok && !results.results.some(leftAPluginOff)
+  return !somePluginNotPutBack(results)
 }
 
 // A recovery that only put the printer's setup right put no plugin back, so its summary and restart

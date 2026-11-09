@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { mainProcessMessage } from '../utils/errorMessage'
 import type { Printer } from '../data/types'
-import { leftAPluginOff } from '../components/batch-ops/plugins-left-off'
+import { somePluginNotPutBack } from '../utils/plugins-left-off'
 import type { BatchResult } from '../../../main/daemon-client/batch-result'
 
 export interface SshCredentials {
@@ -66,7 +66,7 @@ function nextEnrollPhase(status: EnrollProgressEvent['status'], isLastStep: bool
 // succeeds, so its own success screen cannot be the only word on it.
 function tellOfPluginsLeftOff(onPluginsLeftOff?: (reapplied: BatchResult) => void) {
   return function reportAnyLeftOff(reapplied: BatchResult): void {
-    if (onPluginsLeftOff && reapplied.results.some(leftAPluginOff)) onPluginsLeftOff(reapplied)
+    if (onPluginsLeftOff && somePluginNotPutBack(reapplied)) onPluginsLeftOff(reapplied)
   }
 }
 
