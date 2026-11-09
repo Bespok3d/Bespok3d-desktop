@@ -56,6 +56,12 @@ and download the private half for signing your releases. The Published mark now 
 that repository really is this key; if something else sits there instead, the app says so instead of
 claiming publication.
 
+### Smaller things
+
+- Plugins stay connected after a reboot: enrolling and "Put it back" now switch on the screen's Advanced mode, which makes the printer keep its settings files at startup instead of restoring its own copies. Seeing Advanced mode on is expected.
+- Wi-Fi is kept after a firmware-update recovery: the step that keeps the printer's Wi-Fi across reboots now checks its work and stops with a clear message if it could not, instead of showing done.
+- Enrolling a printer on firmware 2.0 now also adds Bespok3d to the firmware's own saved copy of its settings, so plugins stay after a reboot. Thanks to olavgm.
+
 ---
 
 ## 0.7.6-beta - 2026-08-30
