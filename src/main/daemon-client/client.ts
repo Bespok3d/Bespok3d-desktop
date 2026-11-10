@@ -28,5 +28,8 @@ export {
 } from './packages-client'
 export type { BatchUpdatePackage } from './packages-client'
 
+export { fetchFileHashesOrNone, restoreFiles } from './plugin-files-client'
+export type { PrinterFileHashes } from './plugin-files-client'
+
 export { requestAccess, fetchAccessClients, grantAccess, revokeAccess, isAccessGranted } from './access-client'
 export type { AccessClient, PendingClient, AccessClients, AccessRequestInput } from './access-client'

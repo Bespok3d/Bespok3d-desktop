@@ -19,6 +19,7 @@ import { watchInstallProgress } from '../daemon-client/feeds/install-progress'
 import type { BatchResult } from '../daemon-client/batch-result'
 import { runRepair, runUpdateDaemon, runUpdateJinni } from './daemon-ops'
 import { waitForThePrinterToComeBack } from './reboot-wait'
+import { restoreChangedFiles } from '../store/restore-changed-files'
 
 async function runDeactivate(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
   const record = getManagedRecord(printerId)
@@ -53,6 +54,7 @@ async function reactivateBootHook(ssh: SshSession): Promise<void> {
 // The printer's live feed stays open for the whole recovery: it is how the request knows the printer
 // is still at work, and keeps waiting through a long safety net instead of reporting a failure.
 async function reapplyPlugins(record: PrinterRecord): Promise<BatchResult> {
+  await restoreChangedFiles(record)
   const closeProgress = await watchInstallProgress(record, () => {})
 
   return recoverPackages(record).finally(closeProgress)

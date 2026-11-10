@@ -23,6 +23,7 @@ import type { UnsentPackage } from './batch-settlement'
 import { failedLogsAfter, refusalSentence, refusedAttempt } from './failed-installs'
 import { sendUpload } from './progress'
 import { capsOrFallback } from './record-sync'
+import { withoutFilesThePrinterHolds } from './partial-package'
 import { missingDependencyIds } from './missing-deps'
 import { requestsWithPrinterVars } from './printer-vars'
 import type { PackageOrigin } from './catalog-variant'
@@ -87,7 +88,7 @@ interface VerifiedBatchPackage {
 async function resolveVerifiedPackage(
   catalog: readonly MergedEntry[],
   spec: PluginUpdateSpec,
-  pair: ReportedPair,
+  printer: PrinterAsItStands,
 ): Promise<VerifiedBatchPackage> {
   const { pluginId, vars } = spec
   // Resolved from the source the update was offered from: a plugin running a locally packed build is
@@ -96,10 +97,12 @@ async function resolveVerifiedPackage(
   // An update faces the compatibility floors a first install faces. A new version can raise the
   // daemon it needs, and the printer being updated is the one running the old one: without this the
   // batch posts a package the printer cannot run, and the plugin comes back broken rather than newer.
-  assertPackageFitsPair(entry, pair)
+  assertPackageFitsPair(entry, printer.pair)
   const bytes = await resolveArchiveBytes(entry)
+  const trust = await verifiedPackageTrustOrDiscard(bytes, entry)
+  const upload = await withoutFilesThePrinterHolds(printer.record, pluginId, bytes)
 
-  return { archive: { pluginId, bytes, vars }, entry, trust: await verifiedPackageTrustOrDiscard(bytes, entry) }
+  return { archive: { pluginId, bytes: upload, vars }, entry, trust }
 }
 
 // Each package answers for itself and never for the batch: whatever this one turns out to be, the rest
@@ -107,9 +110,9 @@ async function resolveVerifiedPackage(
 function settlePackage(
   catalog: readonly MergedEntry[],
   spec: PluginUpdateSpec,
-  pair: ReportedPair,
+  printer: PrinterAsItStands,
 ): Promise<VerifiedBatchPackage | UnsentPackage> {
-  return resolveVerifiedPackage(catalog, spec, pair).catch((error) => ({ pluginId: spec.pluginId, reason: refusalSentence(error) }))
+  return resolveVerifiedPackage(catalog, spec, printer).catch((error) => ({ pluginId: spec.pluginId, reason: refusalSentence(error) }))
 }
 
 function isVerified(settled: VerifiedBatchPackage | UnsentPackage): settled is VerifiedBatchPackage {
@@ -133,13 +136,14 @@ interface PrinterAsItStands {
   // again is the way back: a clean apply switches it on.
   serving: string[]
   pair: ReportedPair
+  record: PrinterRecord
 }
 
 async function printerAsItStands(record: PrinterRecord): Promise<PrinterAsItStands> {
   const [caps, compat] = await Promise.all([capsOrFallback(record, {}), askPrinterCompat(record)])
   const switchedOff = new Set(caps.deactivatedIds)
 
-  return { serving: caps.installedIds.filter((pluginId) => !switchedOff.has(pluginId)), pair: compat.pair }
+  return { serving: caps.installedIds.filter((pluginId) => !switchedOff.has(pluginId)), pair: compat.pair, record }
 }
 
 // What the batch will post, and what it is leaving behind. Every package is verified on its own first;
@@ -163,7 +167,7 @@ async function settleBatch(catalog: readonly MergedEntry[], specs: PluginUpdateS
   const requests = requestsWithTheirDependencies(catalog, specs, printer.serving)
   const specById = new Map(requests.map((spec) => [spec.pluginId, spec]))
   const pluginIds = orderedBatchPluginIds(catalog, requests, printer.serving)
-  const settled = await Promise.all(pluginIds.map((pluginId) => settlePackage(catalog, specById.get(pluginId) ?? { pluginId }, printer.pair)))
+  const settled = await Promise.all(pluginIds.map((pluginId) => settlePackage(catalog, specById.get(pluginId) ?? { pluginId }, printer)))
   const leftOutIds = pluginsLeftOut(requests, new Set(settled.filter(isUnsent).map((item) => item.pluginId)))
   const stillSentIds = pluginsStillSent(requests, leftOutIds)
 

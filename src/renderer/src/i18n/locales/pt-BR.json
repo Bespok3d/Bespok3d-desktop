@@ -365,6 +365,7 @@
   "install_malformed.reason.undeclared_member": "Estes arquivos não fazem parte do conteúdo assinado do pacote:",
   "install_malformed.reason.escaping_member": "Estes arquivos seriam gravados fora da pasta do próprio plugin:",
   "install_malformed.reason.checksum_mismatch": "Estes arquivos não correspondem ao manifesto assinado do pacote:",
+  "install_malformed.reason.missing_member": "Estes arquivos não foram enviados, e a cópia na impressora não corresponde ao pacote:",
   "install_malformed.reason.escaping_plugin_id": "O nome de plugin do pacote não é válido.",
   "install_malformed.reason.unknown": "O pacote falhou em uma checagem de integridade:",
   "report.show_tech": "Detalhes técnicos",

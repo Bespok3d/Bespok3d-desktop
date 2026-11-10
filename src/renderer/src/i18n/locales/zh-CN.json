@@ -365,6 +365,7 @@
   "install_malformed.reason.undeclared_member": "这些文件不属于软件包的签名内容：",
   "install_malformed.reason.escaping_member": "这些文件会被写到插件自身文件夹之外：",
   "install_malformed.reason.checksum_mismatch": "这些文件与软件包的签名清单不匹配：",
+  "install_malformed.reason.missing_member": "这些文件未发送，且打印机上的副本与软件包不匹配：",
   "install_malformed.reason.escaping_plugin_id": "软件包的插件名称无效。",
   "install_malformed.reason.unknown": "软件包未通过完整性检查：",
   "report.show_tech": "技术细节",

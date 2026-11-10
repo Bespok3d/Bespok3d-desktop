@@ -12,7 +12,7 @@ function toInstallLog(text: string): InstallLog {
   return { pluginId: result.plugin_id, timestamp: Date.now(), ok: result.ok, phases: result.log ?? [] }
 }
 
-function buildMultipart(
+export function buildMultipart(
   boundary: string,
   pluginId: string,
   b3Data: Buffer,

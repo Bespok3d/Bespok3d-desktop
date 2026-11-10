@@ -21,7 +21,7 @@ vi.mock('./record-sync', () => ({ capsOrFallback: vi.fn() }))
 vi.mock('../daemon-client/client', async () => {
   const { DaemonHttpError } = await vi.importActual<typeof import('../daemon-client/transport')>('../daemon-client/transport')
 
-  return { DaemonHttpError, fetchCapabilities: vi.fn(), fetchDaemonStatus: vi.fn(), fetchPluginConfig: vi.fn(), updateBatchPackages: vi.fn(), installBatchPackages: vi.fn() }
+  return { DaemonHttpError, fetchCapabilities: vi.fn(), fetchDaemonStatus: vi.fn(), fetchPluginConfig: vi.fn(), updateBatchPackages: vi.fn(), installBatchPackages: vi.fn(), fetchFileHashesOrNone: vi.fn(async () => null) }
 })
 vi.mock('../daemon-client/status', () => ({ DAEMON_QUERY_TIMEOUT_MS: 8000, getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }) }))
 vi.mock('../analytics', () => ({ reportEvent: vi.fn() }))
@@ -33,7 +33,7 @@ import type { PrinterRecord } from '../printers'
 import { findCatalogVariant, resolveArchiveBytes, discardCachedArchive } from './catalog-archive'
 import { streamBatchProgress } from './batch-progress'
 import { capsOrFallback } from './record-sync'
-import { DaemonHttpError, fetchCapabilities, fetchDaemonStatus, fetchPluginConfig, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
+import { DaemonHttpError, fetchCapabilities, fetchDaemonStatus, fetchPluginConfig, fetchFileHashesOrNone, updateBatchPackages, installBatchPackages } from '../daemon-client/client'
 import { getManagedRecord } from '../daemon-client/status'
 import { reportEvent } from '../analytics'
 
@@ -633,5 +633,19 @@ describe('settings an update carries when this app holds none', () => {
     vi.mocked(fetchPluginConfig).mockRejectedValue(new Error('printer unreachable'))
     await runStoreUpdateBatch({} as BrowserWindow, 'printer-1', [{ pluginId: 'idle-timeout', vars: { PORT: '8080' } }])
     expect(varsSentToThePrinter()).toEqual({ PORT: '8080' })
+  })
+})
+
+// Lucio's order (2026-11-10): an update sends only the files the printer does not already hold as signed.
+describe('a batch over files the printer already holds', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('leaves out a file whose printer copy hashes to the signed one', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(fetchFileHashesOrNone).mockResolvedValueOnce({ 'config/main.cfg': 'f'.repeat(64) })
+    await updateBatch()
+    const [, sentPackages] = vi.mocked(updateBatchPackages).mock.calls[0]
+    const sentMembers = new AdmZip(sentPackages[0].bytes).getEntries().map((member) => member.entryName)
+    expect(sentMembers).toEqual(['manifest.json'])
   })
 })

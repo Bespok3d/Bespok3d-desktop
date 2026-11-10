@@ -4,7 +4,16 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import fixture from './__fixtures__/daemon-contract.json'
-import type { CapabilitiesResult, DaemonStatusResult, Endpoint, InstallLogItem, InstallLogPhase, PluginConfigResult } from '@bespok3d/contract'
+import type {
+  CapabilitiesResult,
+  DaemonStatusResult,
+  Endpoint,
+  FileHashesResult,
+  InstallLogItem,
+  InstallLogPhase,
+  PluginConfigResult,
+  RestoreFilesResult,
+} from '@bespok3d/contract'
 
 // The app<->daemon JSON contract, pinned in one place. The daemon emits these shapes; the app parses
 // them raw off the wire (client.ts) into the @bespok3d/contract interfaces. The committed fixture is
@@ -26,6 +35,8 @@ const endpoints = fixture.capabilities.endpoints satisfies Endpoint[]
 const firstItem = fixture.install.log[0].items[0] satisfies InstallLogItem
 const daemonStatus = fixture.status satisfies DaemonStatusResult
 const pluginConfig = fixture.plugin_config satisfies PluginConfigResult
+const fileHashes = fixture.file_hashes satisfies FileHashesResult
+const restoredFiles = fixture.restore_files satisfies RestoreFilesResult
 
 describe('app<->daemon contract fixture', () => {
   it('matches the live daemon-generated golden fixture (no copy drift)', () => {
@@ -45,5 +56,7 @@ describe('app<->daemon contract fixture', () => {
     expect(capabilities.adapter).toBe('snapmaker-u1')
     expect(daemonStatus).toMatchObject({ ok: true, printer_uuid: expect.any(String) })
     expect(pluginConfig.vars).toMatchObject({ SPOOLMAN_SERVER: expect.any(String) })
+    expect(fileHashes.files).toMatchObject({ 'files/gone.cfg': null })
+    expect(restoredFiles.restored).toEqual(['files/spoolman.cfg'])
   })
 })

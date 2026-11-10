@@ -364,6 +364,7 @@
   "install_malformed.reason.undeclared_member": "These files are not part of the package's signed contents:",
   "install_malformed.reason.escaping_member": "These files would be written outside the plugin's own folder:",
   "install_malformed.reason.checksum_mismatch": "These files do not match the package's signed manifest:",
+  "install_malformed.reason.missing_member": "These files were not sent, and the printer's copy does not match the package:",
   "install_malformed.reason.escaping_plugin_id": "The package's plugin name is not valid.",
   "install_malformed.reason.unknown": "The package failed an integrity check:",
   "report.show_tech": "Technical details",

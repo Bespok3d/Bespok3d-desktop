@@ -31,7 +31,7 @@ interface ErrorCopy {
   showRetry: boolean
 }
 
-const MALFORMED_REASON_TOKENS = ['undeclared_member', 'escaping_member', 'checksum_mismatch', 'escaping_plugin_id']
+const MALFORMED_REASON_TOKENS = ['undeclared_member', 'escaping_member', 'checksum_mismatch', 'missing_member', 'escaping_plugin_id']
 
 function reasonKey(reason: string): string {
   return MALFORMED_REASON_TOKENS.includes(reason) ? `install_malformed.reason.${reason}` : 'install_malformed.reason.unknown'

@@ -365,6 +365,7 @@
   "install_malformed.reason.undeclared_member": "Questi file non fanno parte dei contenuti firmati del pacchetto:",
   "install_malformed.reason.escaping_member": "Questi file verrebbero scritti fuori dalla cartella del plugin:",
   "install_malformed.reason.checksum_mismatch": "Questi file non corrispondono al manifest firmato del pacchetto:",
+  "install_malformed.reason.missing_member": "Questi file non sono stati inviati e la copia sulla stampante non corrisponde al pacchetto:",
   "install_malformed.reason.escaping_plugin_id": "Il nome del plugin nel pacchetto non è valido.",
   "install_malformed.reason.unknown": "Il pacchetto non ha superato un controllo di integrità:",
   "report.show_tech": "Dettagli tecnici",

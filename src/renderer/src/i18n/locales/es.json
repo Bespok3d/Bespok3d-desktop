@@ -365,6 +365,7 @@
   "install_malformed.reason.undeclared_member": "Estos archivos no forman parte del contenido firmado del paquete:",
   "install_malformed.reason.escaping_member": "Estos archivos se escribirían fuera de la carpeta propia del plugin:",
   "install_malformed.reason.checksum_mismatch": "Estos archivos no coinciden con el manifiesto firmado del paquete:",
+  "install_malformed.reason.missing_member": "Estos archivos no se enviaron y la copia de la impresora no coincide con el paquete:",
   "install_malformed.reason.escaping_plugin_id": "El nombre de plugin del paquete no es válido.",
   "install_malformed.reason.unknown": "El paquete no ha pasado una comprobación de integridad:",
   "report.show_tech": "Detalles técnicos",

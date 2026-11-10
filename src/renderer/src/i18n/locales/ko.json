@@ -365,6 +365,7 @@
   "install_malformed.reason.undeclared_member": "다음 파일은 패키지의 서명된 내용에 포함되지 않습니다:",
   "install_malformed.reason.escaping_member": "다음 파일은 플러그인 폴더 밖에 기록될 수 있습니다:",
   "install_malformed.reason.checksum_mismatch": "다음 파일은 패키지의 서명된 매니페스트와 일치하지 않습니다:",
+  "install_malformed.reason.missing_member": "다음 파일은 전송되지 않았으며 프린터의 사본이 패키지와 일치하지 않습니다:",
   "install_malformed.reason.escaping_plugin_id": "패키지의 플러그인 이름이 유효하지 않습니다.",
   "install_malformed.reason.unknown": "패키지가 무결성 검사를 통과하지 못했습니다:",
   "report.show_tech": "기술 세부 정보",

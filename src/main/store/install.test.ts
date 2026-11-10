@@ -20,7 +20,7 @@ vi.mock('./record-sync', async (importOriginal) => ({
   capsAfterInstall: vi.fn(),
   recordAppliedVars: () => ({}),
 }))
-vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn(), installPlugin: vi.fn(), fetchDaemonStatus: vi.fn(), fetchPluginConfig: vi.fn() }))
+vi.mock('../daemon-client/client', () => ({ fetchCapabilities: vi.fn(), installPlugin: vi.fn(), fetchDaemonStatus: vi.fn(), fetchPluginConfig: vi.fn(), fetchFileHashesOrNone: vi.fn(async () => null) }))
 vi.mock('../daemon-client/status', () => ({ getManagedRecord: vi.fn(), parseCaps: () => ({ installedIds: [] }), DAEMON_QUERY_TIMEOUT_MS: 8000 }))
 vi.mock('../daemon-client/feeds/install-progress', () => ({ watchInstallProgress: vi.fn(), installPhaseMessage: (phase: string) => phase }))
 vi.mock('../daemon-client/guard', () => ({ daemonGuardMessage: vi.fn() }))
@@ -34,7 +34,7 @@ import { updatePrinter } from '../printers'
 import { loadCatalog } from '../registry'
 import { findCatalogVariant, resolveArchiveBytes, discardCachedArchive } from './catalog-archive'
 import { capsAfterInstall } from './record-sync'
-import { fetchCapabilities, installPlugin, fetchDaemonStatus, fetchPluginConfig } from '../daemon-client/client'
+import { fetchCapabilities, installPlugin, fetchDaemonStatus, fetchPluginConfig, fetchFileHashesOrNone } from '../daemon-client/client'
 import { getManagedRecord } from '../daemon-client/status'
 import { watchInstallProgress } from '../daemon-client/feeds/install-progress'
 import { daemonGuardMessage } from '../daemon-client/guard'
@@ -579,5 +579,30 @@ describe('the compatibility floor lets everything else through', () => {
     await installTheDaemon()
 
     expect(vi.mocked(installPlugin)).toHaveBeenCalledTimes(1)
+  })
+})
+
+function memberNamesOf(archiveBytes: Buffer): string[] {
+  return new AdmZip(archiveBytes).getEntries().map((member) => member.entryName).sort()
+}
+
+// Lucio's order (2026-11-10): an install sends only the files the printer does not already hold as signed.
+describe('an install over files the printer already holds', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('leaves out a file whose printer copy hashes to the signed one', async () => {
+    stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(fetchFileHashesOrNone).mockResolvedValueOnce({ 'config/main.cfg': 'f'.repeat(64) })
+    await install()
+    const [, sentArchive] = vi.mocked(installPlugin).mock.calls[0]
+    expect(memberNamesOf(sentArchive)).toEqual(['manifest.json'])
+  })
+
+  it('sends a file whose printer copy changed', async () => {
+    stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(fetchFileHashesOrNone).mockResolvedValueOnce({ 'config/main.cfg': 'e'.repeat(64) })
+    await install()
+    const [, sentArchive] = vi.mocked(installPlugin).mock.calls[0]
+    expect(memberNamesOf(sentArchive)).toEqual(['config/main.cfg', 'manifest.json'])
   })
 })

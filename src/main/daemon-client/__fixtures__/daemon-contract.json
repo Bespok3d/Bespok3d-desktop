@@ -218,5 +218,16 @@
       "index": 2,
       "total": 2
     }
-  ]
+  ],
+  "file_hashes": {
+    "files": {
+      "files/spoolman.cfg": "abababababababababababababababababababababababababababababababab",
+      "files/gone.cfg": null
+    }
+  },
+  "restore_files": {
+    "restored": [
+      "files/spoolman.cfg"
+    ]
+  }
 }

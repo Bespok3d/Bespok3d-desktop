@@ -365,6 +365,7 @@
   "install_malformed.reason.undeclared_member": "Ces fichiers ne font pas partie du contenu signé du paquet :",
   "install_malformed.reason.escaping_member": "Ces fichiers seraient écrits hors du dossier du plugin :",
   "install_malformed.reason.checksum_mismatch": "Ces fichiers ne correspondent pas au manifeste signé du paquet :",
+  "install_malformed.reason.missing_member": "Ces fichiers n'ont pas été envoyés, et la copie de l'imprimante ne correspond pas au paquet :",
   "install_malformed.reason.escaping_plugin_id": "Le nom de plugin du paquet n'est pas valide.",
   "install_malformed.reason.unknown": "Le paquet a échoué à une vérification d'intégrité :",
   "report.show_tech": "Détails techniques",

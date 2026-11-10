@@ -365,6 +365,7 @@
   "install_malformed.reason.undeclared_member": "次のファイルはパッケージの署名済みの内容に含まれていません:",
   "install_malformed.reason.escaping_member": "次のファイルはプラグイン自身のフォルダーの外に書き込まれてしまいます:",
   "install_malformed.reason.checksum_mismatch": "次のファイルはパッケージの署名済みマニフェストと一致しません:",
+  "install_malformed.reason.missing_member": "次のファイルは送信されず、プリンター上のコピーがパッケージと一致しません:",
   "install_malformed.reason.escaping_plugin_id": "パッケージのプラグイン名が正しくありません。",
   "install_malformed.reason.unknown": "パッケージが整合性チェックに失敗しました:",
   "report.show_tech": "技術的な詳細",

@@ -365,6 +365,7 @@
   "install_malformed.reason.undeclared_member": "Diese Dateien gehören nicht zum signierten Inhalt des Pakets:",
   "install_malformed.reason.escaping_member": "Diese Dateien würden außerhalb des eigenen Ordners des Plugins geschrieben:",
   "install_malformed.reason.checksum_mismatch": "Diese Dateien stimmen nicht mit dem signierten Manifest des Pakets überein:",
+  "install_malformed.reason.missing_member": "Diese Dateien wurden nicht gesendet, und die Kopie auf dem Drucker stimmt nicht mit dem Paket überein:",
   "install_malformed.reason.escaping_plugin_id": "Der Plugin-Name des Pakets ist ungültig.",
   "install_malformed.reason.unknown": "Das Paket ist bei einer Integritätsprüfung durchgefallen:",
   "report.show_tech": "Technische Details",

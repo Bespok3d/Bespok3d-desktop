@@ -16,6 +16,7 @@ import type { PackageOrigin } from './catalog-variant'
 import { declaresDependencies, missingDependencyIds } from './missing-deps'
 import { MALFORMED_PACKAGE_PREFIX } from './malformed-package'
 import { verifiedPackageTrustOrDiscard } from './package-check'
+import { withoutFilesThePrinterHolds } from './partial-package'
 import { DependencyDidNotInstall, failedLogsAfter, refusedAttempt, whyItDidNotInstall } from './failed-installs'
 import { watchInstallProgress, installPhaseMessage } from '../daemon-client/feeds/install-progress'
 import { daemonGuardMessage } from '../daemon-client/guard'
@@ -62,7 +63,8 @@ async function installDepsInOrder(
   // The dependency is the plugin that did not install here, so it keeps its own failed attempt, the
   // way it would if the user had installed it first by hand; the plugin waiting on it fails right after.
   await verifiedPackageTrustOrDiscard(depArchive, depEntry)
-    .then(() => installPlugin(record, depArchive, depId))
+    .then(() => withoutFilesThePrinterHolds(record, depId, depArchive))
+    .then((depUpload) => installPlugin(record, depUpload, depId))
     .catch((error) => {
       recordFailedInstall(record.id, depId, error)
       throw new DependencyDidNotInstall(depId, error)
@@ -113,10 +115,11 @@ async function sendPackageOnce(
   // bundled read, a fresh download, and a cache hit alike. The cache is ordinary local disk, so a
   // buffer that verified when it was written proves nothing about the file being read back now.
   const packageTrust = await verifiedPackageTrustOrDiscard(b3Data, entry)
+  const upload = await withoutFilesThePrinterHolds(record, pluginId, b3Data)
   const closeProgress = await watchInstallProgress(record, (event) => {
     if (event.type === 'phase' && event.phase) sendProgress(win, record.id, pluginId, installPhaseMessage(event.phase))
   })
-  const log: InstallLog = await installPlugin(record, b3Data, pluginId, vars, (sent, total) => sendUpload(win, record.id, sent, total)).finally(closeProgress)
+  const log: InstallLog = await installPlugin(record, upload, pluginId, vars, (sent, total) => sendUpload(win, record.id, sent, total)).finally(closeProgress)
 
   return { log, packageTrust }
 }

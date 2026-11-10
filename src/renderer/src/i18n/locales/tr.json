@@ -365,6 +365,7 @@
   "install_malformed.reason.undeclared_member": "Bu dosyalar paketin imzalı içeriğinin parçası değil:",
   "install_malformed.reason.escaping_member": "Bu dosyalar eklentinin kendi klasörünün dışına yazılacaktı:",
   "install_malformed.reason.checksum_mismatch": "Bu dosyalar paketin imzalı manifestiyle eşleşmiyor:",
+  "install_malformed.reason.missing_member": "Bu dosyalar gönderilmedi ve yazıcıdaki kopya paketle eşleşmiyor:",
   "install_malformed.reason.escaping_plugin_id": "Paketin eklenti adı geçerli değil.",
   "install_malformed.reason.unknown": "Paket bir bütünlük denetiminden geçemedi:",
   "report.show_tech": "Teknik ayrıntılar",
