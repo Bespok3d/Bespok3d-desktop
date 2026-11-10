@@ -15,7 +15,7 @@ function record(parts: Partial<DiscoveredPrinterRecord>): DiscoveredPrinterRecor
   return {
     id: 'mdns-test',
     host: 'host.local',
-    ip: '10.0.0.1',
+    ip: '192.0.2.1',
     model: 'Network device',
     vendor: 'Unknown',
     service: '_http._tcp',

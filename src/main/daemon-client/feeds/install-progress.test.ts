@@ -106,14 +106,14 @@ describe('installPhaseMessage', () => {
 
 describe('watchInstallProgress', () => {
   it('resolves immediately with a no-op close when the printer has no cert/token', async () => {
-    const close = await watchInstallProgress({ id: 'printer-1', ip: '10.0.0.1' }, vi.fn())
+    const close = await watchInstallProgress({ id: 'printer-1', ip: '192.0.2.1' }, vi.fn())
     expect(sockets).toHaveLength(0)
     expect(() => close()).not.toThrow()
   })
 
   it('forwards phase events once the socket is open', async () => {
     const onEvent = vi.fn()
-    const ready = watchInstallProgress({ id: 'printer-1', ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }, onEvent)
+    const ready = watchInstallProgress({ id: 'printer-1', ip: '192.0.2.1', daemonCert: 'C', daemonToken: 'T' }, onEvent)
     sockets[0].open()
     const close = await ready
     const phase = okPhase('dirs', 'Dirs')
@@ -123,14 +123,14 @@ describe('watchInstallProgress', () => {
   })
 
   it('degrades to a no-op close on a socket error (old daemon without the route)', async () => {
-    const close = watchInstallProgress({ id: 'printer-1', ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }, vi.fn())
+    const close = watchInstallProgress({ id: 'printer-1', ip: '192.0.2.1', daemonCert: 'C', daemonToken: 'T' }, vi.fn())
     sockets[0].emit('error', new Error('no route'))
     await expect(close).resolves.toBeTypeOf('function')
     expect(sockets[0].closed).toBe(true)
   })
 
   it('gives up opening the feed after a bounded wait, so a printer dropping packets cannot hold the install back', async () => {
-    const close = watchInstallProgress({ id: 'printer-1', ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }, vi.fn())
+    const close = watchInstallProgress({ id: 'printer-1', ip: '192.0.2.1', daemonCert: 'C', daemonToken: 'T' }, vi.fn())
     sockets[0].emit('error', new Error('Opening handshake has timed out'))
     await close
 
@@ -148,7 +148,7 @@ describe('a recovery plan announced by the printer', () => {
   })
 })
 
-const feedTarget = { id: 'printer-1', ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }
+const feedTarget = { id: 'printer-1', ip: '192.0.2.1', daemonCert: 'C', daemonToken: 'T' }
 
 function frame(event: object): Buffer {
   return Buffer.from(JSON.stringify(event))

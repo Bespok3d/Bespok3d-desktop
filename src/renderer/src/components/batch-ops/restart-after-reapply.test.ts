@@ -16,7 +16,7 @@ describe('the printer is restarted once its plugins are back on it', () => {
 
     const restarting = await restartAfterReapply(makePrinter(), markExpectedRestart, askForTheirLogin)
 
-    expect(reboot).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', 'the-printer-password', 22)
+    expect(reboot).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', 'the-printer-password', 22)
     expect(askForTheirLogin).not.toHaveBeenCalled()
     expect(restarting).toBe(true)
   })

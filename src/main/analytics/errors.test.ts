@@ -31,12 +31,12 @@ describe('what a failure is allowed to say about the person it happened to', () 
   })
 
   it('never carries the message, even when the message is the whole story', () => {
-    const tellsAll = new Error('ENOENT: /Users/someone/Documents/my printer/secret-plugin.b3 at 10.0.0.4')
+    const tellsAll = new Error('ENOENT: /Users/someone/Documents/my printer/secret-plugin.b3 at 192.0.2.4')
 
     reportErrorEvent(tellsAll, 'plugin-install')
 
     expect(propertiesOfEverythingSent()).not.toContain('someone')
-    expect(propertiesOfEverythingSent()).not.toContain('10.0.0.4')
+    expect(propertiesOfEverythingSent()).not.toContain('192.0.2.4')
     expect(propertiesOfEverythingSent()).not.toContain('secret-plugin')
   })
 

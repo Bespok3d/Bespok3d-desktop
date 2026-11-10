@@ -27,7 +27,7 @@ async function letPendingWorkSettle(): Promise<void> {
 }
 
 function renderEnroll(mode: EnrollMode, printerOverrides = {}, handlers: Record<string, ReturnType<typeof vi.fn>> = {}) {
-  var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online', ...printerOverrides })
+  var printer = makePrinter({ id: 'printer-1', ip: '192.0.2.1', adapter: 'snapmaker-u1', status: 'online', ...printerOverrides })
   var onEnrolled = handlers.onEnrolled ?? vi.fn()
   var onEscalateRecovery = handlers.onEscalateRecovery ?? vi.fn()
   var onRebuildPrinter = handlers.onRebuildPrinter ?? vi.fn()
@@ -64,7 +64,7 @@ describe('Enrollment happy path', () => {
   it('auto-starts with adapter defaults, streams steps, and reports the enrolled printer on Done', async () => {
     var { user, emit, b3d, onEnrolled } = renderEnroll('enroll')
 
-    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
 
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'running', stepLabel: 'Deploying daemon', stepIndex: 1 })))
     expect(screen.getByText('Deploying daemon')).toBeInTheDocument()
@@ -99,10 +99,10 @@ describe('Enrollment custom SSH credentials', () => {
     await user.type(password, 'secret')
 
     await user.click(screen.getByRole('button', { name: 'Test connection' }))
-    expect(b3d.printers.checkSsh).toHaveBeenCalledWith('10.0.0.1', 'root', 'secret', 22)
+    expect(b3d.printers.checkSsh).toHaveBeenCalledWith('192.0.2.1', 'root', 'secret', 22)
 
     await user.click(screen.getByRole('button', { name: 'Start enrollment' }))
-    expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', 'secret', 22, undefined, false)
+    expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'snapmaker-u1', 'root', 'secret', 22, undefined, false)
   })
 })
 
@@ -110,15 +110,15 @@ describe('Enrollment custom SSH credentials', () => {
 // the run: the flag has to reach the main process, or the menu offers something it cannot deliver.
 describe('Enrollment launched from the Force menu', () => {
   it('asks for a forced enroll and a forced repair', async () => {
-    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+    var printer = makePrinter({ id: 'printer-1', ip: '192.0.2.1', adapter: 'snapmaker-u1', status: 'online' })
     var { b3d } = setup(<Enrollment printer={printer} mode="enroll" forced onEnrolled={vi.fn()} onClose={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} />)
 
-    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, true))
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'snapmaker-u1', 'root', '', 22, undefined, true))
 
     const forcedRepair = setup(<Enrollment printer={printer} mode="repair" forced onEnrolled={vi.fn()} onClose={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} />)
     await forcedRepair.user.click(screen.getByRole('button', { name: 'Repair daemon' }))
 
-    await waitFor(() => expect(forcedRepair.b3d.printers.repair).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22, true))
+    await waitFor(() => expect(forcedRepair.b3d.printers.repair).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', '', 22, true))
   })
 })
 
@@ -133,7 +133,7 @@ describe('Enrollment failure handling', () => {
     await user.click(screen.getByRole('button', { name: 'More' }))
     await user.click(screen.getByRole('button', { name: 'Start from step' }))
 
-    expect(b3d.printers.enroll).toHaveBeenLastCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, 'deploy-daemon', false)
+    expect(b3d.printers.enroll).toHaveBeenLastCalledWith('printer-1', '192.0.2.1', 'snapmaker-u1', 'root', '', 22, 'deploy-daemon', false)
   })
 
   // The op rejects a moment after the step it stopped on fails. That rejection used to clear the
@@ -210,7 +210,7 @@ function EscalationHarness({ printer }: { printer: Printer }) {
 
 describe('Enrollment recovery escalation actually starts recovery', () => {
   it('runs the full re-enroll after a post-OTA repair fails (no hang)', async () => {
-    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+    var printer = makePrinter({ id: 'printer-1', ip: '192.0.2.1', adapter: 'snapmaker-u1', status: 'online' })
     var { user, emit, b3d } = setup(<EscalationHarness printer={printer} />)
 
     await user.click(screen.getByRole('button', { name: 'Repair daemon' }))
@@ -218,7 +218,7 @@ describe('Enrollment recovery escalation actually starts recovery', () => {
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'check-write-layer', stepLabel: 'Checking the write layer', error: 'write layer reset', stepIndex: 0 })))
 
     await user.click(screen.getByRole('button', { name: 'Run Recovery' }))
-    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
   })
 })
 
@@ -229,7 +229,7 @@ describe('Enrollment asks before it touches the printer', () => {
     expect(b3d.printers.updateDaemon).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Update' }))
 
-    await waitFor(() => expect(b3d.printers.updateDaemon).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22))
+    await waitFor(() => expect(b3d.printers.updateDaemon).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', '', 22))
     expect(onExpectedRestart).toHaveBeenCalledWith('printer-1')
   })
 
@@ -249,7 +249,7 @@ describe('Enrollment asks before it touches the printer', () => {
     expect(b3d.printers.deactivate).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'Deactivate' }))
-    await waitFor(() => expect(b3d.printers.deactivate).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', 'secret', 22))
+    await waitFor(() => expect(b3d.printers.deactivate).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', 'secret', 22))
   })
 })
 
@@ -262,7 +262,7 @@ describe('Enrollment lifecycle dispatch', () => {
     ['reboot', 'reboot'],
   ] as Array<[EnrollMode, keyof Window['b3d']['printers']]>)('routes %s mode to printers.%s', async (mode, method) => {
     var { b3d } = await renderAndSayGo(mode)
-    await waitFor(() => expect(b3d.printers[method]).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22))
+    await waitFor(() => expect(b3d.printers[method]).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', '', 22))
   })
 })
 
@@ -283,7 +283,7 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
 
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing boot hook', stepIndex: 1, totalSteps: 2 })))
 
-    await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22))
+    await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', '', 22))
     expect(onExpectedRestart).toHaveBeenCalledWith('printer-1')
     expect(screen.queryByText('Bespok3d deactivated')).not.toBeInTheDocument()
   })
@@ -302,7 +302,7 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
 
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing bespok3d from the printer', stepIndex: 1, totalSteps: 2 })))
 
-    await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22))
+    await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', '', 22))
     expect(screen.getByText('Bespok3d removed')).toBeInTheDocument()
     expect(screen.getByText('Your printer is rebooting.')).toBeInTheDocument()
   })
@@ -327,7 +327,7 @@ describe('Enrollment reboots the printer after the ops that need it', () => {
 
     await rendered.user.click(screen.getByRole('button', { name: 'Start over' }))
 
-    expect(rendered.b3d.printers.reboot).toHaveBeenLastCalledWith('printer-1', '10.0.0.1', 'root', 'secret', 22)
+    expect(rendered.b3d.printers.reboot).toHaveBeenLastCalledWith('printer-1', '192.0.2.1', 'root', 'secret', 22)
     expect(rendered.b3d.printers.reboot).toHaveBeenCalledTimes(2)
   })
 
@@ -384,7 +384,7 @@ interface ReactivateListeners {
 }
 
 function reactivateWindow(listeners: ReactivateListeners): ReactElement {
-  var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+  var printer = makePrinter({ id: 'printer-1', ip: '192.0.2.1', adapter: 'snapmaker-u1', status: 'online' })
 
   return <Enrollment printer={printer} mode="reactivate" onOpRecorded={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} {...listeners} />
 }
@@ -581,7 +581,7 @@ describe('Enrollment cancel', () => {
 // operation before that point has to say so on screen, or the modal sits on a bar that never moves.
 describe('Enrollment operation that never starts', () => {
   function renderWithPrinters(printers: Record<string, unknown>) {
-    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+    var printer = makePrinter({ id: 'printer-1', ip: '192.0.2.1', adapter: 'snapmaker-u1', status: 'online' })
 
     return setup(
       <Enrollment printer={printer} mode="recovery" onEnrolled={vi.fn()} onClose={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} />,
@@ -657,7 +657,7 @@ describe('Enrollment after a step fails', () => {
     await user.click(screen.getByRole('button', { name: 'Start over' }))
 
     expect(b3d.printers.enroll).toHaveBeenCalledTimes(2)
-    expect(b3d.printers.enroll).toHaveBeenLastCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false)
+    expect(b3d.printers.enroll).toHaveBeenLastCalledWith('printer-1', '192.0.2.1', 'snapmaker-u1', 'root', '', 22, undefined, false)
   })
 
   // The login the app tried was refused. Sending it again would only be refused again, so Start over goes
@@ -738,7 +738,7 @@ describe('Enrollment operation that goes quiet', () => {
 
   async function renderAndWait(waitMs: number) {
     var onClose = vi.fn()
-    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+    var printer = makePrinter({ id: 'printer-1', ip: '192.0.2.1', adapter: 'snapmaker-u1', status: 'online' })
     setup(<Enrollment printer={printer} mode="recovery" onEnrolled={vi.fn()} onClose={onClose} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} />)
     await act(async () => { await Promise.resolve() })
     await act(async () => { vi.advanceTimersByTime(waitMs) })
@@ -764,7 +764,7 @@ describe('Enrollment operation that goes quiet', () => {
   // The retry leaves the failed step on screen, so the app cannot read "a step is showing" as "the
   // printer answered". A retry that goes quiet used to shut the user in exactly as the first try did.
   it('lets the user out of a retry that goes quiet too', async () => {
-    var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
+    var printer = makePrinter({ id: 'printer-1', ip: '192.0.2.1', adapter: 'snapmaker-u1', status: 'online' })
     var { emit } = setup(<Enrollment printer={printer} mode="recovery" onEnrolled={vi.fn()} onClose={vi.fn()} onEscalateRecovery={vi.fn()} onExpectedRestart={vi.fn()} />)
     await act(async () => { await Promise.resolve() })
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'failed', stepId: 'deploy-daemon', stepLabel: 'Deploy daemon', error: 'boom', stepIndex: 3 })))

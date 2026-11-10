@@ -9,7 +9,7 @@ import { fetchCapabilities } from '../daemon-client/client'
 import type { PrinterRecord } from '../printers'
 
 describe('capsAfterInstall', () => {
-  const record = { ip: '10.0.0.5', installedVersions: { spoolman: '0.1.0' }, endpoints: [], jinniVersion: '0.1.1', jinniCapabilities: [], jinniExtras: [] } as never
+  const record = { ip: '192.0.2.5', installedVersions: { spoolman: '0.1.0' }, endpoints: [], jinniVersion: '0.1.1', jinniCapabilities: [], jinniExtras: [] } as never
 
   it('keeps the just-installed plugin recorded when the post-install capabilities fetch fails', async () => {
     vi.mocked(fetchCapabilities).mockRejectedValueOnce(new Error('device unreachable'))

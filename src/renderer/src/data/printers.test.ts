@@ -93,7 +93,7 @@ describe('reconcileDiscoveredAddress', () => {
   })
 
   it('leaves the record (same reference) untouched when the device does not match', () => {
-    const result = reconcileDiscoveredAddress(saved, found({ host: 'other.local', ip: '10.0.0.9' }))
+    const result = reconcileDiscoveredAddress(saved, found({ host: 'other.local', ip: '192.0.2.9' }))
     expect(result).toBe(saved)
   })
 
@@ -309,7 +309,7 @@ describe('pingAndUpdate write-layer probe (repair vs recover)', () => {
 })
 
 const DISCOVERED: DiscoveredPrinterRecord = {
-  id: 'd1', host: 'snap.local', ip: '10.0.0.5', model: 'Snapmaker U1', vendor: 'Snapmaker', service: '_klipper._tcp',
+  id: 'd1', host: 'snap.local', ip: '192.0.2.5', model: 'Snapmaker U1', vendor: 'Snapmaker', service: '_klipper._tcp',
 }
 
 describe('buildPrinter', () => {
@@ -318,7 +318,7 @@ describe('buildPrinter', () => {
   })
 
   it('records the custom-credentials choice on a manual printer', () => {
-    expect(buildPrinter('manual', null, '10.0.0.9', 'Garage', 'snapmaker-u1', false).customSshCredentials).toBe(false)
+    expect(buildPrinter('manual', null, '192.0.2.9', 'Garage', 'snapmaker-u1', false).customSshCredentials).toBe(false)
   })
 })
 

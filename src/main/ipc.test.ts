@@ -22,7 +22,7 @@ function fakeOn(channel: string, listener: IpcListener): void {
 
 const hoisted = vi.hoisted(() => ({
   userDataDir: '',
-  managedRecord: { id: 'printer-1', ip: '10.0.0.5', daemonToken: 'T', daemonCert: 'C' },
+  managedRecord: { id: 'printer-1', ip: '192.0.2.5', daemonToken: 'T', daemonCert: 'C' },
 }))
 vi.mock('electron', () => ({
   ipcMain: { handle: fakeHandle, on: fakeOn },
@@ -134,14 +134,14 @@ describe('enroll handler refreshes daemon status', () => {
     registerIpc(() => firstWindow)
     const enroll = registeredHandlers.get('printers:enroll')
     if (!enroll) throw new Error('printers:enroll handler not registered')
-    await enroll({}, 'printer-1', '10.0.0.5', 'snapmaker-u1', 'lava', 'pw', 22)
+    await enroll({}, 'printer-1', '192.0.2.5', 'snapmaker-u1', 'lava', 'pw', 22)
 
     expect(checkDaemonRecord).toHaveBeenCalledWith('printer-1')
   })
 })
 
 const writeLayerDefaults = { sshUser: 'root', sshPasswordHint: 'snapmaker', sshPort: 22, runtimeUser: 'lava' }
-const enrolledWriteLayerRecord = { id: 'printer-1', adapter: 'snapmaker-u1', ip: '10.0.0.5', enrollmentLog: { steps: [] } }
+const enrolledWriteLayerRecord = { id: 'printer-1', adapter: 'snapmaker-u1', ip: '192.0.2.5', enrollmentLog: { steps: [] } }
 
 function writeLayerAdapter(intact: boolean) {
   return { defaults: writeLayerDefaults, verifyEnrolled: vi.fn(() => Promise.resolve(intact)) } as never
@@ -180,7 +180,7 @@ describe('printers:checkWriteLayer handler (repair vs recover)', () => {
   })
 
   it('returns null for a never-enrolled printer', async () => {
-    vi.mocked(loadPrinters).mockReturnValue([{ id: 'printer-1', adapter: 'snapmaker-u1', ip: '10.0.0.5' } as never])
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'printer-1', adapter: 'snapmaker-u1', ip: '192.0.2.5' } as never])
     expect(await invokeCheckWriteLayer()).toBeNull()
     expect(connect).not.toHaveBeenCalled()
   })

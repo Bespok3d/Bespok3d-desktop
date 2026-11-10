@@ -7,7 +7,7 @@ import { useAddPrinterForm } from './useAddPrinterForm'
 import type { DiscoveredPrinterRecord } from '../../env'
 
 function voron(): DiscoveredPrinterRecord {
-  return { id: 'v-1', host: 'voron.local', ip: '10.0.0.7', model: 'Voron 2.4', vendor: 'DIY', service: '_klipper._tcp' }
+  return { id: 'v-1', host: 'voron.local', ip: '192.0.2.7', model: 'Voron 2.4', vendor: 'DIY', service: '_klipper._tcp' }
 }
 
 describe('useAddPrinterForm', () => {
@@ -23,7 +23,7 @@ describe('useAddPrinterForm', () => {
   it('returns every field to its default when the tab is switched', () => {
     const { result } = renderHook(() => useAddPrinterForm('manual', undefined, []))
     act(() => {
-      result.current.setManualIp('10.0.0.9')
+      result.current.setManualIp('192.0.2.9')
       result.current.setNick('Bench')
     })
     expect(result.current.canAdd).toBe(true)

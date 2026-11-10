@@ -25,7 +25,7 @@ function makePrinter(installedVersions: Record<string, string>): Printer {
     model: 'U1',
     adapter: 'snapmaker-u1',
     host: 'test.local',
-    ip: '10.0.0.1',
+    ip: '192.0.2.1',
     status: 'managed',
     installedIds: Object.keys(installedVersions),
     installedVersions,

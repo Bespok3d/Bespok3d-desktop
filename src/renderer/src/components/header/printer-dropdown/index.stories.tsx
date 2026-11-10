@@ -116,7 +116,7 @@ export function RowBothUpdate() {
 export function RowMultiInterface() {
   var printer = makePrinter({
     nick: 'unU1', status: 'managed', ip: '192.0.2.108', jinniVersion: ADAPTER_JINNI,
-    networkInterfaces: [{ label: 'Wi-Fi', ip: '192.0.2.108' }, { label: 'Ethernet', ip: '10.0.0.5' }, { label: 'VPN', ip: '203.0.113.9' }],
+    networkInterfaces: [{ label: 'Wi-Fi', ip: '192.0.2.108' }, { label: 'Ethernet', ip: '192.0.2.5' }, { label: 'VPN', ip: '203.0.113.9' }],
   })
 
   return <Row printer={printer} />

@@ -11,7 +11,7 @@ import type { DiscoveredPrinterRecord } from '../../env'
 const en = makeT('en')
 
 function device(): DiscoveredPrinterRecord {
-  return { id: 'dev-1', host: 'u1.local', ip: '10.0.0.5', model: 'Snapmaker U1', vendor: 'Snapmaker', service: '_klipper._tcp' }
+  return { id: 'dev-1', host: 'u1.local', ip: '192.0.2.5', model: 'Snapmaker U1', vendor: 'Snapmaker', service: '_klipper._tcp' }
 }
 
 describe('AddPrinter manual entry', () => {
@@ -21,12 +21,12 @@ describe('AddPrinter manual entry', () => {
       <AddPrinter initialTab="manual" discovered={[]} existingPrinters={[]} onAdd={onAdd} onClose={vi.fn()} />,
     )
 
-    await user.type(screen.getByPlaceholderText(en('add.ip_placeholder')), '10.0.0.9')
+    await user.type(screen.getByPlaceholderText(en('add.ip_placeholder')), '192.0.2.9')
     await user.type(screen.getByPlaceholderText(en('add.nick_placeholder')), 'Workshop U1')
     await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: en('add.submit') }))
 
-    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ ip: '10.0.0.9', nick: 'Workshop U1', customSshCredentials: true }))
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ ip: '192.0.2.9', nick: 'Workshop U1', customSshCredentials: true }))
   })
 
   it('keeps Add disabled until the required fields are filled', () => {
@@ -41,7 +41,7 @@ describe('AddPrinter tab reset', () => {
       <AddPrinter initialTab="manual" discovered={[]} existingPrinters={[]} onAdd={vi.fn()} onClose={vi.fn()} />,
     )
 
-    await user.type(screen.getByPlaceholderText(en('add.ip_placeholder')), '10.0.0.9')
+    await user.type(screen.getByPlaceholderText(en('add.ip_placeholder')), '192.0.2.9')
     await user.click(screen.getByRole('button', { name: /Scan/ }))
     await user.click(screen.getByRole('button', { name: /Manual/ }))
 
@@ -59,6 +59,6 @@ describe('AddPrinter discovery pick', () => {
     await user.type(screen.getByPlaceholderText(en('add.nick_label')), 'Bench')
     await user.click(screen.getByRole('button', { name: en('add.submit') }))
 
-    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ ip: '10.0.0.5', model: 'Snapmaker U1', nick: 'Bench' }))
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ ip: '192.0.2.5', model: 'Snapmaker U1', nick: 'Bench' }))
   })
 })

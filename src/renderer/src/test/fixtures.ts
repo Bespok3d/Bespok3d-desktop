@@ -92,7 +92,7 @@ export function makeInstallLog(pluginId: string): InstallLog {
 export function makePrinter(overrides: Partial<Printer> = {}): Printer {
   return {
     id: 'printer-1', nick: 'Test Printer', model: 'Snapmaker U1', adapter: 'snapmaker-u1',
-    host: 'test.local', ip: '10.0.0.1', status: 'managed', installedIds: [],
+    host: 'test.local', ip: '192.0.2.1', status: 'managed', installedIds: [],
     daemonVersion: '0.10.31-dev', firmwareVersion: '1.4.0.246', jinniVersion: '0.1.1',
     ...overrides,
   }

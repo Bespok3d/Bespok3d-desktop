@@ -33,7 +33,7 @@ function answerWith(statusCode: number, body: string): void {
   vi.mocked(httpsRequest).mockImplementation(fakeRequest as never)
 }
 
-const record = { id: 'p1', ip: '10.0.0.5', daemonToken: 'T', daemonCert: 'C' } as unknown as PrinterRecord
+const record = { id: 'p1', ip: '192.0.2.5', daemonToken: 'T', daemonCert: 'C' } as unknown as PrinterRecord
 
 // Block body on purpose: mockReset() returns the mock, and a beforeEach that RETURNS a function
 // registers it as a cleanup hook, which the runner would then call bare (a ghost zero-arg request).

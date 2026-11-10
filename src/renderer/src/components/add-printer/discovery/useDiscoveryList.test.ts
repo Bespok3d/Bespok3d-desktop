@@ -16,13 +16,13 @@ function gadget(host: string, ip: string): DiscoveredPrinterRecord {
 
 describe('useDiscoveryList', () => {
   it('dedupes by host and reports the deduped device count as total', () => {
-    const discovered = [printer('u1.local', '10.0.0.5'), printer('u1.local', 'fe80::1'), gadget('thing.local', '10.0.0.9')]
+    const discovered = [printer('u1.local', '192.0.2.5'), printer('u1.local', 'fe80::1'), gadget('thing.local', '192.0.2.9')]
     const { result } = renderHook(() => useDiscoveryList(discovered))
     expect(result.current.total).toBe(2)
   })
 
   it('hides non-printers until show-all is toggled on', () => {
-    const discovered = [printer('u1.local', '10.0.0.5'), gadget('thing.local', '10.0.0.9')]
+    const discovered = [printer('u1.local', '192.0.2.5'), gadget('thing.local', '192.0.2.9')]
     const { result } = renderHook(() => useDiscoveryList(discovered))
 
     expect(result.current.visible).toHaveLength(1)

@@ -13,7 +13,7 @@ const en = makeT('en')
 
 function renderDropdown(fns: { onSelect: ReturnType<typeof vi.fn>; onAddPrinter: ReturnType<typeof vi.fn>; onOpenSettings: ReturnType<typeof vi.fn> }) {
   var printers = [
-    makePrinter({ id: 'printer-1', nick: 'Alpha', status: 'managed', endpoints: [{ label: 'Fluidd', url: 'http://10.0.0.1' }] }),
+    makePrinter({ id: 'printer-1', nick: 'Alpha', status: 'managed', endpoints: [{ label: 'Fluidd', url: 'http://192.0.2.1' }] }),
     makePrinter({ id: 'printer-2', nick: 'Beta', status: 'managed' }),
   ]
 
@@ -44,7 +44,7 @@ describe('PrinterDropdown', () => {
     await user.click(container.querySelector('.printer-trigger') as HTMLElement)
     fireEvent.mouseEnter(container.querySelector('.endpoints-zone') as HTMLElement)
     await user.click(screen.getByText('Fluidd'))
-    expect(b3d.openUrl).toHaveBeenCalledWith('http://10.0.0.1')
+    expect(b3d.openUrl).toHaveBeenCalledWith('http://192.0.2.1')
   })
 })
 
@@ -160,16 +160,16 @@ describe('PrinterDropdown row (redesigned layout)', () => {
   })
 
   it('hides the extra-interfaces line for a printer on a single network', async () => {
-    var row = openRow(makePrinter({ networkInterfaces: [{ ip: '10.0.0.1' }] }))
+    var row = openRow(makePrinter({ networkInterfaces: [{ ip: '192.0.2.1' }] }))
     await row.open()
     expect(row.container.querySelector('.printer-ifaces')).toBeNull()
   })
 
   it('lists only the non-primary interfaces (never repeating the primary ip), each labelled', async () => {
-    var row = openRow(makePrinter({ ip: '192.0.2.108', networkInterfaces: [{ label: 'Wi-Fi', ip: '192.0.2.108' }, { label: 'Ethernet', ip: '10.0.0.5' }] }))
+    var row = openRow(makePrinter({ ip: '192.0.2.108', networkInterfaces: [{ label: 'Wi-Fi', ip: '192.0.2.108' }, { label: 'Ethernet', ip: '192.0.2.5' }] }))
     await row.open()
     expect(row.container.querySelector('.printer-ifaces')).not.toBeNull()
-    expect(screen.getByText('Ethernet 10.0.0.5')).toBeInTheDocument()
+    expect(screen.getByText('Ethernet 192.0.2.5')).toBeInTheDocument()
     expect(screen.queryByText('Wi-Fi 192.0.2.108')).not.toBeInTheDocument()
   })
 
