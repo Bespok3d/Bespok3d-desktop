@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { describe, it, expect } from 'vitest'
-import { acquireModalLevel, releaseModalLevel, MODAL_BASE_LEVEL, MODAL_TOP_LEVEL } from './modal-stack'
+import { describe, it, expect, vi } from 'vitest'
+import { acquireModalLevel, releaseModalLevel, anyModalOpen, subscribeToOpenModals, MODAL_BASE_LEVEL, MODAL_TOP_LEVEL } from './modal-stack'
 
 // Acquire `count` levels, return them, then release them all so the shared counter is left empty for the
 // next test (releasing back to zero resets the band to its base).
@@ -36,5 +36,25 @@ describe('modal open-order stacking', () => {
     const levels = acquireThenRelease(overflowing)
     expect(Math.max(...levels)).toBe(MODAL_TOP_LEVEL)
     levels.forEach((level) => expect(level).toBeLessThanOrEqual(MODAL_TOP_LEVEL))
+  })
+})
+
+describe('whether any modal is open', () => {
+  it('is told to a listener as modals open and close', () => {
+    const listener = vi.fn()
+    const unsubscribe = subscribeToOpenModals(listener)
+    acquireModalLevel()
+    expect(anyModalOpen()).toBe(true)
+    releaseModalLevel()
+    expect(anyModalOpen()).toBe(false)
+    unsubscribe()
+    expect(listener).toHaveBeenCalledTimes(2)
+  })
+
+  it('is not told to a listener that unsubscribed', () => {
+    const listener = vi.fn()
+    subscribeToOpenModals(listener)()
+    acquireThenRelease(1)
+    expect(listener).not.toHaveBeenCalled()
   })
 })

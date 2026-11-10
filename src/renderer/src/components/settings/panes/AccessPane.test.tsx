@@ -58,7 +58,7 @@ describe('AccessPane reset', () => {
   it('re-keys the printer to this computer on reset', async () => {
     var { user, b3d } = renderPane({ access: { clients: clients() } })
     await user.click(await screen.findByRole('button', { name: 'Reset access' }))
-    await waitFor(() => expect(b3d.printers.resetAccess).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22))
+    await waitFor(() => expect(b3d.printers.resetAccess).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', '', 22))
   })
 
   it('surfaces a reset failure instead of swallowing it', async () => {
@@ -85,7 +85,7 @@ describe('AccessPane reset', () => {
     resetButtons = screen.getAllByRole('button', { name: 'Reset access' })
     await user.click(resetButtons[resetButtons.length - 1])
     expect(b3d.printers.resetAccess).toHaveBeenCalledTimes(1)
-    expect(b3d.printers.resetAccess).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', 'their-secret', 22)
+    expect(b3d.printers.resetAccess).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', 'their-secret', 22)
   })
 
   it('answers a refused reset login in user words', async () => {
@@ -149,7 +149,7 @@ describe('AccessPane reset while it runs', () => {
       access: { clients: clients() },
       printers: {
         adapterGet: vi.fn().mockResolvedValue(makeAdapterInfo({ defaults: { sshUser: 'root', sshPort: 2222, sshPasswordHint: '', runtimeUser: 'lava' } })),
-        resetAccess: vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED 10.0.0.1:2222')),
+        resetAccess: vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED 192.0.2.1:2222')),
       },
     })
     await user.click(await screen.findByRole('button', { name: 'Reset access' }))

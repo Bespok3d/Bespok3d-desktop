@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { PrinterRecord } from './printers/record'
 import type { BrowserWindow } from 'electron'
 import type { SshSession } from './ssh'
 import type { EnrollStep } from './adapter-loader'
@@ -31,10 +32,10 @@ const mockGetAdapter = vi.mocked(getAdapter)
 const mockUpdatePrinter = vi.mocked(updatePrinter)
 
 // markEnrolled merges via a function patch; resolve it against a base record to read the fields written.
-function enrolledPatch() {
+function enrolledPatch(savedRecord: Partial<PrinterRecord> = {}) {
   const patch = mockUpdatePrinter.mock.calls.at(-1)?.[1]
 
-  return typeof patch === 'function' ? patch(fakePrinterRecord) : patch
+  return typeof patch === 'function' ? patch({ ...fakePrinterRecord, ...savedRecord }) : patch
 }
 
 function mockSession(overrides: Partial<SshSession> = {}): SshSession {
@@ -79,6 +80,24 @@ describe('checkSsh', () => {
     const result = await checkSsh('192.168.1.1', CREDS)
     expect(result.ok).toBe(false)
     expect(result.error).toContain('Connection refused')
+  })
+})
+
+describe('enrollPrinter saves the login port', () => {
+  it('saves the port of the owner\'s own login, so later checks ask the printer on that port', async () => {
+    mockGetAdapter.mockReturnValue(mockAdapter([mockStep('step-a')]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', { ...CREDS, port: 2222 })
+
+    expect(enrolledPatch({ customSshCredentials: true })).toMatchObject({ sshPort: 2222 })
+  })
+
+  it('keeps the saved own-login port when the factory login enrolls, so the own login still answers on it', async () => {
+    mockGetAdapter.mockReturnValue(mockAdapter([mockStep('step-a')]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', { ...CREDS, port: 22 })
+
+    expect(enrolledPatch({ customSshCredentials: false, sshPort: 2222 })).toMatchObject({ sshPort: 2222 })
   })
 })
 

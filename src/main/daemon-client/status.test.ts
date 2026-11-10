@@ -13,7 +13,7 @@ vi.mock('./expected-version', () => ({ expectedDaemonVersion: () => '0.12.12-dev
 vi.mock('./license-client', () => ({ fetchDaemonLicense: vi.fn() }))
 vi.mock('../printers', () => ({
   loadPrinters: vi.fn().mockReturnValue([]), updatePrinter: vi.fn(), probeDaemonPort: vi.fn().mockResolvedValue('refused'),
-  checkMoonraker: vi.fn(), checkSshOpen: vi.fn(), resolveLiveAddress: vi.fn().mockResolvedValue('10.0.0.5'),
+  checkMoonraker: vi.fn(), checkSshOpen: vi.fn(), sshPortOf: vi.fn().mockReturnValue(22), resolveLiveAddress: vi.fn().mockResolvedValue('192.0.2.5'),
   knownAddresses: vi.fn().mockReturnValue([]),
   gradeReach: (moonrakerOpen: boolean, sshOpen: boolean) => {
     if (sshOpen) return 'recoverable'
@@ -30,7 +30,7 @@ import {
 import { fetchDaemonStatus, fetchCapabilities, fetchSelfCheck } from './client'
 import { fetchDaemonLicense } from './license-client'
 import { DaemonHttpError } from './transport'
-import { loadPrinters, updatePrinter, probeDaemonPort, checkMoonraker, checkSshOpen, resolveLiveAddress } from '../printers'
+import { loadPrinters, updatePrinter, probeDaemonPort, checkMoonraker, checkSshOpen, resolveLiveAddress, sshPortOf } from '../printers'
 import type { SelfCheckResult } from './client'
 
 beforeEach(() => vi.clearAllMocks())
@@ -84,10 +84,10 @@ describe('parseCaps', () => {
       endpoints: [{ label: 'Fluidd', url: 'https://{host}/' }],
       firmware_version: '1.4.0.246', jinni_version: '0.1.1', capability_flags: ['overlay'], interface_extras: ['lmd-control'],
     } as never
-    const parsed = parseCaps(caps, { ip: '10.0.0.5' })
+    const parsed = parseCaps(caps, { ip: '192.0.2.5' })
     expect(parsed.installedIds).toEqual(['spoolman'])
     expect(parsed.installedVersions).toEqual({ spoolman: '0.1.8' })
-    expect(parsed.endpoints).toEqual([{ label: 'Fluidd', url: 'https://10.0.0.5/' }])
+    expect(parsed.endpoints).toEqual([{ label: 'Fluidd', url: 'https://192.0.2.5/' }])
     expect(parsed.firmwareVersion).toBe('1.4.0.246')
     expect(parsed.jinniVersion).toBe('0.1.1')
   })
@@ -95,19 +95,19 @@ describe('parseCaps', () => {
   // The daemon is on the printer but is not in the plugin list it reports, so without this the store
   // has no version for it and its card offers to install the daemon that is answering the request.
   it('carries the running daemon version as machinery, keyed by its package name', () => {
-    const parsed = parseCaps({ installed: {}, adapter: 'snapmaker-u1' } as never, { ip: '10.0.0.5', daemonVersion: '0.12.23' })
+    const parsed = parseCaps({ installed: {}, adapter: 'snapmaker-u1' } as never, { ip: '192.0.2.5', daemonVersion: '0.12.23' })
 
     expect(parsed.machineryVersions).toEqual({ 'bespok3d-daemon': '0.12.23' })
   })
 
   it('reports no machinery version for a printer whose daemon version is not known yet', () => {
-    const parsed = parseCaps({ installed: {}, adapter: 'snapmaker-u1' } as never, { ip: '10.0.0.5' })
+    const parsed = parseCaps({ installed: {}, adapter: 'snapmaker-u1' } as never, { ip: '192.0.2.5' })
 
     expect(parsed.machineryVersions).toEqual({})
   })
 
   it('tolerates a legacy installed list (no versions) by mapping ids to empty strings', () => {
-    const parsed = parseCaps({ installed: ['spoolman', 'rfid-ntag'] } as never, { ip: '10.0.0.5' })
+    const parsed = parseCaps({ installed: ['spoolman', 'rfid-ntag'] } as never, { ip: '192.0.2.5' })
     expect(parsed.installedIds).toEqual(['spoolman', 'rfid-ntag'])
     expect(parsed.installedVersions).toEqual({ spoolman: '', 'rfid-ntag': '' })
   })
@@ -198,7 +198,7 @@ describe('recordOrThrow', () => {
 })
 
 function mockManagedRecord(): void {
-  vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '10.0.0.5', daemonToken: 'T', daemonCert: 'C' } as never])
+  vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.5', daemonToken: 'T', daemonCert: 'C' } as never])
 }
 function mockDaemonAnswers(version: string): void {
   vi.mocked(probeDaemonPort).mockResolvedValue('open')
@@ -218,7 +218,17 @@ describe('checkDaemonRecord (connection ladder)', () => {
     vi.mocked(probeDaemonPort).mockResolvedValue('refused')
     vi.mocked(checkMoonraker).mockResolvedValue(true)
     vi.mocked(checkSshOpen).mockResolvedValue(true)
-    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, reach: 'recoverable', sshOpen: true, accessState: 'daemon-absent', ip: '10.0.0.5', networkInterfaces: [] })
+    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, reach: 'recoverable', sshOpen: true, accessState: 'daemon-absent', ip: '192.0.2.5', networkInterfaces: [] })
+  })
+
+  it('asks the SSH port the printer really uses, not always the standard one', async () => {
+    mockManagedRecord()
+    vi.mocked(sshPortOf).mockReturnValueOnce(2222)
+    vi.mocked(checkMoonraker).mockResolvedValue(true)
+    vi.mocked(checkSshOpen).mockResolvedValue(true)
+    await checkDaemonRecord('p1')
+
+    expect(checkSshOpen).toHaveBeenCalledWith('192.0.2.5', 2222)
   })
 
   it('reports managed with metadata when the daemon answers', async () => {
@@ -388,27 +398,27 @@ describe('checkDaemonRecord follows a moved or recycled IP (Bug B)', () => {
     vi.mocked(probeDaemonPort).mockResolvedValue('refused')
     vi.mocked(checkMoonraker).mockResolvedValue(false)
     vi.mocked(checkSshOpen).mockResolvedValue(false)
-    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '10.0.0.5', networkInterfaces: [] })
+    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '192.0.2.5', networkInterfaces: [] })
   })
 
   it('follows the printer to the live IP (resolved among candidates) and re-probes + returns it', async () => {
     mockManagedRecord()
     // Daemon down at the recorded .5; resolveLiveAddress finds it answering at the moved .9.
-    vi.mocked(resolveLiveAddress).mockResolvedValue('10.0.0.9')
-    vi.mocked(probeDaemonPort).mockImplementation(async (ip: string) => ip === '10.0.0.9' ? 'open' : 'refused')
+    vi.mocked(resolveLiveAddress).mockResolvedValue('192.0.2.9')
+    vi.mocked(probeDaemonPort).mockImplementation(async (ip: string) => ip === '192.0.2.9' ? 'open' : 'refused')
     vi.mocked(fetchDaemonStatus).mockResolvedValue({ ok: true, version: '0.12.12-dev' })
     vi.mocked(fetchCapabilities).mockResolvedValue({ installed: {}, endpoints: [] } as never)
     vi.mocked(fetchSelfCheck).mockResolvedValue({ ok: true, drift: [] })
     const result = await checkDaemonRecord('p1')
     expect(result.isManaged).toBe(true)
     expect(result.reach).toBe('managed')
-    expect(result.ip).toBe('10.0.0.9')
+    expect(result.ip).toBe('192.0.2.9')
   })
 
   it('keeps an unrecognized daemon at the resolved live address out of the authorization path', async () => {
     mockManagedRecord()
-    vi.mocked(resolveLiveAddress).mockResolvedValue('10.0.0.9')
-    vi.mocked(probeDaemonPort).mockImplementation(async (ip: string) => ip === '10.0.0.9' ? 'open' : 'refused')
+    vi.mocked(resolveLiveAddress).mockResolvedValue('192.0.2.9')
+    vi.mocked(probeDaemonPort).mockImplementation(async (ip: string) => ip === '192.0.2.9' ? 'open' : 'refused')
     vi.mocked(checkMoonraker).mockResolvedValue(false)
     vi.mocked(checkSshOpen).mockResolvedValue(true)
     vi.mocked(fetchDaemonStatus).mockRejectedValue(new Error('transport unavailable'))
@@ -419,9 +429,9 @@ describe('checkDaemonRecord follows a moved or recycled IP (Bug B)', () => {
 
     expect(result.accessState).toBe('unrecognized')
     expect(result.isManaged).toBe(false)
-    expect(result.ip).toBe('10.0.0.9')
-    expect(checkSshOpen).toHaveBeenCalledWith('10.0.0.5')
-    expect(checkSshOpen).not.toHaveBeenCalledWith('10.0.0.9')
+    expect(result.ip).toBe('192.0.2.9')
+    expect(checkSshOpen).toHaveBeenCalledWith('192.0.2.5', 22)
+    expect(checkSshOpen).not.toHaveBeenCalledWith('192.0.2.9', 22)
   })
 })
 

@@ -22,7 +22,7 @@ function fakeOn(channel: string, listener: IpcListener): void {
 
 const hoisted = vi.hoisted(() => ({
   userDataDir: '',
-  managedRecord: { id: 'printer-1', ip: '10.0.0.5', daemonToken: 'T', daemonCert: 'C' },
+  managedRecord: { id: 'printer-1', ip: '192.0.2.5', daemonToken: 'T', daemonCert: 'C' },
 }))
 vi.mock('electron', () => ({
   ipcMain: { handle: fakeHandle, on: fakeOn },
@@ -76,6 +76,7 @@ import { checkDaemonRecord } from './daemon-client/status'
 import { getAdapter } from './adapter-loader'
 import { connect } from './ssh'
 import { startMdnsScan } from './mdns'
+import { ENROLLMENT_ALREADY_RUNNING, RESET_ACCESS_ALREADY_RUNNING } from './ops/reset-access-busy'
 
 const mockStartMdnsScan = vi.mocked(startMdnsScan)
 
@@ -133,14 +134,14 @@ describe('enroll handler refreshes daemon status', () => {
     registerIpc(() => firstWindow)
     const enroll = registeredHandlers.get('printers:enroll')
     if (!enroll) throw new Error('printers:enroll handler not registered')
-    await enroll({}, 'printer-1', '10.0.0.5', 'snapmaker-u1', 'lava', 'pw', 22)
+    await enroll({}, 'printer-1', '192.0.2.5', 'snapmaker-u1', 'lava', 'pw', 22)
 
     expect(checkDaemonRecord).toHaveBeenCalledWith('printer-1')
   })
 })
 
 const writeLayerDefaults = { sshUser: 'root', sshPasswordHint: 'snapmaker', sshPort: 22, runtimeUser: 'lava' }
-const enrolledWriteLayerRecord = { id: 'printer-1', adapter: 'snapmaker-u1', ip: '10.0.0.5', enrollmentLog: { steps: [] } }
+const enrolledWriteLayerRecord = { id: 'printer-1', adapter: 'snapmaker-u1', ip: '192.0.2.5', enrollmentLog: { steps: [] } }
 
 function writeLayerAdapter(intact: boolean) {
   return { defaults: writeLayerDefaults, verifyEnrolled: vi.fn(() => Promise.resolve(intact)) } as never
@@ -179,7 +180,7 @@ describe('printers:checkWriteLayer handler (repair vs recover)', () => {
   })
 
   it('returns null for a never-enrolled printer', async () => {
-    vi.mocked(loadPrinters).mockReturnValue([{ id: 'printer-1', adapter: 'snapmaker-u1', ip: '10.0.0.5' } as never])
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'printer-1', adapter: 'snapmaker-u1', ip: '192.0.2.5' } as never])
     expect(await invokeCheckWriteLayer()).toBeNull()
     expect(connect).not.toHaveBeenCalled()
   })
@@ -249,5 +250,80 @@ describe('access handlers reach their daemon-client calls', () => {
     vi.mocked(revokeAccess).mockResolvedValue(undefined)
     await handlerFor('access:revoke')({}, 'printer-1', 'FP:abc')
     expect(revokeAccess).toHaveBeenCalledWith(managed, 'FP:abc')
+  })
+})
+
+// An enrollment and a reset of access each store a new token for the printer; whichever stores last is
+// the one this computer keeps, so neither may start while the other runs on the same printer.
+function heldEnrollment() {
+  const gate = { end: () => undefined as void }
+  vi.mocked(enrollPrinter).mockImplementationOnce(() => new Promise<void>((resolve) => { gate.end = resolve }))
+
+  return gate
+}
+
+function enrollOnPrinter(retryFromStepId?: string) {
+  return registeredHandlers.get('printers:enroll')?.({}, 'printer-1', '192.0.2.23', 'snapmaker-u1', 'lava', 'pw', 22, retryFromStepId)
+}
+
+function resetOnPrinter() {
+  return registeredHandlers.get('printer:reset-access')?.({}, 'printer-1', '192.0.2.23', 'root', 'pw', 22)
+}
+
+function registerWithNoTokenWriteRunning() {
+  registerWithTheManagedPrinterSaved()
+  vi.mocked(getAdapter).mockReturnValue(undefined)
+  registerIpc(() => progressWindow)
+}
+
+describe('enrollment and reset of access on one printer', () => {
+  beforeEach(registerWithNoTokenWriteRunning)
+
+  it('refuses a reset of access while an enrollment runs, before it touches the printer', async () => {
+    const enrollmentGate = heldEnrollment()
+    const enrollment = enrollOnPrinter()
+
+    await expect(resetOnPrinter()).rejects.toThrow(ENROLLMENT_ALREADY_RUNNING)
+    expect(connect).not.toHaveBeenCalled()
+    enrollmentGate.end()
+    await enrollment
+  })
+
+  it('refuses an enrollment while a reset of access runs', async () => {
+    const loginGate = { fail: (_failure: Error) => undefined as void }
+    vi.mocked(connect).mockImplementation(() => new Promise((_resolve, reject) => { loginGate.fail = reject }) as never)
+    const reset = resetOnPrinter()
+
+    await expect(enrollOnPrinter()).rejects.toThrow(RESET_ACCESS_ALREADY_RUNNING)
+    expect(enrollPrinter).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(connect).toHaveBeenCalled())
+    loginGate.fail(new Error('fixture login refused'))
+    await expect(reset).rejects.toThrow('fixture login refused')
+  })
+})
+
+describe('enrollment retries and reset of access on one printer', () => {
+  beforeEach(registerWithNoTokenWriteRunning)
+
+  it('keeps refusing a reset while a retry still runs after the attempt before it ended', async () => {
+    const firstAttemptGate = heldEnrollment()
+    const retryGate = heldEnrollment()
+    const firstAttempt = enrollOnPrinter()
+    const retry = enrollOnPrinter('step-1')
+    await vi.waitFor(() => expect(enrollPrinter).toHaveBeenCalledTimes(2))
+    firstAttemptGate.end()
+    await firstAttempt
+
+    await expect(resetOnPrinter()).rejects.toThrow(ENROLLMENT_ALREADY_RUNNING)
+    retryGate.end()
+    await retry
+  })
+
+  it('takes a reset of access once the enrollment has ended', async () => {
+    vi.mocked(enrollPrinter).mockResolvedValue(undefined)
+    vi.mocked(connect).mockRejectedValue(new Error('fixture login refused'))
+    await enrollOnPrinter()
+
+    await expect(resetOnPrinter()).rejects.toThrow('fixture login refused')
   })
 })

@@ -14,7 +14,7 @@ import { getManagedRecord } from './status'
 import { askPrinterToReach, fetchWebReach } from './web-reach'
 import type { PrinterRecord } from '../printers'
 
-const record = { id: 'p1', ip: '10.0.0.5', daemonToken: 'T', daemonCert: 'C' } as unknown as PrinterRecord
+const record = { id: 'p1', ip: '192.0.2.5', daemonToken: 'T', daemonCert: 'C' } as unknown as PrinterRecord
 
 const SPOOLMAN = 'https://spoolman.example.org'
 

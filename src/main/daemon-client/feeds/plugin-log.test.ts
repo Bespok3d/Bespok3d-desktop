@@ -25,7 +25,7 @@ vi.mock('ws', () => ({
 }))
 vi.mock('../client', () => ({ makeAgent: vi.fn(() => ({})) }))
 vi.mock('../../printers', () => ({
-  loadPrinters: vi.fn(() => [{ id: 'p1', ip: '10.0.0.1', daemonCert: 'CERT', daemonToken: 'TOK' }]),
+  loadPrinters: vi.fn(() => [{ id: 'p1', ip: '192.0.2.1', daemonCert: 'CERT', daemonToken: 'TOK' }]),
 }))
 
 import { watchPluginLog, unwatchPluginLog, closeAllPluginLogWatches } from './plugin-log'

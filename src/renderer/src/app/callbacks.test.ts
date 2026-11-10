@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { applyEnrolledOutcome, leavesThePluginsToPutBack } from './callbacks'
+import { applyEnrolledOutcome, leavesThePluginsToPutBack, recoveredPrinterHandles } from './callbacks'
 import type { EnrollMode } from '../components/enrollment'
 import { installB3d } from '../test/b3d-mock'
 import { makePrinter } from '../test/fixtures'
@@ -69,5 +69,28 @@ describe('the restart the user made from the restart window', () => {
   it('is the only window that runs it', () => {
     expect(finishWindow('update-daemon').checkAfterTheirRestart).not.toHaveBeenCalled()
     expect(finishWindow('recovery').checkAfterTheirRestart).not.toHaveBeenCalled()
+  })
+})
+
+// A report held over a quit opens on the next launch, whichever printer is selected by then.
+describe('the printer a recovery report is about', () => {
+  const printers = [makePrinter({ id: 'printer-1', nick: 'Selected U1' }), makePrinter({ id: 'printer-2', nick: 'Recovered U1' })]
+
+  it('is named by its own nick, not the selected printer', () => {
+    expect(recoveredPrinterHandles(printers, 'printer-2', vi.fn()).recoveredPrinterName).toBe('Recovered U1')
+  })
+
+  it('is selected before one of its plugins opens', () => {
+    const setSelectedId = vi.fn()
+    recoveredPrinterHandles(printers, 'printer-2', setSelectedId).selectRecoveredPrinter()
+    expect(setSelectedId).toHaveBeenCalledWith('printer-2')
+  })
+
+  it('changes no selection once it is gone from the list', () => {
+    const setSelectedId = vi.fn()
+    const handles = recoveredPrinterHandles(printers, 'printer-removed', setSelectedId)
+    handles.selectRecoveredPrinter()
+    expect(handles.recoveredPrinterName).toBeUndefined()
+    expect(setSelectedId).not.toHaveBeenCalled()
   })
 })

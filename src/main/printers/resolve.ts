@@ -4,19 +4,20 @@ import { checkDaemon, checkSshOpen } from './probe'
 import { loadPrinters, updatePrinter } from './store'
 import { candidateAddresses } from './address'
 import { liveSightings } from '../mdns/sightings'
+import { sshPortOf } from './ssh-port'
 
-// A candidate address is live when the daemon (4269) or SSH (22) answers there: both are the printer's
-// own ports, so an answer means the printer really is at that address right now (not a stale lease).
-async function addressAnswers(ip: string): Promise<boolean> {
-  const [daemon, ssh] = await Promise.all([checkDaemon(ip), checkSshOpen(ip)])
+// A candidate address is live when the daemon or SSH answers there: both are the printer's own ports,
+// so an answer means the printer really is at that address right now (not a stale lease).
+async function addressAnswers(ip: string, sshPort: number): Promise<boolean> {
+  const [daemon, ssh] = await Promise.all([checkDaemon(ip), checkSshOpen(ip, sshPort)])
 
   return daemon || ssh
 }
 
 // Pick the live address from the ordered candidates, preferring the first (the recorded IP) so a stable
 // printer never thrashes; falls through to the first moved address that answers.
-async function pickLiveAddress(candidates: string[]): Promise<string | null> {
-  const answered = await Promise.all(candidates.map(addressAnswers))
+async function pickLiveAddress(candidates: string[], sshPort: number): Promise<string | null> {
+  const answered = await Promise.all(candidates.map((candidate) => addressAnswers(candidate, sshPort)))
   const liveIndex = answered.findIndex(Boolean)
 
   return liveIndex >= 0 ? candidates[liveIndex] : null
@@ -32,7 +33,7 @@ export async function resolveLiveAddress(printerId: string): Promise<string> {
   const record = loadPrinters().find((rec) => rec.id === printerId)
   if (!record) return ''
   const candidates = candidateAddresses(record, liveSightings(), Date.now())
-  const live = candidates.length > 1 ? await pickLiveAddress(candidates) : null
+  const live = candidates.length > 1 ? await pickLiveAddress(candidates, sshPortOf(record)) : null
   if (live && live !== record.ip) updatePrinter(printerId, { ip: live })
 
   return live ?? record.ip

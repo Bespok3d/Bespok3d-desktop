@@ -151,6 +151,17 @@ function batchOpHandles(batchOps: BatchOps) {
   }
 }
 
+// A recovery report can open while another printer is selected, such as one held over a quit and shown
+// on the next launch, so it names its printer and its plugin links first select that printer.
+export function recoveredPrinterHandles(printers: Printer[], recoveryPrinterId: string | null, setSelectedId: (id: string) => void) {
+  const recoveredPrinter = printers.find((candidate) => candidate.id === recoveryPrinterId)
+  function selectRecoveredPrinter() {
+    if (recoveredPrinter) setSelectedId(recoveredPrinter.id)
+  }
+
+  return { recoveredPrinterName: recoveredPrinter ? recoveredPrinter.nick || recoveredPrinter.model : undefined, selectRecoveredPrinter }
+}
+
 // Recovery ends by restarting the printer, so the app is told to expect it to drop off and come back
 // instead of showing it offline. It answers whether it is restarting the printer itself, which is what
 // the recovery report goes on to tell the user.
@@ -215,6 +226,7 @@ export function useAppCallbacks(
     ...gateHandles(enrollGate),
     ...enrollModeHandlers(openEnrollModal, openOverSsh),
     ...batchOpHandles(batchOps),
+    ...recoveredPrinterHandles(printers, batchOps.recoveryPrinterId, setSelectedId),
   }
 }
 

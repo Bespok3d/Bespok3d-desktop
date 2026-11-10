@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { DAEMON_PORT, STANDARD_SSH_PORT } from '../../../main/printers/ports'
-import { RESET_ACCESS_ALREADY_RUNNING } from '../../../main/ops/reset-access-busy'
+import { ENROLLMENT_ALREADY_RUNNING, RESET_ACCESS_ALREADY_RUNNING } from '../../../main/ops/reset-access-busy'
 
 // Some failures arrive in words written for programmers: the U1 adapter's own English refusal, the SSH
 // library's, the operating system's. The app answers each one it knows in the owner's language, with
@@ -44,6 +44,8 @@ function knownFailuresOn(sshPort: number): readonly KnownFailure[] {
     { rawWords: /\bgetaddrinfo ENOTFOUND\b/, messageKey: 'failure.printer_address_not_found' },
     // The app refuses a second reset of access while the first still runs on the same printer.
     { rawWords: wordForWord(RESET_ACCESS_ALREADY_RUNNING), messageKey: 'failure.reset_access_already_running' },
+    // The app refuses a reset of access while an enrollment of the same printer still runs.
+    { rawWords: wordForWord(ENROLLMENT_ALREADY_RUNNING), messageKey: 'failure.enrollment_already_running' },
   ]
 }
 

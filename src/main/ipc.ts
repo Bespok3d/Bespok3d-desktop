@@ -22,7 +22,7 @@ import {
   importKeyFromProfile,
 } from './keys'
 import { listPublishedAccountKeys } from './publisher/published-keys'
-import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, pingPrinter, checkSshOpen, probeService, resolveLiveAddress } from './printers'
+import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, pingPrinter, sshLoginAnswers, probeService, resolveLiveAddress } from './printers'
 import type { PublicPrinterRecord } from './printers'
 import { setAddressResolver, askPrinterToReach } from './daemon-client/client'
 import { offeredJinniVersion } from './compat/jinni-baseline'
@@ -35,6 +35,7 @@ import type { ConnectionRequest } from './git-host/connector'
 import { checkDaemonRecord } from './daemon-client/status'
 import { registerPrinterOperationHandlers } from './ops/printer-ops'
 import { registerAccessHandlers } from './ops/access-ops'
+import { runEnrollmentAlone } from './ops/token-write-lock'
 import { checkWriteLayer } from './ops/daemon-ops'
 import { registerStoreHandlers } from './store/handlers'
 import { reportRenderFailure } from './analytics/errors'
@@ -99,7 +100,7 @@ function registerPrinterHandlers(getMainWindow: () => BrowserWindow): void {
   ipcMain.handle('printers:patch', (_ev, id: string, fields: Partial<PublicPrinterRecord>): void => { updatePrinter(id, fields) })
   ipcMain.handle('printers:remove', (_ev, id) => removePrinter(id))
   ipcMain.handle('printers:ping', (_ev, ip) => pingPrinter(ip))
-  ipcMain.handle('printers:checkSshOpen', (_ev, ip: string) => checkSshOpen(ip))
+  ipcMain.handle('printers:checkSshOpen', (_ev, printerId: string, ip: string) => sshLoginAnswers(printerId, ip))
   // Any address a person typed into a plugin's config, checked before it is sent: a host and port
   // from this computer, a whole web address from the printer that will use it.
   ipcMain.handle('net:probeService', (_ev, host: string, port: number) => probeService(host, port))
@@ -122,7 +123,8 @@ function registerPrinterHandlers(getMainWindow: () => BrowserWindow): void {
   ipcMain.handle(
     'printers:enroll',
     async (_ev, printerId: string, ip: string, adapterId: string, user: string, password: string, port: number, retryFromStepId?: string, forced?: boolean) => {
-      const result = await enrollPrinter(getMainWindow(), printerId, ip, adapterId, { user, password, port }, retryFromStepId, forced)
+      const result = await runEnrollmentAlone(printerId, () =>
+        enrollPrinter(getMainWindow(), printerId, ip, adapterId, { user, password, port }, retryFromStepId, forced))
       // Record the true daemon version (and installed list / drift) right away instead of waiting for
       // the first status ping. Reuses the bounded status fetch; a no-op if the daemon is unreachable.
       await checkDaemonRecord(printerId).catch(() => undefined)

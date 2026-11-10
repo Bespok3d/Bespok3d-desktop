@@ -3,6 +3,7 @@
 import type { BrowserWindow } from 'electron'
 import { updatePrinter, loadPrinters } from '../printers'
 import type { PrinterRecord } from '../printers'
+import { DAEMON_PORT } from '../printers/ports'
 import { getAdapter } from '../adapter-loader'
 import type { AdapterDefinition, EnrollContext, EnrollStep, SshCredentials } from '../adapter-loader'
 import { findAdapterStep } from '../adapter-loader/adapter-step'
@@ -89,7 +90,7 @@ function diagnoseDaemon(adapter: AdapterDefinition, ssh: SshSession): Promise<st
     `[ -d ${quotedBespok3dRoot}/var/lib/demon ] && out="$out stale-demon-dir"; ` +
     `[ -f ${quotedBespok3dRoot}/var/lib/daemon/daemon.py ] || out="$out missing-daemon.py"; ` +
     `grep -q 'var/lib/demon' ${quotedBespok3dRoot}/etc/init.d/autostart/s10bespok3d-daemon 2>/dev/null && out="$out wrong-autostart-path"; ` +
-    `netstat -ltnp 2>/dev/null | grep -q ':4269 ' && out="$out port-4269-occupied"; ` +
+    `netstat -ltnp 2>/dev/null | grep -q ':${DAEMON_PORT} ' && out="$out port-${DAEMON_PORT}-occupied"; ` +
     `[ -z "$out" ] && out=" no-issues-detected"; ` +
     `echo "Diagnosis:$out"`
   )

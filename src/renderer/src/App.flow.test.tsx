@@ -23,7 +23,7 @@ beforeEach(() => {
 
 const enrolledRecord = {
   id: 'printer-1', nick: 'Alpha', model: 'Snapmaker U1', adapter: 'snapmaker-u1',
-  host: 'alpha.local', ip: '10.0.0.1', status: 'online', installedIds: ['spoolman'],
+  host: 'alpha.local', ip: '192.0.2.1', status: 'online', installedIds: ['spoolman'],
   enrollmentLog: { enrolledAt: '2026-01-01', adapterId: 'snapmaker-u1', steps: [] },
   daemonToken: 'T', daemonCert: 'C',
 } as unknown as PrinterRecord
@@ -82,7 +82,7 @@ describe('App flow: requests never fall through to enrollment', () => {
 
   it('shows an unrecognized service diagnosis without a dead access action', async () => {
     var { b3d } = renderApp({
-      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'alive-no-ssh', sshOpen: false, accessState: 'unrecognized', ip: '10.0.0.1', networkInterfaces: [] }),
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'alive-no-ssh', sshOpen: false, accessState: 'unrecognized', ip: '192.0.2.1', networkInterfaces: [] }),
     })
     expect(await screen.findByText(en('banner.access_unrecognized', { name: enrolledRecord.nick }))).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: en('banner.access_action') })).not.toBeInTheDocument()
@@ -193,7 +193,7 @@ describe('App flow: canceled access and re-enrollment choices', () => {
     expect(repair).not.toHaveBeenCalled()
     await user.click(screen.getAllByRole('button', { name: 'Repair daemon' })[1])
     // Not forced: only the Force menu waives the refusal to put a printer back onto an older daemon.
-    await waitFor(() => expect(repair).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22, false))
+    await waitFor(() => expect(repair).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', '', 22, false))
   })
 
   it('a post-OTA printer (write layer reset) offers Recover, not Repair, and Recover starts the re-enroll', async () => {
@@ -206,7 +206,7 @@ describe('App flow: canceled access and re-enrollment choices', () => {
 
     await user.click(screen.getByRole('button', { name: en('banner.recover_action') }))
     expect(await screen.findByRole('heading', { name: /Recover Alpha/ })).toBeInTheDocument()
-    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
   })
 
   it('finishing the recovery re-enroll triggers a plugin recover (store.recover)', async () => {
@@ -249,7 +249,7 @@ describe('App flow: repair and uninstall check root access first', () => {
     await user.click(screen.getByRole('button', { name: en('enroll.ssh_retry') }))
     const repairWindow = (await screen.findByRole('heading', { name: 'Repair Alpha' })).closest('[role="dialog"]') as HTMLElement
     await user.click(within(repairWindow).getByRole('button', { name: 'Repair daemon' }))
-    await waitFor(() => expect(repair).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22, false))
+    await waitFor(() => expect(repair).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'root', '', 22, false))
   })
 
   it('an uninstall with root access off shows the root-access window and removes nothing', async () => {
@@ -265,7 +265,7 @@ describe('App flow: repair and uninstall check root access first', () => {
     await user.click(within(uninstallConfirm).getByRole('button', { name: en('printers.uninstall') }))
 
     expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
-    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('printer-1', '192.0.2.1')
     expect(b3d.printers.uninstall).not.toHaveBeenCalled()
   })
 })
@@ -295,7 +295,7 @@ describe('App flow: recovery, updates and deactivation check root access first',
     expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
     expect(b3d.printers.enroll).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: en('enroll.ssh_retry') }))
-    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '192.0.2.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
   })
 
   it.each([
@@ -311,7 +311,7 @@ describe('App flow: recovery, updates and deactivation check root access first',
     await chooseDeployItem(user, itemKey)
 
     expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
-    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('printer-1', '192.0.2.1')
     expect(b3d.printers[call]).not.toHaveBeenCalled()
   })
 
@@ -343,7 +343,7 @@ describe('App flow: reactivation and the reboot check root access first', () => 
     await user.click(await screen.findByRole('button', { name: en(actionKey) }))
 
     expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
-    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('printer-1', '192.0.2.1')
     expect(b3d.printers[call]).not.toHaveBeenCalled()
   })
 })

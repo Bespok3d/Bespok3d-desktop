@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('./probe', () => ({ checkDaemon: vi.fn(), checkSshOpen: vi.fn() }))
 vi.mock('./store', () => ({ loadPrinters: vi.fn(), updatePrinter: vi.fn() }))
 vi.mock('../mdns/sightings', () => ({ liveSightings: vi.fn().mockReturnValue([]) }))
+vi.mock('../adapter-loader', () => ({ getAdapter: () => ({ defaults: { sshPort: 2222 } }) }))
 
 import { resolveLiveAddress, knownAddresses } from './resolve'
 import { checkDaemon, checkSshOpen } from './probe'
@@ -42,6 +43,13 @@ describe('resolveLiveAddress', () => {
     answersAt('192.0.2.109', '192.0.2.66') // both answer (it flipped back); keep the recorded one, no thrash
     expect(await resolveLiveAddress('p1')).toBe('192.0.2.109')
     expect(updatePrinter).not.toHaveBeenCalled()
+  })
+
+  it('asks SSH on the port the printer uses, so a printer on another port is still found', async () => {
+    vi.mocked(liveSightings).mockReturnValue([{ host: 'lava', ip: '192.0.2.66', mac: '00:00:5e:00:53:fc', seenAt: Date.now() }])
+    answersAt()
+    await resolveLiveAddress('p1')
+    expect(checkSshOpen).toHaveBeenCalledWith('192.0.2.66', 2222)
   })
 
   it('returns the recorded IP when nothing answers, so the caller still has an address to try', async () => {

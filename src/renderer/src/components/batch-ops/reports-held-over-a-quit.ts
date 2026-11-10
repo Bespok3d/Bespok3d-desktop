@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 import type { Printer } from '../../data/types'
+import { anyModalOpen } from '../common/overlay/modal-stack'
+import { useAnyModalOpen } from '../common/overlay/useAnyModalOpen'
 import { HELD_REPORTS_KEY, forgetFor, keptByPrinter, type HeldReport } from './kept-over-a-quit'
 
 type HeldByPrinter = ReadonlyMap<string, HeldReport>
@@ -33,17 +35,20 @@ function withoutThePrinter(heldBefore: HeldByPrinter, printerId: string): HeldBy
 // user who quit the app while that window was up never saw it, so this launch shows it once the
 // printer answers again, and forgets it once shown. Only the reports kept before this launch are
 // looked at: one a window of this launch holds is that window's to show when it goes. One report at a
-// time, and none over a recover's screens or a window on a printer, which may be following a reboot
-// itself: the next waits until the screen in front is closed.
-export function useReportsHeldOverAQuit(printers: Printer[], screenInFront: boolean, showPluginsLeftOff: (reapplied: BatchResult) => void): void {
+// time, and none over a recover's screens, a window on a printer, which may be following a reboot
+// itself, or any other modal: the next waits until the screen in front is closed.
+export function useReportsHeldOverAQuit(printers: Printer[], screenInFront: boolean, showPluginsLeftOff: (printerId: string, reapplied: BatchResult) => void): void {
   const [heldBeforeThisLaunch, setHeldBeforeThisLaunch] = useState<HeldByPrinter>(() => keptByPrinter(HELD_REPORTS_KEY))
+  const modalOpenAtRender = useAnyModalOpen()
   useEffect(function showOneOnceItsPrinterAnswers() {
-    if (screenInFront || heldBeforeThisLaunch.size === 0) return
+    // A modal mounted in this same commit claims its place after this render read the store, so the
+    // store is asked again here; the value read at render only brings the effect back once it closes.
+    if (screenInFront || anyModalOpen() || heldBeforeThisLaunch.size === 0) return
     const ready = firstReadyToShow(heldBeforeThisLaunch, printers)
     if (!ready) return
     const [printerId, held] = ready
     forgetFor(HELD_REPORTS_KEY, printerId)
     setHeldBeforeThisLaunch(withoutThePrinter(heldBeforeThisLaunch, printerId))
-    showPluginsLeftOff(held.reapplied)
-  }, [printers, screenInFront, heldBeforeThisLaunch])
+    showPluginsLeftOff(printerId, held.reapplied)
+  }, [printers, screenInFront, modalOpenAtRender, heldBeforeThisLaunch])
 }

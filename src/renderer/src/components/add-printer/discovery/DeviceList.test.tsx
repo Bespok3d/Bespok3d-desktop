@@ -21,9 +21,9 @@ function gadget(host: string, ip: string): DiscoveredPrinterRecord {
 describe('DeviceList show-all count', () => {
   it('counts deduped devices in the show-all label, not raw discovery emits', () => {
     const discovered = [
-      printer('u1.local', '10.0.0.5'),
+      printer('u1.local', '192.0.2.5'),
       printer('u1.local', 'fe80::1'),
-      gadget('thing.local', '10.0.0.9'),
+      gadget('thing.local', '192.0.2.9'),
     ]
     setup(
       <DeviceList discovered={discovered} scanning={false} isAlreadyAdded={() => false} onPick={vi.fn()} />,

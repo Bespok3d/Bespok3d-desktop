@@ -14,11 +14,11 @@ function pause(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function pollUntilSshIs(answering: boolean, ip: string, giveUpAfterMs: number): Promise<boolean> {
+async function pollUntilSshIs(answering: boolean, ip: string, sshPort: number, giveUpAfterMs: number): Promise<boolean> {
   const deadline = Date.now() + giveUpAfterMs
 
   async function attempt(): Promise<boolean> {
-    if (await checkSshOpen(ip) === answering) return true
+    if (await checkSshOpen(ip, sshPort) === answering) return true
     if (Date.now() >= deadline) return false
     await pause(POLL_MS)
 
@@ -28,19 +28,19 @@ async function pollUntilSshIs(answering: boolean, ip: string, giveUpAfterMs: num
   return attempt()
 }
 
-function untilThePrinterStopsAnswering(ip: string): Promise<boolean> {
-  return pollUntilSshIs(false, ip, GOING_DOWN_MS)
+function untilThePrinterStopsAnswering(ip: string, sshPort: number): Promise<boolean> {
+  return pollUntilSshIs(false, ip, sshPort, GOING_DOWN_MS)
 }
 
-function untilThePrinterAnswersAgain(ip: string): Promise<boolean> {
-  return pollUntilSshIs(true, ip, COMING_BACK_MS)
+function untilThePrinterAnswersAgain(ip: string, sshPort: number): Promise<boolean> {
+  return pollUntilSshIs(true, ip, sshPort, COMING_BACK_MS)
 }
 
 // Blocks until the printer has gone down and answered again. A printer that never answers again inside
 // COMING_BACK_MS throws, because the op reporting success would tell the user the printer is back when
 // it is not.
-export async function waitForThePrinterToComeBack(ip: string): Promise<void> {
-  await untilThePrinterStopsAnswering(ip)
-  const isBack = await untilThePrinterAnswersAgain(ip)
+export async function waitForThePrinterToComeBack(ip: string, sshPort: number): Promise<void> {
+  await untilThePrinterStopsAnswering(ip, sshPort)
+  const isBack = await untilThePrinterAnswersAgain(ip, sshPort)
   if (!isBack) throw new Error('The printer has not come back on the network yet. Check its power and its WiFi, then try again.')
 }

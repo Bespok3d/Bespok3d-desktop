@@ -52,11 +52,11 @@ describe('tailDaemonLog', () => {
 describe('waitForDaemon', () => {
   it('resolves as soon as the daemon answers', async () => {
     vi.mocked(checkDaemon).mockResolvedValue(true)
-    await expect(waitForDaemon('10.0.0.5', undefined, 1)).resolves.toBeUndefined()
+    await expect(waitForDaemon('192.0.2.5', undefined, 1)).resolves.toBeUndefined()
   })
 
   it('throws with the captured log tail when the daemon never answers', async () => {
     vi.mocked(checkDaemon).mockResolvedValue(false)
-    await expect(waitForDaemon('10.0.0.5', async () => 'ImportError: boom', 1)).rejects.toThrow(/ImportError: boom/)
+    await expect(waitForDaemon('192.0.2.5', async () => 'ImportError: boom', 1)).rejects.toThrow(/ImportError: boom/)
   })
 })

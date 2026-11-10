@@ -16,7 +16,7 @@ export type ReEnrollWarning = { printer: Printer; fromAdd: boolean; forced: bool
 export type RootAccessGate = { printer: Printer; mode: EnrollMode; fromAdd: boolean; forced: boolean }
 
 function startEnrollWhenSshOpen(printer: Printer, fromAdd: boolean, forced: boolean, setRootAccessGate: (value: RootAccessGate | null) => void, setEnrollProposal: (value: Printer | null) => void, setEnrollModal: (value: EnrollModal | null) => void) {
-  window.b3d.printers.checkSshOpen(printer.ip).then((sshOpen) => {
+  window.b3d.printers.checkSshOpen(printer.id, printer.ip).then((sshOpen) => {
     const decision = enrollPathDecision({ sshOpen, fromAdd })
     if (decision === 'root-gate') setRootAccessGate({ printer, mode: 'enroll', fromAdd, forced })
     else if (decision === 'enroll-proposal') setEnrollProposal(printer)
@@ -25,10 +25,10 @@ function startEnrollWhenSshOpen(printer: Printer, fromAdd: boolean, forced: bool
 }
 
 // Recovery, repair, the updates, deactivation, reactivation, the reboot and uninstall run over SSH just
-// as enrollment does, so a closed port 22 gets the same root-access gate instead of a raw connection
+// as enrollment does, so a closed SSH port gets the same root-access gate instead of a raw connection
 // error out of the first step.
 function openWhenSshOpen(printer: Printer, mode: EnrollMode, forced: boolean, setRootAccessGate: (value: RootAccessGate | null) => void, setEnrollModal: (value: EnrollModal | null) => void) {
-  window.b3d.printers.checkSshOpen(printer.ip).then((sshOpen) => {
+  window.b3d.printers.checkSshOpen(printer.id, printer.ip).then((sshOpen) => {
     if (sshOpen) setEnrollModal({ printer, mode, forced })
     else setRootAccessGate({ printer, mode, fromAdd: false, forced })
   })
@@ -65,7 +65,7 @@ function rootGateHandlers(rootAccessGate: RootAccessGate | null, setRootAccessGa
 }
 
 // Decide whether adding/enrolling a printer opens enrollment, the access request, or the root-access
-// guidance gate. Enrollment is all SSH, so a closed port 22 means the user has not turned on root
+// guidance gate. Enrollment is all SSH, so a closed SSH port means the user has not turned on root
 // access yet; show the gate with a retry instead of letting the first SSH step fail cryptically.
 export function useEnrollGate(
   setEnrollModal: (value: EnrollModal | null) => void,
