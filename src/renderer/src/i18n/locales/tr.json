@@ -440,6 +440,7 @@
   "failure.no_network_to_printer": "Bu bilgisayarın yazıcıya giden bir ağ bağlantısı yok. Bu bilgisayarın yazıcıyla aynı ağa bağlı olduğunu kontrol edin, sonra tekrar deneyin.",
   "failure.printer_address_not_found": "Bu bilgisayar ağda yazıcının adresini bulamadı. Yazıcıyı eklerken adresi kendiniz yazdıysanız doğru olduğunu kontrol edin.",
   "failure.reset_access_already_running": "Bu yazıcıda zaten bir erişim sıfırlama işlemi sürüyor. Bitmesini bekleyin, hâlâ gerekiyorsa yeniden deneyin.",
+  "failure.enrollment_already_running": "Bespok3d şu anda bu yazıcıyı kuruyor. Bu bittiğinde erişimi yeniden sıfırlayın.",
   "gen.startup": "Başlangıç",
   "gen.default_printer": "Varsayılan yazıcı",
   "gen.default_printer_hint": "Bespok3d açıldığında seçilir.",

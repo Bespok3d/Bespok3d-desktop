@@ -12,7 +12,7 @@ import { getAdapter } from '../adapter-loader'
 import { bespok3dRootOn } from '../adapter-loader/bespok3d-root'
 import { connect, shellQuote } from '../ssh'
 import { DAEMON_PORT } from '../printers/ports'
-import { RESET_ACCESS_ALREADY_RUNNING } from './reset-access-busy'
+import { runRequestOutsideReset, runResetAlone } from './token-write-lock'
 
 // This computer's identity for a printer's ACL: the GPG fingerprint when PGP is on, else a stable
 // client id that works with no key (the kill-switch keeps the flow alive when PGP is off).
@@ -68,47 +68,15 @@ async function runResetAccess(printerId: string, ip: string, user: string, passw
   }
 }
 
-const resetsRunning = new Set<string>()
-const requestsRunning = new Map<string, Promise<unknown>>()
-
-// One reset per printer at a time: two would each write their own token, and the one stored last here
-// need not be the one the printer kept. A second reset is refused, never queued, so it cannot undo the first.
-// A reset also lets a running access request store its token first, so the reset's token is the one kept.
-async function runResetAccessAlone(printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
-  if (resetsRunning.has(printerId)) throw new Error(RESET_ACCESS_ALREADY_RUNNING)
-  resetsRunning.add(printerId)
-  try {
-    // A request's own failure is told to whoever asked for it; the reset only waits for it to end.
-    await requestsRunning.get(printerId)
-    await runResetAccess(printerId, ip, user, password, port)
-  } finally {
-    resetsRunning.delete(printerId)
-  }
-}
-
-function forgetEndedRequests(printerId: string, requestsSoFar: Promise<unknown>): void {
-  if (requestsRunning.get(printerId) === requestsSoFar) requestsRunning.delete(printerId)
-}
-
-// An access request stores a token too, so it must not land after a reset and replace the reset's token.
-// Each request chains onto the ones already running, so a reset waits for all of them, not only the newest.
-function runRequestAccessOutsideReset(printerId: string, label: string, daemonPort: number): Promise<{ ok: boolean }> {
-  if (resetsRunning.has(printerId)) return Promise.reject(new Error(RESET_ACCESS_ALREADY_RUNNING))
-  const request = runRequestAccess(printerId, label, daemonPort)
-  const requestsSoFar = Promise.allSettled([requestsRunning.get(printerId), request])
-  requestsRunning.set(printerId, requestsSoFar)
-  void requestsSoFar.then(() => forgetEndedRequests(printerId, requestsSoFar))
-
-  return request
-}
-
 export function registerAccessHandlers(daemonPort = DAEMON_PORT): void {
-  ipcMain.handle('access:request', (_ev, printerId: string, label: string) => runRequestAccessOutsideReset(printerId, label, daemonPort))
+  ipcMain.handle('access:request', (_ev, printerId: string, label: string) =>
+    runRequestOutsideReset(printerId, () => runRequestAccess(printerId, label, daemonPort)),
+  )
   ipcMain.handle('access:status', (_ev, printerId: string) => runAccessStatus(printerId, daemonPort))
   ipcMain.handle('access:clients', (_ev, printerId: string) => fetchAccessClients(recordOrThrow(printerId)))
   ipcMain.handle('access:grant', (_ev, printerId: string, identity: string) => grantAccess(recordOrThrow(printerId), identity))
   ipcMain.handle('access:revoke', (_ev, printerId: string, identity: string) => revokeAccess(recordOrThrow(printerId), identity))
   ipcMain.handle('printer:reset-access', (_ev, printerId: string, ip: string, user: string, password: string, port: number) =>
-    runResetAccessAlone(printerId, ip, user, password, port),
+    runResetAlone(printerId, () => runResetAccess(printerId, ip, user, password, port)),
   )
 }

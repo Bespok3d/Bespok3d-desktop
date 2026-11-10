@@ -440,6 +440,7 @@
   "failure.no_network_to_printer": "Este computador não tem nenhuma conexão de rede que leve à impressora. Verifique se este computador está conectado à mesma rede que a impressora, e tente de novo.",
   "failure.printer_address_not_found": "Este computador não encontrou o endereço da impressora na rede. Se você digitou o endereço ao adicionar a impressora, confira se está certo.",
   "failure.reset_access_already_running": "Já existe uma redefinição de acesso em andamento nesta impressora. Espere terminar e tente de novo se ainda precisar.",
+  "failure.enrollment_already_running": "O Bespok3d está configurando esta impressora agora. Redefina o acesso de novo quando isso terminar.",
   "gen.startup": "Inicialização",
   "gen.default_printer": "Impressora padrão",
   "gen.default_printer_hint": "Selecionada quando o Bespok3d abre.",

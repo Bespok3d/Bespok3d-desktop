@@ -440,6 +440,7 @@
   "failure.no_network_to_printer": "Cet ordinateur n'a aucune connexion réseau qui mène à l'imprimante. Vérifiez que cet ordinateur est connecté au même réseau que l'imprimante, puis réessayez.",
   "failure.printer_address_not_found": "Cet ordinateur n'a pas trouvé l'adresse de l'imprimante sur le réseau. Si vous avez tapé l'adresse en ajoutant l'imprimante, vérifiez qu'elle est juste.",
   "failure.reset_access_already_running": "Une réinitialisation de l'accès est déjà en cours sur cette imprimante. Attendez qu'elle se termine, puis réessayez si besoin.",
+  "failure.enrollment_already_running": "Bespok3d est en train de configurer cette imprimante. Réinitialisez l'accès une fois cette opération terminée.",
   "gen.startup": "Démarrage",
   "gen.default_printer": "Imprimante par défaut",
   "gen.default_printer_hint": "Sélectionnée à l'ouverture de Bespok3d.",

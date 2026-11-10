@@ -451,6 +451,7 @@
   "failure.no_network_to_printer": "This computer has no network connection that leads to the printer. Check that this computer is connected to the same network as the printer, then try again.",
   "failure.printer_address_not_found": "This computer could not find the printer's address on the network. If you typed the address when you added the printer, check that it is right.",
   "failure.reset_access_already_running": "A reset of access is already running on this printer. Wait for it to finish, then try again if you still need to.",
+  "failure.enrollment_already_running": "Bespok3d is setting up this printer right now. Reset access again once that has finished.",
   "gen.startup": "Startup",
   "gen.default_printer": "Default printer",
   "gen.default_printer_hint": "Selected when Bespok3d opens.",

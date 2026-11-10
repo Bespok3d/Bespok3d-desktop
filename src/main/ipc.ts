@@ -35,6 +35,7 @@ import type { ConnectionRequest } from './git-host/connector'
 import { checkDaemonRecord } from './daemon-client/status'
 import { registerPrinterOperationHandlers } from './ops/printer-ops'
 import { registerAccessHandlers } from './ops/access-ops'
+import { runEnrollmentOutsideReset } from './ops/token-write-lock'
 import { checkWriteLayer } from './ops/daemon-ops'
 import { registerStoreHandlers } from './store/handlers'
 import { reportRenderFailure } from './analytics/errors'
@@ -122,7 +123,8 @@ function registerPrinterHandlers(getMainWindow: () => BrowserWindow): void {
   ipcMain.handle(
     'printers:enroll',
     async (_ev, printerId: string, ip: string, adapterId: string, user: string, password: string, port: number, retryFromStepId?: string, forced?: boolean) => {
-      const result = await enrollPrinter(getMainWindow(), printerId, ip, adapterId, { user, password, port }, retryFromStepId, forced)
+      const result = await runEnrollmentOutsideReset(printerId, () =>
+        enrollPrinter(getMainWindow(), printerId, ip, adapterId, { user, password, port }, retryFromStepId, forced))
       // Record the true daemon version (and installed list / drift) right away instead of waiting for
       // the first status ping. Reuses the bounded status fetch; a no-op if the daemon is unreachable.
       await checkDaemonRecord(printerId).catch(() => undefined)

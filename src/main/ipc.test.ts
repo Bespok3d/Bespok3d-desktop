@@ -76,6 +76,7 @@ import { checkDaemonRecord } from './daemon-client/status'
 import { getAdapter } from './adapter-loader'
 import { connect } from './ssh'
 import { startMdnsScan } from './mdns'
+import { ENROLLMENT_ALREADY_RUNNING, RESET_ACCESS_ALREADY_RUNNING } from './ops/reset-access-busy'
 
 const mockStartMdnsScan = vi.mocked(startMdnsScan)
 
@@ -249,5 +250,80 @@ describe('access handlers reach their daemon-client calls', () => {
     vi.mocked(revokeAccess).mockResolvedValue(undefined)
     await handlerFor('access:revoke')({}, 'printer-1', 'FP:abc')
     expect(revokeAccess).toHaveBeenCalledWith(managed, 'FP:abc')
+  })
+})
+
+// An enrollment and a reset of access each store a new token for the printer; whichever stores last is
+// the one this computer keeps, so neither may start while the other runs on the same printer.
+function heldEnrollment() {
+  const gate = { end: () => undefined as void }
+  vi.mocked(enrollPrinter).mockImplementationOnce(() => new Promise<void>((resolve) => { gate.end = resolve }))
+
+  return gate
+}
+
+function enrollOnPrinter(retryFromStepId?: string) {
+  return registeredHandlers.get('printers:enroll')?.({}, 'printer-1', '192.0.2.23', 'snapmaker-u1', 'lava', 'pw', 22, retryFromStepId)
+}
+
+function resetOnPrinter() {
+  return registeredHandlers.get('printer:reset-access')?.({}, 'printer-1', '192.0.2.23', 'root', 'pw', 22)
+}
+
+function registerWithNoTokenWriteRunning() {
+  registerWithTheManagedPrinterSaved()
+  vi.mocked(getAdapter).mockReturnValue(undefined)
+  registerIpc(() => progressWindow)
+}
+
+describe('enrollment and reset of access on one printer', () => {
+  beforeEach(registerWithNoTokenWriteRunning)
+
+  it('refuses a reset of access while an enrollment runs, before it touches the printer', async () => {
+    const enrollmentGate = heldEnrollment()
+    const enrollment = enrollOnPrinter()
+
+    await expect(resetOnPrinter()).rejects.toThrow(ENROLLMENT_ALREADY_RUNNING)
+    expect(connect).not.toHaveBeenCalled()
+    enrollmentGate.end()
+    await enrollment
+  })
+
+  it('refuses an enrollment while a reset of access runs', async () => {
+    const loginGate = { fail: (_failure: Error) => undefined as void }
+    vi.mocked(connect).mockImplementation(() => new Promise((_resolve, reject) => { loginGate.fail = reject }) as never)
+    const reset = resetOnPrinter()
+
+    await expect(enrollOnPrinter()).rejects.toThrow(RESET_ACCESS_ALREADY_RUNNING)
+    expect(enrollPrinter).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(connect).toHaveBeenCalled())
+    loginGate.fail(new Error('fixture login refused'))
+    await expect(reset).rejects.toThrow('fixture login refused')
+  })
+
+})
+
+describe('enrollment retries and reset of access on one printer', () => {
+  beforeEach(registerWithNoTokenWriteRunning)
+
+  it('keeps refusing a reset while a retry still runs after the attempt before it ended', async () => {
+    const firstAttemptGate = heldEnrollment()
+    const retryGate = heldEnrollment()
+    const firstAttempt = enrollOnPrinter()
+    const retry = enrollOnPrinter('step-1')
+    firstAttemptGate.end()
+    await firstAttempt
+
+    await expect(resetOnPrinter()).rejects.toThrow(ENROLLMENT_ALREADY_RUNNING)
+    retryGate.end()
+    await retry
+  })
+
+  it('takes a reset of access once the enrollment has ended', async () => {
+    vi.mocked(enrollPrinter).mockResolvedValue(undefined)
+    vi.mocked(connect).mockRejectedValue(new Error('fixture login refused'))
+    await enrollOnPrinter()
+
+    await expect(resetOnPrinter()).rejects.toThrow('fixture login refused')
   })
 })

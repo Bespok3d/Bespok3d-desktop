@@ -440,6 +440,7 @@
   "failure.no_network_to_printer": "このコンピューターには、プリンターにつながるネットワーク接続がありません。このコンピューターがプリンターと同じネットワークにつながっているか確認してから、再試行してください。",
   "failure.printer_address_not_found": "このコンピューターはネットワーク上でプリンターのアドレスを見つけられませんでした。プリンターを追加するときにアドレスを入力した場合は、それが正しいか確認してください。",
   "failure.reset_access_already_running": "このプリンターではすでにアクセスのリセットが実行中です。終わるまで待ち、まだ必要なら再試行してください。",
+  "failure.enrollment_already_running": "Bespok3d が今このプリンターをセットアップしています。終わってからもう一度アクセスをリセットしてください。",
   "gen.startup": "起動",
   "gen.default_printer": "既定のプリンター",
   "gen.default_printer_hint": "Bespok3d を開いたときに選択されます。",

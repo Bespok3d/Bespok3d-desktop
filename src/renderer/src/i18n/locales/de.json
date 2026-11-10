@@ -440,6 +440,7 @@
   "failure.no_network_to_printer": "Dieser Computer hat keine Netzwerkverbindung, die zum Drucker führt. Prüfe, ob dieser Computer mit demselben Netzwerk wie der Drucker verbunden ist, und versuche es dann erneut.",
   "failure.printer_address_not_found": "Dieser Computer hat die Adresse des Druckers im Netzwerk nicht gefunden. Wenn du die Adresse beim Hinzufügen des Druckers eingetippt hast, prüfe, ob sie stimmt.",
   "failure.reset_access_already_running": "Auf diesem Drucker läuft bereits ein Zurücksetzen des Zugriffs. Warte, bis es fertig ist, und versuche es dann bei Bedarf erneut.",
+  "failure.enrollment_already_running": "Bespok3d richtet diesen Drucker gerade ein. Setze den Zugriff erneut zurück, sobald das fertig ist.",
   "gen.startup": "Start",
   "gen.default_printer": "Standarddrucker",
   "gen.default_printer_hint": "Wird beim Öffnen von Bespok3d ausgewählt.",

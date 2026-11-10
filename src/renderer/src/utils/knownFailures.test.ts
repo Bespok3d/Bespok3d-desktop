@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { describe, it, expect } from 'vitest'
 import { failureInUserWords, knownFailureKey } from './knownFailures'
-import { RESET_ACCESS_ALREADY_RUNNING } from '../../../main/ops/reset-access-busy'
+import { ENROLLMENT_ALREADY_RUNNING, RESET_ACCESS_ALREADY_RUNNING } from '../../../main/ops/reset-access-busy'
 
 const U1_PREFLIGHT = fileURLToPath(new URL('../../../../../adapters/snapmaker-u1/client/enroll-steps/preflight.ts', import.meta.url))
 const EXTENDED_FIRMWARE_THROW = /throw new Error\('([^']*Extended firmware[^']*)'\)/
@@ -94,6 +94,12 @@ describe('the other known failures', () => {
     var secondReset = `Error invoking remote method 'printer:reset-access': Error: ${RESET_ACCESS_ALREADY_RUNNING}`
 
     expect(knownFailureKey(secondReset)).toBe('failure.reset_access_already_running')
+  })
+
+  it('answer a reset of access refused during an enrollment in user words', () => {
+    var resetDuringEnrollment = `Error invoking remote method 'printer:reset-access': Error: ${ENROLLMENT_ALREADY_RUNNING}`
+
+    expect(knownFailureKey(resetDuringEnrollment)).toBe('failure.enrollment_already_running')
   })
 
   it('leave any other failure in its raw words', () => {

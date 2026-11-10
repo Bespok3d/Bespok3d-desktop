@@ -440,6 +440,7 @@
   "failure.no_network_to_printer": "这台电脑没有通往打印机的网络连接。请确认这台电脑和打印机连在同一个网络上，然后再试一次。",
   "failure.printer_address_not_found": "这台电脑在网络上找不到打印机的地址。如果你在添加打印机时手动输入了地址，请检查它是否正确。",
   "failure.reset_access_already_running": "这台打印机上已有一个访问重置正在进行。请等待它完成；如果仍有需要，再试一次。",
+  "failure.enrollment_already_running": "Bespok3d 正在设置这台打印机。设置完成后，请再次重置访问。",
   "gen.startup": "启动",
   "gen.default_printer": "默认打印机",
   "gen.default_printer_hint": "打开 Bespok3d 时自动选中。",
