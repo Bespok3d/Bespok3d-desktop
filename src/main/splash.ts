@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { app, BrowserWindow } from 'electron'
+import { runsHeadless } from './headless'
 
 // The window shown while the renderer boots. It names the build the user is about to look at, so a
 // dev run, an installed release and an OTA-updated release are told apart before the app opens.
@@ -23,6 +24,7 @@ export function createSplash(appName: string): BrowserWindow {
     height: 180,
     frame: false,
     center: true,
+    show: !runsHeadless(),
     resizable: false,
     backgroundColor: SPLASH_BG,
     webPreferences: { nodeIntegration: false, contextIsolation: true },

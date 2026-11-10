@@ -13,6 +13,7 @@ import { closeAllPluginLogWatches } from './daemon-client/feeds/plugin-log'
 import { startAutoUpdates } from './app-update'
 import { installAppMenu } from './menu'
 import { createSplash } from './splash'
+import { leaveTheScreenAlone, runsHeadless } from './headless'
 import { addLocalPackages } from './registry/local'
 import { registerB3dScheme, b3dUrlsFromArgv, dispatchB3dUrl } from './protocol'
 import { reportEvent, startAnalytics } from './analytics'
@@ -79,8 +80,7 @@ if (!gotSingleInstanceLock) {
 } else {
   app.on('second-instance', (_event, argv) => {
     if (!mainWindow || mainWindow.isDestroyed()) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.focus()
+    bringToFront(mainWindow)
     ingestDroppedFiles(b3FilesFromArgv(argv))
     handleB3dUrls(b3dUrlsFromArgv(argv))
   })
@@ -91,6 +91,12 @@ if (!gotSingleInstanceLock) {
 app.setAboutPanelOptions({ applicationName: APP_NAME, applicationVersion: app.getVersion() })
 
 const PREFERRED_WIDTH = 1280
+
+function bringToFront(win: BrowserWindow): void {
+  if (runsHeadless()) return
+  if (win.isMinimized()) win.restore()
+  win.focus()
+}
 
 function createWindow(splash: BrowserWindow): void {
   const iconPath = join(__dirname, '../../resources/icons/icon.png')
@@ -117,7 +123,7 @@ function createWindow(splash: BrowserWindow): void {
 
   win.on('ready-to-show', () => {
     splash.destroy()
-    win.show()
+    if (!runsHeadless()) win.show()
   })
 
   // Flush anything queued before the renderer was ready (cold launch via Finder or a b3d:// link).
@@ -134,7 +140,7 @@ function createWindow(splash: BrowserWindow): void {
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL'])
-    win.webContents.openDevTools({ mode: 'detach' })
+    if (!runsHeadless()) win.webContents.openDevTools({ mode: 'detach' })
   } else {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
@@ -161,6 +167,7 @@ function reportCrashToUsage(thrown: unknown): void {
 
 async function onAppReady(): Promise<void> {
   if (!gotSingleInstanceLock) return
+  leaveTheScreenAlone()
 
   const canOpenStaging = await prepareBetaProfileTransition(APP_CHANNEL.transitionFromProfile, app.getPath('userData'))
   if (!canOpenStaging) {

@@ -2,11 +2,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, vi } from 'vitest'
 
-const splashWindow = vi.hoisted(() => ({ loadedUrls: [] as string[] }))
+const splashWindow = vi.hoisted(() => ({ loadedUrls: [] as string[], shownAtCreation: [] as boolean[] }))
 
 vi.mock('electron', () => ({
   app: { getVersion: () => '0.0.0-test' },
   BrowserWindow: class {
+    constructor(options: { show?: boolean }) {
+      splashWindow.shownAtCreation.push(options.show ?? true)
+    }
+
     loadURL(url: string): void {
       splashWindow.loadedUrls.push(url)
     }
@@ -39,5 +43,13 @@ describe('splash screen', () => {
 
     expect(shown).toContain('<h1>Bespok3d</h1>')
     expect(shown).toContain('0.0.0-test')
+  })
+
+  it('never shows itself in a headless run, so a scripted launch puts nothing on screen', () => {
+    process.env.B3D_HEADLESS = '1'
+    createSplash('Bespok3d')
+    delete process.env.B3D_HEADLESS
+
+    expect(splashWindow.shownAtCreation.at(-1)).toBe(false)
   })
 })
