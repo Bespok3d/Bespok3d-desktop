@@ -315,6 +315,7 @@ as you touch the file.
 - `useKeysManager` (hook) - [components/settings/state.ts](../src/renderer/src/components/settings/state.ts)
 - `usePrinterActions` (hook) - [components/settings/printer-actions.ts](../src/renderer/src/components/settings/printer-actions.ts)
 - `useReleases` (hook) - [components/settings/panes/update/releases.ts](../src/renderer/src/components/settings/panes/update/releases.ts) - The published app releases (for the rollback/version list and the "what's new" notes). Main answers
+- `useResetAccess` (hook) - [components/settings/panes/useResetAccess.ts](../src/renderer/src/components/settings/panes/useResetAccess.ts) - Runs one reset of access at a time and tells the pane while it runs.
 - `useRollback` (hook) - [components/settings/panes/update/rollback.tsx](../src/renderer/src/components/settings/panes/update/rollback.tsx)
 - `useUpdatePrefs` (hook) - [components/settings/panes/update/preferences.tsx](../src/renderer/src/components/settings/panes/update/preferences.tsx)
 - `WhatIsSent` (component) - [components/settings/panes/usage-reporting/what-is-sent.tsx](../src/renderer/src/components/settings/panes/usage-reporting/what-is-sent.tsx)

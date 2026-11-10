@@ -10,6 +10,7 @@ import { useRecoverOp } from './recover-op'
 import { waitForPrinterBack } from './wait-for-printer'
 import { BatchOpModal } from './index'
 import type { RecoverResult } from '@bespok3d/contract'
+import { DAEMON_PORT } from '../../../../main/printers/ports'
 
 type DaemonReport = Awaited<ReturnType<typeof window.b3d.printers.checkDaemon>>
 
@@ -21,9 +22,6 @@ type DaemonReport = Awaited<ReturnType<typeof window.b3d.printers.checkDaemon>>
 const PRINTER_IP = process.env.B3D_HIL_HOST ?? ''
 const PRINTER_SSH = process.env.B3D_HIL_SSH ?? 'u1jr'
 const PRINTER_PASSWORD = process.env.B3D_HIL_PASSWORD ?? 'snapmaker'
-// The port the printer's own Bespok3d service listens on: an answer from it is what says the printer
-// is back, since SSH opens well before it is serving.
-const DAEMON_PORT = 4269
 // How often the screen is looked at, and how long a real restart is given before the watch gives up.
 const LOOK_AGAIN_MS = 2_000
 const ASK_AGAIN_MS = 3_000
@@ -61,6 +59,8 @@ function restartTheRealPrinter(): Promise<boolean> {
     .then(() => true)
 }
 
+// An answer from the printer's own Bespok3d service is what says the printer is back, since SSH opens
+// well before it is serving.
 function theDaemonAnswers(): Promise<DaemonReport> {
   return new Promise((resolve) => {
     var socket = connect({ host: PRINTER_IP, port: DAEMON_PORT, timeout: 4_000 })

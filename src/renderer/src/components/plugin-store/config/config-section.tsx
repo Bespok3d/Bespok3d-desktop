@@ -10,7 +10,9 @@ import { httpPortError, httpPortValue } from '../../../data/ports'
 import { configAddressError } from '../../../data/address'
 import { useI18n } from '../../../i18n/context'
 import { formatDateTime } from '../../../utils/datetime'
+import { knownFailureKey } from '../../../utils/knownFailures'
 import { Button } from '../../common/Button'
+import { Explainer } from '../../common/content/Explainer'
 import { useAsyncAction } from '../../common/hooks/useAsyncAction'
 import { FieldInput } from './field-input'
 import { ScopeControl } from './scope-control'
@@ -90,6 +92,15 @@ function TruthMarker({ tier, appliedAt }: { tier?: ConfigTruthTier; appliedAt?: 
   if (tier === 'unknown') return <p className="config-truth-note">{t('store.config_unknown_note')}</p>
 
   return null
+}
+
+// This view has no report, so a known failure keeps its raw words one click away for whoever must quote them.
+function ApplyFailure({ applyError }: { applyError: string }) {
+  const { t } = useI18n()
+  const messageKey = knownFailureKey(applyError)
+  if (!messageKey) return <>{applyError}</>
+
+  return <Explainer brief={t(messageKey)} detail={<code>{applyError}</code>} />
 }
 
 // What the port field tells the user right now: why the port cannot be used at all, and, when it
@@ -183,7 +194,7 @@ export function PluginConfigSection({ fields, current, tier, appliedAt, installe
       {!editing && <TruthMarker tier={tier} appliedAt={appliedAt} />}
       {portError && editing && <p className="config-error">{portError}</p>}
       {swap && editing && <p className="config-swap-note">{t(installed ? 'store.port_swap_note' : 'store.port_swap_note_install', { other: swap.name, port: swap.port })}</p>}
-      {applyError && editing && <p className="config-error">{applyError}</p>}
+      {applyError && editing && <p className="config-error"><ApplyFailure applyError={applyError} /></p>}
       {installed && editing && dirty && (
         <div className="config-actions">
           <Button variant="outline" onClick={cancel} disabled={applying}>{t('btn.cancel')}</Button>

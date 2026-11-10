@@ -10,6 +10,7 @@ import { Enrollment } from './index'
 import type { EnrollMode } from './index'
 import type { Printer } from '../../data/types'
 import type { PrinterRecord } from '../../env'
+import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 import { makeT } from '../../i18n'
 
 const en = makeT('en')
@@ -374,7 +375,11 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
   const putBack = { pluginId: 'example-camera', ok: true, skipped: false, reason: 'back on', log: [] }
   const leftOff = { pluginId: 'example-spoolman', ok: false, skipped: false, reason: 'switched off: its service did not start', log: [] }
 
-  async function reactivateAnswering(reapplied: { ok: boolean, results: Array<typeof putBack> }) {
+  // The printer's safety net switches the plugin off after the services restart and reports it on its
+  // own services row, which is ok because the printer is working again; every plugin row stays ok.
+  const switchedOffBySafetyNet = { pluginId: '(services)', ok: true, skipped: false, reason: 'Auto-recovered: deactivated example-spoolman to keep the printer working', log: [], autoDeactivated: 'example-spoolman' }
+
+  async function reactivateAnswering(reapplied: BatchResult) {
     var onPluginsLeftOff = vi.fn()
     var printer = makePrinter({ id: 'printer-1', ip: '10.0.0.1', adapter: 'snapmaker-u1', status: 'online' })
     var rendered = setup(
@@ -390,6 +395,30 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
 
   it('names the plugins the printer could not put back', async () => {
     var reapplied = { ok: false, results: [putBack, leftOff] }
+
+    var onPluginsLeftOff = await reactivateAnswering(reapplied)
+
+    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('names the plugin the printer\'s safety net switched off once the services restarted', async () => {
+    var reapplied = { ok: true, results: [putBack, switchedOffBySafetyNet] }
+
+    var onPluginsLeftOff = await reactivateAnswering(reapplied)
+
+    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('names the plugin the printer walked past because it could not read its manifest', async () => {
+    var reapplied = { ok: true, results: [putBack], manifestWarnings: [{ plugin: 'example-rfid', problem: 'manifest-unreadable', detail: 'manifest.json: Expecting value' }] }
+
+    var onPluginsLeftOff = await reactivateAnswering(reapplied)
+
+    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+  })
+
+  it('tells the app when the printer says putting the plugins back failed, even with no plugin row', async () => {
+    var reapplied = { ok: false, results: [] }
 
     var onPluginsLeftOff = await reactivateAnswering(reapplied)
 
@@ -458,6 +487,26 @@ describe('Enrollment operation that never starts', () => {
     expect(await screen.findByText('This could not be started on the printer.')).toBeInTheDocument()
     expect(screen.getByText('adapter registry unreachable')).toBeInTheDocument()
     expect(container.querySelector('.progress-bar.indeterminate')).toBeNull()
+  })
+
+  // Desktop issue 40: the printer refused the SSH login of a repair.
+  it('tells a refused SSH login in user words instead of the SSH library words', async () => {
+    var { user, b3d } = renderEnroll('repair')
+    vi.mocked(b3d.printers.repair).mockRejectedValue(new Error("Error invoking remote method 'printers:repair': Error: All configured authentication methods failed"))
+    await user.click(screen.getByRole('button', { name: 'Repair daemon' }))
+
+    expect(await screen.findByText(en('failure.ssh_login_refused'))).toBeInTheDocument()
+    expect(screen.queryByText(/All configured authentication methods failed/)).toBeNull()
+  })
+
+  // Desktop issue 55: the SSH login of an uninstall never finished.
+  it('tells an SSH login that never finished in user words instead of the SSH library words', async () => {
+    var { user, b3d } = renderEnroll('uninstall')
+    vi.mocked(b3d.printers.uninstall).mockRejectedValue(new Error("Error invoking remote method 'printers:uninstall': Error: Timed out while waiting for handshake"))
+    await user.click(screen.getByRole('button', { name: 'Remove Bespok3d' }))
+
+    expect(await screen.findByText(en('failure.ssh_no_handshake'))).toBeInTheDocument()
+    expect(screen.queryByText(/Timed out while waiting for handshake/)).toBeNull()
   })
 
   it('says so when the printer refuses the operation', async () => {

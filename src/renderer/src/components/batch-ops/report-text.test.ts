@@ -23,7 +23,7 @@ describe('copied batch report', () => {
       ],
     }
 
-    const report = buildBatchReport('update', batch)
+    const report = buildBatchReport('update', batch, batch.ok)
 
     expect(report).toContain('- rfid-anycubic: ok\n- rfid-creality: failed: update phase failed')
     expect(report).toContain('  - Patches: patch rfid.py\n    Hunk failed\n    expected context not found')
@@ -37,6 +37,14 @@ describe('copied batch report', () => {
       results: [{ pluginId: 'rfid-creality', ok: false, skipped: false, reason: 'package refused', log: [] }],
     }
 
-    expect(buildBatchReport('update', batch)).toContain('- rfid-creality: failed: package refused')
+    expect(buildBatchReport('update', batch, batch.ok)).toContain('- rfid-creality: failed: package refused')
+  })
+
+  // The printer calls a recovery fine with a plugin walked past; the report says what the modal says.
+  it('states the outcome the app gave, not the printer\'s own word for it', () => {
+    const batch: BatchResult = { ok: true, results: [{ pluginId: 'spoolman', ok: true, skipped: false, reason: '', log: [] }] }
+
+    expect(buildBatchReport('recovery', batch, false)).toContain('- outcome: finished with errors')
+    expect(buildBatchReport('recovery', batch, true)).toContain('- outcome: ok')
   })
 })

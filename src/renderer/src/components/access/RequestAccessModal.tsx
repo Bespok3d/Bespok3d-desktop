@@ -8,6 +8,7 @@ import { Modal } from '../common/overlay/Modal'
 import { Button } from '../common/Button'
 import { IconCheckCircle, IconAlert, IconRefresh } from '../../design-system/icons'
 import { errorMessage } from '../../utils/errorMessage'
+import { failureInUserWords } from '../../utils/knownFailures'
 import '../enrollment/enrollment.css'
 
 type Phase = 'choice' | 'requesting' | 'waiting' | 'granted' | 'failed'
@@ -91,7 +92,7 @@ function ResultView({ granted, error, onClose }: { granted: boolean; error: stri
         <div className="enroll-success">
           <span className="enroll-success-icon">{granted ? <IconCheckCircle size={32} /> : <IconAlert size={32} />}</span>
           <div className="enroll-success-title">{granted ? t('access.granted.title') : t('access.failed.title')}</div>
-          <div className="enroll-success-sub">{granted ? t('access.granted.sub') : error}</div>
+          <div className="enroll-success-sub">{granted ? t('access.granted.sub') : failureInUserWords(error, t)}</div>
         </div>
       </div>
       <div className="modal-foot">

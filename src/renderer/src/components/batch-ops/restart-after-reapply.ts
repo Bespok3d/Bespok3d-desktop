@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Printer } from '../../data/types'
+import { readPrinterLogin, type PrinterLogin } from '../../data/printers/login'
 
 // Putting every plugin back leaves the printer running services that were restarted one after another,
 // and the touchscreen is known to come back dead from that without saying so. Nothing on the printer
@@ -18,14 +19,8 @@ export function restartAfterReapply(
   markExpectedRestart: (printerId: string) => void,
   askForTheirLogin: (printerId: string) => void,
 ): Promise<boolean> {
-  if (printer.customSshCredentials) {
-    askForTheirLogin(printer.id)
-
-    return Promise.resolve(false)
-  }
-
-  return window.b3d.printers.adapterGet(printer.adapter)
-    .then((adapter) => rebootOnAdapterDefaults(printer, adapter, markExpectedRestart, askForTheirLogin))
+  return readPrinterLogin(printer)
+    .then((login) => rebootOnFactoryLogin(printer, login, markExpectedRestart, askForTheirLogin))
     .catch(restartDidNotHappen(printer.id, askForTheirLogin))
 }
 
@@ -33,10 +28,8 @@ export function restartAfterReapply(
 // the printer leave its services restart to that reboot. A printer that waits on the user's login may
 // never be restarted, so it keeps its services restart (Bespok3d-desktop#30).
 export function appRestartsItself(printer: Printer): Promise<boolean> {
-  if (printer.customSshCredentials) return Promise.resolve(false)
-
-  return window.b3d.printers.adapterGet(printer.adapter)
-    .then((adapter) => adapter !== null)
+  return readPrinterLogin(printer)
+    .then((login) => login.source === 'factory')
     .catch(function keepTheServicesRestart(error: unknown) {
       console.error('[recovery] the adapter could not be read, so the printer restarts its own services', error)
 
@@ -66,19 +59,19 @@ function restartDidNotHappen(printerId: string, askForTheirLogin: (printerId: st
   }
 }
 
-function rebootOnAdapterDefaults(
+function rebootOnFactoryLogin(
   printer: Printer,
-  adapter: AdapterInfo | null,
+  login: PrinterLogin,
   markExpectedRestart: (printerId: string) => void,
   askForTheirLogin: (printerId: string) => void,
 ): Promise<boolean> {
-  if (!adapter) {
+  if (login.source !== 'factory') {
     askForTheirLogin(printer.id)
 
     return Promise.resolve(false)
   }
-  const { sshUser, sshPasswordHint, sshPort } = adapter.defaults
+  const { user, password, port } = login.credentials
   markExpectedRestart(printer.id)
 
-  return window.b3d.printers.reboot(printer.id, printer.ip, sshUser, sshPasswordHint, sshPort).then(() => true)
+  return window.b3d.printers.reboot(printer.id, printer.ip, user, password, port).then(() => true)
 }

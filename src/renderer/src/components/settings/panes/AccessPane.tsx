@@ -3,10 +3,15 @@
 import { useState } from 'react'
 import { Group } from '../../common/Group'
 import { Button } from '../../common/Button'
+import { Modal } from '../../common/overlay/Modal'
+import { CredentialsForm } from '../../enrollment/CredentialsForm'
 import { useAsyncEffect } from '../../common/hooks/useAsyncEffect'
-import { errorMessage } from '../../../utils/errorMessage'
+import { mainProcessMessage } from '../../../utils/errorMessage'
+import { failureInUserWords } from '../../../utils/knownFailures'
 import { useI18n } from '../../../i18n/context'
 import type { Printer } from '../../../data/types'
+import type { SshCredentials } from '../../../hooks/enrollment'
+import { useResetAccess } from './useResetAccess'
 
 interface ClientInfo { identity: string; role: string; label: string }
 interface PendingInfo { identity: string; label: string; requested_at: string }
@@ -44,24 +49,36 @@ function PendingRow({ pending, onGrant }: { pending: PendingInfo; onGrant: () =>
   )
 }
 
-function resetAccess(printer: Printer, onDone: () => void, onError: (message: string) => void): void {
-  window.b3d.printers.adapterGet(printer.adapter).then((info) => {
-    if (!info) return
-    window.b3d.printers
-      .resetAccess(printer.id, printer.ip, info.defaults.sshUser, info.defaults.sshPasswordHint, info.defaults.sshPort)
-      .then(onDone)
-      .catch((failure) => onError(errorMessage(failure)))
-  }).catch((failure) => onError(errorMessage(failure)))
+// The app never stores a login the user gave, so a printer with its own SSH login is asked for it every reset.
+function TheirLoginModal({ printer, onLogin, onCancel }: { printer: Printer; onLogin: (login: SshCredentials) => void; onCancel: () => void }) {
+  const { t } = useI18n()
+
+  return (
+    <Modal onClose={onCancel} className="enrollment">
+      <div className="modal-head">
+        <h2>{t('access.reset')}</h2>
+        <p>{printer.nick || printer.model}</p>
+      </div>
+      <CredentialsForm printerId={printer.id} ip={printer.ip} adapterId={printer.adapter} actionLabel={t('access.reset')}
+        onStart={onLogin} onCancel={onCancel} />
+    </Modal>
+  )
 }
 
 function PrinterAccess({ printer, data, onRefresh }: { printer: Printer; data?: AccessData; onRefresh: () => void }) {
   const { t } = useI18n()
-  const [error, setError] = useState<string | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+  function actionDone() { setProblem(null); onRefresh() }
+  const reset = useResetAccess(printer, { done: actionDone, problem: setProblem })
   function runPrivileged(action: Promise<unknown>) {
-    action.then(() => { setError(null); onRefresh() }).catch((failure) => setError(errorMessage(failure)))
+    action.then(actionDone).catch((failure) => setProblem(failureInUserWords(mainProcessMessage(failure), t)))
   }
   function grant(identity: string) { runPrivileged(window.b3d.access.grant(printer.id, identity)) }
   function revoke(identity: string) { runPrivileged(window.b3d.access.revoke(printer.id, identity)) }
+  function startReset() {
+    setProblem(null)
+    reset.start()
+  }
 
   return (
     <Group title={printer.nick || printer.model}>
@@ -77,9 +94,11 @@ function PrinterAccess({ printer, data, onRefresh }: { printer: Printer; data?: 
         <div className="set-row-text">
           <div className="set-row-hint">{t('access.reset_hint')}</div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => resetAccess(printer, () => { setError(null); onRefresh() }, setError)}>{t('access.reset')}</Button>
+        <Button variant="outline" size="sm" busy={reset.resetting} onClick={startReset}>{t('access.reset')}</Button>
       </div>
-      {error && <div className="set-error" role="alert">{error}</div>}
+      {reset.resetting && <div className="set-row-hint" role="status">{t('access.resetting')}</div>}
+      {problem && <div className="set-error" role="alert">{problem}</div>}
+      {reset.askingTheirLogin && <TheirLoginModal printer={printer} onLogin={reset.resetWithTheirLogin} onCancel={reset.cancelTheirLogin} />}
     </Group>
   )
 }

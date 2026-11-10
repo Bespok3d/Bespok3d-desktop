@@ -5,7 +5,7 @@ import cx from '../../utils/cx'
 import { Modal } from '../common/overlay/Modal'
 import { UploadBar } from '../upload'
 import { useListFollowsActiveRow } from './follow-active-row'
-import { rowStatus, completedCount } from './progress'
+import { rowStatus, completedCount, activeRowIndex } from './progress'
 import type { BatchProgressState, RowStatus } from './progress'
 
 const ROW_GLYPH: Record<RowStatus, string> = { done: '✓', failed: '✕', installing: '', pending: '' }
@@ -27,7 +27,7 @@ export function BatchInstallProgress({ title, state }: { title: string; state: B
   const { t } = useI18n()
   const total = state.ids.length
   const done = completedCount(state)
-  const listRef = useListFollowsActiveRow(state.startedIndex)
+  const listRef = useListFollowsActiveRow(activeRowIndex(state))
 
   return (
     <Modal dismissable={false} className="batch-progress-modal">
@@ -38,8 +38,8 @@ export function BatchInstallProgress({ title, state }: { title: string; state: B
       <UploadBar printerId={state.printerId} />
       <progress className="batch-progress-bar" value={done} max={total || 1} />
       <div className="batch-progress-list" ref={listRef}>
-        {state.ids.map((pluginId, index) => (
-          <BatchRow key={pluginId} pluginId={pluginId} status={rowStatus(state, index)} phaseLabel={state.phaseLabel} />
+        {state.ids.map((pluginId) => (
+          <BatchRow key={pluginId} pluginId={pluginId} status={rowStatus(state, pluginId)} phaseLabel={state.phaseLabel} />
         ))}
         {state.restarting && (
           <div className="batch-row installing">

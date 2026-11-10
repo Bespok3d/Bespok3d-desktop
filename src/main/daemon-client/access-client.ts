@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { request as httpsRequest, Agent } from 'https'
 import type { PrinterRecord } from '../printers'
+import { DAEMON_PORT } from '../printers/ports'
 import { doRequest, collectResponse, DaemonHttpError, DEFAULT_DAEMON_TIMEOUT_MS } from './transport'
 
 export interface AccessClient {
@@ -92,7 +93,7 @@ export function requestAccess(input: AccessRequestInput): Promise<AccessRequestR
   return new Promise((resolve, reject) => {
     const agent = new Agent({ rejectUnauthorized: false })
     const req = httpsRequest(
-      { hostname: input.ip, port: input.port ?? 4269, path: '/access/request', method: 'POST', agent,
+      { hostname: input.ip, port: input.port ?? DAEMON_PORT, path: '/access/request', method: 'POST', agent,
         headers: { 'Content-Type': 'application/json', 'Content-Length': body.length } },
       (res) => collectResponse(res, (text) => settleAccessRequest(text, resolve, reject), reject),
     )
@@ -118,7 +119,7 @@ export async function revokeAccess(record: PrinterRecord, identity: string): Pro
 }
 
 // True once an existing client has approved this token (the daemon stops returning 401).
-export async function isAccessGranted(record: PrinterRecord, port = 4269): Promise<boolean> {
+export async function isAccessGranted(record: PrinterRecord, port = DAEMON_PORT): Promise<boolean> {
   try {
     await doRequest(record, 'GET', '/status', undefined, undefined, undefined, undefined, port)
 

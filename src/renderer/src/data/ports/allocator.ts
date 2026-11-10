@@ -7,10 +7,11 @@
 // port another UI holds moves that other UI, and only a reserved or out-of-range port is
 // refused outright. Arbitration is entirely
 // app-side, so the daemon only realizes the port it is handed.
+import { DAEMON_PORT, STANDARD_SSH_PORT } from '../../../../main/printers/ports'
 
 export const PRIMARY_PORT = 80
 export const SECONDARY_BASE = 81
-export const RESERVED_PORTS = [22, 4269, 7125]
+export const RESERVED_PORTS = [STANDARD_SSH_PORT, DAEMON_PORT, 7125]
 
 function isReserved(port: number): boolean {
   return RESERVED_PORTS.includes(port)
