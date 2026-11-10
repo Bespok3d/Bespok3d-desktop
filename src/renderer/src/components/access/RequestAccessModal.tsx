@@ -7,7 +7,7 @@ import { useI18n } from '../../i18n/context'
 import { Modal } from '../common/overlay/Modal'
 import { Button } from '../common/Button'
 import { IconCheckCircle, IconAlert, IconRefresh } from '../../design-system/icons'
-import { errorMessage } from '../../utils/errorMessage'
+import { mainProcessMessage } from '../../utils/errorMessage'
 import { failureInUserWords } from '../../utils/knownFailures'
 import '../enrollment/enrollment.css'
 
@@ -112,7 +112,7 @@ export function RequestAccessModal({ printer, state, onClose, onGranted, onReEnr
     setGuided(asGuided)
     setPhase('requesting')
     window.b3d.access.request(printer.id, '').then(() => setPhase('waiting')).catch((requestError) => {
-      setError(errorMessage(requestError))
+      setError(mainProcessMessage(requestError))
       setPhase('failed')
     })
   }

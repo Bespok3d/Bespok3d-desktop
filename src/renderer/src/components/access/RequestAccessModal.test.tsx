@@ -50,6 +50,14 @@ describe('RequestAccessModal failure', () => {
     expect(onReEnroll).not.toHaveBeenCalled()
   })
 
+  it('shows the main process sentence without the IPC wrapper in front of it', async () => {
+    var request = vi.fn().mockRejectedValue(new Error("Error invoking remote method 'access:request': Error: fixture daemon said no"))
+    var { user } = renderModal(vi.fn(), { access: { request } })
+    await user.click(screen.getByRole('button', { name: 'Just the steps' }))
+    expect(await screen.findByText('fixture daemon said no')).toBeInTheDocument()
+    expect(screen.queryByText(/invoking remote method/)).not.toBeInTheDocument()
+  })
+
   it('allows a pending request to be cancelled without reporting a grant', async () => {
     var onGranted = vi.fn()
     var onClose = vi.fn()
