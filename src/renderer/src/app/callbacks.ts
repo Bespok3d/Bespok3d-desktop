@@ -195,7 +195,7 @@ export function useAppCallbacks(
   const batchOps = useBatchOps(printers, setPrinters, installGate.beforeInstall, recoveryRestart(printers, {
     markExpectedRestart: (printerId) => markExpectedRestart(printerId, POST_OPERATION_GRACE_MS),
     askForTheirLogin: (printerId) => openOverSsh(printerId, 'reboot'),
-  }))
+  }), enrollModal !== null)
   function markExpectedRestart(printerId: string, durationMs: number) {
     setPrinters(applyToId(printerId, { expectedRestartUntil: Date.now() + durationMs }))
   }

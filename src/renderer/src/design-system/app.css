@@ -2173,6 +2173,7 @@ textarea {
 }
 .batch-row.done .batch-row-mark { color: var(--green); }
 .batch-row.failed .batch-row-mark { color: var(--red); }
+.batch-row.skipped .batch-row-mark { color: var(--ink-3); }
 .batch-row-id { flex: 1; }
 .batch-row-phase {
   color: var(--ink-3);

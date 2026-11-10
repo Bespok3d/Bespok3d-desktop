@@ -12,6 +12,7 @@ import { mainProcessMessage } from '../../utils/errorMessage'
 import { reduceBatchProgress } from './progress'
 import { usePendingUpdate } from './pending-update'
 import { useRecoverOp, type RecoveryRestart } from './recover-op'
+import { useReportsHeldOverAQuit } from './reports-held-over-a-quit'
 import { migrateRunner } from './migrate-op'
 import { updateAllRunner } from './update-all-op'
 import { waitForPrinterBack } from './wait-for-printer'
@@ -117,12 +118,13 @@ function askAboutPrinter<Answer>(printers: Printer[], printerId: string, ask: (p
 // has its own daemon route; update-all rides update-batch and install-selected rides install-batch (a
 // fresh-install batch that also checks conflicts). Both apply every package and restart the affected
 // services exactly once, so a multi-plugin install bounces the display compositor once, not once per
-// plugin (the Bug A defense).
+// plugin (the Bug A defense). Whether a window on a printer is up only holds back a report kept over a quit.
 export function useBatchOps(
   printers: Printer[],
   setPrinters: (update: Printer[] | ((prev: Printer[]) => Printer[])) => void,
   gatedInstall: GatedInstall,
   restartAfterReapply: (printerId: string) => Promise<boolean>,
+  enrollWindowUp: boolean,
 ) {
   const [updateAllResult, setUpdateAllResult] = useState<BatchResult | null>(null)
   const [updatingAll, setUpdatingAll] = useState(false)
@@ -155,6 +157,7 @@ export function useBatchOps(
   const recoverOp = useRecoverOp(restartAfterReapply, (printerId, setBusy) => batchDidNotRun('recovery', printerId, setBusy), waitForPrinterBack,
     (printerId) => askAboutPrinter(printers, printerId, restartSecondsOf, null),
     (printerId) => askAboutPrinter(printers, printerId, appRestartsItself, false))
+  useReportsHeldOverAQuit(printers, enrollWindowUp || recoverOp.recovering || recoverOp.printerRestarting || recoverOp.recoveryResults !== null, recoverOp.showPluginsLeftOff)
   function runRecover(printerId: string) {
     setBatchFailure(null)
     setBatchProgress(null)

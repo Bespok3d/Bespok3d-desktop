@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, screen, waitFor } from '@testing-library/react'
 import { setup } from '../../test/harness'
 import { useRecoverOp } from './recover-op'
+import { usePrinterSync } from '../../hooks/printers'
+import { CHECKS_LEFT_KEY, HELD_REPORTS_KEY, keepFor, keptFor } from './kept-over-a-quit'
 
 // A printer that never answers again: the report must stay behind it rather than appear anyway.
 function neverAnswers() {
@@ -68,6 +70,9 @@ function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Prom
     </>
   )
 }
+
+// The check left to the user's restart outlives the app, so no test may hand its own to the next.
+beforeEach(() => localStorage.clear())
 
 describe('the recovery report', () => {
   it('leaves nothing on screen for the user to read: the restarting screen is up for the whole restart', async () => {
@@ -190,6 +195,21 @@ describe('the check the reboot replaced', () => {
 
     await waitFor(() => expect(screen.getByText('rows: camera back, spoolman taken off')).toBeInTheDocument())
     expect(recoverAfterReboot).toHaveBeenCalledWith('printer-1')
+    expect(screen.getByText('report ok: false')).toBeInTheDocument()
+  })
+
+  it('puts the check row of a plugin it switched off in place of the row that said the plugin was back', async () => {
+    const cameraSwitchedOff = { pluginId: 'camera', ok: false, skipped: false, reason: 'camera switched off', log: [], autoDeactivated: 'camera' }
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockResolvedValue({ ok: false, results: [cameraSwitchedOff, takenOffAfterTheReboot] })
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(true)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+
+    await waitFor(() => expect(screen.getByText('rows: camera switched off, spoolman taken off')).toBeInTheDocument())
     expect(screen.getByText('report ok: false')).toBeInTheDocument()
   })
 
@@ -342,6 +362,25 @@ describe('the check left to the restart the user makes', () => {
   })
 })
 
+// The user may quit the app between the recover and the restart they make.
+describe('the check left to the restart the user makes, across an app restart', () => {
+  it('still runs when the app was restarted between the recover and their restart', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockResolvedValue({ ok: false, results: [takenOffAfterTheReboot] })
+    const store = { b3d: { store: { recover, recoverAfterReboot } } }
+    const appBeforeItsRestart = setup(<RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />, store)
+    await appBeforeItsRestart.user.click(screen.getByRole('button', { name: 'recover' }))
+    await waitFor(() => expect(screen.getByText('restart: none')).toBeInTheDocument())
+    appBeforeItsRestart.unmount()
+
+    const { user } = setup(<RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />, store)
+    await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
+
+    await waitFor(() => expect(screen.getByText('rows: camera back, spoolman taken off')).toBeInTheDocument())
+    expect(recoverAfterReboot).toHaveBeenCalledTimes(1)
+  })
+})
+
 // Each printer keeps its own check: the user can recover a second printer before restarting the first.
 describe('the check left to the restart the user makes, with more than one printer', () => {
   it('still runs after another printer was recovered meanwhile', async () => {
@@ -381,5 +420,57 @@ describe('the check left to the restart the user makes, with more than one print
     await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
 
     await waitFor(() => expect(screen.getByText('restart seconds: 42')).toBeInTheDocument())
+  })
+})
+
+// Removing a printer the app's own way, beside the recovery, as the printer list sits beside it in the app.
+function RemovePrinterButton() {
+  const printerSync = usePrinterSync()
+
+  return <button type="button" onClick={() => printerSync.handleRemovePrinter('printer-1')}>remove the printer</button>
+}
+
+// Nothing would ever ask for a check kept for a printer that is gone, so it would stay behind for good.
+describe('the check left to the restart the user makes, when the printer is removed', () => {
+  it('goes with the printer, and the check another printer was left keeps waiting for its restart', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack, rebootReplacesRestart] })
+    const recoverAfterReboot = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const { user } = setup(
+      <>
+        <RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />
+        <RemovePrinterButton />
+      </>,
+      { b3d: { store: { recover, recoverAfterReboot } } },
+    )
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', true))
+    await user.click(screen.getByRole('button', { name: 'recover another printer' }))
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-2', true))
+    await letPendingWorkSettle()
+    expect(localStorage.getItem(CHECKS_LEFT_KEY)).toContain('printer-1')
+
+    await user.click(screen.getByRole('button', { name: 'remove the printer' }))
+
+    expect(localStorage.getItem(CHECKS_LEFT_KEY)).not.toContain('printer-1')
+    await user.click(screen.getByRole('button', { name: 'they restarted the printer' }))
+    await user.click(screen.getByRole('button', { name: 'they restarted another printer' }))
+    await waitFor(() => expect(recoverAfterReboot).toHaveBeenCalledWith('printer-2'))
+    expect(recoverAfterReboot).toHaveBeenCalledTimes(1)
+  })
+})
+
+// A recover puts every plugin back, so the plugins an earlier reactivate left off are not left off any more.
+describe('the reactivate report kept over a quit, when the printer is recovered', () => {
+  it('is dropped, and the one kept for another printer stays', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [pluginBack] })
+    keepFor(HELD_REPORTS_KEY, 'printer-1', { reapplied: reactivateLeftOff, heldAt: 1 })
+    keepFor(HELD_REPORTS_KEY, 'printer-2', { reapplied: reactivateLeftOff, heldAt: 2 })
+    const { user } = setup(<RecoverOpHarness restart={vi.fn().mockResolvedValue(false)} waitForBack={answersAtOnce} />, { b3d: { store: { recover } } })
+
+    await user.click(screen.getByRole('button', { name: 'recover' }))
+
+    await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', true))
+    expect(keptFor(HELD_REPORTS_KEY, 'printer-1')).toBeUndefined()
+    expect(keptFor(HELD_REPORTS_KEY, 'printer-2')).toEqual({ reapplied: reactivateLeftOff, heldAt: 2 })
   })
 })

@@ -37,6 +37,8 @@ vi.mock('../client', () => ({ makeAgent: vi.fn(() => ({})) }))
 import WebSocket from 'ws'
 import { watchInstallProgress, parseEvent, batchEventFrom, installPhaseMessage } from './install-progress'
 import { printerSaysItIsAtWork } from '../printer-at-work'
+import daemonContract from '../__fixtures__/daemon-contract.json'
+import type { BatchProgressEvent } from './install-progress'
 import type { InstallLogPhase } from '@bespok3d/contract'
 
 afterEach(() => {
@@ -63,6 +65,28 @@ describe('parseEvent', () => {
   it('returns null for an unknown shape or malformed JSON', () => {
     expect(parseEvent(Buffer.from('{"type":"noise"}'))).toBeNull()
     expect(parseEvent(Buffer.from('not json'))).toBeNull()
+  })
+})
+
+function rendererEventOf(daemonEvent: unknown): BatchProgressEvent | null {
+  const parsed = parseEvent(Buffer.from(JSON.stringify(daemonEvent)))
+
+  return parsed && batchEventFrom(parsed)
+}
+
+// The daemon generates this sample from the code that publishes the feed, so a field renamed on
+// either side fails here, the way a plugin turn ended included.
+describe('the install-progress feed the daemon publishes', () => {
+  it('reaches the renderer whole, so a plugin the printer left out is shown as skipped', () => {
+    expect(daemonContract.install_progress.map(rendererEventOf)).toEqual([
+      { type: 'plan', ids: ['spoolman', 'zerotier'] },
+      { type: 'plugin', pluginId: 'spoolman', index: 0, total: 2 },
+      { type: 'phase', label: 'Unpack package', ok: true },
+      { type: 'outcome', pluginId: 'spoolman', ok: true, skipped: false },
+      { type: 'plugin', pluginId: 'zerotier', index: 1, total: 2 },
+      { type: 'outcome', pluginId: 'zerotier', ok: false, skipped: true },
+      { type: 'plugin', pluginId: '(services)', index: 2, total: 2 },
+    ])
   })
 })
 

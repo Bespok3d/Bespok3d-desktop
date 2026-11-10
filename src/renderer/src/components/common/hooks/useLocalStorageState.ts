@@ -6,17 +6,18 @@ import { useState } from 'react'
 // `fallback` when the key is missing or the stored JSON is corrupt) and `setValue` writes through.
 // Several callers hand-rolled this load/parse/try-catch + setItem pair (channel prefs, saved vars).
 export function useLocalStorageState<T>(key: string, fallback: T): [T, (next: T) => void] {
-  const [value, setValue] = useState<T>(() => readJson(key, fallback))
+  const [value, setValue] = useState<T>(() => readStoredJson(key, fallback))
 
   function update(next: T): void {
     setValue(next)
-    writeJson(key, next)
+    writeStoredJson(key, next)
   }
 
   return [value, update]
 }
 
-function readJson<T>(key: string, fallback: T): T {
+// The stored value, or `fallback` when the key is missing or its JSON is corrupt.
+export function readStoredJson<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key)
 
@@ -26,7 +27,7 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-function writeJson<T>(key: string, value: T): void {
+export function writeStoredJson<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value))
   } catch {

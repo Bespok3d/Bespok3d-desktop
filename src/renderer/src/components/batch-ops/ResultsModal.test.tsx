@@ -272,3 +272,23 @@ describe('OtaRecoveryResultsModal on a plugin switched off during a recovery the
     expect(screen.getByText(en('uninstall_results.title_ok'))).toBeInTheDocument()
   })
 })
+
+// The same printer walk past an unreadable plugin happens on an install or an update, which the printer
+// also calls fine.
+describe('OtaRecoveryResultsModal on a batch the printer calls fine with a plugin it could not read', () => {
+  it('does not say the update went through', () => {
+    setup(<OtaRecoveryResultsModal results={walkedPast()} onOpenPlugin={vi.fn()} onClose={vi.fn()} variant="update" />)
+
+    expect(screen.getByText(en('update_results.title_errors'))).toBeInTheDocument()
+    expect(screen.queryByText(en('update_results.summary_ok'))).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: en('install_error.copy') })).toBeInTheDocument()
+  })
+
+  it('does not say the install went through', () => {
+    setup(<OtaRecoveryResultsModal results={walkedPast()} onOpenPlugin={vi.fn()} onClose={vi.fn()} variant="install" />)
+
+    expect(screen.getByText(en('install_results.title_errors'))).toBeInTheDocument()
+    expect(screen.queryByText(en('install_results.title_ok'))).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: en('install_error.copy') })).toBeInTheDocument()
+  })
+})

@@ -5,6 +5,7 @@ import type { Printer } from '../data/types'
 import type { DiscoveredPrinterRecord } from '../env'
 import { toPrinter, reconcileDiscoveredAddress, pingAndUpdate, resetPrinterProbe, patchAndSave } from '../data/printers'
 import { mergeDiscovered } from '../data/printerDiscovery'
+import { forgetAllKeptFor } from '../components/batch-ops/kept-over-a-quit'
 
 interface SyncCtx {
   selectedId: string | null
@@ -12,9 +13,12 @@ interface SyncCtx {
   setPrinters: Dispatch<SetStateAction<Printer[]>>
 }
 
+// What the app still owes the user about this printer goes with it: once the printer is gone,
+// nothing would ever clear it.
 function removePrinter(ctx: SyncCtx, id: string): void {
   window.b3d.printers.remove(id)
   resetPrinterProbe(id)
+  forgetAllKeptFor(id)
   ctx.setPrinters((prev) => {
     const next = prev.filter((printer) => printer.id !== id)
     if (ctx.selectedId === id) ctx.setSelectedId(next[0]?.id ?? null)

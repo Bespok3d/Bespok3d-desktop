@@ -24,6 +24,7 @@ import { GoAheadStep } from './GoAheadStep'
 import { usePostOpReboot, postOpRebootCalls } from './usePostOpReboot'
 import { useOpOutcome } from './useOpOutcome'
 import { useGoAhead, autoStartEligible } from './useGoAhead'
+import { useReportOnceTheWindowCloses } from './useReportOnceTheWindowCloses'
 import './enrollment.css'
 
 export type EnrollMode =
@@ -257,7 +258,8 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
 }
 
 export function Enrollment({ printer, mode, fromAdd = false, forced = false, onEnrolled, onClose, onEscalateRecovery, onRebuildPrinter, onExpectedRestart, onOpRecorded, onPluginsLeftOff }: EnrollmentProps) {
-  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp, failStart } = useEnrollment(printer, forced, onPluginsLeftOff)
+  const holdThePluginsLeftOffReport = useReportOnceTheWindowCloses(printer.id, onPluginsLeftOff)
+  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp, failStart } = useEnrollment(printer, forced, holdThePluginsLeftOffReport)
   const [credentials, setCredentials] = useState<SshCredentials>({ user: '', password: '', port: STANDARD_SSH_PORT })
   const [adapterInfo, setAdapterInfo] = useState<AdapterInfo | null>(null)
   const autoStarted = useRef(false)

@@ -8,7 +8,7 @@ import { useListFollowsActiveRow } from './follow-active-row'
 import { rowStatus, completedCount, activeRowIndex } from './progress'
 import type { BatchProgressState, RowStatus } from './progress'
 
-const ROW_GLYPH: Record<RowStatus, string> = { done: '✓', failed: '✕', installing: '', pending: '' }
+const ROW_GLYPH: Record<RowStatus, string> = { done: '✓', skipped: '−', failed: '✕', installing: '', pending: '' }
 
 function BatchRow({ pluginId, status, phaseLabel }: { pluginId: string; status: RowStatus; phaseLabel: string | null }) {
   return (
@@ -21,8 +21,8 @@ function BatchRow({ pluginId, status, phaseLabel }: { pluginId: string; status: 
 }
 
 // The live batch-install modal: the ordered plugin list with each row ticking pending -> installing
-// (with its current phase) -> done/failed, an "X of N" count, and a determinate bar. Replaces the bare
-// spinner so a multi-plugin install shows real, moving progress.
+// (with its current phase) -> done/skipped/failed, an "X of N" count, and a determinate bar. Replaces
+// the bare spinner so a multi-plugin install shows real, moving progress.
 export function BatchInstallProgress({ title, state }: { title: string; state: BatchProgressState }) {
   const { t } = useI18n()
   const total = state.ids.length
