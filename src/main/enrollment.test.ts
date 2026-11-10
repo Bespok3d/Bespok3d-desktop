@@ -82,6 +82,16 @@ describe('checkSsh', () => {
   })
 })
 
+describe('enrollPrinter saves the login port', () => {
+  it('saves the SSH port it logged in on, so later checks ask the printer on that port', async () => {
+    mockGetAdapter.mockReturnValue(mockAdapter([mockStep('step-a')]))
+
+    await enrollPrinter(fakeWin, 'p1', '192.168.1.100', 'test', { ...CREDS, port: 2222 })
+
+    expect(enrolledPatch()).toMatchObject({ sshPort: 2222 })
+  })
+})
+
 describe('enrollPrinter', () => {
   it('runs all steps in order and saves the printer as managed on success', async () => {
     const stepA = mockStep('step-a')

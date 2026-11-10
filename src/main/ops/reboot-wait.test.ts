@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const sshOpen = vi.fn()
-vi.mock('../printers/probe', () => ({ checkSshOpen: () => sshOpen() }))
+vi.mock('../printers/probe', () => ({ checkSshOpen: (ip: string, sshPort: number) => sshOpen(ip, sshPort) }))
 
 import { waitForThePrinterToComeBack } from './reboot-wait'
 
@@ -20,7 +20,7 @@ describe('waiting for a rebooted printer', () => {
 
   it('only reports the printer back once it has gone away and answered again', async () => {
     answersInThisOrder([true, false, false, true])
-    const waiting = expect(waitForThePrinterToComeBack('10.0.0.1')).resolves.toBeUndefined()
+    const waiting = expect(waitForThePrinterToComeBack('192.0.2.1', 22)).resolves.toBeUndefined()
     await vi.advanceTimersByTimeAsync(20_000)
 
     await waiting
@@ -28,9 +28,19 @@ describe('waiting for a rebooted printer', () => {
 
   it('says so instead of claiming success when the printer never comes back', async () => {
     answersInThisOrder([false])
-    const waiting = expect(waitForThePrinterToComeBack('10.0.0.1')).rejects.toThrow('has not come back on the network')
+    const waiting = expect(waitForThePrinterToComeBack('192.0.2.1', 22)).rejects.toThrow('has not come back on the network')
     await vi.advanceTimersByTimeAsync(400_000)
 
     await waiting
+  })
+
+  it('asks on the SSH port it was given, so a printer on another port is seen coming back', async () => {
+    answersInThisOrder([true, false, true])
+    const waiting = expect(waitForThePrinterToComeBack('192.0.2.1', 2222)).resolves.toBeUndefined()
+    await vi.advanceTimersByTimeAsync(20_000)
+
+    await waiting
+    expect(sshOpen).toHaveBeenCalledWith('192.0.2.1', 2222)
+    expect(sshOpen).not.toHaveBeenCalledWith('192.0.2.1', 22)
   })
 })

@@ -23,7 +23,7 @@ export function daemonAccessDecision(
   return 'enroll-path'
 }
 
-// On the enroll path: enrollment is all SSH, so a closed port 22 means root access is off (show the
+// On the enroll path: enrollment is all SSH, so a closed SSH port means root access is off (show the
 // gate). When it is open, a just-added printer proposes enrollment first; an explicit Enroll starts it.
 export function enrollPathDecision(
   args: { sshOpen: boolean; fromAdd: boolean },

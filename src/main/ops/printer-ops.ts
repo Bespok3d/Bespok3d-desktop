@@ -135,7 +135,7 @@ async function runReboot(win: BrowserWindow, printerId: string, ip: string, user
       detail: 'Asks the printer to power cycle, then waits for it to come back and rejoin the network',
       run: async () => {
         await askForThePowerCycle(ssh)
-        await waitForThePrinterToComeBack(ip)
+        await waitForThePrinterToComeBack(ip, port)
       },
     },
   ])

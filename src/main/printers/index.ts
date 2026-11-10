@@ -11,3 +11,4 @@ export { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePri
 export { mergeCapture, appendPluginCapture, pluginCaptures } from './captures'
 export { pingPrinter, checkDaemon, probeDaemonPort, checkSshOpen, checkMoonraker, gradeReach, probeService } from './probe'
 export { resolveLiveAddress, knownAddresses } from './resolve'
+export { sshPortOf, sshLoginAnswers } from './ssh-port'

@@ -428,7 +428,7 @@
   "enroll.propose_confirm": "Registra ora",
   "enroll.ssh_closed_title": "Prima attiva l'accesso root",
   "enroll.ssh_closed_summary": "{name} non accetta connessioni SSH, quindi Bespok3d non riesce ancora a raggiungerla.",
-  "enroll.ssh_closed_detail": "Bespok3d lavora sulla stampante via SSH (porta 22), che risulta chiusa. Sullo schermo della stampante, attiva l'accesso root (modalità sviluppatore / SSH) nelle impostazioni, poi premi Riprova. Se l'hai appena attivato, dai alla stampante qualche secondo per avviare il servizio SSH.",
+  "enroll.ssh_closed_detail": "Bespok3d lavora sulla stampante via SSH, e la sua porta SSH risulta chiusa. Sullo schermo della stampante, attiva l'accesso root (modalità sviluppatore / SSH) nelle impostazioni, poi premi Riprova. Se l'hai appena attivato, dai alla stampante qualche secondo per avviare il servizio SSH.",
   "enroll.ssh_retry": "Riprova",
   "enroll.refusal.extended_firmware": "Questa stampante usa il firmware Extended. Con Bespok3d non serve un firmware personalizzato: la tua stampante è un computer, quindi aggiungiamo plugin invece di installare un nuovo sistema. Rimetti il firmware originale Snapmaker, poi riprova.",
   "failure.ssh_login_refused": "La stampante ha rifiutato l'accesso SSH. Se non hai inserito le tue credenziali, Bespok3d accede come root con la password di fabbrica della stampante. Se quella password è stata cambiata sulla stampante, attiva \"Le mie credenziali SSH non sono quelle predefinite\" per questa stampante in Impostazioni, Stampanti, e inserisci quella nuova quando ti viene chiesta. Se è già attiva, controlla la password che hai inserito.",

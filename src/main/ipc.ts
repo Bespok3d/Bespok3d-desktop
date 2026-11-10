@@ -22,7 +22,7 @@ import {
   importKeyFromProfile,
 } from './keys'
 import { listPublishedAccountKeys } from './publisher/published-keys'
-import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, pingPrinter, checkSshOpen, probeService, resolveLiveAddress } from './printers'
+import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, pingPrinter, sshLoginAnswers, probeService, resolveLiveAddress } from './printers'
 import type { PublicPrinterRecord } from './printers'
 import { setAddressResolver, askPrinterToReach } from './daemon-client/client'
 import { offeredJinniVersion } from './compat/jinni-baseline'
@@ -100,7 +100,7 @@ function registerPrinterHandlers(getMainWindow: () => BrowserWindow): void {
   ipcMain.handle('printers:patch', (_ev, id: string, fields: Partial<PublicPrinterRecord>): void => { updatePrinter(id, fields) })
   ipcMain.handle('printers:remove', (_ev, id) => removePrinter(id))
   ipcMain.handle('printers:ping', (_ev, ip) => pingPrinter(ip))
-  ipcMain.handle('printers:checkSshOpen', (_ev, ip: string) => checkSshOpen(ip))
+  ipcMain.handle('printers:checkSshOpen', (_ev, printerId: string, ip: string) => sshLoginAnswers(printerId, ip))
   // Any address a person typed into a plugin's config, checked before it is sent: a host and port
   // from this computer, a whole web address from the printer that will use it.
   ipcMain.handle('net:probeService', (_ev, host: string, port: number) => probeService(host, port))

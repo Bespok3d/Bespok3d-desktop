@@ -174,6 +174,7 @@ function markEnrolled(
       daemonToken: ctx.daemonToken,
       daemonCert: ctx.daemonCert,
       accessIdentity: ctx.clientFingerprint || ctx.clientId,
+      sshPort: ctx.credentials.port,
       daemonUpdatedAt: originalEnrolledAt ? new Date().toISOString() : undefined,
       enrollmentLog: {
         enrolledAt: originalEnrolledAt ?? new Date().toISOString(),

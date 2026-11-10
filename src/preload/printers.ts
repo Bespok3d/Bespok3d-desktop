@@ -16,7 +16,7 @@ export const printersApi = {
     ipcRenderer.invoke('printers:patch', id, fields),
   remove: (id: string): Promise<void> => ipcRenderer.invoke('printers:remove', id),
   ping: (ip: string): Promise<boolean> => ipcRenderer.invoke('printers:ping', ip),
-  checkSshOpen: (ip: string): Promise<boolean> => ipcRenderer.invoke('printers:checkSshOpen', ip),
+  checkSshOpen: (printerId: string, ip: string): Promise<boolean> => ipcRenderer.invoke('printers:checkSshOpen', printerId, ip),
   checkWriteLayer: (printerId: string): Promise<boolean | null> => ipcRenderer.invoke('printers:checkWriteLayer', printerId),
   checkDaemon: (printerId: string): Promise<CheckDaemonResult> =>
     ipcRenderer.invoke('printers:checkDaemon', printerId),

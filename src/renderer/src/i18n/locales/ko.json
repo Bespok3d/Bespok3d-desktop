@@ -428,7 +428,7 @@
   "enroll.propose_confirm": "지금 등록",
   "enroll.ssh_closed_title": "먼저 루트 접근을 켜세요",
   "enroll.ssh_closed_summary": "{name}이(가) SSH 연결을 받지 않아 Bespok3d가 아직 프린터에 연결할 수 없습니다.",
-  "enroll.ssh_closed_detail": "Bespok3d는 SSH(포트 22)로 프린터에서 작업하는데 지금은 닫혀 있습니다. 프린터 화면의 설정에서 루트 접근(개발자 모드 / SSH)을 켠 다음 다시 시도를 누르세요. 방금 켰다면 SSH 서비스가 시작되도록 몇 초 기다려 주세요.",
+  "enroll.ssh_closed_detail": "Bespok3d는 SSH로 프린터에서 작업하는데 SSH 포트가 지금은 닫혀 있습니다. 프린터 화면의 설정에서 루트 접근(개발자 모드 / SSH)을 켠 다음 다시 시도를 누르세요. 방금 켰다면 SSH 서비스가 시작되도록 몇 초 기다려 주세요.",
   "enroll.ssh_retry": "다시 시도",
   "enroll.refusal.extended_firmware": "이 프린터는 Extended 펌웨어를 사용 중입니다. Bespok3d를 쓰면 커스텀 펌웨어가 필요 없습니다. 프린터는 컴퓨터이므로 새 시스템을 설치하는 대신 플러그인을 추가합니다. Snapmaker 순정 펌웨어로 되돌린 뒤 다시 시도해 주세요.",
   "failure.ssh_login_refused": "프린터가 SSH 로그인을 거부했습니다. 직접 입력한 로그인 정보가 없다면 Bespok3d는 프린터의 공장 출하 비밀번호로 root 계정에 로그인합니다. 프린터에서 그 비밀번호를 바꿨다면 설정의 프린터에서 이 프린터의 \"내 SSH 자격 증명이 기본값과 다릅니다\"를 켜고, 요청이 나오면 새 비밀번호를 입력하세요. 이미 켜져 있다면 입력한 비밀번호를 확인하세요.",

@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { updatePrinter, loadPrinters, probeDaemonPort, checkSshOpen, checkMoonraker, gradeReach, resolveLiveAddress, knownAddresses } from '../printers'
+import { updatePrinter, loadPrinters, probeDaemonPort, checkSshOpen, checkMoonraker, gradeReach, resolveLiveAddress, knownAddresses, sshPortOf } from '../printers'
 import type { ConnectionReach, PrinterRecord, DriftReport } from '../printers'
 import { macForIp } from '../mdns/arp'
 import { fetchDaemonStatus } from './client'
@@ -240,7 +240,7 @@ async function probeAddress(record: PrinterRecord): Promise<Omit<CheckDaemonResu
 
     return { isManaged: false, reach: 'alive-no-ssh', sshOpen: false, accessState }
   }
-  const [moonrakerOpen, sshOpen] = await Promise.all([checkMoonraker(record.ip), checkSshOpen(record.ip)])
+  const [moonrakerOpen, sshOpen] = await Promise.all([checkMoonraker(record.ip), checkSshOpen(record.ip, sshPortOf(record))])
   const reach = gradeReach(moonrakerOpen, sshOpen)
   const accessState = accessStateForPortResult(reach, daemonPortState)
 

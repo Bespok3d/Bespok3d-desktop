@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createConnection } from 'net'
 import type { ConnectionReach } from './record'
-import { DAEMON_PORT, STANDARD_SSH_PORT } from './ports'
+import { DAEMON_PORT } from './ports'
 
 // One TCP liveness probe. `refusedMeansUp` flips the meaning of a refused connection: for a coarse
 // host-reachability ping a refusal still proves the host is there, but for "is this service serving"
@@ -28,9 +28,9 @@ export function pingPrinter(ip: string): Promise<boolean> { return probePort(ip,
 
 export function checkDaemon(ip: string): Promise<boolean> { return probeDaemonPort(ip).then((state) => state === 'open') }
 
-// True when SSH (port 22) accepts a connection. Enrollment and repair are all SSH, so an open port 22
-// means we can still fix or enroll the printer; a closed one means root access is off.
-export function checkSshOpen(ip: string): Promise<boolean> { return probePort(ip, STANDARD_SSH_PORT, 3000) }
+// True when the printer's SSH port accepts a connection. Enrollment and repair are all SSH, so an open
+// SSH port means we can still fix or enroll the printer; a closed one means root access is off.
+export function checkSshOpen(ip: string, sshPort: number): Promise<boolean> { return probePort(ip, sshPort, 3000) }
 
 // Whether some service a person typed an address for answers at all (a Spoolman server, say). It
 // claims nothing about what is listening: a socket that opens is the whole claim, which is enough to

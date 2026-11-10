@@ -34,6 +34,8 @@ export interface PrinterRecord extends ConfigTruthRecords {
   status: 'checking' | 'offline' | 'online' | 'managed' | 'deactivated'
   deactivated?: boolean
   customSshCredentials?: boolean
+  // The SSH port of the owner's own login, saved by the enrollment that logged in with it.
+  sshPort?: number
   installedIds: string[]
   // The installed plugins the printer has switched OFF: on disk, listed in `installedIds`, providing
   // nothing. Read from `/capabilities` on every probe so the app answers "is this dependency there?"

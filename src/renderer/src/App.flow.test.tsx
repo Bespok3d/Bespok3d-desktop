@@ -265,7 +265,7 @@ describe('App flow: repair and uninstall check root access first', () => {
     await user.click(within(uninstallConfirm).getByRole('button', { name: en('printers.uninstall') }))
 
     expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
-    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('printer-1', '10.0.0.1')
     expect(b3d.printers.uninstall).not.toHaveBeenCalled()
   })
 })
@@ -311,7 +311,7 @@ describe('App flow: recovery, updates and deactivation check root access first',
     await chooseDeployItem(user, itemKey)
 
     expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
-    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('printer-1', '10.0.0.1')
     expect(b3d.printers[call]).not.toHaveBeenCalled()
   })
 
@@ -343,7 +343,7 @@ describe('App flow: reactivation and the reboot check root access first', () => 
     await user.click(await screen.findByRole('button', { name: en(actionKey) }))
 
     expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
-    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('printer-1', '10.0.0.1')
     expect(b3d.printers[call]).not.toHaveBeenCalled()
   })
 })
