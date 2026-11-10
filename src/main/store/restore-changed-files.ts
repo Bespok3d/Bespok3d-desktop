@@ -6,7 +6,8 @@
 import type { PrinterRecord } from '../printers'
 import type { MergedEntry } from '../registry/model'
 import { loadCatalog } from '../registry'
-import { fetchFileHashesOrNone, restoreFiles } from '../daemon-client/client'
+import type { BatchResult } from '../daemon-client/batch-result'
+import { fetchFileHashesOrNone, recoverPackages, repairOrRecover, restoreFiles } from '../daemon-client/client'
 import { catalogVariantOrNone } from './catalog-variant'
 import { resolveArchiveBytes } from './catalog-archive'
 import { verifiedPackageTrustOrDiscard } from './package-check'
@@ -52,4 +53,13 @@ export async function restoreChangedFiles(record: PrinterRecord): Promise<string
   const restored = await Promise.all(pluginIds.map((pluginId) => restoreOrSkip(record, catalog, pluginId)))
 
   return pluginIds.filter((_pluginId, position) => restored[position])
+}
+
+// A plugin whose files were put back is re-applied in full, so the setup-only repair cannot leave the
+// restored files sitting under services still running what was there before.
+export async function repairWithRestoredFiles(record: PrinterRecord, rebootFollows: boolean): Promise<BatchResult> {
+  const restoredIds = await restoreChangedFiles(record)
+  if (restoredIds.length > 0) return recoverPackages(record, rebootFollows)
+
+  return repairOrRecover(record, rebootFollows)
 }

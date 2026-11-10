@@ -28,6 +28,7 @@ vi.mock('./reboot-wait', () => ({ waitForThePrinterToComeBack: vi.fn() }))
 import { ipcMain } from 'electron'
 import { bespok3dRemovalCommand, registerPrinterOperationHandlers } from './printer-ops'
 import { recoverPackages } from '../daemon-client/client'
+import { restoreChangedFiles } from '../store/restore-changed-files'
 import { runSshOp } from './op-runner'
 
 describe('bespok3dRemovalCommand', () => {
@@ -73,5 +74,6 @@ describe('restarting the plugins', () => {
     const answer = await reactivateHandler()({}, 'printer-1', '192.0.2.10', 'root', 'example', 22)
 
     expect(answer).toEqual(reapplied)
+    expect(vi.mocked(restoreChangedFiles).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(recoverPackages).mock.invocationCallOrder[0])
   })
 })

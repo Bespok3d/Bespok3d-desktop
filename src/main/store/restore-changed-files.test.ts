@@ -8,13 +8,13 @@ import type { PrinterRecord } from '../printers'
 vi.mock('../registry', () => ({ loadCatalog: vi.fn() }))
 vi.mock('./catalog-archive', () => ({ resolveArchiveBytes: vi.fn() }))
 vi.mock('./package-check', () => ({ verifiedPackageTrustOrDiscard: vi.fn(async () => 'project') }))
-vi.mock('../daemon-client/client', () => ({ fetchFileHashesOrNone: vi.fn(), restoreFiles: vi.fn(async () => []) }))
+vi.mock('../daemon-client/client', () => ({ fetchFileHashesOrNone: vi.fn(), restoreFiles: vi.fn(async () => []), recoverPackages: vi.fn(), repairOrRecover: vi.fn() }))
 
-import { restoreChangedFiles } from './restore-changed-files'
+import { repairWithRestoredFiles, restoreChangedFiles } from './restore-changed-files'
 import { loadCatalog } from '../registry'
 import { resolveArchiveBytes } from './catalog-archive'
 import { verifiedPackageTrustOrDiscard } from './package-check'
-import { fetchFileHashesOrNone, restoreFiles } from '../daemon-client/client'
+import { fetchFileHashesOrNone, recoverPackages, repairOrRecover, restoreFiles } from '../daemon-client/client'
 
 const SIGNED_SHA = 'a'.repeat(64)
 const CAMERA_ENTRY = { name: 'example-camera', version: '1.0.0', trust: 'project', signer: null, registry_url: '/registry/index.json', channel: 'stable' } as MergedEntry
@@ -71,5 +71,27 @@ describe('a repair that puts back the plugin files that changed', () => {
     vi.mocked(verifiedPackageTrustOrDiscard).mockRejectedValueOnce(new Error('not signed by a trusted key'))
     expect(await restoreChangedFiles(PRINTER)).toEqual([])
     expect(restoreFiles).not.toHaveBeenCalled()
+  })
+})
+
+describe('a repair after the changed files were put back', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(loadCatalog).mockResolvedValue({ plugins: [CAMERA_ENTRY] } as never)
+    vi.mocked(resolveArchiveBytes).mockResolvedValue(cameraPackage())
+  })
+
+  it('re-applies every plugin when a file was put back', async () => {
+    vi.mocked(fetchFileHashesOrNone).mockResolvedValue({ 'files/camera.sh': null, 'files/camera.cfg': SIGNED_SHA })
+    await repairWithRestoredFiles(PRINTER, true)
+    expect(recoverPackages).toHaveBeenCalledWith(PRINTER, true)
+    expect(repairOrRecover).not.toHaveBeenCalled()
+  })
+
+  it('runs the setup-only repair when no file was put back', async () => {
+    vi.mocked(fetchFileHashesOrNone).mockResolvedValue({ 'files/camera.sh': SIGNED_SHA, 'files/camera.cfg': SIGNED_SHA })
+    await repairWithRestoredFiles(PRINTER, false)
+    expect(repairOrRecover).toHaveBeenCalledWith(PRINTER, false)
+    expect(recoverPackages).not.toHaveBeenCalled()
   })
 })

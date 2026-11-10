@@ -12,6 +12,10 @@ function toInstallLog(text: string): InstallLog {
   return { pluginId: result.plugin_id, timestamp: Date.now(), ok: result.ok, phases: result.log ?? [] }
 }
 
+export function multipartBoundary(): string {
+  return `----B3Boundary${Date.now()}`
+}
+
 export function buildMultipart(
   boundary: string,
   pluginId: string,
@@ -41,7 +45,7 @@ export async function installPlugin(
   vars?: Record<string, string>,
   onUploadProgress?: UploadProgressFn,
 ): Promise<InstallLog> {
-  const boundary = `----B3Boundary${Date.now()}`
+  const boundary = multipartBoundary()
   const body = buildMultipart(boundary, pluginId, b3Data, vars)
   const text = await doRequest(
     record,
@@ -195,7 +199,7 @@ export async function uninstallBatch(record: PrinterRecord, pluginIds: string[],
 // and restarts the affected services once. The two routes share the exact multipart shape; only the
 // daemon-side semantics differ (install checks conflicts and reports an install), so this is one poster.
 async function postBatchPackages(record: PrinterRecord, route: string, packages: BatchUpdatePackage[], onUploadProgress?: UploadProgressFn): Promise<BatchResult> {
-  const boundary = `----B3Boundary${Date.now()}`
+  const boundary = multipartBoundary()
   const varsById: Record<string, Record<string, string>> = {}
   packages.forEach((pkg) => {
     if (pkg.vars && Object.keys(pkg.vars).length > 0) varsById[pkg.pluginId] = pkg.vars

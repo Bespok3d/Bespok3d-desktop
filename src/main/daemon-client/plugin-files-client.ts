@@ -5,7 +5,7 @@
 // file in the plugin folder, so a plugin's own settings kept beside its files are never named here.
 import type { FileHashesResult, RestoreFilesResult } from '@bespok3d/contract'
 import type { PrinterRecord } from '../printers'
-import { buildMultipart } from './packages-client'
+import { buildMultipart, multipartBoundary } from './packages-client'
 import { doRequest, LONG_OP_TIMEOUT_MS } from './transport'
 
 export type PrinterFileHashes = FileHashesResult['files']
@@ -29,7 +29,7 @@ export function fetchFileHashesOrNone(record: PrinterRecord, pluginId: string): 
 }
 
 export async function restoreFiles(record: PrinterRecord, pluginId: string, changedFilesArchive: Buffer): Promise<string[]> {
-  const boundary = `----B3Boundary${Date.now()}`
+  const boundary = multipartBoundary()
   const body = buildMultipart(boundary, pluginId, changedFilesArchive)
   const text = await doRequest(
     record,

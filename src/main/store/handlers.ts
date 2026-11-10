@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ipcMain, type BrowserWindow } from 'electron'
-import { updatePrinter, appendPluginCapture, pluginCaptures, type PrinterRecord } from '../printers'
+import { updatePrinter, appendPluginCapture, pluginCaptures } from '../printers'
 import type { ReleaseChannel } from '../settings'
 import type { InstallLog } from '@bespok3d/contract'
 import type { BatchResult } from '../daemon-client/batch-result'
-import { fetchCapabilities, fetchPluginConfig, reconfigurePlugin, recoverAfterReboot, recoverPackages, repairOrRecover } from '../daemon-client/client'
+import { fetchCapabilities, fetchPluginConfig, reconfigurePlugin, recoverAfterReboot } from '../daemon-client/client'
 import { getManagedRecord, parseCaps, DAEMON_QUERY_TIMEOUT_MS } from '../daemon-client/status'
 import { recordAppliedVars } from './record-sync'
 import { watchPluginLog, unwatchPluginLog } from '../daemon-client/feeds/plugin-log'
@@ -14,16 +14,7 @@ import { installGuarded } from './install'
 import { runStoreUninstall, runStoreUninstallBatch } from './uninstall'
 import { runStoreUpdateBatch, runStoreInstallBatch, type PluginUpdateSpec } from './update-batch'
 import { streamRecoverProgress } from './batch-progress'
-import { restoreChangedFiles } from './restore-changed-files'
-
-// A plugin whose files were put back is re-applied in full, so the setup-only repair cannot leave the
-// restored files sitting under services still running what was there before.
-async function repairWithRestoredFiles(record: PrinterRecord, rebootFollows: boolean): Promise<BatchResult> {
-  const restoredIds = await restoreChangedFiles(record)
-  if (restoredIds.length > 0) return recoverPackages(record, rebootFollows)
-
-  return repairOrRecover(record, rebootFollows)
-}
+import { repairWithRestoredFiles } from './restore-changed-files'
 
 function registerPluginLogHandlers(getMainWindow: () => BrowserWindow): void {
   ipcMain.handle('store:watchPluginLog', (_ev, printerId: string, pluginId: string) =>
