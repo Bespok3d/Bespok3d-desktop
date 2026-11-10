@@ -300,7 +300,6 @@ describe('enrollment and reset of access on one printer', () => {
     loginGate.fail(new Error('fixture login refused'))
     await expect(reset).rejects.toThrow('fixture login refused')
   })
-
 })
 
 describe('enrollment retries and reset of access on one printer', () => {
@@ -311,6 +310,7 @@ describe('enrollment retries and reset of access on one printer', () => {
     const retryGate = heldEnrollment()
     const firstAttempt = enrollOnPrinter()
     const retry = enrollOnPrinter('step-1')
+    await vi.waitFor(() => expect(enrollPrinter).toHaveBeenCalledTimes(2))
     firstAttemptGate.end()
     await firstAttempt
 

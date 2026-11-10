@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactElement } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Mock } from 'vitest'
@@ -792,10 +792,20 @@ function ignoreRestart() {
   return Promise.resolve(false)
 }
 
+// A window that closes on its own, so closing it renders nothing else of the app again.
+function OtherWindow() {
+  var [open, setOpen] = useState(true)
+  if (!open) return null
+
+  return <Modal><button type="button" onClick={() => setOpen(false)}>close the other window</button></Modal>
+}
+
 // The app's next launch, its batch ops wired the way the app wires them: the report of the plugins a
-// reactivate left off, the close the user makes on it, and the removal of the printer.
+// reactivate left off, the close the user makes on it, and the removal of the printer. The printer list
+// keeps its identity between renders, as the app's does.
 function NextLaunch({ printerStatus, enrollWindowUp = false, otherWindowUp = false }: { printerStatus: Printer['status']; enrollWindowUp?: boolean; otherWindowUp?: boolean }) {
-  var batchOps = useBatchOps([makePrinter({ id: 'printer-1', status: printerStatus })], () => {}, (startInstall) => startInstall(), ignoreRestart, enrollWindowUp)
+  var printers = useMemo(() => [makePrinter({ id: 'printer-1', status: printerStatus })], [printerStatus])
+  var batchOps = useBatchOps(printers, () => {}, (startInstall) => startInstall(), ignoreRestart, enrollWindowUp)
   var printerSync = usePrinterSync()
 
   return (
@@ -803,7 +813,7 @@ function NextLaunch({ printerStatus, enrollWindowUp = false, otherWindowUp = fal
       {batchOps.recoveryResults && <p>left off: {batchOps.recoveryResults.results.map((row) => row.reason).join(', ')}</p>}
       <button type="button" onClick={() => batchOps.setRecoveryResults(null)}>close the report</button>
       <button type="button" onClick={() => printerSync.handleRemovePrinter('printer-1')}>remove the printer</button>
-      {otherWindowUp && <Modal><p>another window</p></Modal>}
+      {otherWindowUp && <OtherWindow />}
     </>
   )
 }
@@ -852,7 +862,7 @@ describe('Enrollment keeps the reactivate report over a quit', () => {
 
     await letPendingWorkSettle()
     expect(screen.queryByText(LEFT_OFF_REPORT)).not.toBeInTheDocument()
-    nextLaunch.rerender(<NextLaunch printerStatus="managed" />)
+    await nextLaunch.user.click(screen.getByRole('button', { name: 'close the other window' }))
 
     await waitFor(() => expect(screen.getByText(LEFT_OFF_REPORT)).toBeInTheDocument())
   })

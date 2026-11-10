@@ -12,7 +12,7 @@ import { getAdapter } from '../adapter-loader'
 import { bespok3dRootOn } from '../adapter-loader/bespok3d-root'
 import { connect, shellQuote } from '../ssh'
 import { DAEMON_PORT } from '../printers/ports'
-import { runRequestOutsideReset, runResetAlone } from './token-write-lock'
+import { runRequestAlone, runResetAlone } from './token-write-lock'
 
 // This computer's identity for a printer's ACL: the GPG fingerprint when PGP is on, else a stable
 // client id that works with no key (the kill-switch keeps the flow alive when PGP is off).
@@ -70,7 +70,7 @@ async function runResetAccess(printerId: string, ip: string, user: string, passw
 
 export function registerAccessHandlers(daemonPort = DAEMON_PORT): void {
   ipcMain.handle('access:request', (_ev, printerId: string, label: string) =>
-    runRequestOutsideReset(printerId, () => runRequestAccess(printerId, label, daemonPort)),
+    runRequestAlone(printerId, () => runRequestAccess(printerId, label, daemonPort)),
   )
   ipcMain.handle('access:status', (_ev, printerId: string) => runAccessStatus(printerId, daemonPort))
   ipcMain.handle('access:clients', (_ev, printerId: string) => fetchAccessClients(recordOrThrow(printerId)))
