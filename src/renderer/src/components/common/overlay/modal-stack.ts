@@ -10,11 +10,27 @@ export const MODAL_TOP_LEVEL = 119
 
 var openModalCount = 0
 var nextModalLevel = MODAL_BASE_LEVEL
+const openModalsListeners = new Set<() => void>()
+
+function tellOpenModalsChanged(): void {
+  openModalsListeners.forEach((listener) => listener())
+}
+
+export function anyModalOpen(): boolean {
+  return openModalCount > 0
+}
+
+export function subscribeToOpenModals(listener: () => void): () => void {
+  openModalsListeners.add(listener)
+
+  return () => { openModalsListeners.delete(listener) }
+}
 
 export function acquireModalLevel(): number {
   const level = Math.min(nextModalLevel, MODAL_TOP_LEVEL)
   openModalCount = openModalCount + 1
   nextModalLevel = nextModalLevel + 1
+  tellOpenModalsChanged()
 
   return level
 }
@@ -22,4 +38,5 @@ export function acquireModalLevel(): number {
 export function releaseModalLevel(): void {
   openModalCount = openModalCount - 1
   if (openModalCount === 0) nextModalLevel = MODAL_BASE_LEVEL
+  tellOpenModalsChanged()
 }

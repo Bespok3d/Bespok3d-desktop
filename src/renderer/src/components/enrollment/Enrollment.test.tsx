@@ -17,6 +17,7 @@ import { makeT } from '../../i18n'
 import { useBatchOps } from '../batch-ops'
 import { HELD_REPORTS_KEY } from '../batch-ops/kept-over-a-quit'
 import { usePrinterSync } from '../../hooks/printers'
+import { Modal } from '../common/overlay/Modal'
 
 const en = makeT('en')
 
@@ -793,7 +794,7 @@ function ignoreRestart() {
 
 // The app's next launch, its batch ops wired the way the app wires them: the report of the plugins a
 // reactivate left off, the close the user makes on it, and the removal of the printer.
-function NextLaunch({ printerStatus, enrollWindowUp = false }: { printerStatus: Printer['status']; enrollWindowUp?: boolean }) {
+function NextLaunch({ printerStatus, enrollWindowUp = false, otherWindowUp = false }: { printerStatus: Printer['status']; enrollWindowUp?: boolean; otherWindowUp?: boolean }) {
   var batchOps = useBatchOps([makePrinter({ id: 'printer-1', status: printerStatus })], () => {}, (startInstall) => startInstall(), ignoreRestart, enrollWindowUp)
   var printerSync = usePrinterSync()
 
@@ -802,6 +803,7 @@ function NextLaunch({ printerStatus, enrollWindowUp = false }: { printerStatus: 
       {batchOps.recoveryResults && <p>left off: {batchOps.recoveryResults.results.map((row) => row.reason).join(', ')}</p>}
       <button type="button" onClick={() => batchOps.setRecoveryResults(null)}>close the report</button>
       <button type="button" onClick={() => printerSync.handleRemovePrinter('printer-1')}>remove the printer</button>
+      {otherWindowUp && <Modal><p>another window</p></Modal>}
     </>
   )
 }
@@ -809,10 +811,10 @@ function NextLaunch({ printerStatus, enrollWindowUp = false }: { printerStatus: 
 const LEFT_OFF_REPORT = 'left off: back on, switched off: its service did not start'
 
 // The app quit while the window on the reactivate's reboot was up, and is launched again.
-async function launchAfterAQuitDuringTheReboot(printerStatus: Printer['status'], { reactStrictMode = false, enrollWindowUp = false } = {}) {
+async function launchAfterAQuitDuringTheReboot(printerStatus: Printer['status'], { reactStrictMode = false, enrollWindowUp = false, otherWindowUp = false } = {}) {
   quitTheApp(await reactivateUntilItsReboot({ ok: false, results: [putBack, leftOff] }))
 
-  return setup(<NextLaunch printerStatus={printerStatus} enrollWindowUp={enrollWindowUp} />, { reactStrictMode })
+  return setup(<NextLaunch printerStatus={printerStatus} enrollWindowUp={enrollWindowUp} otherWindowUp={otherWindowUp} />, { reactStrictMode })
 }
 
 // The user may quit the app while the window on the reactivate's reboot is still up.
@@ -837,6 +839,16 @@ describe('Enrollment keeps the reactivate report over a quit', () => {
 
   it('waits for a window on a printer to close, which may be following a reboot itself', async () => {
     var nextLaunch = await launchAfterAQuitDuringTheReboot('managed', { enrollWindowUp: true })
+
+    await letPendingWorkSettle()
+    expect(screen.queryByText(LEFT_OFF_REPORT)).not.toBeInTheDocument()
+    nextLaunch.rerender(<NextLaunch printerStatus="managed" />)
+
+    await waitFor(() => expect(screen.getByText(LEFT_OFF_REPORT)).toBeInTheDocument())
+  })
+
+  it('waits for any other window to close, so it never opens on top of one', async () => {
+    var nextLaunch = await launchAfterAQuitDuringTheReboot('managed', { otherWindowUp: true })
 
     await letPendingWorkSettle()
     expect(screen.queryByText(LEFT_OFF_REPORT)).not.toBeInTheDocument()

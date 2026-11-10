@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-296 exported components + hooks across 22 areas.
+297 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -34,6 +34,7 @@ as you touch the file.
 - `StatusPill` (component) - [components/common/badges/StatusPill.tsx](../src/renderer/src/components/common/badges/StatusPill.tsx)
 - `Toggle` (component) - [components/common/Toggle.tsx](../src/renderer/src/components/common/Toggle.tsx)
 - `TrustPill` (component) - [components/common/badges/TrustPill.tsx](../src/renderer/src/components/common/badges/TrustPill.tsx)
+- `useAnyModalOpen` (hook) - [components/common/overlay/useAnyModalOpen.ts](../src/renderer/src/components/common/overlay/useAnyModalOpen.ts) - Whether any modal is on screen, wherever in the tree it was mounted, for what must not open over one.
 - `useAsyncAction` (hook) - [components/common/hooks/useAsyncAction.ts](../src/renderer/src/components/common/hooks/useAsyncAction.ts) - Wraps an async event handler with busy/error state and a re-entrancy guard, the shape several forms
 - `useAsyncEffect` (hook) - [components/common/hooks/useAsyncEffect.ts](../src/renderer/src/components/common/hooks/useAsyncEffect.ts) - Runs an async effect whose result must be ignored once the component unmounts (or the deps change)
 - `useAsyncResource` (hook) - [components/common/hooks/useAsyncResource.ts](../src/renderer/src/components/common/hooks/useAsyncResource.ts) - Loads a one-shot resource (a window.b3d.* fetch) into state, re-running when `deps` change. Built on
