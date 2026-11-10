@@ -18,6 +18,41 @@ updates without replacing your regular app.
 The regular store did not show development versions beside published ones. Bespok3d Dev and the
 new Staging app now show both, with a choice of which version to install.
 
+### Installing a plugin also installs the plugins it needs
+
+A plugin that needs another plugin now brings it along. If one cannot be found, nothing is
+installed and the app says which one is missing.
+
+### Recovery after a firmware update keeps a newer Bespok3d on the printer
+
+Recovery no longer puts an older Bespok3d service over a newer one. Recovery, repair and updates
+send only the files that changed, and update and repair put back the script that starts Bespok3d at
+boot.
+
+### The recovery report tells the truth about every plugin
+
+The report no longer says "Recovery complete" when a plugin was switched off, left off, or could not
+be read. It names those plugins. The safety check also runs after a restart you do yourself.
+
+### The install list follows what the printer is really doing
+
+The list now shows the plugin the printer is really working on. Skipped plugins show as skipped, and
+the count matches the rows.
+
+### Plain messages when the app cannot reach or log in to the printer
+
+Refused or stuck logins and an unreachable printer now show plain messages in all 10 languages.
+Resetting access asks for your own SSH password instead of trying the factory one.
+
+### The Spoolman address is checked from the printer
+
+The Spoolman address in a plugin's settings is now tested from the printer, where the plugin uses it,
+not from your computer.
+
+### Security updates
+
+Electron 43.8.1 and other security updates.
+
 ### About Snapmaker U1 Extended Firmware
 
 Running Bespok3d on a U1 with Extended Firmware makes no sense. If you want a feature from Extended
