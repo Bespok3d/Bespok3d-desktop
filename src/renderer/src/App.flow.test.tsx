@@ -3,7 +3,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'fs'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, act, waitFor } from '@testing-library/react'
+import { screen, act, waitFor, within } from '@testing-library/react'
 import { setup } from './test/harness'
 import { makeEnrollEvent } from './test/fixtures'
 import { makeT } from './i18n'
@@ -227,6 +227,149 @@ describe('App flow: canceled access and re-enrollment choices', () => {
     act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Finished', stepIndex: 13, totalSteps: 14 })))
     await user.click(await screen.findByRole('button', { name: 'Done' }))
     await waitFor(() => expect(recover).toHaveBeenCalledWith('printer-1', true))
+  })
+})
+
+// Repair and uninstall run over SSH just as enrollment does. With root access off they must stop at the
+// same root-access window enrollment shows, never open and fail on a raw connection error.
+describe('App flow: repair and uninstall check root access first', () => {
+  it('a repair with root access off shows the root-access window, and Retry opens the repair', async () => {
+    var repair = vi.fn().mockResolvedValue(undefined)
+    var { user } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }),
+      checkWriteLayer: vi.fn().mockResolvedValue(true),
+      checkSshOpen: vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true),
+      repair,
+    })
+    await user.click(await screen.findByRole('button', { name: en('banner.repair_action') }, AFTER_THE_CONFIRMING_PROBE))
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    await act(async () => { await Promise.resolve() })
+    expect(screen.queryByRole('heading', { name: 'Repair Alpha' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: en('enroll.ssh_retry') }))
+    const repairWindow = (await screen.findByRole('heading', { name: 'Repair Alpha' })).closest('[role="dialog"]') as HTMLElement
+    await user.click(within(repairWindow).getByRole('button', { name: 'Repair daemon' }))
+    await waitFor(() => expect(repair).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'root', '', 22, false))
+  })
+
+  it('an uninstall with root access off shows the root-access window and removes nothing', async () => {
+    var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
+    var { user, b3d } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }),
+      checkSshOpen: vi.fn().mockResolvedValue(false),
+    }, [managedRecord])
+    await user.click(screen.getByRole('button', { name: en('header.settings') }))
+    await user.click(screen.getByRole('button', { name: en('set.printers') }))
+    await user.click(await screen.findByRole('button', { name: en('printers.uninstall') }))
+    const uninstallConfirm = (await screen.findByText(en('printers.uninstall_title', { name: 'Alpha' }))).closest('[role="dialog"]') as HTMLElement
+    await user.click(within(uninstallConfirm).getByRole('button', { name: en('printers.uninstall') }))
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers.uninstall).not.toHaveBeenCalled()
+  })
+})
+
+// Recovery, the updates and deactivation run over SSH too, so they stop at the same root-access window.
+async function openPrintersSettings(user: ReturnType<typeof renderApp>['user']) {
+  await user.click(screen.getByRole('button', { name: en('header.settings') }))
+  await user.click(screen.getByRole('button', { name: en('set.printers') }))
+}
+
+// The row's Update menu sits next to its Deactivate button; other buttons named Update are on screen too.
+async function chooseDeployItem(user: ReturnType<typeof renderApp>['user'], itemKey: string) {
+  const printerActions = (await screen.findByRole('button', { name: en('printers.deactivate') })).parentElement as HTMLElement
+  await user.click(within(printerActions).getByRole('button', { name: en('printers.deploy') }))
+  await user.click(screen.getByRole('button', { name: en(itemKey) }))
+}
+
+describe('App flow: recovery, updates and deactivation check root access first', () => {
+  it('a recovery with root access off shows the root-access window, and Retry opens the recovery', async () => {
+    var { user, b3d } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }),
+      checkWriteLayer: vi.fn().mockResolvedValue(false),
+      checkSshOpen: vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true),
+    })
+    await user.click(await screen.findByRole('button', { name: en('banner.recover_action') }, AFTER_THE_CONFIRMING_PROBE))
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(b3d.printers.enroll).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: en('enroll.ssh_retry') }))
+    await waitFor(() => expect(b3d.printers.enroll).toHaveBeenCalledWith('printer-1', '10.0.0.1', 'snapmaker-u1', 'root', '', 22, undefined, false))
+  })
+
+  it.each([
+    { action: 'daemon update', itemKey: 'printers.update_daemon', call: 'updateDaemon' },
+    { action: 'adapter update', itemKey: 'printers.update_jinni', call: 'updateJinni' },
+  ] as const)('a $action with root access off shows the root-access window and runs nothing', async ({ itemKey, call }) => {
+    var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
+    var { user, b3d } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }),
+      checkSshOpen: vi.fn().mockResolvedValue(false),
+    }, [managedRecord])
+    await openPrintersSettings(user)
+    await chooseDeployItem(user, itemKey)
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers[call]).not.toHaveBeenCalled()
+  })
+
+  it('a deactivation with root access off shows the root-access window and runs nothing', async () => {
+    var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
+    var { user, b3d } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }),
+      checkSshOpen: vi.fn().mockResolvedValue(false),
+    }, [managedRecord])
+    await openPrintersSettings(user)
+    await user.click(await screen.findByRole('button', { name: en('printers.deactivate') }))
+    const deactivateConfirm = (await screen.findByText(en('printers.deactivate_title', { name: 'Alpha' }))).closest('[role="dialog"]') as HTMLElement
+    await user.click(within(deactivateConfirm).getByRole('button', { name: en('printers.deactivate') }))
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(b3d.printers.deactivate).not.toHaveBeenCalled()
+  })
+})
+
+describe('App flow: reactivation and the reboot check root access first', () => {
+  it.each([
+    { action: 'reactivation', actionKey: 'printers.reactivate', daemonAnswer: { switchedOff: true }, call: 'reactivate' },
+    { action: 'reboot', actionKey: 'banner.reboot_action', daemonAnswer: { rebootRequired: ['unknown-reason'] }, call: 'reboot' },
+  ] as const)('a $action with root access off shows the root-access window and runs nothing', async ({ actionKey, daemonAnswer, call }) => {
+    var { user, b3d } = renderApp({
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true, ...daemonAnswer }),
+      checkSshOpen: vi.fn().mockResolvedValue(false),
+    })
+    await user.click(await screen.findByRole('button', { name: en(actionKey) }))
+
+    expect(await screen.findByText(en('enroll.ssh_closed_title'))).toBeInTheDocument()
+    expect(b3d.printers.checkSshOpen).toHaveBeenCalledWith('10.0.0.1')
+    expect(b3d.printers[call]).not.toHaveBeenCalled()
+  })
+})
+
+// The deactivation is saved before the window starts waiting on the printer's reboot, which can take
+// minutes or never end. The printer list must say so right away, not only once the window closes.
+describe('App flow: a deactivation waiting on the reboot', () => {
+  it('shows the printer deactivated while the window still waits on the reboot', async () => {
+    var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
+    var { user, b3d, emit } = renderApp({ checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }) }, [managedRecord])
+    await openPrintersSettings(user)
+    await user.click(await screen.findByRole('button', { name: en('printers.deactivate') }))
+    const deactivateConfirm = (await screen.findByText(en('printers.deactivate_title', { name: 'Alpha' }))).closest('[role="dialog"]') as HTMLElement
+    await user.click(within(deactivateConfirm).getByRole('button', { name: en('printers.deactivate') }))
+    const deactivateWindow = (await screen.findByRole('heading', { name: 'Deactivate Alpha' })).closest('[role="dialog"]') as HTMLElement
+    await user.click(within(deactivateWindow).getByRole('button', { name: 'Deactivate' }))
+    await waitFor(() => expect(b3d.printers.deactivate).toHaveBeenCalled())
+    vi.mocked(b3d.printers.load).mockResolvedValue([{ ...managedRecord, status: 'deactivated', deactivated: true }] as unknown as PrinterRecord[])
+    vi.mocked(b3d.printers.reboot).mockReturnValue(new Promise<never>(() => {}))
+
+    act(() => emit.enrollProgress(makeEnrollEvent({ status: 'done', stepLabel: 'Removing boot hook', stepIndex: 1, totalSteps: 2 })))
+
+    await waitFor(() => expect(b3d.printers.reboot).toHaveBeenCalled())
+    expect(await screen.findByText(en('printers.deactivated_hint'))).toBeInTheDocument()
+    expect(screen.getByText(en('banner.deactivated_hint'))).toBeInTheDocument()
+    expect(deactivateWindow).toBeInTheDocument()
   })
 })
 

@@ -2,21 +2,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState, useEffect, useRef } from 'react'
 import type { Printer } from '../../data/types'
+import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 import { useEnrollment } from '../../hooks/enrollment'
 import type { SshCredentials, EnrollState } from '../../hooks/enrollment'
 import { useI18n } from '../../i18n/context'
 import { formatDateTime } from '../../utils/datetime'
 import { mainProcessMessage } from '../../utils/errorMessage'
-import { savedRecord } from '../../data/printers'
 import { Modal } from '../common/overlay/Modal'
 import { Button } from '../common/Button'
 import { CredentialsForm } from './CredentialsForm'
 import { EnrollmentProgress } from './EnrollmentProgress'
 import { nextStepAfterFailure } from './failure-escalation'
 import type { FailureEscalation } from './failure-escalation'
+import { buildHistoryEvent } from './history-event'
 import { reportOpFailure } from './failure-report'
 import { GoAheadStep } from './GoAheadStep'
 import { usePostOpReboot, postOpRebootCalls } from './usePostOpReboot'
+import { useOpOutcome } from './useOpOutcome'
 import { useGoAhead, autoStartEligible } from './useGoAhead'
 import './enrollment.css'
 
@@ -45,29 +47,16 @@ interface EnrollmentProps {
   // Offered when the full recovery itself fails: re-enrol the printer and put every plugin back.
   onRebuildPrinter?: () => void
   onExpectedRestart?: (printerId: string) => void
+  // The op is done and saved, but the window stays up on the printer's reboot: show the app the printer as it now is.
+  onOpRecorded?: (updated: Printer) => void
+  // Restarting the plugins switched off the ones the printer could not put back: show which.
+  onPluginsLeftOff?: (reapplied: BatchResult) => void
 }
 
 const DAEMON_RESTART_MODES: ReadonlySet<EnrollMode> = new Set<EnrollMode>(['update-daemon', 'update-jinni', 'repair', 'reactivate', 'recovery', 'enroll', 'reboot'])
 
 export function isDaemonRestartMode(mode: EnrollMode): boolean {
   return DAEMON_RESTART_MODES.has(mode)
-}
-
-function buildHistoryEvent(printer: Printer): EnrollProgressEvent | null {
-  const log = printer.enrollmentLog
-  if (!log || log.steps.length === 0) return null
-  const last = log.steps[log.steps.length - 1]
-
-  return {
-    printerId: printer.id,
-    stepId: last.id,
-    stepLabel: last.label,
-    stepDetail: last.detail,
-    status: 'done',
-    stepIndex: log.steps.length - 1,
-    totalSteps: log.steps.length,
-    completedSteps: log.steps,
-  }
 }
 
 function EnrollModalTitle({ printer, mode, fromAdd, bundledJinniVersion }: { printer: Printer; mode: EnrollMode; fromAdd: boolean; bundledJinniVersion?: string }) {
@@ -154,7 +143,7 @@ function HistoryModal({ printer, onClose }: { printer: Printer; onClose: () => v
         {enrolledAt && <p>Enrolled {formatDateTime(enrolledAt)}</p>}
       </div>
       {event ? (
-        <EnrollmentProgress event={event} phase="success" onDone={onClose} onRetry={() => {}} onReset={() => {}} onCancelOp={() => {}} onClose={onClose} />
+        <EnrollmentProgress event={event} phase="success" onDone={onClose} onRetry={() => {}} onStartOver={() => {}} onCancelOp={() => {}} onClose={onClose} />
       ) : (
         <div className="enroll-body">
           <p className="u-hint-sm">No enrollment log recorded.</p>
@@ -187,7 +176,7 @@ interface EnrollmentBodyProps {
   onClose: () => void
   onDone: () => void
   onRetry: (stepId: string) => void
-  onReset: () => void
+  onStartOver: () => void
   onCancelOp: () => void
   escalation?: FailureEscalation
   printerIsRebooting: boolean
@@ -219,7 +208,7 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
       mode={props.mode}
       onDone={props.onDone}
       onRetry={props.onRetry}
-      onReset={props.onReset}
+      onStartOver={props.onStartOver}
       onCancelOp={props.onCancelOp}
       onClose={props.onClose}
       escalation={props.escalation}
@@ -256,16 +245,15 @@ function EnrollmentBody(props: EnrollmentBodyProps) {
   )
 }
 
-export function Enrollment({ printer, mode, fromAdd = false, forced = false, onEnrolled, onClose, onEscalateRecovery, onRebuildPrinter, onExpectedRestart }: EnrollmentProps) {
-  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp, failStart } = useEnrollment(printer, forced)
+export function Enrollment({ printer, mode, fromAdd = false, forced = false, onEnrolled, onClose, onEscalateRecovery, onRebuildPrinter, onExpectedRestart, onOpRecorded, onPluginsLeftOff }: EnrollmentProps) {
+  const { state, startEnrollment, retryFrom, startDeactivate, startReactivate, startUninstall, startReboot, startRepair, startUpdateDaemon, startUpdateJinni, reset, cancelOp, failStart } = useEnrollment(printer, forced, onPluginsLeftOff)
   const [credentials, setCredentials] = useState<SshCredentials>({ user: '', password: '', port: 22 })
   const [adapterInfo, setAdapterInfo] = useState<AdapterInfo | null>(null)
   const autoStarted = useRef(false)
 
-  const printerIsRebooting = usePostOpReboot({
-    printer, mode, phase: state.phase, credentials,
-    ...postOpRebootCalls(printer, startReboot, onExpectedRestart),
-  })
+  const rebootCalls = postOpRebootCalls(printer, startReboot, onExpectedRestart)
+  const rebootAfterTheOp = usePostOpReboot({ printer, mode, phase: state.phase, credentials, ...rebootCalls })
+  const outcome = useOpOutcome({ printer, phase: state.phase, waitsForTheReboot: rebootAfterTheOp.waitsForThePrinter, onEnrolled, onOpRecorded, onClose })
 
   function loadAdapterInfo() {
     window.b3d.printers.adapterGet(printer.adapter).then(setAdapterInfo).catch(adapterReadFailed)
@@ -310,35 +298,36 @@ export function Enrollment({ printer, mode, fromAdd = false, forced = false, onE
   const goAhead = useGoAhead({
     mode, phase: state.phase,
     customSshCredentials: Boolean(printer.customSshCredentials),
-    startWithAdapterDefaults: startOnAdapterDefaults,
+    startWithAdapterDefaults: startOnAdapterDefaults, clearTheOp: reset,
   })
 
   function handleRetry(stepId: string) {
-    const opStart = opStarters[mode]
-    if (opStart) { opStart(credentials);
-
- return }
-    retryFrom(stepId, credentials)
+    if (opStarters[mode]) runTheFailedOpAgain()
+    else retryFrom(stepId, credentials)
   }
-  function handleDone() {
-    savedRecord(printer.id).then((record) => {
-      onEnrolled(record ? { ...printer, ...record } : { ...printer, status: 'managed' })
-    })
+  function runTheFailedOpAgain() {
+    if (rebootAfterTheOp.rebootStarted()) rebootCalls.startReboot(credentials)
+    else handleStart(credentials)
+  }
+  // Start over goes back to the first screen. With none to show, a bar nothing drives would sit there, so it runs again.
+  function handleStartOver() {
+    if (goAhead.hasAFirstScreen && !rebootAfterTheOp.rebootStarted()) goAhead.backToTheFirstScreen()
+    else runTheFailedOpAgain()
   }
 
   if (mode === 'history') return <HistoryModal printer={printer} onClose={onClose} />
 
   return (
-    <Modal onClose={goAhead.dismissable ? onClose : undefined} className="enrollment">
+    <Modal onClose={goAhead.dismissable ? outcome.closeTheWindow : undefined} className="enrollment">
       <div className="modal-head">
         <EnrollModalTitle printer={printer} mode={mode} fromAdd={fromAdd} bundledJinniVersion={adapterInfo?.jinniVersion} />
       </div>
       <EnrollmentBody
         printer={printer} mode={mode} state={state} credentials={credentials}
         showCredentialsForm={goAhead.showCredentialsForm} awaitingGoAhead={goAhead.awaiting}
-        onStart={handleStart} onGoAhead={goAhead.give} onOwnCredentials={goAhead.askForOwnCredentials} onClose={onClose}
-        onDone={handleDone} onRetry={handleRetry} onReset={reset} onCancelOp={cancelOp} escalation={nextStepAfterFailure(mode, onEscalateRecovery, onRebuildPrinter)}
-        printerIsRebooting={printerIsRebooting} restartSeconds={adapterInfo?.restartSeconds}
+        onStart={handleStart} onGoAhead={goAhead.give} onOwnCredentials={goAhead.askForOwnCredentials} onClose={outcome.closeTheWindow}
+        onDone={outcome.reportDone} onRetry={handleRetry} onStartOver={handleStartOver} onCancelOp={cancelOp} escalation={nextStepAfterFailure(mode, onEscalateRecovery, onRebuildPrinter)}
+        printerIsRebooting={rebootAfterTheOp.printerIsRebooting} restartSeconds={adapterInfo?.restartSeconds}
       />
     </Modal>
   )

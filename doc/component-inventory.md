@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-290 exported components + hooks across 22 areas.
+292 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -170,6 +170,7 @@ as you touch the file.
 - `EnrollmentProgress` (component) - [components/enrollment/EnrollmentProgress.tsx](../src/renderer/src/components/enrollment/EnrollmentProgress.tsx)
 - `GoAheadStep` (component) - [components/enrollment/GoAheadStep.tsx](../src/renderer/src/components/enrollment/GoAheadStep.tsx) - The screen the user says yes on. The title above it already says what is about to happen, so this
 - `useGoAhead` (hook) - [components/enrollment/useGoAhead.ts](../src/renderer/src/components/enrollment/useGoAhead.ts) - Holds the op on its go-ahead screen, and answers which screen the modal shows once the user has
+- `useOpOutcome` (hook) - [components/enrollment/useOpOutcome.ts](../src/renderer/src/components/enrollment/useOpOutcome.ts) - How the app hears that the op is done. Done tells it once, however often it is pressed. Once the op
 - `usePostOpReboot` (hook) - [components/enrollment/usePostOpReboot.ts](../src/renderer/src/components/enrollment/usePostOpReboot.ts) - Reboots the printer the moment the op reports success, and answers whether the success screen has to
 
 ## Feature: header
@@ -345,6 +346,7 @@ as you touch the file.
 - `useAppCallbacks` (hook) - [app/callbacks.ts](../src/renderer/src/app/callbacks.ts)
 - `useAppI18n` (hook) - [app/locale.ts](../src/renderer/src/app/locale.ts) - The stored preference is either a locale code or 'system' (follow the OS), and 'system' is what a
 - `useB3dDeepLinks` (hook) - [app/deep-links.ts](../src/renderer/src/app/deep-links.ts) - A b3d:// link the OS handed us (window.b3d.onB3dOpen) maps to an in-app navigation; every route is
+- `useEnrollGate` (hook) - [app/enroll-gate.ts](../src/renderer/src/app/enroll-gate.ts) - Decide whether adding/enrolling a printer opens enrollment, the access request, or the root-access
 - `usePaneSelection` (hook) - [app/pane-selection.ts](../src/renderer/src/app/pane-selection.ts) - Which pane the window shows (the plugin store or the workbench) and which plugin page the store
 - `usePluginVars` (hook) - [app/plugin-vars.ts](../src/renderer/src/app/plugin-vars.ts) - The renderer's one owner of the scoped plugin-vars store: boot migration (v1 flat map to v2
 

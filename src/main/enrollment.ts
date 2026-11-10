@@ -10,7 +10,7 @@ import type { SshCredentials, EnrollContext, EnrollStep } from './adapter-loader
 import { listKeys } from './keys'
 import { loadSettings, clientId } from './settings'
 import { updatePrinter } from './printers'
-import { assertKnownPrinterNotDowngraded } from './compat'
+import { keepingNewerInstalledDaemon } from './compat'
 import { stepFractionCarry } from './step-progress'
 import { cancelWasRequested, clearCancelRequest } from './ops/cancel-requests'
 import { reportEvent } from './analytics'
@@ -204,6 +204,9 @@ function makeContext(
     clientLabel: hostname(),
     clientPublicKey: printerKey?.publicKey,
     clientFingerprint: printerKey?.fingerprint,
+    // A recovery finds the daemon's files still there and sends only what changed; a first enrollment
+    // finds none there, so the printer reports no checksums and every file is sent.
+    sendChangedFilesOnly: true,
   }
 }
 
@@ -229,13 +232,10 @@ export async function enrollPrinter(
 ): Promise<void> {
   const adapter = getAdapter(adapterId)
   if (!adapter) throw new Error(`Unknown adapter: ${adapterId}`)
-  // Recovery after a firmware update runs this same path against a printer that is already managed and
-  // may be running a newer daemon than this app ships. A printer with no record, or one that answers
-  // nothing, is a first enrollment and passes straight through. Launched from Force, the owner has
-  // said he wants this app's daemon on it whatever it is running now.
-  await assertKnownPrinterNotDowngraded(printerId, forced)
-
-  const steps = adapter.enrollSteps
+  // Recovery after a firmware update runs this same path against a printer that may already have a
+  // newer daemon than this app ships. Launched from Force, the owner has said he wants this app's daemon
+  // on it whatever it has now.
+  const steps = forced ? adapter.enrollSteps : adapter.enrollSteps.map((step) => keepingNewerInstalledDaemon(step, adapter))
   const startIndex = retryFromStepId
     ? Math.max(0, steps.findIndex((step) => step.id === retryFromStepId))
     : 0

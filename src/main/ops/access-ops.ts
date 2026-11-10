@@ -9,6 +9,7 @@ import { listKeys } from '../keys'
 import { loadSettings, clientId } from '../settings'
 import { requestAccess, fetchAccessClients, grantAccess, revokeAccess, isAccessGranted } from '../daemon-client/client'
 import { getAdapter } from '../adapter-loader'
+import { bespok3dRootOn } from '../adapter-loader/bespok3d-root'
 import { connect, shellQuote } from '../ssh'
 
 // This computer's identity for a printer's ACL: the GPG fingerprint when PGP is on, else a stable
@@ -52,7 +53,7 @@ async function runResetAccess(printerId: string, ip: string, user: string, passw
     keys: [identity], roles: { [identity]: 'admin' }, labels: { [identity]: hostname() },
     tokens: [token], token_identity: { [token]: identity },
   }
-  const bespok3d = getAdapter(record.adapter)?.envVars.find((envVar) => envVar.name === 'BESPOK3D')?.value || '/userdata/bespok3d'
+  const bespok3d = bespok3dRootOn(getAdapter(record.adapter))
   const ssh = await connect({ host: ip, port, user, password })
   try {
     await ssh.exec(`mkdir -p ${shellQuote(`${bespok3d}/auth`)}`)

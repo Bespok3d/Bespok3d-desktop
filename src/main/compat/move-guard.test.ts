@@ -11,18 +11,15 @@ vi.mock('../daemon-client/client', () => ({
 }))
 vi.mock('../daemon-client/expected-version', () => ({ expectedDaemonVersion: () => '0.12.23' }))
 vi.mock('../daemon-client/feeds/print-state', () => ({ reportedBlockedActions: vi.fn() }))
-vi.mock('../printers', () => ({ loadPrinters: vi.fn() }))
 
 import {
   DaemonMoveRefused,
   assertNotADaemonDowngrade,
-  assertKnownPrinterNotDowngraded,
   assertPrinterNotPrinting,
   assertPairLandedTogether,
 } from './move-guard'
 import { fetchDaemonStatus, fetchCapabilities } from '../daemon-client/client'
 import { reportedBlockedActions } from '../daemon-client/feeds/print-state'
-import { loadPrinters } from '../printers'
 
 // A printer record carrying a jinni version the app wrote down earlier. Every pair test below leaves
 // it at a value that would PASS, so a test that fails can only be reading the printer's own answer.
@@ -70,24 +67,11 @@ describe('a deploy is always a move forward', () => {
     await expect(assertNotADaemonDowngrade(PRINTER)).resolves.toBeUndefined()
   })
 
-  it('asks the same question of a printer named by id, and lets a first enrollment through', async () => {
-    vi.mocked(loadPrinters).mockReturnValue([])
-    await expect(assertKnownPrinterNotDowngraded('printer-never-seen')).resolves.toBeUndefined()
-    expect(fetchDaemonStatus).not.toHaveBeenCalled()
-
-    vi.mocked(loadPrinters).mockReturnValue([PRINTER])
-    printerReportsDaemon('0.13.0')
-    await expect(assertKnownPrinterNotDowngraded('printer-1')).rejects.toThrow(DaemonMoveRefused)
-  })
-
   // The Force menu is the owner saying he wants this app's daemon on the printer whatever it reports
   // running now. It stops being a Force menu the moment this guard still refuses him.
   it('runs anyway when the run was forced, and never even asks the printer its version', async () => {
     printerReportsDaemon('0.13.0')
     await expect(assertNotADaemonDowngrade(PRINTER, true)).resolves.toBeUndefined()
-
-    vi.mocked(loadPrinters).mockReturnValue([PRINTER])
-    await expect(assertKnownPrinterNotDowngraded('printer-1', true)).resolves.toBeUndefined()
     expect(fetchDaemonStatus).not.toHaveBeenCalled()
   })
 })
@@ -185,12 +169,5 @@ describe('every path that moves a daemon asks first and records last', () => {
     expect(safeToMove).toContain('assertNotADaemonDowngrade(record, forced)')
     const update = daemonOps.slice(daemonOps.indexOf('export async function runUpdateDaemon'))
     expect(update).toContain('assertSafeToMoveDaemon(record, false)')
-  })
-
-  it('asks before recovery after a firmware update re-enrolls a printer the app already knows', () => {
-    const enrollment = readSource('enrollment.ts')
-    const enroll = enrollment.slice(enrollment.indexOf('export async function enrollPrinter'))
-
-    expect(enroll.indexOf('assertKnownPrinterNotDowngraded')).toBeLessThan(enroll.indexOf('adapter.enrollSteps'))
   })
 })

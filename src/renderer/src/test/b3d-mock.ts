@@ -151,7 +151,7 @@ function mockPrinters(channels: Channels, override: Partial<B3d['printers']> = {
     adapterGet: resolved(makeAdapterInfo()), adaptersList: resolved([makeAdapterInfo()]),
     checkSsh: resolved({ ok: true }), enroll: voidFn(), cancelOp: voidFn(), onEnrollProgress: sub(channels.enrollProgress),
     watchPrintState: voidFn(), unwatchPrintState: voidFn(), onPrintState: sub(channels.printState),
-    deactivate: voidFn(), reactivate: voidFn(), uninstall: voidFn(), reboot: voidFn(), repair: voidFn(),
+    deactivate: voidFn(), reactivate: resolved({ ok: true, results: [] }), uninstall: voidFn(), reboot: voidFn(), repair: voidFn(),
     updateDaemon: voidFn(), updateJinni: voidFn(), resetAccess: voidFn(),
     ...override,
   }
@@ -172,7 +172,7 @@ function mockStore(channels: Channels, override: Partial<B3d['store']> = {}): B3
     uninstall: resolved([]),
     reconfigure: resolved({ installedIds: [], log: makeInstallLog('plugin') }),
     pluginConfig: resolved(null),
-    recover: resolved({ ok: true, results: [] }), updateBatch: resolved({ ok: true, results: [] }),
+    recover: resolved({ ok: true, results: [] }), recoverAfterReboot: resolved({ ok: true, results: [] }), updateBatch: resolved({ ok: true, results: [] }),
     installBatch: resolved({ ok: true, results: [] }),
     uninstallBatch: resolved({ ok: true, results: [] }),
     onPluginProgress: sub(channels.pluginProgress),

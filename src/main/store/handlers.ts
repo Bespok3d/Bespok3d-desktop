@@ -5,7 +5,7 @@ import { updatePrinter, appendPluginCapture, pluginCaptures } from '../printers'
 import type { ReleaseChannel } from '../settings'
 import type { InstallLog } from '@bespok3d/contract'
 import type { BatchResult } from '../daemon-client/batch-result'
-import { fetchCapabilities, fetchPluginConfig, reconfigurePlugin, repairOrRecover } from '../daemon-client/client'
+import { fetchCapabilities, fetchPluginConfig, reconfigurePlugin, recoverAfterReboot, repairOrRecover } from '../daemon-client/client'
 import { getManagedRecord, parseCaps, DAEMON_QUERY_TIMEOUT_MS } from '../daemon-client/status'
 import { recordAppliedVars } from './record-sync'
 import { watchPluginLog, unwatchPluginLog } from '../daemon-client/feeds/plugin-log'
@@ -93,4 +93,8 @@ export function registerStoreHandlers(getMainWindow: () => BrowserWindow): void 
 
     return repairOrRecover(record, rebootFollows).finally(closeProgress)
   })
+
+  ipcMain.handle('store:recoverAfterReboot', (_ev, printerId: string): Promise<BatchResult> =>
+    recoverAfterReboot(getManagedRecord(printerId)),
+  )
 }

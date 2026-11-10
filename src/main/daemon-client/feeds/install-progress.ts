@@ -5,13 +5,16 @@
 // being an opaque wait. The socket is opened (and awaited) before the POST so no phase is missed; the
 // daemon replays the current run's events on connect to cover the connect-vs-first-event race. An old
 // daemon without the route, or any connect failure, degrades to no live feed (the install still runs).
+// While open, the feed also tells the app whether the printer is still at work (printer-at-work.ts).
 import WebSocket from 'ws'
 
 import { makeAgent } from '../client'
+import { reportPrinterWork } from '../printer-at-work'
 import { MAX_FRAME_BYTES } from './feed-pool'
 import type { InstallLogPhase } from '@bespok3d/contract'
 
 interface ProgressTarget {
+  id: string
   ip: string
   daemonCert?: string
   daemonToken?: string
@@ -52,16 +55,74 @@ export interface UploadProgressEvent {
 
 const DAEMON_PORT = 4269
 
+// The app pings the printer on the feed and the printer answers each ping, so a feed that stays
+// silent through three pings means the link or the printer is gone, even though the socket still
+// looks open (a printer that drops off the network never says goodbye).
+const FEED_PING_MS = 15000
+const FEED_SILENCE_LIMIT_MS = 45000
+// A printer that drops packets never refuses the connection, so without a limit the opening handshake
+// waits for the system's own connect timeout, holding the install back before it is even sent.
+const FEED_HANDSHAKE_LIMIT_MS = 10000
+
+// A run is under way from its first event until its terminal done.
+interface RunWatch {
+  runUnderWay: boolean
+  lastHeardAt: number
+}
+
+function heardFromThePrinter(runWatch: RunWatch): void {
+  runWatch.lastHeardAt = Date.now()
+}
+
+function trackRun(runWatch: RunWatch, event: InstallProgressEvent): void {
+  runWatch.runUnderWay = event.type !== 'done'
+}
+
+function printerIsAtWork(socket: WebSocket, runWatch: RunWatch): boolean {
+  const linkIsAlive = socket.readyState === socket.OPEN && Date.now() - runWatch.lastHeardAt < FEED_SILENCE_LIMIT_MS
+
+  return runWatch.runUnderWay && linkIsAlive
+}
+
+// A ping before the socket opens throws, and one after it closes is pointless.
+function pingWhenOpen(socket: WebSocket): void {
+  if (socket.readyState === socket.OPEN) socket.ping()
+}
+
+// Report the printer's work for as long as the socket lives, and ping it so a silent link shows.
+// Returns the function that stops both.
+function reportWorkWhileOpen(printerId: string, socket: WebSocket, runWatch: RunWatch): () => void {
+  const withdrawReport = reportPrinterWork(printerId, () => printerIsAtWork(socket, runWatch))
+  const pinger = setInterval(() => pingWhenOpen(socket), FEED_PING_MS)
+
+  return () => {
+    clearInterval(pinger)
+    withdrawReport()
+  }
+}
+
+function closeSocket(socket: WebSocket): void {
+  try { socket.close() } catch { /* already closing */ }
+}
+
 // Resolves once the feed is live (or immediately when it cannot be opened) with a close function the
 // caller runs when the install settles. Errors resolve to a no-op close so the install proceeds blind.
 export function watchInstallProgress(record: ProgressTarget, onEvent: (event: InstallProgressEvent) => void): Promise<() => void> {
   return new Promise((resolve) => {
     if (!record.daemonCert || !record.daemonToken) return resolve(() => {})
     const url = `wss://${record.ip}:${DAEMON_PORT}/ws/install-progress?token=${encodeURIComponent(record.daemonToken)}`
-    const socket = new WebSocket(url, { agent: makeAgent(record.daemonCert), maxPayload: MAX_FRAME_BYTES })
-    function close(): void { try { socket.close() } catch { /* already closing */ } }
+    const socket = new WebSocket(url, { agent: makeAgent(record.daemonCert), maxPayload: MAX_FRAME_BYTES, handshakeTimeout: FEED_HANDSHAKE_LIMIT_MS })
+    const runWatch: RunWatch = { runUnderWay: false, lastHeardAt: Date.now() }
+    const stopReporting = reportWorkWhileOpen(record.id, socket, runWatch)
+    function close(): void { stopReporting(); closeSocket(socket) }
     socket.on('open', () => resolve(close))
-    socket.on('message', (data) => relay(data, onEvent))
+    socket.on('message', (data) => {
+      heardFromThePrinter(runWatch)
+      relay(data, (event) => { trackRun(runWatch, event); onEvent(event) })
+    })
+    socket.on('ping', () => heardFromThePrinter(runWatch))
+    socket.on('pong', () => heardFromThePrinter(runWatch))
+    socket.on('close', stopReporting)
     socket.on('error', () => { close(); resolve(() => {}) })
   })
 }

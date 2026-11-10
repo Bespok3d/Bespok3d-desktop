@@ -56,7 +56,7 @@ vi.mock('./git-host', () => ({ activeConnector: vi.fn(), readSettings: vi.fn(), 
 vi.mock('./daemon-client/client', () => ({
   fetchCapabilities: vi.fn(), fetchDaemonStatus: vi.fn(), fetchSelfCheck: vi.fn(),
   installPlugin: vi.fn(), uninstallPlugin: vi.fn(), uninstallBatch: vi.fn(),
-  reconfigurePlugin: vi.fn(), recoverPackages: vi.fn(), updateBatchPackages: vi.fn(),
+  reconfigurePlugin: vi.fn(), recoverPackages: vi.fn(), recoverAfterReboot: vi.fn(), updateBatchPackages: vi.fn(),
   deactivateAll: vi.fn(), teardownDaemon: vi.fn(), setAddressResolver: vi.fn(),
   requestAccess: vi.fn(), fetchAccessClients: vi.fn(), grantAccess: vi.fn(), revokeAccess: vi.fn(), isAccessGranted: vi.fn(),
 }))
@@ -69,7 +69,7 @@ vi.mock('./dev-tools/patch-engine', () => ({ buildSession: vi.fn() }))
 vi.mock('./dev-tools/patch-apply', () => ({ applyPatch: vi.fn() }))
 
 import { registerIpc } from './ipc'
-import { fetchCapabilities, reconfigurePlugin, fetchAccessClients, grantAccess, revokeAccess } from './daemon-client/client'
+import { fetchCapabilities, reconfigurePlugin, recoverAfterReboot, fetchAccessClients, grantAccess, revokeAccess } from './daemon-client/client'
 import { enrollPrinter } from './enrollment'
 import { updatePrinter, loadPrinters } from './printers'
 import { checkDaemonRecord } from './daemon-client/status'
@@ -196,30 +196,42 @@ describe('printers:checkWriteLayer handler (repair vs recover)', () => {
 // (reconfigure / access*) that the './daemon/client' mock used to omit. Nothing invoked them, so the
 // gap was invisible. These invoke each one through its registered handler, so an incomplete mock makes
 // the call throw "X is not a function" and the test fails - the gap can no longer hide.
-describe('store + access handlers reach their daemon-client calls', () => {
-  const managed = hoisted.managedRecord
-  const progressWindow = { webContents: { send: vi.fn() }, isDestroyed: () => false } as unknown as BrowserWindow
+const managed = hoisted.managedRecord
+const progressWindow = { webContents: { send: vi.fn() }, isDestroyed: () => false } as unknown as BrowserWindow
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    registeredHandlers.clear()
-    vi.mocked(loadPrinters).mockReturnValue([managed as never])
-    vi.mocked(fetchCapabilities).mockResolvedValue({ installed: {}, endpoints: [] } as never)
-  })
+function registerWithTheManagedPrinterSaved() {
+  vi.clearAllMocks()
+  registeredHandlers.clear()
+  vi.mocked(loadPrinters).mockReturnValue([managed as never])
+  vi.mocked(fetchCapabilities).mockResolvedValue({ installed: {}, endpoints: [] } as never)
+}
 
-  function handlerFor(channel: string) {
-    registerIpc(() => progressWindow)
-    const handler = registeredHandlers.get(channel)
-    if (!handler) throw new Error(`${channel} handler not registered`)
+function handlerFor(channel: string) {
+  registerIpc(() => progressWindow)
+  const handler = registeredHandlers.get(channel)
+  if (!handler) throw new Error(`${channel} handler not registered`)
 
-    return handler
-  }
+  return handler
+}
+
+describe('store handlers reach their daemon-client calls', () => {
+  beforeEach(registerWithTheManagedPrinterSaved)
 
   it('store:reconfigure calls reconfigurePlugin', async () => {
     vi.mocked(reconfigurePlugin).mockResolvedValue({ pluginId: 'spoolman', timestamp: 1, ok: true, phases: [] })
     await handlerFor('store:reconfigure')({}, 'printer-1', 'spoolman', { MODE: 'on' })
     expect(reconfigurePlugin).toHaveBeenCalledWith(managed, 'spoolman', { MODE: 'on' })
   })
+
+  it('store:recoverAfterReboot calls recoverAfterReboot with the saved printer', async () => {
+    vi.mocked(recoverAfterReboot).mockResolvedValue({ ok: true, manifestWarnings: [], results: [] } as never)
+    await handlerFor('store:recoverAfterReboot')({}, 'printer-1')
+    expect(recoverAfterReboot).toHaveBeenCalledWith(managed)
+  })
+})
+
+describe('access handlers reach their daemon-client calls', () => {
+  beforeEach(registerWithTheManagedPrinterSaved)
 
   it('access:clients calls fetchAccessClients', async () => {
     vi.mocked(fetchAccessClients).mockResolvedValue({ clients: [] } as never)

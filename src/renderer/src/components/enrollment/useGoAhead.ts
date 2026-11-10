@@ -24,14 +24,17 @@ interface GoAheadRequest {
   phase: EnrollPhase
   customSshCredentials: boolean
   startWithAdapterDefaults: () => void
+  clearTheOp: () => void
 }
 
 export interface GoAhead {
   awaiting: boolean
   showCredentialsForm: boolean
+  hasAFirstScreen: boolean
   dismissable: boolean
   give: () => void
   askForOwnCredentials: () => void
+  backToTheFirstScreen: () => void
 }
 
 // Holds the op on its go-ahead screen, and answers which screen the modal shows once the user has
@@ -50,10 +53,17 @@ export function useGoAhead(request: GoAheadRequest): GoAhead {
     setOwnCredentialsWanted(true)
     setGiven(true)
   }
+  // Starting over shows the go-ahead again, where the user can still choose to give their own login.
+  function backToTheFirstScreen() {
+    setGiven(false)
+    setOwnCredentialsWanted(false)
+    request.clearTheOp()
+  }
 
   const awaiting = awaitingGoAhead(request.mode, request.phase, given)
   const wantsTheirOwnLogin = request.customSshCredentials || ownCredentialsWanted
   const showCredentialsForm = request.phase === 'credentials' && wantsTheirOwnLogin && !awaiting
+  const hasAFirstScreen = MODES_THAT_ASK_FIRST.has(request.mode) || wantsTheirOwnLogin
 
-  return { awaiting, showCredentialsForm, dismissable: showCredentialsForm || awaiting, give, askForOwnCredentials }
+  return { awaiting, showCredentialsForm, hasAFirstScreen, dismissable: showCredentialsForm || awaiting, give, askForOwnCredentials, backToTheFirstScreen }
 }

@@ -7,6 +7,7 @@ import type { AdapterInfo } from '../main/adapter-loader'
 import type { EnrollProgressEvent, SshCheckResult } from '../main/enrollment'
 import type { PrintStateEvent } from '../main/daemon-client/feeds/print-state'
 import type { CheckDaemonResult } from '../main/daemon-client/status'
+import type { BatchResult } from '../main/daemon-client/batch-result'
 
 export const printersApi = {
   load: (): Promise<PublicPrinterRecord[]> => ipcRenderer.invoke('printers:load'),
@@ -25,14 +26,15 @@ export const printersApi = {
     ipcRenderer.invoke('printers:adapters:list'),
   checkSsh: (ip: string, user: string, password: string, port: number): Promise<SshCheckResult> =>
     ipcRenderer.invoke('printers:checkSsh', ip, user, password, port),
-  // forced: launched from the Force menu, so the daemon-version question is waived. See move-guard.
+  // forced: launched from the Force menu, so a printer's newer daemon is not kept. See compat/installed-daemon.
   enroll: (printerId: string, ip: string, adapterId: string, user: string, password: string, port: number, retryFromStepId?: string, forced?: boolean): Promise<void> =>
     ipcRenderer.invoke('printers:enroll', printerId, ip, adapterId, user, password, port, retryFromStepId, forced),
   // Stop the operation running on this printer at the next step boundary.
   cancelOp: (printerId: string): Promise<void> => ipcRenderer.invoke('printers:cancelOp', printerId),
   deactivate: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
     ipcRenderer.invoke('printer:deactivate', printerId, ip, user, password, port),
-  reactivate: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
+  // Answers what re-applying the plugins did to each one, so a plugin left switched off can be reported.
+  reactivate: (printerId: string, ip: string, user: string, password: string, port: number): Promise<BatchResult> =>
     ipcRenderer.invoke('printer:reactivate', printerId, ip, user, password, port),
   uninstall: (printerId: string, ip: string, user: string, password: string, port: number): Promise<void> =>
     ipcRenderer.invoke('printer:uninstall', printerId, ip, user, password, port),

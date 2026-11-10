@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { request as httpsRequest, Agent } from 'https'
-import type { IncomingMessage } from 'http'
+import type { ClientRequest, IncomingMessage } from 'http'
 import type { PrinterRecord } from '../printers'
+import { printerSaysItIsAtWork } from './printer-at-work'
 import { streamUpload } from './upload'
 
 export type UploadProgressFn = (sentBytes: number, totalBytes: number) => void
@@ -22,6 +23,8 @@ export function setAddressResolver(resolver: AddressResolver): void {
 // Every daemon request is bounded so a daemon that holds the TCP port open but never answers HTTP
 // (mid-restart, or wedged) can never hang the UI. Quick reads use the short default; long ops
 // (install, recover, teardown, ...) pass the generous bound, which still beats an infinite hang.
+// The bounds count silence, not total time, and a long op keeps waiting for as long as the printer
+// says it is still at work on it (its safety net alone can take close to ten minutes).
 export const DEFAULT_DAEMON_TIMEOUT_MS = 8000
 export const LONG_OP_TIMEOUT_MS = 300000
 
@@ -76,6 +79,23 @@ interface DaemonRequestOptions {
   port: number
 }
 
+// Only a long op waits on the printer's word. A quick read that goes silent means a wedged daemon,
+// whatever the printer reports about other work, so it must still fail fast.
+function keepsWaitingOnThePrinter(printerId: string, timeoutMs: number): boolean {
+  return timeoutMs >= LONG_OP_TIMEOUT_MS && printerSaysItIsAtWork(printerId)
+}
+
+function giveUpAfterSilence(req: ClientRequest, printerId: string, timeoutMs: number): void {
+  req.setTimeout(timeoutMs, () => {
+    if (keepsWaitingOnThePrinter(printerId, timeoutMs)) {
+      giveUpAfterSilence(req, printerId, timeoutMs)
+
+      return
+    }
+    req.destroy(new Error('daemon request timed out'))
+  })
+}
+
 function doRequestAt(record: PrinterRecord, requestOptions: DaemonRequestOptions): Promise<string> {
   const { method, path, body, contentType, onUploadProgress, port } = requestOptions
   const timeoutMs = requestOptions.timeoutMs ?? DEFAULT_DAEMON_TIMEOUT_MS
@@ -94,7 +114,7 @@ function doRequestAt(record: PrinterRecord, requestOptions: DaemonRequestOptions
       (res) => collectResponse(res, resolve, reject),
     )
     req.on('error', reject)
-    req.setTimeout(timeoutMs, () => req.destroy(new Error('daemon request timed out')))
+    giveUpAfterSilence(req, record.id, timeoutMs)
     if (body && onUploadProgress) streamUpload(req, body, onUploadProgress).catch(reject)
     else { if (body) req.write(body); req.end() }
   })

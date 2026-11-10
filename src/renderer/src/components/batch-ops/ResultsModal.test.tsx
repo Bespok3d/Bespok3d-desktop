@@ -179,3 +179,48 @@ describe('OtaRecoveryResultsModal, plugins the printer could not read', () => {
     expect(container.querySelectorAll('.recovery-row')).toHaveLength(results().results.length)
   })
 })
+
+// A printer that only lost its setup gets just that put right, with no plugin put back. The report
+// must say so, never that every plugin was re-applied, and must not offer a plugin page for the setup.
+describe('OtaRecoveryResultsModal on the printer setup row', () => {
+  function setupRepair(ok: boolean) {
+    return { ok, results: [{ pluginId: '(printer setup)', ok, skipped: false, reason: ok ? '' : 'selfcheck still reports a problem after the repair', log: [] }] }
+  }
+
+  it('says the printer setup was put right, not that the plugins were re-applied', () => {
+    setup(<OtaRecoveryResultsModal results={setupRepair(true)} onOpenPlugin={vi.fn()} onClose={vi.fn()} restarting="restarted" />)
+
+    expect(screen.getByText(en('recovery_results.setup_summary_ok'))).toBeInTheDocument()
+    expect(screen.getByText(en('recovery_results.setup_restarting'))).toBeInTheDocument()
+    expect(screen.getByText(en('recovery_results.setup_row'))).toBeInTheDocument()
+    expect(screen.queryByText(en('recovery_results.summary_ok'))).not.toBeInTheDocument()
+    expect(screen.queryByText('(printer setup)')).not.toBeInTheDocument()
+  })
+
+  it('a setup that could not be put right says so and offers no plugin page', () => {
+    setup(<OtaRecoveryResultsModal results={setupRepair(false)} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getByText(en('recovery_results.setup_summary_errors'))).toBeInTheDocument()
+    expect(screen.queryByText(en('recovery_results.summary_errors'))).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: en('btn.fix') })).not.toBeInTheDocument()
+  })
+
+  // Beside plugin rows, only the plugin that failed gets a way out; the setup row shows its cross alone.
+  it('a setup that could not be put right beside plugins shows no internal reason and offers no plugin page for it', () => {
+    var setupFailed = setupRepair(false).results[0]
+    var pluginFailed = { pluginId: 'fluidd', ok: false, skipped: false, reason: 'failed to symlink config', log: [] }
+    setup(<OtaRecoveryResultsModal results={{ ok: false, results: [setupFailed, pluginFailed] }} onOpenPlugin={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getByText(en('recovery_results.setup_row'))).toBeInTheDocument()
+    expect(screen.queryByText(setupFailed.reason)).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: en('btn.fix') })).toHaveLength(1)
+  })
+
+  it('a setup that could not be put right gets a restart note that does not say it was', () => {
+    setup(<OtaRecoveryResultsModal results={setupRepair(false)} onOpenPlugin={vi.fn()} onClose={vi.fn()} restarting="restarted" />)
+
+    const restartNote = screen.getByText(en('recovery_results.setup_restarting'))
+    expect(restartNote.textContent).not.toMatch(/put right/)
+    expect(screen.queryByText(en('recovery_results.restarting'))).not.toBeInTheDocument()
+  })
+})

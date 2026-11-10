@@ -120,6 +120,29 @@ export async function recoverPackages(record: PrinterRecord, rebootFollows = fal
   return parseBatchResult(await doRequest(record, 'POST', '/packages/recover', body, contentType, LONG_OP_TIMEOUT_MS))
 }
 
+// The printer's daemon answers before its services are all up after a reboot, and a print can already
+// be running then. The printer refuses the check for either (422, 409) and keeps what the check needs
+// until it has run, so it is asked again a little later, a few times, before the report goes up without it.
+const AFTER_REBOOT_ATTEMPTS = 4
+const AFTER_REBOOT_RETRY_MS = 15_000
+
+function printerAsksToBeAskedAgain(error: unknown): boolean {
+  return error instanceof DaemonHttpError && (error.statusCode === 409 || error.statusCode === 422)
+}
+
+// The check a recover that a reboot followed left to that reboot: no rows when it left none, else the
+// row that replaces the one saying the reboot replaced the services restart.
+export async function recoverAfterReboot(record: PrinterRecord, attemptsLeft = AFTER_REBOOT_ATTEMPTS): Promise<BatchResult> {
+  try {
+    return parseBatchResult(await doRequest(record, 'POST', '/packages/recover/after-reboot', undefined, undefined, LONG_OP_TIMEOUT_MS))
+  } catch (error) {
+    if (!printerAsksToBeAskedAgain(error) || attemptsLeft <= 1) throw error
+    await new Promise<void>((resolve) => setTimeout(resolve, AFTER_REBOOT_RETRY_MS))
+
+    return recoverAfterReboot(record, attemptsLeft - 1)
+  }
+}
+
 function printerAskedForTheFullRecover(error: unknown): boolean {
   return error instanceof DaemonHttpError && error.statusCode === 409
     && (error.detail as { error?: string } | null)?.error === 'needs_recover'

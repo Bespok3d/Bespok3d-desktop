@@ -8,6 +8,9 @@ const sockets: MockSocket[] = []
 
 class MockSocket extends EventEmitter {
   closed = false
+  readonly OPEN = 1
+  readyState = 0
+  ping = vi.fn()
   constructor() {
     super()
     sockets.push(this)
@@ -15,6 +18,12 @@ class MockSocket extends EventEmitter {
 
   close(): void {
     this.closed = true
+    this.readyState = 3
+  }
+
+  open(): void {
+    this.readyState = this.OPEN
+    this.emit('open')
   }
 }
 
@@ -25,7 +34,9 @@ vi.mock('ws', () => ({
 }))
 vi.mock('../client', () => ({ makeAgent: vi.fn(() => ({})) }))
 
+import WebSocket from 'ws'
 import { watchInstallProgress, parseEvent, batchEventFrom, installPhaseMessage } from './install-progress'
+import { printerSaysItIsAtWork } from '../printer-at-work'
 import type { InstallLogPhase } from '@bespok3d/contract'
 
 afterEach(() => {
@@ -71,26 +82,35 @@ describe('installPhaseMessage', () => {
 
 describe('watchInstallProgress', () => {
   it('resolves immediately with a no-op close when the printer has no cert/token', async () => {
-    const close = await watchInstallProgress({ ip: '10.0.0.1' }, vi.fn())
+    const close = await watchInstallProgress({ id: 'printer-1', ip: '10.0.0.1' }, vi.fn())
     expect(sockets).toHaveLength(0)
     expect(() => close()).not.toThrow()
   })
 
   it('forwards phase events once the socket is open', async () => {
     const onEvent = vi.fn()
-    const ready = watchInstallProgress({ ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }, onEvent)
-    sockets[0].emit('open')
-    await ready
+    const ready = watchInstallProgress({ id: 'printer-1', ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }, onEvent)
+    sockets[0].open()
+    const close = await ready
     const phase = okPhase('dirs', 'Dirs')
     sockets[0].emit('message', Buffer.from(JSON.stringify({ type: 'phase', phase })))
     expect(onEvent).toHaveBeenCalledWith({ type: 'phase', phase })
+    close()
   })
 
   it('degrades to a no-op close on a socket error (old daemon without the route)', async () => {
-    const close = watchInstallProgress({ ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }, vi.fn())
+    const close = watchInstallProgress({ id: 'printer-1', ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }, vi.fn())
     sockets[0].emit('error', new Error('no route'))
     await expect(close).resolves.toBeTypeOf('function')
     expect(sockets[0].closed).toBe(true)
+  })
+
+  it('gives up opening the feed after a bounded wait, so a printer dropping packets cannot hold the install back', async () => {
+    const close = watchInstallProgress({ id: 'printer-1', ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }, vi.fn())
+    sockets[0].emit('error', new Error('Opening handshake has timed out'))
+    await close
+
+    expect(vi.mocked(WebSocket)).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ handshakeTimeout: 10_000 }))
   })
 })
 
@@ -101,5 +121,62 @@ describe('a recovery plan announced by the printer', () => {
 
     expect(parsed).toEqual({ type: 'plan', ids: ['rfid-ntag', 'spoolman'] })
     expect(batchEventFrom(parsed!)).toEqual({ type: 'plan', ids: ['rfid-ntag', 'spoolman'] })
+  })
+})
+
+const feedTarget = { id: 'printer-1', ip: '10.0.0.1', daemonCert: 'C', daemonToken: 'T' }
+
+function frame(event: object): Buffer {
+  return Buffer.from(JSON.stringify(event))
+}
+
+async function openFeed(): Promise<() => void> {
+  const ready = watchInstallProgress(feedTarget, vi.fn())
+  sockets[0].open()
+
+  return ready
+}
+
+describe('what the feed says about the printer being at work', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('says nothing before the printer starts a run', async () => {
+    const close = await openFeed()
+    expect(printerSaysItIsAtWork('printer-1')).toBe(false)
+    close()
+  })
+
+  it('says the printer is at work from the first event of a run until its done', async () => {
+    const close = await openFeed()
+    sockets[0].emit('message', frame({ type: 'plugin', plugin_id: '(services)', index: 2, total: 2 }))
+    expect(printerSaysItIsAtWork('printer-1')).toBe(true)
+    expect(printerSaysItIsAtWork('another-printer')).toBe(false)
+
+    sockets[0].emit('message', frame({ type: 'done', ok: true }))
+    expect(printerSaysItIsAtWork('printer-1')).toBe(false)
+    close()
+  })
+
+  it('stops vouching for the printer once the feed closes', async () => {
+    const close = await openFeed()
+    sockets[0].emit('message', frame({ type: 'plan', ids: ['spoolman'] }))
+    close()
+    expect(printerSaysItIsAtWork('printer-1')).toBe(false)
+  })
+
+  it('stops vouching for a printer that went silent, and pings it so a live one never does', async () => {
+    vi.useFakeTimers()
+    const close = await openFeed()
+    sockets[0].emit('message', frame({ type: 'plan', ids: ['spoolman'] }))
+
+    vi.advanceTimersByTime(30000)
+    expect(sockets[0].ping).toHaveBeenCalledTimes(2)
+    sockets[0].emit('pong')
+    vi.advanceTimersByTime(30000)
+    expect(printerSaysItIsAtWork('printer-1')).toBe(true)
+
+    vi.advanceTimersByTime(30000)
+    expect(printerSaysItIsAtWork('printer-1')).toBe(false)
+    close()
   })
 })

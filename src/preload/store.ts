@@ -22,6 +22,8 @@ export const storeApi = {
     ipcRenderer.invoke('store:pluginConfig', printerId, pluginId),
   recover: (printerId: string, rebootFollows = false): Promise<BatchResult> =>
     ipcRenderer.invoke('store:recover', printerId, rebootFollows),
+  recoverAfterReboot: (printerId: string): Promise<BatchResult> =>
+    ipcRenderer.invoke('store:recoverAfterReboot', printerId),
   updateBatch: (printerId: string, updates: Array<{ pluginId: string; vars?: Record<string, string>; depIds?: string[]; sourceUrl?: string; channel?: ReleaseChannel }>): Promise<BatchResult> =>
     ipcRenderer.invoke('store:update-batch', printerId, updates),
   installBatch: (printerId: string, specs: Array<{ pluginId: string; vars?: Record<string, string>; depIds?: string[]; sourceUrl?: string; channel?: ReleaseChannel }>): Promise<BatchResult> =>

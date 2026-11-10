@@ -10,6 +10,7 @@ import { useClipboard } from '../common/hooks/useClipboard'
 import { BatchReportModal } from './ReportModal'
 import { buildBatchReport } from './report-text'
 import { diagnosisText } from './diagnosis'
+import { PRINTER_SETUP_ROW, isSetupRepairOnly } from './setup-repair'
 import './batch-ops.css'
 import type { BatchVariant } from './variant'
 import type { RecoveryRestart } from './recover-op'
@@ -89,14 +90,17 @@ function RecoveryResultItem({ result, onOpenPluginPage }: { result: PluginRecove
   const status = rowStatus(ok, skipped)
   const icon = ROW_ICON[status]
   const iconColor = ROW_COLOR[status]
+  // The printer's own setup is not a plugin: it has no page to open. Its cross already says it was not
+  // put right, and the printer's reason for it is internal wording in English, so the row shows no reason.
+  const isSetupRow = pluginId === PRINTER_SETUP_ROW
   // A plugin that did not go through and the printer said why. A plugin the printer simply walked past
   // says nothing and needs nothing: there is nothing for the user to put right.
-  const needsPuttingRight = !ok && Boolean(reason)
+  const needsPuttingRight = !ok && Boolean(reason) && !isSetupRow
 
   return (
     <div className="recovery-row">
       <span style={{ color: iconColor, fontWeight: 600, width: 16 }}>{icon}</span>
-      <span className="u-flex-1">{pluginId}</span>
+      <span className="u-flex-1">{isSetupRow ? t('recovery_results.setup_row') : pluginId}</span>
       {needsPuttingRight && (
         <span className="u-hint">{diagnosisText(t, reason)}</span>
       )}
@@ -127,13 +131,28 @@ const RESTART_HINT: Record<RecoveryRestart, string | null> = {
   'not-back': 'recovery_results.not_back',
 }
 
+// A recovery that only put the printer's setup right put no plugin back, so its summary and restart
+// note say what it did do instead of speaking of the plugins.
+function summaryKey(prefix: string, results: BatchResult): string {
+  const outcome = results.ok ? 'summary_ok' : 'summary_errors'
+  if (isSetupRepairOnly(results.results)) return `recovery_results.setup_${outcome}`
+
+  return `${prefix}.${outcome}`
+}
+
+function restartHintKey(restarting: RecoveryRestart, results: BatchResult): string | null {
+  if (restarting === 'restarted' && isSetupRepairOnly(results.results)) return 'recovery_results.setup_restarting'
+
+  return RESTART_HINT[restarting]
+}
+
 export function OtaRecoveryResultsModal({ results, onOpenPlugin, onClose, variant = 'recovery', restarting = 'none' }: { results: BatchResult; onOpenPlugin: (pluginId: string) => void; onClose: () => void; variant?: BatchVariant; restarting?: RecoveryRestart }) {
   const { t } = useI18n()
   const { copied, copy } = useClipboard()
   const prefix = RESULT_PREFIX[variant]
-  const restartHint = RESTART_HINT[restarting]
+  const restartHint = restartHintKey(restarting, results)
   const title = results.ok ? t(`${prefix}.title_ok`) : t(`${prefix}.title_errors`)
-  const summary = results.ok ? t(`${prefix}.summary_ok`) : t(`${prefix}.summary_errors`)
+  const summary = t(summaryKey(prefix, results))
   function openItsOwnPage(pluginId: string) {
     onOpenPlugin(pluginId)
     onClose()

@@ -10,6 +10,7 @@ import { useI18n } from '../../i18n/context'
 import type { SshCredentials } from '../../hooks/enrollment'
 import type { EnrollMode } from './index'
 import type { FailureEscalation } from './failure-escalation'
+import { refusalMessageKey } from './known-refusals'
 import './enrollment.css'
 
 interface SuccessCopy {
@@ -45,7 +46,7 @@ interface EnrollmentProgressProps {
   credentials?: SshCredentials
   onDone: () => void
   onRetry: (stepId: string) => void
-  onReset: () => void
+  onStartOver: () => void
   escalation?: FailureEscalation
   onReportIssue?: () => void
   mode?: EnrollMode
@@ -136,15 +137,18 @@ function CancelledView({ event, onClose }: { event: EnrollProgressEvent; onClose
 // The step's own words about why it refused. It used to live only inside the expanded step list, so a
 // failure read as "something went wrong" until the user thought to open it.
 function FailureReason({ error }: { error?: string }) {
+  const { t } = useI18n()
   if (!error) return null
+  const refusalKey = refusalMessageKey(error)
 
-  return <div className="enroll-step-error">{error}</div>
+  return <div className="enroll-step-error">{refusalKey ? t(refusalKey) : error}</div>
 }
 
-function EnrollFooter({ phase, stepId, onReset, onRetry, escalation, onReportIssue, onCancelOp }: {
+function EnrollFooter({ phase, stepId, onStartOver, onRetry, escalation, onReportIssue, onCancelOp, onClose }: {
   phase: 'enrolling' | 'failed'
   stepId: string
-  onReset: () => void
+  onStartOver: () => void
+  onClose: () => void
   onRetry: (stepId: string) => void
   escalation?: FailureEscalation
   onReportIssue?: () => void
@@ -171,7 +175,7 @@ function EnrollFooter({ phase, stepId, onReset, onRetry, escalation, onReportIss
 
   return (
     <div className="modal-foot">
-      <Button variant="ghost" className="u-mr-auto" onClick={onReset}>{t('btn.cancel')}</Button>
+      <Button variant="ghost" className="u-mr-auto" onClick={onClose}>{t('btn.cancel')}</Button>
       <Button
         type="button"
         size="sm"
@@ -187,7 +191,7 @@ function EnrollFooter({ phase, stepId, onReset, onRetry, escalation, onReportIss
       {moreOpen && (
         <>
           <Button variant="outline" onClick={() => onRetry(stepId)}>{t('enroll.progress.start_from_step')}</Button>
-          <Button variant="outline" onClick={onReset}>{t('enroll.progress.start_over')}</Button>
+          <Button variant="outline" onClick={onStartOver}>{t('enroll.progress.start_over')}</Button>
         </>
       )}
       {onReportIssue && (
@@ -212,7 +216,7 @@ export function progressFill(stepsDone: number, stepsTotal: number, stepRunning:
   return Math.round(((stepsDone + (stepRunning ? intoStep : 0)) / stepsTotal) * 100)
 }
 
-export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onReset, escalation, onReportIssue, onCancelOp, onClose, mode, printerIsRebooting, restartSeconds }: EnrollmentProgressProps) {
+export function EnrollmentProgress({ event, phase, credentials: _credentials, onDone, onRetry, onStartOver, escalation, onReportIssue, onCancelOp, onClose, mode, printerIsRebooting, restartSeconds }: EnrollmentProgressProps) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState(false)
   const [acting, setActing] = useState(false)
@@ -222,7 +226,7 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
   if (phase === 'success') return <SuccessView event={event} message={successCopy(mode)} onDone={onDone} printerIsRebooting={printerIsRebooting} />
   if (phase === 'cancelled') return <CancelledView event={event} onClose={onClose} />
 
-  function handleReset() { setExpanded(false); setActing(true); onReset() }
+  function handleStartOver() { setExpanded(false); setActing(true); onStartOver() }
   function handleRetry(stepId: string) { setExpanded(false); setActing(true); onRetry(stepId) }
   function handleEscalate() {
     if (!escalation) return
@@ -280,11 +284,12 @@ export function EnrollmentProgress({ event, phase, credentials: _credentials, on
       <EnrollFooter
         phase={showFailed ? 'failed' : 'enrolling'}
         stepId={event.stepId}
-        onReset={handleReset}
+        onStartOver={handleStartOver}
         onRetry={handleRetry}
         escalation={escalation ? { labelKey: escalation.labelKey, run: handleEscalate } : undefined}
         onReportIssue={showFailed ? onReportIssue : undefined}
         onCancelOp={onCancelOp}
+        onClose={onClose}
       />
     </>
   )
