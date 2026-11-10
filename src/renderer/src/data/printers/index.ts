@@ -6,7 +6,7 @@
 // updates (daemon/jinni version-lag derivation, shared by the header dropdown and the settings row),
 // adapter (the printer's adapter out of the set this build ships).
 export { toPrinter, toRecord, savedRecord } from './record'
-export { resolvedStatus, statusAfterProbe, statusDotClass } from './status'
+export { managedPrinterId, resolvedStatus, statusAfterProbe, statusDotClass } from './status'
 export { reconcileDiscoveredAddress } from './address'
 export { applyToId, patchAndSave } from './list'
 export { pingAndUpdate, refreshEndpoints, resetPrinterProbe } from './probe'

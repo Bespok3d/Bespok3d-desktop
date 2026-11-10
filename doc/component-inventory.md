@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-292 exported components + hooks across 22 areas.
+293 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -237,7 +237,7 @@ as you touch the file.
 - `PluginConfigSection` (component) - [components/plugin-store/config/config-section.tsx](../src/renderer/src/components/plugin-store/config/config-section.tsx)
 - `PluginPanel` (component) - [components/plugin-store/panel/index.tsx](../src/renderer/src/components/plugin-store/panel/index.tsx)
 - `PluginStore` (component) - [components/plugin-store/index.tsx](../src/renderer/src/components/plugin-store/index.tsx) - gate-allow components_without_story: the store shell; its surfaces (browse cards, the detail/config/collection panels) each have their own catalog stories, and a full-store story needs live catalog+printer+install providers that just re-render the running app.
-- `ReachNote` (component) - [components/plugin-store/config/reach-note.tsx](../src/renderer/src/components/plugin-store/config/reach-note.tsx) - The line under an address field: what is wrong with what was typed, or whether this computer could
+- `ReachNote` (component) - [components/plugin-store/config/reach-note.tsx](../src/renderer/src/components/plugin-store/config/reach-note.tsx) - The line under an address field: what is wrong with what was typed, or whether the address answered
 - `SafetyNoticeOverlay` (component) - [components/plugin-store/safety/SafetyNoticeOverlay.tsx](../src/renderer/src/components/plugin-store/safety/SafetyNoticeOverlay.tsx) - Renders the popup only when a fixer kicked in; resolves the plugin from the catalog so the caller
 - `SafetyRecoveryModal` (component) - [components/plugin-store/safety/RecoveryModal.tsx](../src/renderer/src/components/plugin-store/safety/RecoveryModal.tsx) - Shown after a single-plugin op when a safety fixer disabled the plugin to keep the printer working.
 - `ScopeControl` (component) - [components/plugin-store/config/scope-control.tsx](../src/renderer/src/components/plugin-store/config/scope-control.tsx) - The per-field scope choice: shared across the fleet, or this printer's own value. Always visible
@@ -249,6 +249,7 @@ as you touch the file.
 - `StoreMain` (component) - [components/plugin-store/browse/grid.tsx](../src/renderer/src/components/plugin-store/browse/grid.tsx) - The store body: a flat grid (search/category-filtered) or the grouped category sections plus a
 - `Toolbar` (component) - [components/plugin-store/browse/Toolbar.tsx](../src/renderer/src/components/plugin-store/browse/Toolbar.tsx)
 - `UrlField` (component) - [components/plugin-store/config/url-field.tsx](../src/renderer/src/components/plugin-store/config/url-field.tsx) - The whole address of a service, protocol and all, kept exactly as it is typed: some of these live
+- `useAddressCheckPrinter` (hook) - [components/plugin-store/config/address-check-printer.ts](../src/renderer/src/components/plugin-store/config/address-check-printer.ts)
 - `useAssetInfo` (hook) - [components/plugin-store/panel/tabs/sources.tsx](../src/renderer/src/components/plugin-store/panel/tabs/sources.tsx) - Real, fetched-from-GitHub stats for a source's release asset (download count + actual upload
 - `useBatchInstall` (hook) - [components/plugin-store/select/useBatchInstall.ts](../src/renderer/src/components/plugin-store/select/useBatchInstall.ts) - The multi-select-and-install flow as one hook: track the selection, and on "Install selected" either
 - `useBatchUninstall` (hook) - [components/plugin-store/select/useBatchUninstall.ts](../src/renderer/src/components/plugin-store/select/useBatchUninstall.ts) - The multi-select-and-uninstall flow as one hook, the removal twin of useBatchInstall (both share the

@@ -23,21 +23,6 @@ export function probeDaemonPort(ip: string): Promise<'open' | 'refused' | 'unrea
   return probePortState(ip, 4269, 3000)
 }
 
-// The http code a whole address, protocol and all, answers with from this computer, or null when
-// nothing answered at all. A TCP probe cannot serve here: an address behind a name and a certificate
-// is one host and one port for a dozen sites, so opening the socket proves nothing about whether this
-// one is there. A refused certificate, an unknown name and a dead host all read as no answer, which
-// is the truth for the app and a warning for the person, never a block.
-export async function probeServiceUrl(address: string): Promise<number | null> {
-  try {
-    const answer = await fetch(address, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(4000) })
-
-    return answer.status
-  } catch {
-    return null
-  }
-}
-
 export function pingPrinter(ip: string): Promise<boolean> { return probePort(ip, 80, 1000, true) }
 
 export function checkDaemon(ip: string): Promise<boolean> { return probeDaemonPort(ip).then((state) => state === 'open') }

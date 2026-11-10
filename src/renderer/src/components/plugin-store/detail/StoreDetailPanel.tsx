@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Plugin, Printer, PluginConfigField } from '../../../data/types'
+import { managedPrinterId } from '../../../data/printers'
 import type { PluginVarsSave, ScopeChoice } from '../../../data/plugin-vars'
 import type { B3dEntityRef } from '../../../data/b3d-ref'
 import type { PluginHistoryEntry } from '../state'
@@ -66,7 +67,7 @@ export function StoreDetailPanel({ plugin, printer, view, channelPrefs, printAct
         installed={view.installedIds.includes(plugin.id)}
         deactivated={view.deactivatedIds.includes(plugin.id)}
         hasUpdate={hasUpdate(plugin, installed)}
-        printerId={printer?.status === 'managed' ? printer.id : undefined}
+        printerId={managedPrinterId(printer)}
         printActive={printActive} blockedActions={blockedActions} daemonVersion={printer?.daemonVersion}
         installedSource={printer?.installedSources?.[plugin.id]}
         installedVersion={installedVersion}

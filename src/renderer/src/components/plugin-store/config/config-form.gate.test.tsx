@@ -28,7 +28,6 @@ function installedArea(onMultiVars: (values: Record<string, string>) => void, li
     {
       b3d: {
         store: { pluginConfig: vi.fn().mockResolvedValue(live) },
-        net: { probeServiceUrl: vi.fn().mockResolvedValue(200) },
       },
     },
   )

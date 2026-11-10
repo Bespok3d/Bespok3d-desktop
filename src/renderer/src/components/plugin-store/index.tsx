@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n/context'
 import type { Plugin, Printer, PluginConfigField } from '../../data/types'
+import { managedPrinterId } from '../../data/printers'
 import type { PluginVarsSave, ScopeChoice } from '../../data/plugin-vars'
 import type { Collection } from '../../data/collections'
 import { useCatalog } from '../../data/catalog'
@@ -92,7 +93,7 @@ function StoreLoading() {
 
 // gate-allow components_without_story: the store shell; its surfaces (browse cards, the detail/config/collection panels) each have their own catalog stories, and a full-store story needs live catalog+printer+install providers that just re-render the running app.
 export function PluginStore({ printer, density, grouped = false, onPrinterUpdate, savedPluginVars, onSaveVars, scopeFor, onUpdateAll, updatingAll = false, onInstallSelected, installingSelected = false, onUninstallSelected, uninstallingSelected = false, onMigrateSelected, focusPluginId, onFocusHandled, onConnectGitHub }: PluginStoreProps) {
-  const managedId = printer?.status === 'managed' ? printer.id : undefined
+  const managedId = managedPrinterId(printer)
   const [query, setQuery] = useState('')
   const facets = useFacetState()
   const [layout, setLayout] = useState<'grid' | 'list'>('grid')

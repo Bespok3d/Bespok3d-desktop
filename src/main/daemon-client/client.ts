@@ -9,6 +9,8 @@ export type { UploadProgressFn } from './transport'
 export { fetchDaemonStatus, fetchCapabilities, fetchSelfCheck, fetchPluginConfig } from './status-endpoints'
 export type { SymlinkIssue, PluginDrift, SelfCheckResult } from './status-endpoints'
 export { fetchDaemonLicense } from './license-client'
+export { askPrinterToReach } from './web-reach'
+export type { PrinterReach } from './web-reach'
 export type { DaemonLicenseProbe } from './license-client'
 
 export {

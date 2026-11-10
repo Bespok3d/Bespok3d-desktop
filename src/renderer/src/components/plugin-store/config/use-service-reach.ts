@@ -10,10 +10,15 @@ const TYPING_PAUSE_MS = 500
 
 // Whether the address in the field answers, asked again every time the address stops changing: a
 // protocol picked, a port corrected, a name pasted. Waiting for the field to be left was too late,
-// because choosing a protocol never leaves it.
-export function useServiceReach(address: string, answersAt: (typed: string) => Promise<ServiceReach | null>) {
+// because choosing a protocol never leaves it. An address the printer tries is asked again when the
+// printer changes too, since the answer belongs to the printer that gave it.
+export function useServiceReach(
+  address: string,
+  answersAt: (typed: string, printerId?: string) => Promise<ServiceReach | null>,
+  printerId?: string,
+) {
   const settled = useSettledValue(address, TYPING_PAUSE_MS)
-  const { value, loading } = useAsyncResource(() => answersAt(settled), [settled])
+  const { value, loading } = useAsyncResource(() => answersAt(settled, printerId), [settled, printerId])
 
   return {
     checking: loading && settled.trim() !== '' && settled === address,
