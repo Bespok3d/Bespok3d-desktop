@@ -371,6 +371,7 @@
   "report.hide_tech": "Teknik ayrıntıları gizle",
   "recovery_results.title_ok": "Kurtarma tamamlandı",
   "recovery_results.title_errors": "Kurtarma hatalarla bitti",
+  "recovery_results.printer": "Yazıcı: {printer}",
   "recovery_results.summary_ok": "Tüm eklentiler başarıyla yeniden uygulandı.",
   "recovery_results.summary_errors": "Bazı eklentiler kurtarılamadı ve devre dışı bırakıldı.",
   "recovery_results.restarting": "Eklentiler geri yüklendikten sonra yazıcı yeniden başlatıldı.",

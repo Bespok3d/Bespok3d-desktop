@@ -371,6 +371,7 @@
   "report.hide_tech": "隐藏技术细节",
   "recovery_results.title_ok": "恢复完成",
   "recovery_results.title_errors": "恢复完成，但有错误",
+  "recovery_results.printer": "打印机：{printer}",
   "recovery_results.summary_ok": "所有插件均已成功重新应用。",
   "recovery_results.summary_errors": "部分插件无法恢复，已被停用。",
   "recovery_results.restarting": "插件装回后打印机已重启。",

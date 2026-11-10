@@ -36,6 +36,11 @@ describe('OtaRecoveryResultsModal', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
+  it('names the printer it reports on, which need not be the one selected', () => {
+    setup(<OtaRecoveryResultsModal results={results()} onOpenPlugin={vi.fn()} onClose={vi.fn()} printerName="Fixture U1" />)
+    expect(screen.getByText(en('recovery_results.printer', { printer: 'Fixture U1' }))).toBeInTheDocument()
+  })
+
   it('uses the update-variant copy when updating', () => {
     setup(<OtaRecoveryResultsModal results={results()} onOpenPlugin={vi.fn()} onClose={vi.fn()} variant="update" />)
     expect(screen.getByText(en('update_results.title_errors'))).toBeInTheDocument()

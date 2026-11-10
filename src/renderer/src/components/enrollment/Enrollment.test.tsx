@@ -378,7 +378,7 @@ const putBack = { pluginId: 'example-camera', ok: true, skipped: false, reason: 
 const leftOff = { pluginId: 'example-spoolman', ok: false, skipped: false, reason: 'switched off: its service did not start', log: [] }
 
 interface ReactivateListeners {
-  onPluginsLeftOff: Mock<(reapplied: BatchResult) => void>
+  onPluginsLeftOff: Mock<(printerId: string, reapplied: BatchResult) => void>
   onEnrolled: Mock<(updated: Printer) => void>
   onClose: Mock<() => void>
 }
@@ -390,7 +390,7 @@ function reactivateWindow(listeners: ReactivateListeners): ReactElement {
 }
 
 async function reactivateStarted(reactivate: () => Promise<BatchResult>, reactStrictMode = false) {
-  var listeners: ReactivateListeners = { onPluginsLeftOff: vi.fn<(reapplied: BatchResult) => void>(), onEnrolled: vi.fn<(updated: Printer) => void>(), onClose: vi.fn<() => void>() }
+  var listeners: ReactivateListeners = { onPluginsLeftOff: vi.fn<(printerId: string, reapplied: BatchResult) => void>(), onEnrolled: vi.fn<(updated: Printer) => void>(), onClose: vi.fn<() => void>() }
   var rendered = setup(reactivateWindow(listeners), { b3d: { printers: { reactivate: vi.fn(reactivate) } }, reactStrictMode })
   vi.mocked(rendered.b3d.printers.load).mockResolvedValue([{ id: 'printer-1', status: 'managed' }] as unknown as PrinterRecord[])
   await rendered.user.click(screen.getByRole('button', { name: 'Reactivate' }))
@@ -435,7 +435,7 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
 
     var onPluginsLeftOff = await reactivateAnswering(reapplied)
 
-    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+    expect(onPluginsLeftOff).toHaveBeenCalledWith('printer-1', reapplied)
   })
 
   it('names the plugin the printer\'s safety net switched off once the services restarted', async () => {
@@ -443,7 +443,7 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
 
     var onPluginsLeftOff = await reactivateAnswering(reapplied)
 
-    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+    expect(onPluginsLeftOff).toHaveBeenCalledWith('printer-1', reapplied)
   })
 
   it('names the plugin the printer walked past because it could not read its manifest', async () => {
@@ -451,7 +451,7 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
 
     var onPluginsLeftOff = await reactivateAnswering(reapplied)
 
-    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+    expect(onPluginsLeftOff).toHaveBeenCalledWith('printer-1', reapplied)
   })
 
   it('tells the app when the printer says putting the plugins back failed, even with no plugin row', async () => {
@@ -459,7 +459,7 @@ describe('Enrollment tells the app which plugins a reactivate left off', () => {
 
     var onPluginsLeftOff = await reactivateAnswering(reapplied)
 
-    expect(onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+    expect(onPluginsLeftOff).toHaveBeenCalledWith('printer-1', reapplied)
   })
 
   it('says nothing when every plugin went back on', async () => {
@@ -483,7 +483,7 @@ describe('Enrollment holds the reactivate report until its window is gone', () =
     rendered.unmount()
 
     expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
-    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith('printer-1', reapplied)
   })
 
   it('shows the report when the user closes the window on a reboot that failed', async () => {
@@ -498,7 +498,7 @@ describe('Enrollment holds the reactivate report until its window is gone', () =
     rendered.unmount()
 
     expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
-    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith('printer-1', reapplied)
   })
 
   it('shows the report when the window is taken down without being closed', async () => {
@@ -508,7 +508,7 @@ describe('Enrollment holds the reactivate report until its window is gone', () =
     rendered.unmount()
 
     expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
-    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith('printer-1', reapplied)
   })
 
   it('gives the report to the app as it is when the window goes, not as it was when it opened', async () => {
@@ -520,7 +520,7 @@ describe('Enrollment holds the reactivate report until its window is gone', () =
     rendered.unmount()
 
     expect(rendered.onPluginsLeftOff).not.toHaveBeenCalled()
-    expect(onPluginsLeftOffNow).toHaveBeenCalledWith(reapplied)
+    expect(onPluginsLeftOffNow).toHaveBeenCalledWith('printer-1', reapplied)
   })
 
   it('shows at once a report that answers after the window is gone', async () => {
@@ -533,7 +533,7 @@ describe('Enrollment holds the reactivate report until its window is gone', () =
     await act(async () => answerTheReactivate(reapplied))
 
     expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
-    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith('printer-1', reapplied)
   })
 
   it('holds the report in a development build too, where the window is mounted twice', async () => {
@@ -544,7 +544,7 @@ describe('Enrollment holds the reactivate report until its window is gone', () =
     rendered.unmount()
 
     expect(rendered.onPluginsLeftOff).toHaveBeenCalledOnce()
-    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith(reapplied)
+    expect(rendered.onPluginsLeftOff).toHaveBeenCalledWith('printer-1', reapplied)
   })
 })
 

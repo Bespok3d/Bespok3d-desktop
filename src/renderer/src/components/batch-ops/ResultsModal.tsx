@@ -155,7 +155,7 @@ function restartHintKey(restarting: RecoveryRestart, results: BatchResult): stri
   return RESTART_HINT[restarting]
 }
 
-export function OtaRecoveryResultsModal({ results, onOpenPlugin, onClose, variant = 'recovery', restarting = 'none' }: { results: BatchResult; onOpenPlugin: (pluginId: string) => void; onClose: () => void; variant?: BatchVariant; restarting?: RecoveryRestart }) {
+export function OtaRecoveryResultsModal({ results, onOpenPlugin, onClose, variant = 'recovery', restarting = 'none', printerName }: { results: BatchResult; onOpenPlugin: (pluginId: string) => void; onClose: () => void; variant?: BatchVariant; restarting?: RecoveryRestart; printerName?: string }) {
   const { t } = useI18n()
   const { copied, copy } = useClipboard()
   const prefix = RESULT_PREFIX[variant]
@@ -178,6 +178,7 @@ export function OtaRecoveryResultsModal({ results, onOpenPlugin, onClose, varian
 
   return (
     <BatchReportModal title={title} summary={summary} summaryTone={allWentWell ? 'ok' : 'bad'} size="size-md" action={reportAction} onClose={onClose}>
+      {printerName && <p className="u-hint">{t('recovery_results.printer', { printer: printerName })}</p>}
       {restartHint && <p className="u-hint">{t(restartHint)}</p>}
       <div className="recovery-list">
         {results.manifestWarnings?.map((warning) => (

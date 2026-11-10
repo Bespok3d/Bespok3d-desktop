@@ -12,7 +12,7 @@ export type RecoveryRestart = 'none' | 'restarted' | 'not-back'
 interface RecoveryReportHandlers {
   waitForPrinterBack: (printerId: string) => Promise<boolean>
   setRestartingAfterRecovery: (restart: RecoveryRestart) => void
-  showReport: (results: BatchResult) => void
+  showReport: (printerId: string, results: BatchResult) => void
 }
 
 // The printer's row saying the reboot replaced its services restart. The check those restarts would
@@ -69,40 +69,43 @@ function reportWhenThePrinterIsBack(printerId: string, results: BatchResult, han
   return function holdTheReport(restarting: boolean) {
     if (!restarting) {
       handlers.setRestartingAfterRecovery('none')
-      handlers.showReport(results)
+      handlers.showReport(printerId, results)
 
       return undefined
     }
     handlers.setRestartingAfterRecovery('restarted')
 
     return handlers.waitForPrinterBack(printerId).then(function nowItCanBeRead(back) {
-      if (back) return checkedAfterTheReboot(printerId, results).then(handlers.showReport)
+      if (back) return checkedAfterTheReboot(printerId, results).then((checked) => handlers.showReport(printerId, checked))
       handlers.setRestartingAfterRecovery('not-back')
-      handlers.showReport(results)
+      handlers.showReport(printerId, results)
 
       return undefined
     })
   }
 }
 
-// The report and the screen held up in front of it while the printer restarts.
+// The report, the printer it is about, and the screen held up in front of it while the printer restarts.
+// The report can open while another printer is selected, so it carries its own printer.
 function useRecoveryReport() {
   const [recoveryResults, setRecoveryResults] = useState<BatchResult | null>(null)
+  const [recoveryPrinterId, setRecoveryPrinterId] = useState<string | null>(null)
   const [restartingAfterRecovery, setRestartingAfterRecovery] = useState<RecoveryRestart>('none')
   const [printerRestarting, setPrinterRestarting] = useState(false)
-  function showReport(results: BatchResult) {
+  function showReport(printerId: string, results: BatchResult) {
     setPrinterRestarting(false)
+    setRecoveryPrinterId(printerId)
     setRecoveryResults(results)
   }
   // Restarting the plugins (reactivate) switches off each one the printer could not put back and still
   // ends on its own success screen, so this report is the one place the user is told which. Nothing
   // restarts the printer after it here.
-  function showPluginsLeftOff(reapplied: BatchResult) {
+  function showPluginsLeftOff(printerId: string, reapplied: BatchResult) {
     setRestartingAfterRecovery('none')
-    showReport(reapplied)
+    showReport(printerId, reapplied)
   }
 
-  return { recoveryResults, setRecoveryResults, restartingAfterRecovery, setRestartingAfterRecovery, printerRestarting, setPrinterRestarting, showReport, showPluginsLeftOff }
+  return { recoveryResults, setRecoveryResults, recoveryPrinterId, restartingAfterRecovery, setRestartingAfterRecovery, printerRestarting, setPrinterRestarting, showReport, showPluginsLeftOff }
 }
 
 // When the app could not restart the printer itself, the user restarts it from the window it opens
@@ -191,7 +194,7 @@ export function useRecoverOp(
   }
 
   return {
-    recoveryResults: report.recoveryResults, setRecoveryResults: report.setRecoveryResults, recovering, restartingAfterRecovery: report.restartingAfterRecovery,
+    recoveryResults: report.recoveryResults, setRecoveryResults: report.setRecoveryResults, recoveryPrinterId: report.recoveryPrinterId, recovering, restartingAfterRecovery: report.restartingAfterRecovery,
     printerRestarting: report.printerRestarting, restartSeconds, runRecover, showPluginsLeftOff: report.showPluginsLeftOff, checkAfterTheirRestart: theirRestart.checkAfterTheirRestart,
   }
 }

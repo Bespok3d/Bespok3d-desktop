@@ -371,6 +371,7 @@
   "report.hide_tech": "Ocultar detalles técnicos",
   "recovery_results.title_ok": "Recuperación completada",
   "recovery_results.title_errors": "La recuperación ha terminado con errores",
+  "recovery_results.printer": "Impresora: {printer}",
   "recovery_results.summary_ok": "Todos los plugins se han vuelto a aplicar correctamente.",
   "recovery_results.summary_errors": "Algunos plugins no se han podido recuperar y se han desactivado.",
   "recovery_results.restarting": "La impresora se reinició después de volver a poner los plugins.",

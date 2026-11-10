@@ -57,7 +57,7 @@ function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Prom
     <>
       <button type="button" onClick={() => recoverOp.runRecover('printer-1')}>recover</button>
       <button type="button" onClick={() => recoverOp.runRecover('printer-2')}>recover another printer</button>
-      <button type="button" onClick={() => recoverOp.showPluginsLeftOff(reactivateLeftOff)}>reactivate left plugins off</button>
+      <button type="button" onClick={() => recoverOp.showPluginsLeftOff('printer-2', reactivateLeftOff)}>reactivate left plugins off</button>
       <button type="button" onClick={() => recoverOp.checkAfterTheirRestart('printer-1')}>they restarted the printer</button>
       <button type="button" onClick={() => recoverOp.checkAfterTheirRestart('printer-2')}>they restarted another printer</button>
       {recoverOp.recovering && <p>putting the plugins back</p>}
@@ -67,6 +67,7 @@ function RecoverOpHarness({ restart, waitForBack, appRestartsItself = () => Prom
       {recoverOp.recoveryResults && <p>restart: {recoverOp.restartingAfterRecovery}</p>}
       {recoverOp.recoveryResults && <p>rows: {recoverOp.recoveryResults.results.map((row) => row.reason).join(', ')}</p>}
       {recoverOp.recoveryResults && <p>report ok: {String(recoverOp.recoveryResults.ok)}</p>}
+      {recoverOp.recoveryResults && <p>report printer: {recoverOp.recoveryPrinterId}</p>}
     </>
   )
 }
@@ -113,6 +114,18 @@ describe('the recovery report', () => {
 
     await waitFor(() => expect(screen.getByText('the recovery report')).toBeInTheDocument())
     expect(screen.queryByText('the printer is restarting')).not.toBeInTheDocument()
+  })
+
+  it('names the printer it was made for', async () => {
+    const recover = vi.fn().mockResolvedValue({ ok: true, results: [] })
+    const { user } = setup(
+      <RecoverOpHarness restart={vi.fn().mockResolvedValue(true)} waitForBack={answersAtOnce} />,
+      { b3d: { store: { recover } } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'recover another printer' }))
+
+    await waitFor(() => expect(screen.getByText('report printer: printer-2')).toBeInTheDocument())
   })
 
   it('is shown at once for a printer nothing restarted, since there is nothing to wait for', async () => {
@@ -269,6 +282,14 @@ describe('the plugins a reactivate left off', () => {
     expect(screen.getByText('rows: spoolman switched off')).toBeInTheDocument()
     expect(screen.getByText('restart: none')).toBeInTheDocument()
     expect(screen.queryByText('the printer is restarting')).not.toBeInTheDocument()
+  })
+
+  it('are told for the printer the reactivate ran on', async () => {
+    const { user } = setup(<RecoverOpHarness restart={stillRestarting} waitForBack={neverAnswers} />)
+
+    await user.click(screen.getByRole('button', { name: 'reactivate left plugins off' }))
+
+    expect(screen.getByText('report printer: printer-2')).toBeInTheDocument()
   })
 })
 

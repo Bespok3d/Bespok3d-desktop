@@ -13,14 +13,14 @@ import { HELD_REPORTS_KEY, forgetFor, keepFor } from '../batch-ops/kept-over-a-q
 // the app, and the next launch shows it. The window that hands it over forgets that copy. A newer
 // report of the printer, held or shown at once, replaces the copy an earlier run kept; a window that
 // got none leaves that copy alone.
-export function useReportOnceTheWindowCloses(printerId: string, onPluginsLeftOff?: (reapplied: BatchResult) => void): (reapplied: BatchResult) => void {
+export function useReportOnceTheWindowCloses(printerId: string, onPluginsLeftOff?: (printerId: string, reapplied: BatchResult) => void): (reapplied: BatchResult) => void {
   const heldReport = useRef<BatchResult | null>(null)
   const windowGone = useRef(false)
   const latestListener = useRef(onPluginsLeftOff)
   latestListener.current = onPluginsLeftOff
 
   function showTheReport(reapplied: BatchResult) {
-    if (latestListener.current) latestListener.current(reapplied)
+    if (latestListener.current) latestListener.current(printerId, reapplied)
   }
   function showTheHeldReport() {
     windowGone.current = true

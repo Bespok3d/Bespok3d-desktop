@@ -370,6 +370,7 @@
   "report.hide_tech": "Hide technical details",
   "recovery_results.title_ok": "Recovery complete",
   "recovery_results.title_errors": "Recovery finished with errors",
+  "recovery_results.printer": "Printer: {printer}",
   "recovery_results.summary_ok": "All plugins were successfully re-applied.",
   "recovery_results.summary_errors": "Some plugins could not be recovered and were deactivated.",
   "recovery_results.restarting": "The printer was restarted after the plugins went back on it.",

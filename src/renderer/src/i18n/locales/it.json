@@ -371,6 +371,7 @@
   "report.hide_tech": "Nascondi dettagli tecnici",
   "recovery_results.title_ok": "Ripristino completato",
   "recovery_results.title_errors": "Ripristino concluso con errori",
+  "recovery_results.printer": "Stampante: {printer}",
   "recovery_results.summary_ok": "Tutti i plugin sono stati riapplicati correttamente.",
   "recovery_results.summary_errors": "Alcuni plugin non sono stati ripristinati e sono stati disattivati.",
   "recovery_results.restarting": "La stampante è stata riavviata dopo che i plugin sono stati rimessi.",

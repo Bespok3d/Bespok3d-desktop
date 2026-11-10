@@ -371,6 +371,7 @@
   "report.hide_tech": "기술 세부 정보 숨기기",
   "recovery_results.title_ok": "복구 완료",
   "recovery_results.title_errors": "오류와 함께 복구가 끝났습니다",
+  "recovery_results.printer": "프린터: {printer}",
   "recovery_results.summary_ok": "모든 플러그인이 성공적으로 다시 적용되었습니다.",
   "recovery_results.summary_errors": "일부 플러그인은 복구하지 못해 비활성화되었습니다.",
   "recovery_results.restarting": "플러그인을 되돌린 뒤 프린터를 다시 시작했습니다.",

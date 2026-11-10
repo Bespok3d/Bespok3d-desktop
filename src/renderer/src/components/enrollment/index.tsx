@@ -55,7 +55,7 @@ interface EnrollmentProps {
   // The op is done and saved, but the window stays up on the printer's reboot: show the app the printer as it now is.
   onOpRecorded?: (updated: Printer) => void
   // Restarting the plugins switched off the ones the printer could not put back: show which.
-  onPluginsLeftOff?: (reapplied: BatchResult) => void
+  onPluginsLeftOff?: (printerId: string, reapplied: BatchResult) => void
 }
 
 const DAEMON_RESTART_MODES: ReadonlySet<EnrollMode> = new Set<EnrollMode>(['update-daemon', 'update-jinni', 'repair', 'reactivate', 'recovery', 'enroll', 'reboot'])

@@ -63,7 +63,7 @@ function BatchBusyView({ variant, progress }: { variant: BatchVariant; progress:
 
 // A batch op (recover / update-all / install-selected) shows the same two-step UI: live progress while
 // it runs, then the per-plugin results report. One component for all three so the variants cannot drift.
-export function BatchOpModal({ variant, busy, result, progress, restarting, printerRestarting, restartSeconds, failure, onRepairPrinter, onOpenPlugin, onClose, onDismissFailure }: {
+export function BatchOpModal({ variant, busy, result, progress, restarting, printerRestarting, restartSeconds, printerName, failure, onRepairPrinter, onOpenPlugin, onClose, onDismissFailure }: {
   variant: BatchVariant
   busy: boolean
   result: BatchResult | null
@@ -76,6 +76,8 @@ export function BatchOpModal({ variant, busy, result, progress, restarting, prin
   // How long this printer takes to come back, from its adapter. Null until the adapter has answered,
   // and absent for the batch ops that never restart the printer.
   restartSeconds?: number | null
+  // The printer the report is about, named because it need not be the one selected.
+  printerName?: string
   // The app's current batch refusal, whichever operation it belongs to: each modal shows only its own.
   failure: BatchFailure | null
   // Repair the printer's Bespok3d software, for the refusals that only a matched pair clears; the
@@ -95,7 +97,7 @@ export function BatchOpModal({ variant, busy, result, progress, restarting, prin
     <>
       {busy && !result && <BatchBusyView variant={variant} progress={progress} />}
       {printerRestarting && !result && <PrinterRestartingModal restartSeconds={restartSeconds} />}
-      {result && <OtaRecoveryResultsModal results={result} variant={variant} restarting={restarting} onOpenPlugin={onOpenPlugin} onClose={onClose} />}
+      {result && <OtaRecoveryResultsModal results={result} variant={variant} restarting={restarting} printerName={printerName} onOpenPlugin={onOpenPlugin} onClose={onClose} />}
       {failure?.variant === variant && (
         <BatchFailedModal variant={variant} reason={failure.reason} onRepairPrinter={repairTheRefusingPrinter} onClose={onDismissFailure} />
       )}
@@ -198,7 +200,7 @@ export function useBatchOps(
   const runMigrateBatch = migrateRunner({ gatedInstall, runBatch, batchDidNotRun, setInstallingBatch, setInstallBatchResult, setInstallBatchVariant, setBatchProgress, setBatchFailure, refreshAfterBatch })
 
   return {
-    recoveryResults: recoverOp.recoveryResults, setRecoveryResults: recoverOp.setRecoveryResults, recovering: recoverOp.recovering, restartingAfterRecovery: recoverOp.restartingAfterRecovery,
+    recoveryResults: recoverOp.recoveryResults, setRecoveryResults: recoverOp.setRecoveryResults, recoveryPrinterId: recoverOp.recoveryPrinterId, recovering: recoverOp.recovering, restartingAfterRecovery: recoverOp.restartingAfterRecovery,
     printerRestarting: recoverOp.printerRestarting, restartSeconds: recoverOp.restartSeconds,
     updateAllResult, setUpdateAllResult, updatingAll, runUpdateAll, ...updateConfirm,
     installBatchResult, setInstallBatchResult, installingBatch, runInstallBatch, installBatchVariant,

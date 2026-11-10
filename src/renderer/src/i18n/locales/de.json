@@ -371,6 +371,7 @@
   "report.hide_tech": "Technische Details ausblenden",
   "recovery_results.title_ok": "Wiederherstellung abgeschlossen",
   "recovery_results.title_errors": "Wiederherstellung mit Fehlern beendet",
+  "recovery_results.printer": "Drucker: {printer}",
   "recovery_results.summary_ok": "Alle Plugins wurden erfolgreich wieder angewendet.",
   "recovery_results.summary_errors": "Einige Plugins konnten nicht wiederhergestellt werden und wurden deaktiviert.",
   "recovery_results.restarting": "Der Drucker wurde neu gestartet, nachdem die Plugins wieder aufgespielt waren.",

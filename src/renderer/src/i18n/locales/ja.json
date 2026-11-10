@@ -371,6 +371,7 @@
   "report.hide_tech": "技術的な詳細を隠す",
   "recovery_results.title_ok": "復旧が完了しました",
   "recovery_results.title_errors": "復旧が完了しました (エラーあり)",
+  "recovery_results.printer": "プリンター: {printer}",
   "recovery_results.summary_ok": "すべてのプラグインが正常に再適用されました。",
   "recovery_results.summary_errors": "一部のプラグインは復旧できず、無効化されました。",
   "recovery_results.restarting": "プラグインを戻したあとプリンターを再起動しました。",

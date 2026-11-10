@@ -35,7 +35,7 @@ function withoutThePrinter(heldBefore: HeldByPrinter, printerId: string): HeldBy
 // looked at: one a window of this launch holds is that window's to show when it goes. One report at a
 // time, and none over a recover's screens or a window on a printer, which may be following a reboot
 // itself: the next waits until the screen in front is closed.
-export function useReportsHeldOverAQuit(printers: Printer[], screenInFront: boolean, showPluginsLeftOff: (reapplied: BatchResult) => void): void {
+export function useReportsHeldOverAQuit(printers: Printer[], screenInFront: boolean, showPluginsLeftOff: (printerId: string, reapplied: BatchResult) => void): void {
   const [heldBeforeThisLaunch, setHeldBeforeThisLaunch] = useState<HeldByPrinter>(() => keptByPrinter(HELD_REPORTS_KEY))
   useEffect(function showOneOnceItsPrinterAnswers() {
     if (screenInFront || heldBeforeThisLaunch.size === 0) return
@@ -44,6 +44,6 @@ export function useReportsHeldOverAQuit(printers: Printer[], screenInFront: bool
     const [printerId, held] = ready
     forgetFor(HELD_REPORTS_KEY, printerId)
     setHeldBeforeThisLaunch(withoutThePrinter(heldBeforeThisLaunch, printerId))
-    showPluginsLeftOff(held.reapplied)
+    showPluginsLeftOff(printerId, held.reapplied)
   }, [printers, screenInFront, heldBeforeThisLaunch])
 }
