@@ -9,8 +9,9 @@ import { PrinterBanner } from './common/PrinterBanner'
 import { PrinterProblemBanner } from './PrinterProblemBanner'
 import type { DaemonAccessState } from '../../../main/daemon-client/status'
 
+// The longest the banners wait on a restart we started. Two daemon answers in a row end it sooner
+// (see the probe), so this only runs out when the daemon does not come back.
 export const EXPECTED_RESTART_GRACE_MS = 5 * 60 * 1000
-export const POST_OPERATION_GRACE_MS = 30 * 1000
 
 export function isWithinExpectedRestart(printer: Printer, now: number): boolean {
   const until = printer.expectedRestartUntil
@@ -154,12 +155,18 @@ function useTickWhilePending(target: number | undefined): void {
   useEffect(scheduleTickAtTarget, [target])
 }
 
+function accessBannerMessage(printer: Printer, now: number = Date.now()): string | null {
+  if (isWithinExpectedRestart(printer, now)) return null
+
+  return accessMessageKey(printer.connection?.accessState)
+}
+
 export function PrinterBanners({ selectedPrinter, bundledJinniVersion, onRepair, onRecover, onReactivate, onRecoverDrift, onUpdateJinni, onReboot, onAccess }: { selectedPrinter: Printer | null; bundledJinniVersion?: string; onRepair: (id: string) => void; onRecover: (id: string) => void; onReactivate: (id: string) => void; onRecoverDrift: (id: string) => void; onUpdateJinni: (id: string) => void; onReboot: (id: string) => void; onAccess: (id: string) => void }) {
   const { t } = useI18n()
   useTickWhilePending(selectedPrinter?.expectedRestartUntil)
   if (!selectedPrinter) return null
 
-  const accessMessage = accessMessageKey(selectedPrinter.connection?.accessState)
+  const accessMessage = accessBannerMessage(selectedPrinter)
   if (accessMessage) {
     const accessAction = selectedPrinter.connection?.accessState === 'unrecognized' ? undefined : () => onAccess(selectedPrinter.id)
 

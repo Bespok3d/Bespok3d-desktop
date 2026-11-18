@@ -131,6 +131,18 @@ describe('PrinterBanners maintenance actions', () => {
     expect(container.querySelector('button')).toBeNull()
   })
 
+  it('holds the access banner during the expected-restart window', () => {
+    var printer = makePrinter({ status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false, accessState: 'identity-changed' }, expectedRestartUntil: Date.now() + 100000 })
+    renderBanners(printer, makeHandlers())
+    expect(screen.queryByText(en('banner.access_identity_changed', { name: printer.nick || printer.model }))).not.toBeInTheDocument()
+  })
+
+  it('shows the access banner again once the expected-restart window is over', () => {
+    var printer = makePrinter({ status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false, accessState: 'identity-changed' }, expectedRestartUntil: Date.now() - 1 })
+    renderBanners(printer, makeHandlers())
+    expect(screen.getByText(en('banner.access_identity_changed', { name: printer.nick || printer.model }))).toBeInTheDocument()
+  })
+
   it('prefers drift over the jinni banner when both apply', () => {
     var printer = makePrinter({ status: 'managed', jinniVersion: '0.1.0', daemonDrift: [{ pluginId: 'spoolman', symlinkIssueCount: 1 }] })
     renderBanners(printer, makeHandlers(), '0.1.1')

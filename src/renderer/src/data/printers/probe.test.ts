@@ -6,7 +6,10 @@ import { pingAndUpdate } from './probe'
 import { makePrinter } from '../../test/fixtures'
 import type { Printer } from '../types'
 
-afterEach(() => { vi.unstubAllGlobals() })
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 function stubDaemonAnswer(answer: Record<string, unknown>): void {
   vi.stubGlobal('b3d', { printers: { checkDaemon: vi.fn().mockResolvedValue(answer), checkWriteLayer: vi.fn() } })
@@ -106,5 +109,96 @@ describe('a daemon that was answering and now is not', () => {
 
     expect(checkWriteLayer).toHaveBeenCalledWith('printer-after-reflash')
     expect(seen[0].writeLayerIntact).toBe(false)
+  })
+})
+
+// The clock is pinned per answer so a test can say how far apart two polls heard the daemon.
+const MANAGED_ANSWER = { isManaged: true, reach: 'managed', sshOpen: true }
+const NO_ANSWER = { isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline' }
+const PORT_NOT_UP_ANSWER = { isManaged: false, reach: 'recoverable', sshOpen: true, accessState: 'unrecognized' }
+const REFUSING_ANSWER = { isManaged: false, reach: 'alive-no-ssh', sshOpen: false, accessState: 'credentials-rejected' }
+const WAIT_START = Date.now()
+const POLL_MS = 15_000
+
+interface TimedAnswer { answer: Record<string, unknown>, at: number }
+
+function onPoll(pollNumber: number, answer: Record<string, unknown>): TimedAnswer {
+  return { answer, at: WAIT_START + pollNumber * POLL_MS }
+}
+
+// The probe reads the printer as it was when the ping went out; the store may hold a newer one by then.
+async function storedAfterAnswer(asProbed: Printer, stored: Printer, timed: TimedAnswer): Promise<Printer> {
+  var seen: Printer[] = [stored]
+  stubDaemonAnswer(timed.answer)
+  vi.spyOn(Date, 'now').mockReturnValue(timed.at)
+  await pingAndUpdate(asProbed, (update) => { seen = update(seen) })
+
+  return seen[0]
+}
+
+function printerAfterAnswer(printer: Printer, timed: TimedAnswer): Promise<Printer> {
+  return storedAfterAnswer(printer, printer, timed)
+}
+
+async function waitAfterAnswers(printer: Printer, answers: TimedAnswer[]): Promise<number | undefined> {
+  const [timed, ...later] = answers
+  if (!timed) return printer.expectedRestartUntil
+
+  return waitAfterAnswers(await printerAfterAnswer(printer, timed), later)
+}
+
+function waitingPrinter(id: string): Printer {
+  return makePrinter({ id, expectedRestartUntil: WAIT_START + 5 * 60 * 1000, connection: { reach: 'managed', sshOpen: true } })
+}
+
+describe('the wait on a restart we started', () => {
+  it('holds on the first answer', async () => {
+    const printer = waitingPrinter('printer-first-answer')
+    expect(await waitAfterAnswers(printer, [onPoll(0, MANAGED_ANSWER)])).toBe(printer.expectedRestartUntil)
+  })
+
+  it('ends when a later poll hears the daemon again', async () => {
+    const printer = waitingPrinter('printer-back')
+    expect(await waitAfterAnswers(printer, [onPoll(0, MANAGED_ANSWER), onPoll(1, MANAGED_ANSWER)])).toBeUndefined()
+  })
+
+  it('holds when the second answer lands right next to the first', async () => {
+    const printer = waitingPrinter('printer-double-ping')
+    const rightAfter = { answer: MANAGED_ANSWER, at: WAIT_START + 1000 }
+    expect(await waitAfterAnswers(printer, [onPoll(0, MANAGED_ANSWER), rightAfter])).toBe(printer.expectedRestartUntil)
+  })
+
+  it('starts over when the daemon goes away between answers', async () => {
+    const printer = waitingPrinter('printer-went-down')
+    const answers = [onPoll(0, MANAGED_ANSWER), onPoll(1, NO_ANSWER), onPoll(2, MANAGED_ANSWER)]
+    expect(await waitAfterAnswers(printer, answers)).toBe(printer.expectedRestartUntil)
+  })
+
+})
+
+describe('what ends the wait on a restart we started', () => {
+  it('counts a daemon that answers but refuses our access', async () => {
+    const printer = waitingPrinter('printer-refusing')
+    expect(await waitAfterAnswers(printer, [onPoll(0, REFUSING_ANSWER), onPoll(1, REFUSING_ANSWER)])).toBeUndefined()
+  })
+
+  it('does not count a daemon port that is not up yet', async () => {
+    const printer = waitingPrinter('printer-port-not-up')
+    const answers = [onPoll(0, PORT_NOT_UP_ANSWER), onPoll(1, PORT_NOT_UP_ANSWER)]
+    expect(await waitAfterAnswers(printer, answers)).toBe(printer.expectedRestartUntil)
+  })
+
+  it('starts over on a new wait', async () => {
+    const earlier = waitingPrinter('printer-new-wait')
+    await waitAfterAnswers(earlier, [onPoll(0, MANAGED_ANSWER)])
+    const newWait = { ...earlier, expectedRestartUntil: (earlier.expectedRestartUntil ?? 0) + 1 }
+    expect(await waitAfterAnswers(newWait, [onPoll(1, MANAGED_ANSWER)])).toBe(newWait.expectedRestartUntil)
+  })
+
+  it('keeps a wait that started while the probe was out', async () => {
+    const asProbed = await printerAfterAnswer(waitingPrinter('printer-late-mark'), onPoll(0, MANAGED_ANSWER))
+    const startedMeanwhile = { ...asProbed, expectedRestartUntil: (asProbed.expectedRestartUntil ?? 0) + 1 }
+    const stored = await storedAfterAnswer(asProbed, startedMeanwhile, onPoll(1, MANAGED_ANSWER))
+    expect(stored.expectedRestartUntil).toBe(startedMeanwhile.expectedRestartUntil)
   })
 })

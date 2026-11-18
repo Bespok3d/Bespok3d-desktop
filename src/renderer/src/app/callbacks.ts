@@ -6,7 +6,7 @@ import type { EnrollMode } from '../components/enrollment'
 import { useBatchOps } from '../components/batch-ops'
 import { restartAfterReapply } from '../components/batch-ops/restart-after-reapply'
 import { useInstallGate } from '../hooks/installGate'
-import { POST_OPERATION_GRACE_MS } from '../components/printer-banners'
+import { EXPECTED_RESTART_GRACE_MS } from '../components/printer-banners'
 import { toRecord, pingAndUpdate, applyToId } from '../data/printers'
 import type { Printer } from '../data/types'
 import { useEnrollGate } from './enroll-gate'
@@ -65,7 +65,7 @@ export function applyEnrolledOutcome(updatedPrinter: Printer, mode: EnrollMode |
   }
   window.b3d.printers.patch(updatedPrinter.id, toRecord(updatedPrinter))
   showThePrinter(updatedPrinter, deps.setPrinters)
-  if (mode && isDaemonRestartMode(mode)) deps.markExpectedRestart(updatedPrinter.id, POST_OPERATION_GRACE_MS)
+  if (mode && isDaemonRestartMode(mode)) deps.markExpectedRestart(updatedPrinter.id, EXPECTED_RESTART_GRACE_MS)
   pingAndUpdate(updatedPrinter, deps.setPrinters)
   if (leavesThePluginsToPutBack(mode, deps.enrollForced)) deps.runRecover(updatedPrinter.id)
   if (mode === 'reboot') deps.checkAfterTheirRestart(updatedPrinter.id)
@@ -204,7 +204,7 @@ export function useAppCallbacks(
   // argument and the store panel reads it from the context App puts it in.
   const installGate = useInstallGate()
   const batchOps = useBatchOps(printers, setPrinters, installGate.beforeInstall, recoveryRestart(printers, {
-    markExpectedRestart: (printerId) => markExpectedRestart(printerId, POST_OPERATION_GRACE_MS),
+    markExpectedRestart: (printerId) => markExpectedRestart(printerId, EXPECTED_RESTART_GRACE_MS),
     askForTheirLogin: (printerId) => openOverSsh(printerId, 'reboot'),
   }), enrollModal !== null)
   function markExpectedRestart(printerId: string, durationMs: number) {

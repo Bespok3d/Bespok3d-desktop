@@ -3,7 +3,7 @@
 import type { Printer, ConnectionReach, PrinterConnection } from '../types'
 import type { DaemonMetadata } from '@bespok3d/contract'
 import type { DaemonAccessState } from '../../../../main/daemon-client/status'
-import { applyToId, type SetPrinters } from './list'
+import { applyToId, changeById, type SetPrinters } from './list'
 import { statusAfterProbe, type ProbeStatus } from './status'
 import { usesTheirOwnLogin } from './login'
 
@@ -25,6 +25,58 @@ interface DaemonResult extends DaemonMetadata {
 // off. The printer's own answer decides which of the two it is.
 function statusFromDaemon(result: DaemonResult): Printer['status'] {
   return result.switchedOff ? 'deactivated' : 'managed'
+}
+
+// A daemon answers once while still booting, and once more just before a restart takes it down, so one
+// answer proves nothing: a second one in a row, from a later poll, ends the wait. Pings fired by an op
+// can land right next to a poll, hence the gap. A new wait has a new end time and starts over.
+const LATER_POLL_GAP_MS = 10_000
+
+interface FirstAnswer { waitUntil: number, answeredAt: number }
+
+const firstAnswerInWait = new Map<string, FirstAnswer>()
+
+function openRestartWait(printer: Printer, now: number): number | undefined {
+  const until = printer.expectedRestartUntil
+
+  return until !== undefined && now < until ? until : undefined
+}
+
+// Clears the wait only if it is still the one that was answered twice: a new wait may have started meanwhile.
+function endRestartWait(saved: Printer, answeredUntil: number): Printer {
+  return saved.expectedRestartUntil === answeredUntil ? { ...saved, expectedRestartUntil: undefined } : saved
+}
+
+function onAnswerDuringRestart(printer: Printer, set: SetPrinters): void {
+  const now = Date.now()
+  const until = openRestartWait(printer, now)
+  if (until === undefined) return
+  const earlierAnswer = firstAnswerInWait.get(printer.id)
+  if (earlierAnswer?.waitUntil !== until) {
+    firstAnswerInWait.set(printer.id, { waitUntil: until, answeredAt: now })
+
+    return
+  }
+  if (now - earlierAnswer.answeredAt < LATER_POLL_GAP_MS) return
+  firstAnswerInWait.delete(printer.id)
+  set(changeById(printer.id, (saved) => endRestartWait(saved, until)))
+}
+
+// A daemon that refuses our access has booted and answered too. 'unrecognized' does not count: it also
+// stands for a daemon port that is not up yet.
+const DAEMON_ANSWERED: Record<DaemonAccessState, boolean> = {
+  'authorized': true,
+  'present-awaiting-access': true,
+  'credentials-rejected': true,
+  'certificate-missing': true,
+  'identity-changed': true,
+  'unrecognized': false,
+  'daemon-absent': false,
+  'offline': false,
+}
+
+function daemonAnswered(report: DaemonResult): boolean {
+  return report.isManaged || (report.accessState !== undefined && DAEMON_ANSWERED[report.accessState])
 }
 
 function onDaemonResult(printer: Printer, result: DaemonResult, set: SetPrinters): void {
@@ -58,7 +110,10 @@ async function checkDaemonResult(printerId: string): Promise<DaemonResult | null
 
 const probeMisses = new Map<string, number>()
 
-export function resetPrinterProbe(id: string): void { probeMisses.delete(id) }
+export function resetPrinterProbe(id: string): void {
+  probeMisses.delete(id)
+  firstAnswerInWait.delete(id)
+}
 
 // Printers whose one-shot write-layer probe is in flight, so overlapping pings never SSH twice.
 const writeLayerChecksInFlight = new Set<string>()
@@ -115,6 +170,8 @@ export async function pingAndUpdate(printer: Printer, set: SetPrinters): Promise
   const safe: DaemonResult = report ?? { isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: printer.ip }
   const decision = statusAfterProbe(printer.status, targetStatus(safe), probeMisses.get(printer.id) ?? 0)
   probeMisses.set(printer.id, decision.misses)
+  if (daemonAnswered(safe)) onAnswerDuringRestart(printer, set)
+  else firstAnswerInWait.delete(printer.id)
   if (safe.isManaged) { onDaemonResult(printer, safe, set);
 
  return }
