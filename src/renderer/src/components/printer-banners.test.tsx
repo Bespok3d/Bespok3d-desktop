@@ -161,6 +161,13 @@ describe('PrinterBanners reboot banner', () => {
     expect(screen.queryByText(/some-future-token/)).not.toBeInTheDocument()
   })
 
+  it('says the screen is stuck when the printer reports a stuck screen', () => {
+    var printer = makePrinter({ status: 'managed', rebootRequired: ['screen-stuck'] })
+    renderBanners(printer, makeHandlers())
+    expect(screen.getByText(en('banner.reboot_reason.screen-stuck'), { exact: false })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: en('banner.reboot_action') })).toBeInTheDocument()
+  })
+
   it('prefers reboot over the drift banner when both apply', () => {
     var printer = makePrinter({ status: 'managed', rebootRequired: ['some-future-token'], daemonDrift: [{ pluginId: 'spoolman', symlinkIssueCount: 1 }] })
     renderBanners(printer, makeHandlers())

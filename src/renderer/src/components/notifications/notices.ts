@@ -25,6 +25,8 @@ export interface Notice {
   bodyKey: string
   params?: Record<string, string | number>
   action?: NoticeAction
+  // When the thing it reports happened; without it the notice shows when the app first saw it.
+  happenedAt?: number
 }
 
 export interface NoticeInputs {

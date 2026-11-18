@@ -12,6 +12,8 @@ import type { Section } from '../settings'
 import { useChannelPrefs } from '../common/hooks/useChannelPrefs'
 import cx from '../../utils/cx'
 import { Button } from '../common/Button'
+import { useRebootNotices } from '../../data/active-watch'
+import { rebootNoticeItems } from './reboot-notices'
 
 interface NoticeItemProps {
   notice: Notice
@@ -65,8 +67,9 @@ export function NotificationCenter({ onOpenSettings, onOpenPlugin, installedVers
   const { ceilingFor, disabledChannels } = useChannelPrefs()
   const { state, markRead, dismiss, markAllRead, dismissAll, markSeen, rearm } = useNoticeState()
   const [open, setOpen] = useState(false)
+  const rebootNotices = useRebootNotices()
 
-  const notices = buildNotices({ sources, plugins, installedVersions, installedSources, ceilingFor, disabledChannels })
+  const notices = [...buildNotices({ sources, plugins, installedVersions, installedSources, ceilingFor, disabledChannels }), ...rebootNoticeItems(rebootNotices)]
   const visible = visibleNotices(notices, state.dismissed)
   const unread = unreadCount(notices, state)
   const visibleIds = visible.map((notice) => notice.id)
@@ -123,7 +126,7 @@ export function NotificationCenter({ onOpenSettings, onOpenPlugin, installedVers
                   key={notice.id}
                   notice={notice}
                   isRead={state.read.includes(notice.id)}
-                  seenAt={state.seen[notice.id] ?? now}
+                  seenAt={notice.happenedAt ?? state.seen[notice.id] ?? now}
                   now={now}
                   onAct={act}
                   onMarkRead={() => markRead(notice.id)}

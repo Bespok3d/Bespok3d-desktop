@@ -6,6 +6,8 @@ import type { PublicPrinterRecord } from '../main/printers'
 import type { AdapterInfo } from '../main/adapter-loader'
 import type { EnrollProgressEvent, SshCheckResult } from '../main/enrollment'
 import type { PrintStateEvent } from '../main/daemon-client/feeds/print-state'
+import type { ActiveWatchEvent } from '../main/daemon-client/feeds/active-watch'
+import type { ActiveWatchSetting } from '../main/daemon-client/active-watch-client'
 import type { CheckDaemonResult } from '../main/daemon-client/status'
 import type { BatchResult } from '../main/daemon-client/batch-result'
 
@@ -56,4 +58,15 @@ export const printersApi = {
     ipcRenderer.invoke('printers:unwatchPrintState', printerId),
   onPrintState: (callback: (event: PrintStateEvent) => void): (() => void) =>
     subscribe('printer:printState', callback),
+  watchActiveWatch: (printerId: string): Promise<void> =>
+    ipcRenderer.invoke('printers:watchActiveWatch', printerId),
+  unwatchActiveWatch: (printerId: string): Promise<void> =>
+    ipcRenderer.invoke('printers:unwatchActiveWatch', printerId),
+  onActiveWatch: (callback: (event: ActiveWatchEvent) => void): (() => void) =>
+    subscribe('printer:activeWatch', callback),
+  // null: the printer's daemon is older than the active watch.
+  activeWatchSetting: (printerId: string): Promise<ActiveWatchSetting | null> =>
+    ipcRenderer.invoke('printers:activeWatchSetting', printerId),
+  saveActiveWatchSetting: (printerId: string, setting: ActiveWatchSetting): Promise<ActiveWatchSetting> =>
+    ipcRenderer.invoke('printers:saveActiveWatchSetting', printerId, setting),
 }

@@ -4,6 +4,13 @@
 
 ## 0.7.7-beta - unreleased
 
+### The app tells you when the printer screen is stuck
+
+Because of a Snapmaker bug, the U1 screen sometimes wakes up black and only a restart brings it back. The printer now notices,
+and the app shows that it needs a restart. In Settings > Printers you can choose "Reboot when not
+printing" instead: the printer then restarts itself when nothing is printing, and the app tells you
+why it did, even if the app was closed at the time. This needs the latest printer software.
+
 ### Installing several plugins asks for every required value on one screen
 
 Installing several plugins at once, or a whole list, put every setting of every plugin into one

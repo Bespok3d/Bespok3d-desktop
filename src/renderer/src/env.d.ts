@@ -28,6 +28,9 @@ declare global {
   type EnrollmentLogStep = import('../../main/printers').EnrollmentLogStep
   type EnrollProgressEvent = import('../../main/enrollment').EnrollProgressEvent
   type PrintStateEvent = import('../../main/daemon-client/feeds/print-state').PrintStateEvent
+  type ActiveWatchEvent = import('../../main/daemon-client/feeds/active-watch').ActiveWatchEvent
+  type ActiveWatchSetting = import('../../main/daemon-client/active-watch-client').ActiveWatchSetting
+  type ActiveWatchRemedyChoice = import('../../main/daemon-client/active-watch-client').ActiveWatchRemedyChoice
   type PluginLogPush = import('../../main/daemon-client/feeds/plugin-log').PluginLogPush
   type GitHostAccount = import('../../main/git-host/connector').GitHostAccount
   type GitHostSettings = import('../../main/git-host').GitHostSettings

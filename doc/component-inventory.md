@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-297 exported components + hooks across 22 areas.
+300 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -278,6 +278,7 @@ as you touch the file.
 - `AboutPane` (component) - [components/settings/panes/AboutPane.tsx](../src/renderer/src/components/settings/panes/AboutPane.tsx)
 - `AccessPane` (component) - [components/settings/panes/AccessPane.tsx](../src/renderer/src/components/settings/panes/AccessPane.tsx)
 - `AccountSection` (component) - [components/settings/panes/git-host/account.tsx](../src/renderer/src/components/settings/panes/git-host/account.tsx)
+- `ActiveWatchPref` (component) - [components/settings/panes/printers/active-watch-pref.tsx](../src/renderer/src/components/settings/panes/printers/active-watch-pref.tsx) - A daemon whose version is not known yet is asked; one too old for the watch answers nothing.
 - `AdaptersPane` (component) - [components/settings/panes/AdaptersPane.tsx](../src/renderer/src/components/settings/panes/AdaptersPane.tsx)
 - `AppearancePane` (component) - [components/settings/panes/AppearancePane.tsx](../src/renderer/src/components/settings/panes/AppearancePane.tsx)
 - `ConnectEmpty` (component) - [components/settings/panes/git-host/connect-views.tsx](../src/renderer/src/components/settings/panes/git-host/connect-views.tsx)
@@ -366,7 +367,9 @@ as you touch the file.
 ## Other: data
 
 - `CatalogProvider` (component) - [data/catalog/index.tsx](../src/renderer/src/data/catalog/index.tsx)
+- `useActiveWatch` (hook) - [data/active-watch/useActiveWatch.ts](../src/renderer/src/data/active-watch/useActiveWatch.ts)
 - `useCatalog` (hook) - [data/catalog/index.tsx](../src/renderer/src/data/catalog/index.tsx)
+- `useRebootNotices` (hook) - [data/active-watch/reboot-notices.ts](../src/renderer/src/data/active-watch/reboot-notices.ts)
 
 ## Other: i18n
 

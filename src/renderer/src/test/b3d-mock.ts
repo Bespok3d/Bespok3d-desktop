@@ -42,6 +42,7 @@ interface Channels {
   uploadProgress: Channel<UploadProgressEvent>
   pluginLog: Channel<PluginLogPush>
   printState: Channel<PrintStateEvent>
+  activeWatch: Channel<ActiveWatchEvent>
   found: Channel<DiscoveredPrinterRecord>
   localAdded: Channel<AddLocalResult>
   updateAvailable: Channel<UpdateAvailablePayload>
@@ -59,6 +60,7 @@ function makeChannels(): Channels {
     uploadProgress: makeChannel(),
     pluginLog: makeChannel(),
     printState: makeChannel(),
+    activeWatch: makeChannel(),
     found: makeChannel(), localAdded: makeChannel(), updateAvailable: makeChannel(),
     upToDate: makeChannel(), downloadProgress: makeChannel(), updateDownloaded: makeChannel(),
     updateError: makeChannel(), openAbout: makeChannel(), openSettings: makeChannel(),
@@ -73,6 +75,7 @@ export interface Emit {
   uploadProgress: (event: UploadProgressEvent) => void
   pluginLog: (event: PluginLogPush) => void
   printState: (event: PrintStateEvent) => void
+  activeWatch: (event: ActiveWatchEvent) => void
   found: (printer: DiscoveredPrinterRecord) => void
   localAdded: (result: AddLocalResult) => void
   updateAvailable: (payload: UpdateAvailablePayload) => void
@@ -88,7 +91,7 @@ function makeEmit(channels: Channels): Emit {
     batchProgress: channels.batchProgress.emit,
     uploadProgress: channels.uploadProgress.emit,
     pluginLog: channels.pluginLog.emit,
-    printState: channels.printState.emit, found: channels.found.emit,
+    printState: channels.printState.emit, activeWatch: channels.activeWatch.emit, found: channels.found.emit,
     localAdded: channels.localAdded.emit, updateAvailable: channels.updateAvailable.emit,
     upToDate: channels.upToDate.emit, downloadProgress: channels.downloadProgress.emit,
     updateDownloaded: channels.updateDownloaded.emit, updateError: channels.updateError.emit,
@@ -151,6 +154,8 @@ function mockPrinters(channels: Channels, override: Partial<B3d['printers']> = {
     adapterGet: resolved(makeAdapterInfo()), adaptersList: resolved([makeAdapterInfo()]),
     checkSsh: resolved({ ok: true }), enroll: voidFn(), cancelOp: voidFn(), onEnrollProgress: sub(channels.enrollProgress),
     watchPrintState: voidFn(), unwatchPrintState: voidFn(), onPrintState: sub(channels.printState),
+    watchActiveWatch: voidFn(), unwatchActiveWatch: voidFn(), onActiveWatch: sub(channels.activeWatch),
+    activeWatchSetting: resolved(null), saveActiveWatchSetting: resolved({ enabled: true, files: [], remedies: {} }),
     deactivate: voidFn(), reactivate: resolved({ ok: true, results: [] }), uninstall: voidFn(), reboot: voidFn(), repair: voidFn(),
     updateDaemon: voidFn(), updateJinni: voidFn(), resetAccess: voidFn(),
     ...override,

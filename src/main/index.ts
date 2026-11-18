@@ -9,6 +9,8 @@ import { prepareBetaProfileTransition } from './channel-transition-prompt'
 import { registerIpc } from './ipc'
 import { stopMdnsScan } from './mdns'
 import { closeAllPrintStateWatches } from './daemon-client/feeds/print-state'
+import { closeAllActiveWatchWatches } from './daemon-client/feeds/active-watch'
+import { registerActiveWatchHandlers } from './daemon-client/active-watch-ipc'
 import { closeAllPluginLogWatches } from './daemon-client/feeds/plugin-log'
 import { startAutoUpdates } from './app-update'
 import { installAppMenu } from './menu'
@@ -195,6 +197,7 @@ async function onAppReady(): Promise<void> {
   // place the app starts, so it cannot be missed by a window closing or double-counted by one opening.
   reportEvent('app_launched', {})
   registerIpc(() => mainWindow)
+  registerActiveWatchHandlers(() => mainWindow)
   installAppMenu(() => mainWindow)
   startAutoUpdates(() => mainWindow)
   createWindow(createSplash(APP_NAME))
@@ -208,6 +211,7 @@ app.whenReady().then(onAppReady)
 app.on('window-all-closed', () => {
   stopMdnsScan()
   closeAllPrintStateWatches()
+  closeAllActiveWatchWatches()
   closeAllPluginLogWatches()
   if (process.platform !== 'darwin') app.quit()
 })

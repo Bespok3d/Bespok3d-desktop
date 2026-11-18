@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PrinterRecord } from '../printers'
 import type { CapabilitiesResult, DaemonStatusResult, PluginConfigResult } from '@bespok3d/contract'
-import { doRequest, DaemonHttpError } from './transport'
+import { doRequest, isNotFound } from './transport'
 
 export interface SymlinkIssue {
   kind: 'missing' | 'not_a_symlink' | 'wrong_target'
@@ -56,7 +56,7 @@ export async function fetchPluginConfig(record: PrinterRecord, pluginId: string,
 
     return (JSON.parse(text) as PluginConfigResult).vars
   } catch (error) {
-    if (error instanceof DaemonHttpError && error.statusCode === 404) return null
+    if (isNotFound(error)) return null
     throw error
   }
 }

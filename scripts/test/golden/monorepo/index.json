@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "Bespok3d Official",
   "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
-  "updated": "2026-11-10",
+  "updated": "2026-11-17",
   "plugins": [
     {
       "name": "afc-lite",
@@ -90,13 +90,13 @@
       "conflicts": [],
       "doc_url": "bespok3d-daemon/doc/README.md",
       "download_url": "bespok3d-daemon-0.15.0.b3",
-      "min_jinni_version": "0.1.10",
+      "min_jinni_version": "0.2.0",
       "changelog_url": "bespok3d-daemon/doc/CHANGELOG.md"
     },
     {
       "name": "bespok3d-jinni-snapmaker-u1",
       "title": "Snapmaker U1 jinni",
-      "version": "0.1.12",
+      "version": "0.2.0",
       "description": "The Snapmaker U1's jinni: the printer-side process that reads this device's board, service and module facts and actuates the daemon's install operations on it. Bundles the shared klipper jinni runtime it extends, so a printer needs only this one package. It is not independently startable: the daemon owns its lifecycle and picks up a new jinni on the restart its own install op already performs.",
       "tagline": "The printer-side process that gives the daemon Snapmaker U1 device knowledge.",
       "category": "system",
@@ -104,7 +104,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2026-08-10",
-      "updated_at": "2026-08-13",
+      "updated_at": "2026-11-17",
       "requires": {
         "capabilities": [
           "snapmaker-u1"
@@ -114,14 +114,14 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "bespok3d-jinni-snapmaker-u1/doc/README.md",
-      "download_url": "bespok3d-jinni-snapmaker-u1-0.1.12.b3",
+      "download_url": "bespok3d-jinni-snapmaker-u1-0.2.0.b3",
       "min_daemon_version": "0.12.22",
       "changelog_url": "bespok3d-jinni-snapmaker-u1/doc/CHANGELOG.md"
     },
     {
       "name": "camera-hw-accel",
       "title": "Camera HW Accel",
-      "version": "0.1.11+dev.local",
+      "version": "0.1.13+dev.local",
       "description": "Tap into the SoC's video pipeline instead of CPU-encoding every frame. MJPEG over HTTP at /webcam, WebRTC at /webrtc; works on any browser, smooth 30fps even with two cameras attached.\n\nTo have these auto-registered as cameras in Fluidd and Mainsail (so you don't have to add them by hand under Settings → Cameras), also install [webcam-builtin](b3d://bespok3d/webcam-builtin) for the built-in MIPI camera and [webcam-usb](b3d://bespok3d/webcam-usb) for the external USB camera.",
       "tagline": "HW-accelerated MJPEG and WebRTC streaming for MIPI & USB cameras.",
       "category": "camera",
@@ -129,7 +129,7 @@
       "publisher": "679939555819fb5f6423dc68c4388e76bfa9b4e0",
       "printer_specific": true,
       "published_at": "2025-08-14",
-      "updated_at": "2026-08-25",
+      "updated_at": "2026-11-16",
       "requires": {
         "capabilities": [
           "rockchip-mpp"
@@ -141,7 +141,7 @@
       "deps": [],
       "conflicts": [],
       "doc_url": "camera-hw-accel/doc/README.md",
-      "download_url": "camera-hw-accel-0.1.11.b3",
+      "download_url": "camera-hw-accel-0.1.13.b3",
       "config": [
         {
           "key": "WEBRTC_ENABLED",
@@ -171,6 +171,16 @@
           "type": "number",
           "default": "0",
           "hint": "0 (recommended): a camera stays connected as long as you watch it. Set a number of minutes to periodically recycle each WebRTC viewer connection as a memory-safety backstop on a very constrained board; the tile reconnects on its own within a couple of seconds, so it no longer freezes. Dead or abandoned viewers are always cleaned up regardless of this setting.",
+          "userEditable": true
+        },
+        {
+          "key": "CAMERA_FREEZE_RECOVERY",
+          "label": "Wake a frozen built-in camera",
+          "type": "toggle",
+          "onValue": "1",
+          "offValue": "0",
+          "default": "1",
+          "hint": "Printer firmware 2.1.0 only. On that firmware the built-in camera can freeze, and it stays black until the Snapmaker app is opened. On: when the camera sends nothing for 10 seconds, the plugin asks the printer for a photo, as the app does, and the camera comes back; it asks again once a minute, up to 5 times. Off: a frozen camera stays black until the app is opened or the printer restarts.",
           "userEditable": true
         }
       ],
@@ -777,7 +787,7 @@
     {
       "name": "spoolman",
       "title": "Spoolman Bridge",
-      "version": "0.1.40+dev.local",
+      "version": "0.1.41+dev.local",
       "description": "Spoolman for the U1 multi-tool: the active spool follows the tag the printer reads or the spool you pick, color and material reach the screen and AFC panel, tags are matched by their hardware UID, and you can record which printer each spool is on. Filament length per print is logged automatically.",
       "tagline": "Zero-config Spoolman: active spool always tracked.",
       "category": "filament",
@@ -799,7 +809,7 @@
       ],
       "conflicts": [],
       "doc_url": "spoolman/doc/README.md",
-      "download_url": "spoolman-0.1.40.b3",
+      "download_url": "spoolman-0.1.41.b3",
       "min_daemon_version": "0.10.1",
       "homepage": "https://github.com/Bespok3d/spoolman-klipper-helper",
       "macros": [

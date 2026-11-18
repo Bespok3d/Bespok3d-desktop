@@ -51,6 +51,11 @@ export function RebootRequired() {
   return <Banner printer={makePrinter({ status: 'managed', rebootRequired: ['some-future-token'], ...ENROLLED })} />
 }
 
+// The printer's screen is stuck, as the printer's active watch reported it.
+export function ScreenStuck() {
+  return <Banner printer={makePrinter({ status: 'managed', rebootRequired: ['screen-stuck'], ...ENROLLED })} />
+}
+
 // The deployed adapter (jinni) lags the one this app build ships.
 export function JinniUpdate() {
   return <Banner printer={makePrinter({ status: 'managed', jinniVersion: '0.1.0', ...ENROLLED })} bundledJinniVersion={ADAPTER_JINNI} />

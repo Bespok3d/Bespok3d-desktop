@@ -4,8 +4,12 @@ import type { Printer } from '../types'
 
 export type SetPrinters = (updater: (prev: Printer[]) => Printer[]) => void
 
+export function changeById(id: string, change: (printer: Printer) => Printer): (prev: Printer[]) => Printer[] {
+  return (prev) => prev.map((saved) => saved.id === id ? change(saved) : saved)
+}
+
 export function applyToId(id: string, patch: Partial<Printer>): (prev: Printer[]) => Printer[] {
-  return (prev) => prev.map((saved) => saved.id === id ? { ...saved, ...patch } : saved)
+  return changeById(id, (saved) => ({ ...saved, ...patch }))
 }
 
 // Patches one printer in the list AND persists only the changed fields, the shape the icon and

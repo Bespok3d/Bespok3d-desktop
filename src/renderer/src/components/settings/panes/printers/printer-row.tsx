@@ -11,6 +11,7 @@ import { PrinterUpdateCallout } from '../../../PrinterUpdateCallout'
 import { PrinterForceMenu } from './PrinterForceMenu'
 import type { PrinterForceActions } from './PrinterForceMenu'
 import { PrinterDeployMenu } from './PrinterDeployMenu'
+import { ActiveWatchPref } from './active-watch-pref'
 import type { Printer } from '../../../../data/types'
 import { statusDotClass, updateCallout, printerAdapter } from '../../../../data/printers'
 import { formatDateTime } from '../../../../utils/datetime'
@@ -200,6 +201,7 @@ export function PrinterRow(props: PrinterRowProps) {
         onUninstall={props.onUninstall}
       />
       <PrinterSshPref printer={printer} onSetCustomSshCredentials={onSetCustomSshCredentials} />
+      <ActiveWatchPref printer={printer} />
       <JinniCaution extras={printer.jinniExtras ?? []} />
     </Row>
   )

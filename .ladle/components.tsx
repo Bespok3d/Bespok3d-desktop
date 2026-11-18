@@ -94,6 +94,14 @@ function emitPrintState(notify: (event: { printerId: string; blockedActions: str
 // the catalogued components actually touch; story data reuses the vitest-free fixtures factories.
 const catalogConsent: { answer: 'granted' | 'refused' | null } = { answer: null }
 
+// The active-watch setting is kept in memory the same way, so its switches in a story really move.
+const catalogActiveWatch = { setting: { enabled: true, files: ['/dev/kmsg'], remedies: { 'screen-stuck': 'notify' } } }
+function saveCatalogActiveWatch(_printerId: string, setting: typeof catalogActiveWatch.setting) {
+  catalogActiveWatch.setting = setting
+
+  return Promise.resolve(setting)
+}
+
 const catalogB3d = {
   daemonExpectedVersion: '0.12.10-dev',
   jinniExpectedVersion: '0.1.6',
@@ -115,6 +123,9 @@ const catalogB3d = {
     watchPrintState,
     unwatchPrintState: () => Promise.resolve(),
     onPrintState: emitPrintState,
+    activeWatchSetting: () => Promise.resolve(catalogActiveWatch.setting),
+    saveActiveWatchSetting: saveCatalogActiveWatch,
+    dismissActiveWatchNotice: () => Promise.resolve(),
   },
   registry: { catalog: () => Promise.resolve(makeCatalog(CATALOG_PLUGINS)) },
   keys: {

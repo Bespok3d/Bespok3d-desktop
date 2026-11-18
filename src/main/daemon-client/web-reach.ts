@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PrinterRecord } from '../printers'
-import { doRequest, DaemonHttpError } from './transport'
+import { doRequest, isNotFound } from './transport'
 import { DAEMON_QUERY_TIMEOUT_MS, getManagedRecord } from './status'
 
 // What the printer said when asked to try a web address. `asked: false` means there was no answer
@@ -32,7 +32,7 @@ export async function fetchWebReach(record: PrinterRecord, url: string, timeoutM
 
     return { asked: true, httpCode: readHttpCode(text) }
   } catch (error) {
-    if (error instanceof DaemonHttpError && error.statusCode === 404) return NOT_ASKED
+    if (isNotFound(error)) return NOT_ASKED
     throw error
   }
 }

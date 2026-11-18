@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { Printer, ConnectionReach } from '../data/types'
 import { jinniLags } from '../data/printers'
+import { KNOWN_REBOOT_TOKENS } from '../data/active-watch'
 import { useI18n } from '../i18n/context'
 import { PrinterBanner } from './common/PrinterBanner'
 import { PrinterProblemBanner } from './PrinterProblemBanner'
@@ -72,10 +73,6 @@ export function driftBannerCondition(printer: Printer, now: number = Date.now())
 
   return driftedPluginCount(printer) > 0
 }
-
-// Tokens this app build knows how to word. A newer daemon may report a token this build predates;
-// falling back to the unknown reason keeps a raw machine token from ever reaching the user.
-const KNOWN_REBOOT_TOKENS: string[] = []
 
 // The U1's screen blanks itself when it is left alone, and the printer used to report that ordinary
 // blank as a screen that had died. Printers still running that version keep sending it, so it is

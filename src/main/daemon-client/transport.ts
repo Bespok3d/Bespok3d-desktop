@@ -45,6 +45,11 @@ export class DaemonHttpError extends Error {
   }
 }
 
+// A route the daemon does not have (it predates it) or an item it no longer holds.
+export function isNotFound(failure: unknown): boolean {
+  return failure instanceof DaemonHttpError && failure.statusCode === 404
+}
+
 function parseDaemonDetail(text: string): unknown {
   try {
     return (JSON.parse(text) as { detail?: unknown }).detail ?? text

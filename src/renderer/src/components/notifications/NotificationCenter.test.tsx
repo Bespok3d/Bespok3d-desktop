@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, within } from '@testing-library/react'
 import { setup } from '../../test/harness'
+import { makeT } from '../../i18n'
+import { addRebootNotice, rebootNotices, removeRebootNotice } from '../../data/active-watch/reboot-notices'
 import { makeCatalogPayload, makeIndexEntry } from '../../test/fixtures'
 import type { IndexEntry, SourceRow } from '../../data/types'
 import { NotificationCenter } from './NotificationCenter'
@@ -11,6 +13,8 @@ import { NotificationCenter } from './NotificationCenter'
 function authFailedSource(): SourceRow {
   return { url: 'github:Bespok3d/main-index/index.json', label: 'official', name: 'Official', trust: 'project', locked: true, enabled: true, status: 'failed', pluginCount: 0, error: 'Sign in to GitHub to load this private list', reason: 'auth' }
 }
+
+const en = makeT('en')
 
 function renderCenter(sources: SourceRow[], plugins: IndexEntry[] = [], installedVersions: Record<string, string> = {}) {
   const onOpenSettings = vi.fn()
@@ -25,6 +29,7 @@ function renderCenter(sources: SourceRow[], plugins: IndexEntry[] = [], installe
 }
 
 beforeEach(() => localStorage.clear())
+afterEach(() => rebootNotices().forEach((notice) => removeRebootNotice(notice.printerId, notice.noticeId)))
 
 describe('NotificationCenter', () => {
   it('badges the bell and routes the sign-in action to the git host pane', async () => {
@@ -92,6 +97,27 @@ describe('NotificationCenter', () => {
     await within(bell).findByText('1')
     await user.click(bell)
     await user.click(await screen.findByRole('button', { name: /dismiss all/i }))
+    expect(await screen.findByText(/all caught up/i)).toBeInTheDocument()
+  })
+})
+
+const JUNIOR_REBOOT = { printerId: 'p1', printerName: 'Junior', noticeId: 'notice-1', rebootedAt: Date.now() - 20 * 60 * 1000 }
+
+describe('the notice of a printer that restarted itself', () => {
+  it('says the printer restarted itself because its screen was stuck, and when', async () => {
+    addRebootNotice(JUNIOR_REBOOT)
+    const { user } = renderCenter([])
+    await user.click(await screen.findByRole('button', { name: /notifications/i }))
+    expect(await screen.findByText(en('notif.screen_stuck_reboot.title', { name: 'Junior' }))).toBeInTheDocument()
+    expect(screen.getByText(en('notif.screen_stuck_reboot.body'))).toBeInTheDocument()
+    expect(screen.getByText('20m ago')).toBeInTheDocument()
+  })
+
+  it('goes away when dismissed', async () => {
+    addRebootNotice(JUNIOR_REBOOT)
+    const { user } = renderCenter([])
+    await user.click(await screen.findByRole('button', { name: /notifications/i }))
+    await user.click(await screen.findByRole('button', { name: /^dismiss$/i }))
     expect(await screen.findByText(/all caught up/i)).toBeInTheDocument()
   })
 })

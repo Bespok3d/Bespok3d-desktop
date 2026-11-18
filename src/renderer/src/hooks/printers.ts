@@ -5,6 +5,7 @@ import type { Printer } from '../data/types'
 import type { DiscoveredPrinterRecord } from '../env'
 import { toPrinter, reconcileDiscoveredAddress, pingAndUpdate, resetPrinterProbe, patchAndSave } from '../data/printers'
 import { mergeDiscovered } from '../data/printerDiscovery'
+import { useActiveWatch, removeRebootNoticesOf } from '../data/active-watch'
 import { forgetAllKeptFor } from '../components/batch-ops/kept-over-a-quit'
 
 interface SyncCtx {
@@ -19,6 +20,7 @@ function removePrinter(ctx: SyncCtx, id: string): void {
   window.b3d.printers.remove(id)
   resetPrinterProbe(id)
   forgetAllKeptFor(id)
+  removeRebootNoticesOf(id)
   ctx.setPrinters((prev) => {
     const next = prev.filter((printer) => printer.id !== id)
     if (ctx.selectedId === id) ctx.setSelectedId(next[0]?.id ?? null)
@@ -75,6 +77,7 @@ export function usePrinterSync() {
   useEffect(syncListRef, [printers])
   useEffect(startStatusPolling, [])
   useEffect(loadSavedPrinters, [])
+  useActiveWatch(printers, setPrinters)
 
   return { printers, setPrinters, selectedId, setSelectedId, handleRemovePrinter, handleUpdatePrinterIcon, handleSetCustomSshCredentials }
 }

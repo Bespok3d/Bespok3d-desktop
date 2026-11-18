@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Shared machinery for the ref-counted, auto-reconnecting daemon feeds (plugin-log, print-state).
+// Shared machinery for the ref-counted, auto-reconnecting daemon feeds (plugin-log, print-state,
+// active-watch).
 // Each feed opens ONE pinned wss per watched key, ref-counts concurrent watchers, and re-arms on an
 // unexpected close unless the watch was torn down. The per-feed parts (which URL, how to parse a
 // frame, what to emit on disconnect) are supplied as a FeedSpec; this module owns the lifecycle.
