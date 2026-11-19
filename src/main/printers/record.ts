@@ -46,6 +46,10 @@ export interface PrinterRecord extends ConfigTruthRecords {
   // the adapter this printer uses. Kept apart from `installedVersions` because the machinery is not in
   // the plugin tree the daemon reports and must never be treated as a plugin that can be removed.
   machineryVersions?: Record<string, string>
+  // The fingerprint of the package each installed plugin came from (by plugin id) and each machinery
+  // package (by package name), as the daemon reports them. A same-version rebuild differs only here.
+  installedFingerprints?: Record<string, string>
+  machineryFingerprints?: Record<string, string>
   // Provenance: the source registry url each installed plugin was installed from, keyed by plugin
   // id. Set app-side at install time (the daemon only knows id+version, not origin), so the detail
   // view can show "installed from X" and offer switching to another source's copy.

@@ -5,11 +5,13 @@ import { PrinterDropdown } from '.'
 import { PrinterMenuItem } from './menu-item'
 import { makePrinter } from '../../../test/fixtures'
 import type { Printer } from '../../../data/types'
+import type { JinniOffer } from '../../../data/printers'
 
 export default { title: 'Header / Printer dropdown' }
 
 const ADAPTER_JINNI = '0.1.6'
-const ADAPTER_JINNI_VERSIONS = { 'snapmaker-u1': ADAPTER_JINNI }
+const ADAPTER_JINNI_OFFER: JinniOffer = { version: ADAPTER_JINNI, packageName: 'bespok3d-jinni-snapmaker-u1' }
+const ADAPTER_JINNI_OFFERS = { 'snapmaker-u1': ADAPTER_JINNI_OFFER }
 const ADAPTER_TITLE = 'Snapmaker U1'
 const ADAPTER_TITLES = { 'snapmaker-u1': ADAPTER_TITLE }
 
@@ -29,7 +31,7 @@ function Dropdown({ printer }: { printer: Printer }) {
         selectedId={printer.id}
         adapterIcons={{}}
         adapterTitles={ADAPTER_TITLES}
-        adapterJinniVersions={ADAPTER_JINNI_VERSIONS}
+        adapterJinniOffers={ADAPTER_JINNI_OFFERS}
         savedPluginVars={{}}
         onSelect={noop}
         onAddPrinter={noop}
@@ -60,7 +62,7 @@ function Row(props: { printer: Printer; selected?: boolean }) {
       <PrinterMenuItem
         printer={props.printer}
         adapterTitle={ADAPTER_TITLE}
-        adapterJinniVersion={ADAPTER_JINNI}
+        adapterJinniOffer={ADAPTER_JINNI_OFFER}
         isSelected={props.selected ?? false}
         onSelect={noop}
         onUpdateDaemon={noop}

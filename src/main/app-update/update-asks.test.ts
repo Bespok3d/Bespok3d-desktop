@@ -16,6 +16,10 @@ function sourceOf(fileName: string): string {
   return readFileSync(join(__dirname, fileName), 'utf8')
 }
 
+// The app writes no semicolons, so a match may not run past an earlier import's quoted source: that
+// is what kept an `import type` from being read as the tail of the import above it.
+const ACCOUNT_IMPORT = /import (?!type )[^'"]*?from '\.\.\/git-host/
+
 function filesMatching(pattern: RegExp): string[] {
   return UPDATE_SOURCES.filter((fileName) => pattern.test(sourceOf(fileName)))
 }
@@ -32,8 +36,13 @@ describe('what the update path asks for', () => {
   // The bug this replaces: signed out, the Update pane answered with a 404 from the account api.
   // A `import type` of the shared release shape stays welcome: a shape carries no credentials.
   it('never reads releases through the signed-in account', () => {
-    expect(filesMatching(/import (?!type )[^;]*from '\.\.\/git-host/)).toEqual([])
+    expect(filesMatching(ACCOUNT_IMPORT)).toEqual([])
     expect(filesMatching(/activeConnector|keychain/)).toEqual([])
+  })
+
+  it('tells a shape import from an account import', () => {
+    expect(ACCOUNT_IMPORT.test("import { app } from 'electron'\nimport type { ReleaseInfo } from '../git-host/connector'")).toBe(false)
+    expect(ACCOUNT_IMPORT.test("import {\n  activeReleases,\n} from '../git-host/connector'")).toBe(true)
   })
 
   it('takes the release list from the public feed', () => {

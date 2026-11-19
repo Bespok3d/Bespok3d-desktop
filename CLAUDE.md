@@ -164,8 +164,10 @@ with a refresh in the same change.
 
 **Nor does an unsaved experiment in a plugin repo turn it red.** A dev atom's displayed version
 carries `+dev.<hash8>`, a hash of that plugin's files as they sit on disk, so it moves on any working
-copy edit anywhere in `plugins/`. The fixture holds `+dev.local` in its place. Nothing ships that tag
-(a release build never builds dev atoms), so the rail loses no claim by not pinning it.
+copy edit anywhere in `plugins/`. The fixture holds `+dev.local` in its place, and `working-copy` in
+place of each package fingerprint, a hash of those same files. Nothing ships that tag (a release
+build never builds dev atoms), and the rail checks each fingerprint against its own .b3 instead, so
+it loses no claim by not pinning either.
 
 This is the opposite of b3-builder's own equivalence golden, which is legacy output that can never be
 re-captured. Ours snapshots repos that still exist, so it is regenerated, not frozen.

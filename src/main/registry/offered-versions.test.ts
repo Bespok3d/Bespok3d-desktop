@@ -10,17 +10,23 @@ vi.mock('../settings', () => ({
   saveSettings: (patch: Record<string, unknown>) => { storedSettings.values = { ...storedSettings.values, ...patch } },
 }))
 
-import { stampOfferedSystemVersions, installableVersion, forgetOfferedSystemVersion, rememberOfferedSystemVersion } from './offered-versions'
+import { stampOfferedSystemVersions, installableBuild, forgetOfferedSystemVersion, rememberOfferedSystemVersion } from './offered-versions'
+
+function installableVersion(packageName: string, shippedVersion: string): string {
+  return installableBuild(packageName, { version: shippedVersion }).version
+}
 
 const DAEMON = 'bespok3d-daemon'
 const JINNI = 'bespok3d-jinni-snapmaker-u1'
 
-function listed(name: string, version: string, isMachinery: boolean): MergedEntry {
-  return { name, version, system_package: isMachinery } as unknown as MergedEntry
+function listed(name: string, version: string, isMachinery: boolean, fingerprint?: string): MergedEntry {
+  return { name, version, fingerprint, system_package: isMachinery } as unknown as MergedEntry
 }
 
 beforeEach(() => {
   storedSettings.values = {}
+  forgetOfferedSystemVersion(DAEMON)
+  forgetOfferedSystemVersion(JINNI)
 })
 
 // The daemon and the jinni are released as their own signed packages so a fix reaches printers without
@@ -83,5 +89,58 @@ describe('an offer the app could not act on', () => {
 
     expect(installableVersion(DAEMON, '0.12.25')).toBe('0.12.25')
     expect(installableVersion(JINNI, '0.1.10')).toBe('0.1.11')
+  })
+})
+
+// A package rebuilt and republished under the same version number: only the fingerprint tells the
+// builds apart, and before this the app kept naming the copy in its own build.
+describe('the build this app would install when the lists republish the same version', () => {
+  it('is the published rebuild when its fingerprint differs from the shipped one', () => {
+    stampOfferedSystemVersions([listed(DAEMON, '0.12.25', true, 'rebuilt')])
+
+    expect(installableBuild(DAEMON, { version: '0.12.25', fingerprint: 'shipped' })).toEqual({ version: '0.12.25', fingerprint: 'rebuilt' })
+  })
+
+  it('is the shipped build when the fingerprints match', () => {
+    stampOfferedSystemVersions([listed(DAEMON, '0.12.25', true, 'shipped')])
+
+    expect(installableBuild(DAEMON, { version: '0.12.25', fingerprint: 'shipped' })).toEqual({ version: '0.12.25', fingerprint: 'shipped' })
+  })
+
+  // Settings written before fingerprints were kept name the offer with none, and the printer may hold
+  // that rebuild: comparing it with the shipped fingerprint would offer a build it already runs.
+  it('names no fingerprint for a same-version offer whose fingerprint was never written down', () => {
+    storedSettings.values = { offeredSystemVersions: { [DAEMON]: '0.12.25' } }
+
+    expect(installableBuild(DAEMON, { version: '0.12.25', fingerprint: 'shipped' })).toEqual({ version: '0.12.25' })
+  })
+
+  // Kept in memory only, the fingerprint vanished on every restart, and the rebuild stopped being
+  // offered until the next list read.
+  it('is still the published rebuild after the app restarts', async () => {
+    stampOfferedSystemVersions([listed(DAEMON, '0.12.25', true, 'rebuilt')])
+    vi.resetModules()
+    const restarted = await import('./offered-versions')
+
+    expect(restarted.installableBuild(DAEMON, { version: '0.12.25', fingerprint: 'shipped' })).toEqual({ version: '0.12.25', fingerprint: 'rebuilt' })
+  })
+
+  it('forgets a fingerprint the newer offer did not carry', () => {
+    stampOfferedSystemVersions([listed(DAEMON, '0.12.25', true, 'rebuilt')])
+    stampOfferedSystemVersions([listed(DAEMON, '0.12.25', true)])
+
+    expect(installableBuild(DAEMON, { version: '0.12.25', fingerprint: 'shipped' })).toEqual({ version: '0.12.25' })
+  })
+
+  it('is the shipped build when the lists are behind it, whatever the fingerprints say', () => {
+    stampOfferedSystemVersions([listed(DAEMON, '0.12.24', true, 'published')])
+
+    expect(installableBuild(DAEMON, { version: '0.12.25', fingerprint: 'shipped' })).toEqual({ version: '0.12.25', fingerprint: 'shipped' })
+  })
+
+  it('is the newer published build whatever the fingerprints say', () => {
+    rememberOfferedSystemVersion(DAEMON, '0.12.26', 'published')
+
+    expect(installableBuild(DAEMON, { version: '0.12.25', fingerprint: 'shipped' })).toEqual({ version: '0.12.26', fingerprint: 'published' })
   })
 })

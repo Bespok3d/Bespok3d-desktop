@@ -18,6 +18,8 @@ export interface MatchOpts {
   installedVersions: Record<string, string>
   // Where each installed copy came from, so needs-updating asks that source and not the whole catalog.
   installedSources?: Record<string, string>
+  // The build each installed copy came from, as the daemon names it; absent from an older daemon.
+  installedFingerprints?: Record<string, string>
   // needs-updating compares against the user's real ceiling; absent in tests where it does not matter.
   ceilingFor?: CeilingResolver
   disabledChannels?: ReleaseChannel[]
@@ -35,7 +37,7 @@ function channelPass(selected: ReleaseChannel[], plugin: Plugin): boolean {
 }
 
 function needsUpdate(plugin: Plugin, opts: MatchOpts): boolean {
-  return hasUpdate(plugin, installedFromRecords(opts.installedVersions, opts.installedSources, opts.ceilingFor, opts.disabledChannels))
+  return hasUpdate(plugin, installedFromRecords(opts.installedVersions, opts.installedSources, opts.ceilingFor, opts.disabledChannels, opts.installedFingerprints))
 }
 
 function statusMatches(status: StatusFacet, plugin: Plugin, opts: MatchOpts): boolean {

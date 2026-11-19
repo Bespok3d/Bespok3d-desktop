@@ -5,6 +5,7 @@ import { pluginUpdateCount } from '../../../data/channels/updates'
 import { pendingUpdates } from '../../../data/printers'
 import { useChannelPrefs } from '../../common/hooks/useChannelPrefs'
 import type { Printer } from '../../../data/types'
+import type { JinniOffer } from '../../../data/printers'
 
 interface PrinterUpdates {
   pluginUpdates: number
@@ -31,9 +32,9 @@ export function usePrinterUpdates(printer: Printer | null): PrinterUpdates {
 
 // The three attention counts a trigger badge or hint shows: daemon + jinni (managed-gated, from
 // pendingUpdates) and the plugin-update count. Shared so the badge and hint derive them identically.
-export function useUpdateFlags(printer: Printer, adapterJinniVersion: string | undefined) {
+export function useUpdateFlags(printer: Printer, adapterJinniOffer: JinniOffer | undefined) {
   const { pluginUpdates } = usePrinterUpdates(printer)
-  const { daemon, jinni } = pendingUpdates(printer, adapterJinniVersion)
+  const { daemon, jinni } = pendingUpdates(printer, adapterJinniOffer)
 
   return { daemon, jinni, pluginUpdates }
 }

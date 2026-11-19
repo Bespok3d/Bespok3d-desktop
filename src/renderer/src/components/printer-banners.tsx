@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { Printer, ConnectionReach } from '../data/types'
 import { jinniLags } from '../data/printers'
+import type { JinniOffer } from '../data/printers'
 import { KNOWN_REBOOT_TOKENS } from '../data/active-watch'
 import { useI18n } from '../i18n/context'
 import { PrinterBanner } from './common/PrinterBanner'
@@ -131,7 +132,7 @@ export function printerProblemBannerCondition(printer: Printer, now: number = Da
   return printerProblemCount(printer) > 0
 }
 
-export function jinniBannerCondition(printer: Printer, bundledVersion: string, now: number = Date.now()): boolean {
+export function jinniBannerCondition(printer: Printer, bundledOffer: JinniOffer, now: number = Date.now()): boolean {
   if (printer.status !== 'managed') return false
   if (isWithinExpectedRestart(printer, now)) return false
   // A pending daemon update redeploys the jinni too (deploy-daemon runs uploadAdapterJinni), so we
@@ -139,7 +140,7 @@ export function jinniBannerCondition(printer: Printer, bundledVersion: string, n
   // ordering confusion. The standalone jinni banner fires only when the daemon is current.
   if (printer.daemonUpdateAvailable) return false
 
-  return jinniLags(printer.jinniVersion, bundledVersion)
+  return jinniLags(printer, bundledOffer)
 }
 
 function useTickWhilePending(target: number | undefined): void {
@@ -161,7 +162,7 @@ function accessBannerMessage(printer: Printer, now: number = Date.now()): string
   return accessMessageKey(printer.connection?.accessState)
 }
 
-export function PrinterBanners({ selectedPrinter, bundledJinniVersion, onRepair, onRecover, onReactivate, onRecoverDrift, onUpdateJinni, onReboot, onAccess }: { selectedPrinter: Printer | null; bundledJinniVersion?: string; onRepair: (id: string) => void; onRecover: (id: string) => void; onReactivate: (id: string) => void; onRecoverDrift: (id: string) => void; onUpdateJinni: (id: string) => void; onReboot: (id: string) => void; onAccess: (id: string) => void }) {
+export function PrinterBanners({ selectedPrinter, bundledJinniOffer, onRepair, onRecover, onReactivate, onRecoverDrift, onUpdateJinni, onReboot, onAccess }: { selectedPrinter: Printer | null; bundledJinniOffer?: JinniOffer; onRepair: (id: string) => void; onRecover: (id: string) => void; onReactivate: (id: string) => void; onRecoverDrift: (id: string) => void; onUpdateJinni: (id: string) => void; onReboot: (id: string) => void; onAccess: (id: string) => void }) {
   const { t } = useI18n()
   useTickWhilePending(selectedPrinter?.expectedRestartUntil)
   if (!selectedPrinter) return null
@@ -241,10 +242,10 @@ export function PrinterBanners({ selectedPrinter, bundledJinniVersion, onRepair,
     )
   }
 
-  if (bundledJinniVersion && jinniBannerCondition(selectedPrinter, bundledJinniVersion)) {
+  if (bundledJinniOffer && jinniBannerCondition(selectedPrinter, bundledJinniOffer)) {
     return (
       <PrinterBanner
-        message={t('banner.jinni_body', { name: selectedPrinter.nick || selectedPrinter.model, version: bundledJinniVersion })}
+        message={t('banner.jinni_body', { name: selectedPrinter.nick || selectedPrinter.model, version: bundledJinniOffer.version })}
         actionLabel={t('banner.jinni_action')}
         onAction={() => onUpdateJinni(selectedPrinter.id)}
       />

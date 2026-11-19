@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { randomBytes } from 'crypto'
+import type { PackageBuild } from '@bespok3d/contract'
 import { writeFileSync } from 'fs'
 import { readJsonFile } from './json-store'
 import { userDataPath } from './app-paths'
@@ -32,6 +33,11 @@ export interface AppSettings {
   // The app version that ran last launch. When the running version differs, an update (or rollback)
   // landed, so the UI shows a one-time "you are now running X" confirmation.
   lastRunVersion?: string
+  // The fingerprint of the build this app runs, so a rebuild published under the same version is
+  // still offered as an update.
+  installedBuild?: InstalledBuild
+  // The fingerprint of a downloaded build, held until a restart actually runs it.
+  pendingBuild?: PendingBuild
   // Which workbench layout the Create surface shows. A self-select A/B test for testers (A = section
   // tabs + coach rail, B = section rail + coach drawer). Removable once a direction is chosen.
   workbenchLayout: 'A' | 'B'
@@ -64,11 +70,26 @@ export interface AppSettings {
   // than asked for again. A package missing here was never offered, and the copy this build ships is
   // then the answer for it.
   offeredSystemVersions?: Record<string, string>
+  // The fingerprint each of those offers carried, kept with the version it came with so a fingerprint
+  // never outlives its offer. It tells a same-version rebuild from the copy this build ships, and it is
+  // written down for the same reason as the version: a restart must not forget which build was offered.
+  offeredSystemFingerprints?: Record<string, PackageBuild>
   // Usage reporting: the answer, and nothing else. Unset means the user has never been asked, so
   // nothing is sent and nothing is kept to send later if they say yes. No value that could tell this
   // install from another one is stored here or anywhere else, which is why saying yes creates nothing
   // and saying no has nothing to destroy.
   analyticsConsent?: 'granted' | 'refused'
+}
+
+export interface InstalledBuild {
+  version: string
+  digest: string
+}
+
+// executableStamp is the modification time of the executable that downloaded the build: installing
+// the build replaces that file, so a changed stamp tells the build now runs.
+export interface PendingBuild extends InstalledBuild {
+  executableStamp: number
 }
 
 const DEFAULTS: AppSettings = {

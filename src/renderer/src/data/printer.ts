@@ -5,7 +5,7 @@ import type { DaemonAccessState } from '../../../main/daemon-client/status'
 import type { PublicPrinterRecord } from '../../../main/printers/record'
 
 type PrinterPackageHistory = Pick<PublicPrinterRecord,
-  'installedVersions' | 'machineryVersions' | 'installedSources' | 'installedChannels' | 'installedPackageTrust' | 'installLogs' | 'failedInstallLogs'
+  'installedVersions' | 'machineryVersions' | 'installedFingerprints' | 'machineryFingerprints' | 'installedSources' | 'installedChannels' | 'installedPackageTrust' | 'installLogs' | 'failedInstallLogs'
 >
 
 export interface EnrollmentLogStep {

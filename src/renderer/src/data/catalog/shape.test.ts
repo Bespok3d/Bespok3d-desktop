@@ -221,3 +221,15 @@ describe('the licence facts carried on the list entry', () => {
     expect(plugin.attributions).toBeUndefined()
   })
 })
+
+describe('indexToPlugins fingerprint', () => {
+  it('carries the published build fingerprint onto the source variant', () => {
+    const [plugin] = indexToPlugins([makeIndexEntry({ fingerprint: 'published-fp' })], [])
+    expect(plugin.sources[0].fingerprint).toBe('published-fp')
+  })
+
+  it('leaves the fingerprint undefined for an entry that carries none', () => {
+    const [plugin] = indexToPlugins([makeIndexEntry()], [])
+    expect(plugin.sources[0].fingerprint).toBeUndefined()
+  })
+})

@@ -8,6 +8,7 @@ import {
   manualUpdatePayload,
   newestApplicableRelease,
   newestChannelRelease,
+  installedChannelRelease,
   toReleaseRows,
 } from './view'
 
@@ -111,5 +112,16 @@ describe('toReleaseRows', () => {
     expect(rows.map((row) => row.tag)).toEqual(['v0.1.0-alpha.14', 'v0.1.0-alpha.13', 'v0.1.0-alpha.12'])
     expect(rows.map((row) => row.isCurrent)).toEqual([false, true, false])
     expect(rows[0].version).toBe('0.1.0-alpha.14')
+  })
+})
+
+describe('installedChannelRelease', () => {
+  it('finds the release of the running version, so a rebuild under it can be read', () => {
+    const releases = [release('v1.0.0-staging.1'), release('v1.0.0-staging.2')]
+    expect(installedChannelRelease(releases, '1.0.0-staging.1', 'staging')?.tag).toBe('v1.0.0-staging.1')
+  })
+
+  it('ignores a release another channel publishes', () => {
+    expect(installedChannelRelease([release('v1.0.0-beta')], '1.0.0-beta', 'staging')).toBeNull()
   })
 })

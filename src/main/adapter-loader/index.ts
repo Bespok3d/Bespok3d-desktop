@@ -58,6 +58,11 @@ export interface AdapterInfo {
   // catalogue the build packs. Absent when the build ships no jinni package for it, which is the
   // honest answer: there is then no version to offer.
   jinniVersion?: string
+  // The package the jinni ships as, the key the daemon names its installed jinni fingerprint under.
+  jinniPackage: string
+  // The fingerprint of the jinni build above, when the list or the catalogue names one. A printer on
+  // the same jinni version but a different fingerprint is offered the rebuild.
+  jinniFingerprint?: string
   // How long this printer takes to come back after a restart. The screens that make the user wait
   // read it from here, so no number about a printer lives in the app.
   restartSeconds: number

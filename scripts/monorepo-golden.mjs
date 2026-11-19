@@ -71,18 +71,25 @@ export async function buildGoldenBundle(outputDir) {
 // rail that pinned the real hash went red for whoever happened to have an unsaved experiment in a
 // sibling repo, which is the same "my local file turned your check red" defect as reading a
 // developer's own bundle.dev.json. Nothing ships this tag (a release build never builds dev atoms),
-// so pinning it bought nothing.
+// so pinning it bought nothing. A package fingerprint is a hash of those same files, so it moves the
+// same way and gets the same placeholder.
 const DEV_BUILD_TAG = /\+dev\.[0-9a-f]{8}/g
 const DEV_BUILD_TAG_PLACEHOLDER = '+dev.local'
+const PACKAGE_FINGERPRINT = /"fingerprint":"[0-9a-f]{64}"/g
+const PACKAGE_FINGERPRINT_PLACEHOLDER = '"fingerprint":"working-copy"'
 
-export function withoutDevBuildTags(index) {
-  return JSON.parse(JSON.stringify(index).replace(DEV_BUILD_TAG, DEV_BUILD_TAG_PLACEHOLDER))
+export function withoutWorkingCopyHashes(index) {
+  const indexText = JSON.stringify(index)
+    .replace(DEV_BUILD_TAG, DEV_BUILD_TAG_PLACEHOLDER)
+    .replace(PACKAGE_FINGERPRINT, PACKAGE_FINGERPRINT_PLACEHOLDER)
+
+  return JSON.parse(indexText)
 }
 
 // The bytes the fixture holds, from the index a build produced. buildBundle writes the bundled index
-// this way too, so the fixture is the same text an actual offline bundle ships, dev build tags aside.
+// this way too, so the fixture is the same text an actual offline bundle ships, working-copy hashes aside.
 export function goldenIndexText(index) {
-  return `${JSON.stringify(withoutDevBuildTags(index), null, 2)}\n`
+  return `${JSON.stringify(withoutWorkingCopyHashes(index), null, 2)}\n`
 }
 
 export function readGoldenIndexText() {

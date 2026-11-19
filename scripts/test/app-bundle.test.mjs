@@ -54,7 +54,7 @@ import {
   packedArchiveStems,
   readGoldenArchives,
   readGoldenIndexText,
-  withoutDevBuildTags,
+  withoutWorkingCopyHashes,
 } from '../monorepo-golden.mjs'
 import {
   APP_REPO_DIR,
@@ -137,7 +137,9 @@ function describeSourceDocs(sources) {
 // every entry names the same publisher as the index header. `sw_version` (the packaged upstream
 // version) and `author` (the display name) are manifest passthrough too: `sw_version` bumps on every
 // wrapper upgrade exactly like `version`, so freezing its value would rot this rail red the same way.
-const PASSTHROUGH_FIELDS = ['version', 'updated_at', 'download_url', 'publisher', 'sw_version', 'author']
+// `fingerprint` is the packed source digest, so it moves on every plugin edit; the rail buys it back by
+// asserting each entry carries the fingerprint of the .b3 it points at.
+const PASSTHROUGH_FIELDS = ['version', 'updated_at', 'download_url', 'publisher', 'sw_version', 'author', 'fingerprint']
 
 function withoutPassthroughValues(entry) {
   const blanked = PASSTHROUGH_FIELDS.filter((field) => field in entry).map((field) => [field, `<${field}>`])
@@ -209,6 +211,11 @@ test('buildBundle (dev channel) reproduces the pre-consolidation monorepo golden
   const advertised = index.plugins.filter((entry) => 'download_url' in entry).map((entry) => entry.download_url).sort()
   assert.deepEqual(packages.map((packed) => packed.filename).sort(), advertised)
 
+  // The app compares a catalog entry's fingerprint with the manifest on the printer, so an entry that
+  // names any value other than the one packed into its .b3 offers a rebuild that is never installed.
+  const packedFingerprints = Object.fromEntries(packages.map((packed) => [packed.filename, packed.fingerprint]))
+  index.plugins.forEach((entry) => assert.equal(entry.fingerprint, packedFingerprints[entry.download_url], `${entry.name}: fingerprint is not the packed one`))
+
   assert.deepEqual(describeStagedDocs(outputDir), describeSourceDocs(sources))
 })
 
@@ -224,7 +231,7 @@ test('the committed golden is what the refresh command produces', { timeout: 300
 
   // Content first, so a drift reports as a readable field diff rather than as two walls of JSON, then
   // the bytes, which also catch a fixture that was re-ordered or re-indented by hand.
-  assert.deepEqual(withoutDevBuildTags(index), JSON.parse(readGoldenIndexText()), STALE_GOLDEN_MESSAGE)
+  assert.deepEqual(withoutWorkingCopyHashes(index), JSON.parse(readGoldenIndexText()), STALE_GOLDEN_MESSAGE)
   assert.equal(goldenIndexText(index), readGoldenIndexText(), STALE_GOLDEN_MESSAGE)
 })
 

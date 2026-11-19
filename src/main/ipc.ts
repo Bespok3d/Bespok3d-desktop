@@ -4,7 +4,7 @@ import { ipcMain, shell, type BrowserWindow } from 'electron'
 import { checkSsh, enrollPrinter } from './enrollment'
 import { requestCancel } from './ops/cancel-requests'
 import { getAdapter, listAdapters } from './adapter-loader'
-import type { AdapterInfo } from './adapter-loader'
+import { serializeAdapter } from './adapter-loader/serialize'
 import { loadSettings, saveSettings, setSourceEnabled, setChannelEnabled } from './settings'
 import type { ReleaseChannel } from './settings'
 import type { AppSettings } from './settings'
@@ -25,7 +25,6 @@ import { listPublishedAccountKeys } from './publisher/published-keys'
 import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, withoutAccessFact, pingPrinter, sshLoginAnswers, probeService, resolveLiveAddress } from './printers'
 import type { PublicPrinterRecord } from './printers'
 import { setAddressResolver, askPrinterToReach } from './daemon-client/client'
-import { offeredJinniVersion } from './compat/jinni-baseline'
 import { expectedDaemonVersion } from './daemon-client/expected-version'
 import { watchPrintState, unwatchPrintState } from './daemon-client/feeds/print-state'
 import { startMdnsScan, stopMdnsScan } from './mdns'
@@ -64,16 +63,6 @@ import {
   consumeAppliedUpdate,
 } from './app-update'
 export type { PluginProgressEvent } from './store/progress'
-
-function serializeAdapter(def: ReturnType<typeof getAdapter>): AdapterInfo | null {
-  if (!def) return null
-
-  return {
-    id: def.id, title: def.title, vendor: def.vendor, version: def.version, jinniVersion: offeredJinniVersion(def), restartSeconds: def.restartSeconds,
-    description: def.description, icon: def.icon, defaults: def.defaults, envVars: def.envVars,
-    enrollSteps: def.enrollSteps.map((step) => ({ id: step.id, label: step.label, detail: step.detail })),
-  }
-}
 
 function registerKeyHandlers(): void {
   ipcMain.handle('keys:list', () => listKeys())

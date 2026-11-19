@@ -32,6 +32,22 @@ beforeEach(() => {
   mocks.fetchLatestRelease.mockReset()
 })
 
+describe('the fingerprint withFreshestRelease carries', () => {
+  it('drops the fingerprint of the listed build, which the release it moved to does not carry', async () => {
+    mocks.fetchLatestRelease.mockResolvedValue({ version: '0.1.10', downloadUrl: FRESH_ASSET_URL })
+    const refreshed = await withFreshestRelease(listedEntry({ fingerprint: 'ab'.repeat(32) }))
+
+    expect(refreshed.fingerprint).toBeUndefined()
+  })
+
+  it('keeps the fingerprint when the entry stays on the listed build', async () => {
+    mocks.fetchLatestRelease.mockResolvedValue({ version: '0.1.9', downloadUrl: FRESH_ASSET_URL })
+    const refreshed = await withFreshestRelease(listedEntry({ fingerprint: 'ab'.repeat(32) }))
+
+    expect(refreshed.fingerprint).toBe('ab'.repeat(32))
+  })
+})
+
 describe('withFreshestRelease', () => {
   it('moves the version and the download url together', async () => {
     mocks.fetchLatestRelease.mockResolvedValue({ version: '0.1.10', downloadUrl: FRESH_ASSET_URL })

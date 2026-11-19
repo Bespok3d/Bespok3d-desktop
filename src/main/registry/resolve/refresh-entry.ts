@@ -44,8 +44,10 @@ function withRelease(entry: MergedEntry, fresh: FreshRelease | null): MergedEntr
   if (!withinDeclaredChannel(entry, fresh.version)) return entry
 
   // Together, always: raising the version without repointing the asset would make every install of
-  // this plugin refuse, because the package fetched would be older than the entry now claims.
-  return { ...entry, version: fresh.version, download_url: fresh.downloadUrl }
+  // this plugin refuse, because the package fetched would be older than the entry now claims. The
+  // listed fingerprint belongs to the listed build, so it goes: kept, it would never match the release
+  // installed and offer that release again forever.
+  return { ...entry, version: fresh.version, download_url: fresh.downloadUrl, fingerprint: undefined }
 }
 
 export async function withFreshestRelease(entry: MergedEntry): Promise<MergedEntry> {

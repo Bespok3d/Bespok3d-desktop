@@ -130,6 +130,12 @@
     "stored_signatures": [
       "spoolman"
     ],
+    "installed_fingerprints": {
+      "spoolman": "abababababababababababababababababababababababababababababababab"
+    },
+    "machinery_fingerprints": {
+      "bespok3d-daemon": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+    },
     "firmware_version": "1.4.1",
     "arch": "aarch64",
     "board_class": "standard",

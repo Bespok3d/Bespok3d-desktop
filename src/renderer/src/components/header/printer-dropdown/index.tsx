@@ -17,13 +17,14 @@ import { PrinterMenuItem } from './menu-item'
 import { PrinterMenuActions } from './menu-actions'
 import { IconChevron } from '../../../design-system/icons'
 import type { Printer } from '../../../data/types'
+import type { JinniOffer } from '../../../data/printers'
 
 export interface PrinterDropdownProps {
   printers: Printer[]
   selectedId: string | null
   adapterIcons: Record<string, string>
   adapterTitles: Record<string, string>
-  adapterJinniVersions: Record<string, string>
+  adapterJinniOffers: Record<string, JinniOffer>
   savedPluginVars: Record<string, string>
   onSelect: (id: string) => void
   onAddPrinter: () => void
@@ -42,7 +43,7 @@ export function PrinterDropdown({
   selectedId,
   adapterIcons,
   adapterTitles,
-  adapterJinniVersions,
+  adapterJinniOffers,
   savedPluginVars,
   onSelect,
   onAddPrinter,
@@ -81,7 +82,7 @@ export function PrinterDropdown({
           dotClass={dotClass}
           dotTitle={statusLabel(selected, isInstalling, t)}
         />
-        <PrinterTriggerInfo printer={selected} installingCount={installingCount} adapterTitle={adapterTitles[selected.adapter]} adapterJinniVersion={adapterJinniVersions[selected.adapter]} />
+        <PrinterTriggerInfo printer={selected} installingCount={installingCount} adapterTitle={adapterTitles[selected.adapter]} adapterJinniOffer={adapterJinniOffers[selected.adapter]} />
         <span className="printer-chevron">
           <IconChevron size={18} />
         </span>
@@ -96,7 +97,7 @@ export function PrinterDropdown({
               printer={printer}
               adapterIcon={adapterIcons[printer.adapter]}
               adapterTitle={adapterTitles[printer.adapter]}
-              adapterJinniVersion={adapterJinniVersions[printer.adapter]}
+              adapterJinniOffer={adapterJinniOffers[printer.adapter]}
               isSelected={printer.id === selectedId}
               onSelect={() => { onSelect(printer.id); setOpen(false) }}
               onUpdateDaemon={() => { onUpdateDaemon(printer.id); setOpen(false) }}

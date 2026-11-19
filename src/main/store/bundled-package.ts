@@ -10,7 +10,7 @@ import { join } from 'path'
 
 import { bundledRegistryDir } from '../registry/bundled-dir'
 import type { IndexEntry, MergedEntry, PackageTrust } from '../registry/model'
-import { PAYLOAD_PREFIX, payloadMembers } from './payload-entries'
+import { PAYLOAD_PREFIX, packageArchive, payloadMembers } from './payload-entries'
 import { verifiedPackageTrust } from './verify-package'
 
 export interface BundledPackage {
@@ -20,7 +20,11 @@ export interface BundledPackage {
   // Payload paths relative to the payload root, so no caller has to spell the archive layout.
   payloadPaths: readonly string[]
   payloadBytes(payloadPath: string): Buffer
+  // The signed manifest exactly as packed, so the printer can keep the fingerprint this package carries.
+  manifestBytes(): Buffer
 }
+
+const MANIFEST_MEMBER = 'manifest.json'
 
 function bundledEntry(packageName: string): MergedEntry {
   const indexPath = join(bundledRegistryDir(), 'index.json')
@@ -34,6 +38,13 @@ function bundledEntry(packageName: string): MergedEntry {
 function payloadMember(members: readonly AdmZip.IZipEntry[], packageName: string, payloadPath: string): Buffer {
   const member = members.find((candidate) => candidate.entryName === `${PAYLOAD_PREFIX}${payloadPath}`)
   if (!member) throw new Error(`the package for "${packageName}" carries no "${payloadPath}"`)
+
+  return member.getData()
+}
+
+function manifestMember(archiveBytes: Buffer, packageName: string): Buffer {
+  const member = packageArchive(archiveBytes, packageName).getEntry(MANIFEST_MEMBER)
+  if (!member) throw new Error(`the package for "${packageName}" carries no ${MANIFEST_MEMBER}`)
 
   return member.getData()
 }
@@ -63,6 +74,7 @@ export async function openVerifiedPackage(entry: MergedEntry, archiveBytes: Buff
     trust,
     payloadPaths: members.map((member) => member.entryName.slice(PAYLOAD_PREFIX.length)),
     payloadBytes: (payloadPath: string) => payloadMember(members, entry.name, payloadPath),
+    manifestBytes: () => manifestMember(archiveBytes, entry.name),
   }
 }
 

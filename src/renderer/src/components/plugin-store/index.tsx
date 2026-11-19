@@ -109,7 +109,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
   const { disabledChannels, ceilingFor } = channelPrefs
   const { liveInstalledIds, liveInstalledVersions, liveDeactivatedIds, pluginHistory, onOperationDone, safetyNotice, dismissSafetyNotice } = useInstallState(printer, onPrinterUpdate, installingSelected || uninstallingSelected || updatingAll)
   const { printActive, blockedActions } = usePrintState(printer)
-  const { installedIds, installedVersions, installedSources, deactivatedIds, orphans, displayPlugins, matchOpts, showFlat, matchingPlugins, flatPlugins } = deriveStoreView({
+  const { installedIds, installedVersions, installedSources, installedFingerprints, deactivatedIds, orphans, displayPlugins, matchOpts, showFlat, matchingPlugins, flatPlugins } = deriveStoreView({
     printer, catalogPlugins, catalogCollections: collections,
     live: { installedIds: liveInstalledIds, installedVersions: liveInstalledVersions, deactivatedIds: liveDeactivatedIds },
     filters: { query, channels: facets.channels, categories: facets.categories, trusts: facets.trusts, statuses: facets.statuses, printerOnly: facets.printerOnly, grouped, sortKey, sortDir, ceilingFor, disabledChannels },
@@ -117,8 +117,8 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
   const batch = useBatchInstall({ catalogPlugins, installedIds, deactivatedIds, savedVars: savedPluginVars ?? {}, printerId: managedId, printActive, blockedActions, daemonVersion: printer?.daemonVersion, onSaveVars, onInstallSelected, scopeFor })
   const uninstall = useBatchUninstall({ plugins: catalogPlugins, installedIds, printerId: managedId, onUninstallSelected })
   const selection = activeSelection(batch, uninstall)
-  const cardCtx: StoreCardContext = { installedIds, installedVersions, installedSources, installedChannels: printer?.installedChannels ?? {}, deactivatedIds, ceilingFor, disabledChannels, selection }
-  const { updatableCount, updateBlock, updateAll } = useUpdateAll({ printerId: managedId, plugins: catalogPlugins, installedIds, installedVersions, installedSources, savedVars: savedPluginVars ?? {}, ceilingFor, disabledChannels, printActive, blockedActions, collections, onUpdateAll })
+  const cardCtx: StoreCardContext = { installedIds, installedVersions, installedSources, installedFingerprints, installedChannels: printer?.installedChannels ?? {}, deactivatedIds, ceilingFor, disabledChannels, selection }
+  const { updatableCount, updateBlock, updateAll } = useUpdateAll({ printerId: managedId, plugins: catalogPlugins, installedIds, installedVersions, installedSources, installedFingerprints, savedVars: savedPluginVars ?? {}, ceilingFor, disabledChannels, printActive, blockedActions, collections, onUpdateAll })
 
   // A b3d:// link or a dropped file names a package by id, and only what the store shows may be opened
   // that way. The daemon and the jinni are not in that set: their update belongs to the printer.

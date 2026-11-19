@@ -5,6 +5,7 @@ import { usePrintState } from '../../plugin-store/usePrintState'
 import { TriggerUpdates } from './trigger-updates'
 import { PrinterIdentity } from './identity'
 import type { Printer } from '../../../data/types'
+import type { JinniOffer } from '../../../data/printers'
 
 // What the printer is busy doing right now, as an i18n key + its tone. Installing wins: the app is
 // acting on the printer this second, which is the more immediate fact. Printing is a statement, not a
@@ -21,7 +22,7 @@ function printerLiveState(installing: boolean, printing: boolean): { key: string
 // top, ip + installed-count (+ an installing or printing hint) below. The closed state stays terse: the
 // badges flag what is pending; the wordier "X available" detail and per-update actions live in the open
 // rows. The trigger stays on screen while the menu is open, so the hint is there as the user reads it.
-export function PrinterTriggerInfo({ printer, installingCount, adapterTitle, adapterJinniVersion }: { printer: Printer; installingCount: number; adapterTitle?: string; adapterJinniVersion?: string }) {
+export function PrinterTriggerInfo({ printer, installingCount, adapterTitle, adapterJinniOffer }: { printer: Printer; installingCount: number; adapterTitle?: string; adapterJinniOffer?: JinniOffer }) {
   const { t } = useI18n()
   const { printActive } = usePrintState(printer)
   const liveState = printerLiveState(installingCount > 0, printActive)
@@ -31,7 +32,7 @@ export function PrinterTriggerInfo({ printer, installingCount, adapterTitle, ada
       <PrinterIdentity
         printer={printer}
         adapterTitle={adapterTitle}
-        nameExtra={<TriggerUpdates printer={printer} adapterJinniVersion={adapterJinniVersion} />}
+        nameExtra={<TriggerUpdates printer={printer} adapterJinniOffer={adapterJinniOffer} />}
         metaExtra={liveState ? <><span>·</span><span className={liveState.tone}>{t(liveState.key)}</span></> : null}
       />
     </div>

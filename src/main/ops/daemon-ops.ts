@@ -18,7 +18,7 @@ import { waitForDaemon, tailDaemonLog } from './daemon-log'
 import { recordOrThrow, verifyDaemonVersion } from '../daemon-client/status'
 import { wireSetupAfterDaemonMove } from '../daemon-client/client'
 import { expectedDaemonVersion } from '../daemon-client/expected-version'
-import { offeredJinniVersion } from '../compat/jinni-baseline'
+import { offeredJinniBuild } from '../compat/jinni-baseline'
 import { assertNotADaemonDowngrade, assertPairLandedTogether, assertPrinterNotPrinting, keepingNewerInstalledDaemon, reportedDaemonVersion } from '../compat'
 
 // Asked before a single byte moves, so a refused op never touches the printer at all: it is not
@@ -161,14 +161,24 @@ async function saveRepair(printerId: string, record: PrinterRecord): Promise<voi
   updatePrinter(printerId, { status: 'managed', daemonVersion: await runningDaemonVersion(record), daemonUpdateAvailable: false })
 }
 
-// deploy-daemon redeploys the jinni too, so record both at the version the app just installed: the
-// jinni-update banner must not flash between this save and the next capabilities ping.
+// The jinni build the app just installed, with its fingerprint: the jinni-update banner must not flash
+// between this save and the next capabilities ping. An unknown fingerprint drops the old copy's, which
+// would otherwise mark the jinni just installed as a rebuild still to come.
+function landedJinni(current: PrinterRecord, adapter: AdapterDefinition): Partial<PrinterRecord> {
+  const landed = offeredJinniBuild(adapter)
+  const otherFingerprints = Object.fromEntries(Object.entries(current.machineryFingerprints ?? {}).filter(([packageName]) => packageName !== adapter.jinniPackage))
+  const machineryFingerprints = landed?.fingerprint ? { ...otherFingerprints, [adapter.jinniPackage]: landed.fingerprint } : otherFingerprints
+
+  return { jinniVersion: landed?.version ?? adapter.jinniVersion, machineryFingerprints }
+}
+
+// deploy-daemon redeploys the jinni too, so both are recorded as the builds the app just installed.
 function saveDaemonUpdate(printerId: string, adapter: AdapterDefinition): void {
-  updatePrinter(printerId, { status: 'managed', daemonVersion: expectedDaemonVersion(), daemonUpdateAvailable: false, daemonUpdatedAt: new Date().toISOString(), jinniVersion: offeredJinniVersion(adapter) ?? adapter.jinniVersion })
+  updatePrinter(printerId, (current) => ({ status: 'managed', daemonVersion: expectedDaemonVersion(), daemonUpdateAvailable: false, daemonUpdatedAt: new Date().toISOString(), ...landedJinni(current, adapter) }))
 }
 
 function saveJinniUpdate(printerId: string, adapter: AdapterDefinition): void {
-  updatePrinter(printerId, { status: 'managed', jinniVersion: offeredJinniVersion(adapter) ?? adapter.jinniVersion })
+  updatePrinter(printerId, (current) => ({ status: 'managed', ...landedJinni(current, adapter) }))
 }
 
 export async function runRepair(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number, forced = false): Promise<void> {

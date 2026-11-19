@@ -6,15 +6,17 @@
 // of any electron import so the preload script, the e2e specs and the main process read it alike.
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import type { PackageBuild } from '@bespok3d/contract'
 
 interface CatalogueEntry {
   name: string
   version: string
+  fingerprint?: string
 }
 
-export function shippedPackageVersion(registryDir: string, packageName: string): string | null {
+export function shippedPackageBuild(registryDir: string, packageName: string): PackageBuild | null {
   const catalogue = JSON.parse(readFileSync(join(registryDir, 'index.json'), 'utf8')) as { plugins?: CatalogueEntry[] }
   const shipped = (catalogue.plugins ?? []).find((candidate) => candidate.name === packageName)
 
-  return shipped ? shipped.version : null
+  return shipped ? { version: shipped.version, fingerprint: shipped.fingerprint } : null
 }

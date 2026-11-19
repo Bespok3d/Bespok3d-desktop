@@ -511,6 +511,18 @@ describe('buildIndex multi-atom ids (a stable atom beside a dev channel variant)
     expect(byChannel('experiment').download_url).toBe('fluidd-0.2.0-experiment.b3')
   })
 
+  it('gives each atom the fingerprint packed into its own .b3, matched by filename', () => {
+    const packedFingerprints = { 'fluidd-0.1.3.b3': 'stable-fp', 'fluidd-0.2.0-experiment.b3': 'experiment-fp' }
+    const packedIndex = buildIndex(CHANNEL_ATOM_MANIFESTS, {}, undefined, packedFingerprints)
+    const fingerprintByChannel = Object.fromEntries(packedIndex.plugins.map((plugin: { channel: string; fingerprint?: string }) => [plugin.channel, plugin.fingerprint]))
+
+    expect(fingerprintByChannel).toEqual({ stable: 'stable-fp', experiment: 'experiment-fp' })
+  })
+
+  it('carries no fingerprint when nothing was packed', () => {
+    expect(byChannel('stable')).not.toHaveProperty('fingerprint')
+  })
+
   it('rejects two atoms sharing name and version (one would silently shadow the other)', () => {
     const duplicated = [CHANNEL_ATOM_MANIFESTS[0], { ...CHANNEL_ATOM_MANIFESTS[0] }]
     expect(() => buildIndex(duplicated)).toThrow(/duplicate atoms.*fluidd@0\.1\.3/)

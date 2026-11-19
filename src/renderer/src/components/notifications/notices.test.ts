@@ -40,7 +40,9 @@ describe('buildNotices', () => {
   it('ignores non-auth source failures so a network blip is not a sign-in prompt', () => {
     expect(buildNotices(inputs({ sources: [src({ status: 'failed', reason: 'network', error: 'x' })] }))).toEqual([])
   })
+})
 
+describe('buildNotices update notices', () => {
   it('emits one update notice per plugin whose installed version is behind the catalog', () => {
     const notices = buildNotices(inputs({
       plugins: [plugin('spoolman', '0.2.0'), plugin('fluidd', '1.0.0')],
@@ -59,6 +61,14 @@ describe('buildNotices', () => {
     const firstRelease = buildNotices(inputs({ plugins: [plugin('x', '0.2.0')], installedVersions: { x: '0.1.0' } }))
     const nextRelease = buildNotices(inputs({ plugins: [plugin('x', '0.3.0')], installedVersions: { x: '0.1.0' } }))
     expect(firstRelease[0].id).not.toBe(nextRelease[0].id)
+  })
+
+  it('keys the update id by build so a same-version rebuild reappears after a dismiss', () => {
+    const rebuilt = { ...channelPlugin('x', '0.2.0', [{ version: '0.2.0', channel: 'stable' }]) }
+    rebuilt.sources = rebuilt.sources?.map((source) => ({ ...source, fingerprint: 'sha256:build-two' }))
+    const notices = buildNotices(inputs({ plugins: [rebuilt], installedVersions: { x: '0.2.0' }, installedFingerprints: { x: 'sha256:build-one' } }))
+    expect(notices).toHaveLength(1)
+    expect(notices[0].id).toBe('plugin-update:x:0.2.0:sha256:build-two')
   })
 
   it('does not emit an update notice when the installed version is ahead of the catalog', () => {

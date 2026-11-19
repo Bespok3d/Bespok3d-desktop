@@ -11,7 +11,7 @@ vi.mock('../adapter-loader', () => ({ getAdapter: vi.fn() }))
 vi.mock('../daemon-client/status', () => ({ recordOrThrow: vi.fn(() => ({ id: 'printer-1', adapter: 'example' })), verifyDaemonVersion: vi.fn() }))
 vi.mock('../daemon-client/expected-version', () => ({ expectedDaemonVersion: () => '0.14.0' }))
 vi.mock('../store/system-package', () => ({ openSystemPackage: vi.fn(async () => ({ version: '0.14.0' })) }))
-vi.mock('../compat/jinni-baseline', () => ({ offeredJinniVersion: vi.fn() }))
+vi.mock('../compat/jinni-baseline', () => ({ offeredJinniBuild: vi.fn() }))
 vi.mock('./daemon-log', () => ({ waitForDaemon: vi.fn(), tailDaemonLog: vi.fn() }))
 vi.mock('./op-runner', () => ({ runSshOp: vi.fn() }))
 vi.mock('../daemon-client/client', () => ({ wireSetupAfterDaemonMove: vi.fn() }))
@@ -29,6 +29,8 @@ import { getAdapter } from '../adapter-loader'
 import { runSshOp } from './op-runner'
 import { updatePrinter } from '../printers'
 import { reportedDaemonVersion, assertPairLandedTogether } from '../compat'
+import { offeredJinniBuild } from '../compat/jinni-baseline'
+import type { PrinterRecord } from '../printers'
 
 const PRINTER_BESPOK3D_ROOT = '/opt/bespok3d-example'
 const REPAIRING_WINDOW = { webContents: { send: vi.fn() } } as unknown as BrowserWindow
@@ -195,6 +197,43 @@ describe('the printer setup after a daemon or jinni move', () => {
     vi.mocked(wireSetupAfterDaemonMove).mockRejectedValueOnce(new Error('connection reset'))
 
     await expect(moveDaemon()).rejects.toThrow('connection reset')
-    expect(updatePrinter).toHaveBeenCalledWith('printer-1', expect.objectContaining({ status: 'managed' }))
+    expect(savedOver(PRINTER_WITH_OLD_JINNI)).toEqual(expect.objectContaining({ status: 'managed' }))
+  })
+})
+
+const OLD_JINNI_FINGERPRINT = 'ab'.repeat(32)
+const LANDED_JINNI_FINGERPRINT = 'cd'.repeat(32)
+const PRINTER_WITH_OLD_JINNI = {
+  id: 'printer-1', jinniVersion: '0.1.12', machineryFingerprints: { 'bespok3d-jinni-example': OLD_JINNI_FINGERPRINT, 'bespok3d-daemon': 'ef'.repeat(32) },
+} as unknown as PrinterRecord
+
+// What the last save wrote over a printer record, whether the op passed the fields or a patch of them.
+function savedOver(current: PrinterRecord): Partial<PrinterRecord> {
+  const patch = vi.mocked(updatePrinter).mock.calls.at(-1)?.[1]
+
+  return typeof patch === 'function' ? patch(current) : patch ?? {}
+}
+
+// Without the fingerprint of the jinni that landed, the record pairs the new jinni with the old copy's
+// fingerprint, and the "update jinni" banner comes back until the next capabilities ping.
+describe('the jinni a daemon or jinni update saves', () => {
+  const JINNI_MOVES = EVERY_DAEMON_MOVE.slice(0, 2)
+
+  it.each(JINNI_MOVES)('a %s records the fingerprint of the jinni that landed', async (_move, moveDaemon) => {
+    vi.mocked(offeredJinniBuild).mockReturnValue({ version: '0.1.13', fingerprint: LANDED_JINNI_FINGERPRINT })
+
+    await moveDaemon()
+
+    expect(savedOver(PRINTER_WITH_OLD_JINNI)).toEqual(expect.objectContaining({
+      jinniVersion: '0.1.13', machineryFingerprints: { 'bespok3d-jinni-example': LANDED_JINNI_FINGERPRINT, 'bespok3d-daemon': 'ef'.repeat(32) },
+    }))
+  })
+
+  it.each(JINNI_MOVES)('a %s forgets the old jinni fingerprint when the landed one is unknown', async (_move, moveDaemon) => {
+    vi.mocked(offeredJinniBuild).mockReturnValue({ version: '0.1.12' })
+
+    await moveDaemon()
+
+    expect(savedOver(PRINTER_WITH_OLD_JINNI).machineryFingerprints).toEqual({ 'bespok3d-daemon': 'ef'.repeat(32) })
   })
 })

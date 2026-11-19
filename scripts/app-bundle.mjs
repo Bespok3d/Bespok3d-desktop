@@ -177,7 +177,15 @@ function latestUpdated(entries) {
   return entries.reduce((latest, entry) => (entry.updated_at > latest ? entry.updated_at : latest), '')
 }
 
-function buildIndexEntry(manifest, providers, buildTags) {
+// The fingerprint is the one the build wrote into the packed manifest, read back by filename and never
+// recomputed here: the app compares a catalog entry against the manifest on a printer, so the two must
+// be one value. A pure buildIndex call packs nothing, and its entries then carry none.
+function applyPackageFingerprint(entry, packageFingerprints) {
+  const fingerprint = packageFingerprints[entry.download_url]
+  if (fingerprint) entry.fingerprint = fingerprint
+}
+
+function buildIndexEntry(manifest, providers, buildTags, packageFingerprints) {
   const entry = {
     name: manifest.name,
     title: manifest.title,
@@ -199,6 +207,7 @@ function buildIndexEntry(manifest, providers, buildTags) {
   }
   copyIfPresent(entry, manifest, ['icon', 'min_daemon_version', 'min_jinni_version', 'homepage', 'macros', 'config', 'author', 'sw_version', 'attributions', 'migration'])
   applyLicenseUrl(entry, manifest)
+  applyPackageFingerprint(entry, packageFingerprints)
   const log = logSource(manifest)
   if (log) entry.log = log
   if (manifest.changelog) entry.changelog_url = `${manifest.name}/${manifest.changelog}`
@@ -220,14 +229,14 @@ function assertUniqueAtoms(manifests) {
 
 // The publisher defaults to the placeholder so the pure-import path (the app's vitest, which loads this
 // module without the sibling repos present) keeps working unchanged; a real buildBundle passes the
-// fingerprint derived from the list key.
-export function buildIndex(manifests, buildTags = {}, publisher = REGISTRY_PUBLISHER) {
+// fingerprint derived from the list key, and each packed .b3's fingerprint by its filename.
+export function buildIndex(manifests, buildTags = {}, publisher = REGISTRY_PUBLISHER, packageFingerprints = {}) {
   assertUniqueAtoms(manifests)
   const sorted = [...manifests].sort((earlier, later) => earlier.name.localeCompare(later.name))
   const pluginManifests = sorted.filter((manifest) => !isCollection(manifest))
   const collectionManifests = sorted.filter(isCollection)
   const providers = providerByService(pluginManifests)
-  const plugins = pluginManifests.map((manifest) => buildIndexEntry(manifest, providers, buildTags))
+  const plugins = pluginManifests.map((manifest) => buildIndexEntry(manifest, providers, buildTags, packageFingerprints))
   const collections = collectionManifests.map(buildCollectionEntry)
   const updated = latestUpdated([...plugins, ...collections])
   return {
@@ -532,7 +541,8 @@ export async function buildBundle(request) {
   const { peeled } = await signPackages(builder, packages, signingKey)
 
   const buildTags = await devBuildTags(readdir, readFile, join, idSources, variants, releaseIds, devIds)
-  const index = buildIndex(sources.map((source) => ({ ...source.manifest, publisher })), buildTags, publisher)
+  const fingerprints = Object.fromEntries(packages.map((packed) => [packed.filename, packed.fingerprint]))
+  const index = buildIndex(sources.map((source) => ({ ...source.manifest, publisher })), buildTags, publisher, fingerprints)
 
   await stageDocs(fsPromises, join, outputDir, sources)
   const indexBytes = `${JSON.stringify(index, null, 2)}\n`

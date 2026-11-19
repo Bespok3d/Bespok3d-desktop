@@ -3,18 +3,19 @@
 import { PrinterBanners } from './printer-banners'
 import { makePrinter } from '../test/fixtures'
 import type { Printer } from '../data/types'
+import type { JinniOffer } from '../data/printers'
 
 export default { title: 'App / Printer banners' }
 
-const ADAPTER_JINNI = '0.1.6'
+const ADAPTER_JINNI: JinniOffer = { version: '0.1.6', packageName: 'bespok3d-jinni-snapmaker-u1' }
 const ENROLLED = { enrollmentLog: { enrolledAt: '2026-06-16T22:03:00Z', adapterId: 'snapmaker-u1', steps: [] } }
 
 function noop() {}
 
 const HANDLERS = { onRepair: noop, onRecover: noop, onReactivate: noop, onRecoverDrift: noop, onUpdateJinni: noop, onReboot: noop, onAccess: noop }
 
-function Banner({ printer, bundledJinniVersion }: { printer: Printer; bundledJinniVersion?: string }) {
-  return <PrinterBanners selectedPrinter={printer} bundledJinniVersion={bundledJinniVersion} {...HANDLERS} />
+function Banner({ printer, bundledJinniOffer }: { printer: Printer; bundledJinniOffer?: JinniOffer }) {
+  return <PrinterBanners selectedPrinter={printer} bundledJinniOffer={bundledJinniOffer} {...HANDLERS} />
 }
 
 // Daemon down but the printer answers over SSH: the lightweight redeploy that keeps the pinned cert.
@@ -58,5 +59,5 @@ export function ScreenStuck() {
 
 // The deployed adapter (jinni) lags the one this app build ships.
 export function JinniUpdate() {
-  return <Banner printer={makePrinter({ status: 'managed', jinniVersion: '0.1.0', ...ENROLLED })} bundledJinniVersion={ADAPTER_JINNI} />
+  return <Banner printer={makePrinter({ status: 'managed', jinniVersion: '0.1.0', ...ENROLLED })} bundledJinniOffer={ADAPTER_JINNI} />
 }

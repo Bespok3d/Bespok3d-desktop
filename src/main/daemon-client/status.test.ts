@@ -9,7 +9,9 @@ const fixtureCertificate = readFileSync(new URL('./__fixtures__/daemon-cert.pem'
 vi.mock('./client', () => ({
   fetchDaemonStatus: vi.fn(), fetchCapabilities: vi.fn(), fetchSelfCheck: vi.fn(),
 }))
-vi.mock('./expected-version', () => ({ expectedDaemonVersion: () => '0.12.12-dev' }))
+const offeredDaemon = vi.hoisted(() => ({ build: { version: '0.12.12-dev' } as { version: string; fingerprint?: string } }))
+
+vi.mock('./expected-version', () => ({ expectedDaemonVersion: () => offeredDaemon.build.version, expectedDaemonBuild: () => offeredDaemon.build }))
 vi.mock('./license-client', () => ({ fetchDaemonLicense: vi.fn() }))
 vi.mock('../printers', () => {
   const loadPrinters = vi.fn().mockReturnValue([])
@@ -38,7 +40,10 @@ import { DaemonHttpError } from './transport'
 import { loadPrinters, updatePrinter, probeDaemonPort, checkMoonraker, checkSshOpen, resolveLiveAddress, sshPortOf } from '../printers'
 import type { SelfCheckResult } from './client'
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  offeredDaemon.build = { version: '0.12.12-dev' }
+})
 
 describe('summarizeDrift', () => {
   it('returns an empty list when the daemon reports ok=true', () => {
@@ -116,6 +121,21 @@ describe('parseCaps', () => {
     expect(parsed.installedIds).toEqual(['spoolman', 'rfid-ntag'])
     expect(parsed.installedVersions).toEqual({ spoolman: '', 'rfid-ntag': '' })
   })
+
+  it('carries the build fingerprints the daemon names for plugins and machinery', () => {
+    const caps = { installed: { spoolman: '0.1.8' }, installed_fingerprints: { spoolman: 'aa11' }, machinery_fingerprints: { 'bespok3d-daemon': 'bb22' } } as never
+    const parsed = parseCaps(caps, { ip: '192.0.2.5' })
+
+    expect(parsed.installedFingerprints).toEqual({ spoolman: 'aa11' })
+    expect(parsed.machineryFingerprints).toEqual({ 'bespok3d-daemon': 'bb22' })
+  })
+
+  it('reads no fingerprints from an older daemon that names none', () => {
+    const parsed = parseCaps({ installed: {} } as never, { ip: '192.0.2.5' })
+
+    expect(parsed.installedFingerprints).toEqual({})
+    expect(parsed.machineryFingerprints).toEqual({})
+  })
 })
 
 describe('daemonNeedsUpdate', () => {
@@ -133,6 +153,26 @@ describe('daemonNeedsUpdate', () => {
 
   it('never proposes a downgrade when the printer runs a newer daemon than the app bundles', () => {
     expect(daemonNeedsUpdate('0.13.0-dev')).toBe(false)
+  })
+
+  // A daemon rebuilt under the same version number used to go unnoticed: the version check alone
+  // called the printer current while it ran different bytes.
+  it('signals an update when the printer runs the same version built from different bytes', () => {
+    offeredDaemon.build = { version: '0.12.12-dev', fingerprint: 'aa11' }
+
+    expect(daemonNeedsUpdate('0.12.12-dev', 'bb22')).toBe(true)
+  })
+
+  it('never proposes an older daemon, whatever the fingerprints say', () => {
+    offeredDaemon.build = { version: '0.12.12-dev', fingerprint: 'aa11' }
+
+    expect(daemonNeedsUpdate('0.13.0-dev', 'bb22')).toBe(false)
+  })
+
+  it('compares versions alone when the printer names no fingerprint', () => {
+    offeredDaemon.build = { version: '0.12.12-dev', fingerprint: 'aa11' }
+
+    expect(daemonNeedsUpdate('0.12.12-dev')).toBe(false)
   })
 })
 

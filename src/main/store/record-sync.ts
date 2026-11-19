@@ -17,6 +17,8 @@ export async function capsOrFallback(record: PrinterRecord, extraVersions: Recor
       deactivatedIds: record.deactivatedIds ?? [],
       installedVersions,
       machineryVersions: record.machineryVersions ?? {},
+      installedFingerprints: fingerprintsWithout(record.installedFingerprints, Object.keys(extraVersions)),
+      machineryFingerprints: record.machineryFingerprints ?? {},
       endpoints: record.endpoints ?? [],
       firmwareVersion: record.firmwareVersion ?? 'unknown',
       jinniVersion: record.jinniVersion ?? 'unknown',
@@ -24,6 +26,12 @@ export async function capsOrFallback(record: PrinterRecord, extraVersions: Recor
       jinniExtras: record.jinniExtras ?? [],
     }
   }
+}
+
+// A plugin just put on the printer came from a build whose fingerprint the printer has not reported
+// yet. Keeping the old copy's fingerprint would make the same-version rebuild look still to come.
+function fingerprintsWithout(fingerprints: Record<string, string> | undefined, replacedIds: string[]): Record<string, string> {
+  return Object.fromEntries(Object.entries(fingerprints ?? {}).filter(([pluginId]) => !replacedIds.includes(pluginId)))
 }
 
 export function capsAfterInstall(record: PrinterRecord, pluginId: string, version: string): Promise<ReturnType<typeof parseCaps>> {

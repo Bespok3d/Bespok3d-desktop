@@ -114,6 +114,15 @@ export function newestChannelRelease(
   return newestNewerRelease(candidates, installedVersion)
 }
 
+// The published release of the very version that is running. A rebuild re-uploaded under the same
+// version lives there, so the check reads its feed to compare the build fingerprints.
+export function installedChannelRelease(
+  releases: ReleaseInfo[], installedVersion: string, channel: string,
+): ReleaseInfo | null {
+  return releases.find((release) =>
+    acceptedByChannel(release.tag, channel) && compareSemanticVersions(installedVersion, release.tag) === 0) ?? null
+}
+
 function newestNewerRelease(releases: ReleaseInfo[], installedVersion: string): ReleaseInfo | null {
   const newer = releases.filter((release) => isReleaseNewer(installedVersion, release.tag))
   if (newer.length === 0) return null

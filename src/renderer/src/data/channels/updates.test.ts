@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
-import { pluginUpdateCount } from './updates'
+import { pluginUpdateCount, updateTargetVersion, installedFromRecords } from './updates'
+import { makePlugin, makeSource } from '../../test/fixtures'
 import { indexToPlugins } from '../catalog/shape'
 import type { IndexEntry, Printer } from '../types'
 import { PLUGIN_MANIFESTS, NO_PLUGIN_SOURCES } from '../../test/plugin-sources'
@@ -50,5 +51,36 @@ describe.skipIf(NO_PLUGIN_SOURCES)('pluginUpdateCount', () => {
     const printer = makePrinter({})
     delete (printer as { installedVersions?: Record<string, string> }).installedVersions
     expect(pluginUpdateCount(printer, PLUGINS)).toBe(0)
+  })
+})
+
+function publishedDemo(version: string, fingerprint?: string) {
+  return makePlugin({ version, sources: [makeSource({ version, fingerprint })] })
+}
+
+function demoOnPrinter(version: string, fingerprint?: string) {
+  return installedFromRecords({ demo: version }, undefined, undefined, undefined, fingerprint ? { demo: fingerprint } : undefined)
+}
+
+describe('updateTargetVersion on a same-version rebuild', () => {
+  it('offers the published build when the versions match and both fingerprints differ', () => {
+    expect(updateTargetVersion(publishedDemo('1.0.0', 'rebuilt-fp'), demoOnPrinter('1.0.0', 'installed-fp'))).toBe('1.0.0')
+  })
+
+  it('offers nothing when the versions and the fingerprints match', () => {
+    expect(updateTargetVersion(publishedDemo('1.0.0', 'same-fp'), demoOnPrinter('1.0.0', 'same-fp'))).toBeUndefined()
+  })
+
+  it('compares versions only when either fingerprint is missing', () => {
+    expect(updateTargetVersion(publishedDemo('1.0.0', 'rebuilt-fp'), demoOnPrinter('1.0.0'))).toBeUndefined()
+    expect(updateTargetVersion(publishedDemo('1.0.0'), demoOnPrinter('1.0.0', 'installed-fp'))).toBeUndefined()
+  })
+
+  it('offers nothing when the fingerprints match, whatever the versions say', () => {
+    expect(updateTargetVersion(publishedDemo('1.1.0', 'same-fp'), demoOnPrinter('1.0.0', 'same-fp'))).toBeUndefined()
+  })
+
+  it('offers the published build when the fingerprints differ, whatever the versions say', () => {
+    expect(updateTargetVersion(publishedDemo('1.0.0', 'rebuilt-fp'), demoOnPrinter('1.1.0', 'installed-fp'))).toBe('1.0.0')
   })
 })

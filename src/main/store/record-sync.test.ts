@@ -18,6 +18,14 @@ describe('capsAfterInstall', () => {
     expect(caps.installedIds).toContain('fluidd')
   })
 
+  it('drops the replaced copy fingerprint when the post-install capabilities fetch fails', async () => {
+    vi.mocked(fetchCapabilities).mockRejectedValueOnce(new Error('device unreachable'))
+    const fingerprinted = { ...(record as object), installedFingerprints: { spoolman: 'spoolman-fp', fluidd: 'fluidd-old-fp' }, machineryFingerprints: { 'bespok3d-daemon': 'daemon-fp' } } as never
+    const caps = await capsAfterInstall(fingerprinted, 'fluidd', '0.2.0-experiment')
+    expect(caps.installedFingerprints).toEqual({ spoolman: 'spoolman-fp' })
+    expect(caps.machineryFingerprints).toEqual({ 'bespok3d-daemon': 'daemon-fp' })
+  })
+
   it('uses the live capabilities when the fetch succeeds', async () => {
     vi.mocked(fetchCapabilities).mockResolvedValueOnce({ installed: { fluidd: '0.2.0-experiment' } } as never)
     const caps = await capsAfterInstall(record, 'fluidd', '0.2.0-experiment')

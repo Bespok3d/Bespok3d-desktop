@@ -4,18 +4,29 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AdapterDefinition, EnrollContext, EnrollStep } from '../adapter-loader'
 import type { SshSession } from '../ssh'
 
-vi.mock('./jinni-baseline', () => ({ offeredJinniVersion: vi.fn() }))
+vi.mock('./jinni-baseline', () => ({ offeredJinniBuild: vi.fn() }))
 
-import { installedJinniVersion, refreshKeptDaemon } from './kept-daemon'
-import { offeredJinniVersion } from './jinni-baseline'
+import { installedJinniFingerprint, installedJinniVersion, refreshKeptDaemon } from './kept-daemon'
+import { offeredJinniBuild } from './jinni-baseline'
 
 const PRINTER_BESPOK3D_ROOT = '/opt/bespok3d-example'
 const KEEPING_PRINTER: EnrollContext = {
   printerId: 'printer-1', ip: '192.0.2.10', credentials: { port: 22, user: 'root', password: 'example' }, runtimeUser: 'user',
 }
 
-function printerWhoseJinniFileSays(versionFileText: string): SshSession {
-  return { exec: vi.fn().mockResolvedValue(versionFileText) } as unknown as SshSession
+const OFFERED_JINNI_FINGERPRINT = 'ab'.repeat(32)
+const OTHER_JINNI_FINGERPRINT = 'cd'.repeat(32)
+
+function printerWhoseJinniFileSays(versionFileText: string, keptManifestText = ''): SshSession {
+  function catOf(command: string): string {
+    return command.includes('/manifests/') ? keptManifestText : versionFileText
+  }
+
+  return { exec: vi.fn(async (command: string) => catOf(command)) } as unknown as SshSession
+}
+
+function keptManifestWith(fingerprint: string): string {
+  return JSON.stringify({ name: 'bespok3d-jinni-example', version: '0.1.12', fingerprint })
 }
 
 function adapterStep(id: string): EnrollStep {
@@ -30,7 +41,7 @@ function adapterWith(opSteps: EnrollStep[]): AdapterDefinition {
 }
 
 beforeEach(() => {
-  vi.mocked(offeredJinniVersion).mockReturnValue('0.1.12')
+  vi.mocked(offeredJinniBuild).mockReturnValue({ version: '0.1.12', fingerprint: OFFERED_JINNI_FINGERPRINT })
 })
 
 describe('the jinni the printer has on its disk', () => {
@@ -43,6 +54,44 @@ describe('the jinni the printer has on its disk', () => {
 
   it('is none when the printer has no jinni files', async () => {
     await expect(installedJinniVersion(printerWhoseJinniFileSays(''), PRINTER_BESPOK3D_ROOT)).resolves.toBeNull()
+  })
+
+  it('carries the fingerprint its kept signed manifest names, read under the bespok3d folder', async () => {
+    var printer = printerWhoseJinniFileSays('', keptManifestWith(OTHER_JINNI_FINGERPRINT))
+
+    await expect(installedJinniFingerprint(printer, PRINTER_BESPOK3D_ROOT, 'bespok3d-jinni-example')).resolves.toBe(OTHER_JINNI_FINGERPRINT)
+    expect(printer.exec).toHaveBeenCalledWith(expect.stringContaining('/opt/bespok3d-example/var/lib/daemon/manifests/bespok3d-jinni-example.json'))
+  })
+
+  it.each(['', '{torn', '{"version": "0.1.12"}'])('carries no fingerprint when the kept manifest reads %j', async (keptManifestText) => {
+    await expect(installedJinniFingerprint(printerWhoseJinniFileSays('', keptManifestText), PRINTER_BESPOK3D_ROOT, 'bespok3d-jinni-example')).resolves.toBeNull()
+  })
+})
+
+describe('a kept daemon whose jinni build differs', () => {
+  it('gets the jinni this app offers when the printer runs another build of the same version', async () => {
+    var jinniStep = adapterStep('deploy-jinni')
+    var printer = printerWhoseJinniFileSays('{"jinni_version": "0.1.12"}', keptManifestWith(OTHER_JINNI_FINGERPRINT))
+
+    await refreshKeptDaemon(adapterWith([jinniStep]), printer, KEEPING_PRINTER)
+
+    expect(jinniStep.run).toHaveBeenCalledWith(printer, expect.objectContaining({ sendChangedFilesOnly: true }))
+  })
+
+  it('keeps the jinni it runs when that build is the one this app offers', async () => {
+    var jinniStep = adapterStep('deploy-jinni')
+
+    await refreshKeptDaemon(adapterWith([jinniStep]), printerWhoseJinniFileSays('{"jinni_version": "0.1.12"}', keptManifestWith(OFFERED_JINNI_FINGERPRINT)), KEEPING_PRINTER)
+
+    expect(jinniStep.run).not.toHaveBeenCalled()
+  })
+
+  it('never sends an older jinni over a newer release, whatever its fingerprint', async () => {
+    var jinniStep = adapterStep('deploy-jinni')
+
+    await refreshKeptDaemon(adapterWith([jinniStep]), printerWhoseJinniFileSays('{"jinni_version": "0.1.13"}', keptManifestWith(OTHER_JINNI_FINGERPRINT)), KEEPING_PRINTER)
+
+    expect(jinniStep.run).not.toHaveBeenCalled()
   })
 })
 
@@ -66,7 +115,7 @@ describe('a newer daemon the printer keeps', () => {
 
   it('weighs the jinni against the adapter\'s own when the app ships no jinni package', async () => {
     var jinniStep = adapterStep('deploy-jinni')
-    vi.mocked(offeredJinniVersion).mockReturnValue(undefined)
+    vi.mocked(offeredJinniBuild).mockReturnValue(undefined)
 
     await refreshKeptDaemon(adapterWith([jinniStep]), printerWhoseJinniFileSays('{"jinni_version": "0.1.9"}'), KEEPING_PRINTER)
 

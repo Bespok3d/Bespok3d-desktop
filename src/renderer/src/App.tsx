@@ -47,7 +47,7 @@ function App() {
   useEffect(loadWorkbenchLayout, [])
   const { printers, setPrinters, selectedId, setSelectedId, handleRemovePrinter, handleUpdatePrinterIcon, handleSetCustomSshCredentials } = usePrinterSync()
   const { discovered, setDiscovered } = useMdnsDiscovery(setPrinters)
-  const { icons: adapterIcons, titles: adapterTitles, jinniVersions } = useAdapterViews()
+  const { icons: adapterIcons, titles: adapterTitles, jinniOffers } = useAdapterViews()
   const actions = useAppCallbacks(printers, setPrinters, setSelectedId, setDiscovered, handleRemovePrinter)
   const selectedPrinter = printers.find((printer) => printer.id === selectedId) ?? null
   const pluginVars = usePluginVars(printers)
@@ -73,14 +73,14 @@ function App() {
           onOpenSettingsPane={(pane) => { setSettingsPane(pane); setSettingsOpen(true) }}
           onOpenPlugin={openPluginPage}
           installedVersions={selectedPrinter?.installedVersions ?? {}}
-          installedSources={selectedPrinter?.installedSources ?? {}}
-          printers={printers} selectedId={selectedId} adapterIcons={adapterIcons} adapterTitles={adapterTitles} adapterJinniVersions={jinniVersions} savedPluginVars={savedPluginVars} onSelect={setSelectedId}
+          installedSources={selectedPrinter?.installedSources ?? {}} installedFingerprints={selectedPrinter?.installedFingerprints}
+          printers={printers} selectedId={selectedId} adapterIcons={adapterIcons} adapterTitles={adapterTitles} adapterJinniOffers={jinniOffers} savedPluginVars={savedPluginVars} onSelect={setSelectedId}
           onAddPrinter={actions.openAdd} onUpdateDaemon={actions.handleUpdateDaemon} onUpdateJinni={actions.handleUpdateJinni} onUpdateAll={actions.handleUpdateAll}
           installingCount={0} empty={printers.length === 0}
         />
         {printers.length > 0 && showsUnreleasedFeatures() && <ModeBar mode={mode} onModeChange={setMode} printerName={selectedPrinter?.nick} />}
         <PrinterNotices printer={selectedPrinter} savedPluginVars={savedPluginVars} onUpdateDaemon={actions.handleUpdateDaemon} onMigrate={actions.handleMigrateBatch}
-          standingBanners={<PrinterBanners selectedPrinter={selectedPrinter} bundledJinniVersion={selectedPrinter ? jinniVersions[selectedPrinter.adapter] : undefined} onRepair={actions.handleRepairPrinter} onRecover={actions.handleRecoverPrinter} onReactivate={actions.handleReactivatePrinter} onRecoverDrift={actions.handleRecoverDrift} onUpdateJinni={actions.handleUpdateJinni} onReboot={actions.handleReboot} onAccess={actions.handleEnrollPrinter} />}
+          standingBanners={<PrinterBanners selectedPrinter={selectedPrinter} bundledJinniOffer={selectedPrinter ? jinniOffers[selectedPrinter.adapter] : undefined} onRepair={actions.handleRepairPrinter} onRecover={actions.handleRecoverPrinter} onReactivate={actions.handleReactivatePrinter} onRecoverDrift={actions.handleRecoverDrift} onUpdateJinni={actions.handleUpdateJinni} onReboot={actions.handleReboot} onAccess={actions.handleEnrollPrinter} />}
         />
         <div className="u-fill">
           {mainPane()}

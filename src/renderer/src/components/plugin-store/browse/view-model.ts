@@ -54,6 +54,7 @@ export function deriveStoreView({ printer, catalogPlugins, catalogCollections, l
   const installedIds = [...new Set([...pluginIds, ...Object.keys(machineryVersions)])]
   const installedVersions = { ...(live.installedVersions ?? printer?.installedVersions ?? {}), ...machineryVersions }
   const installedSources = printer?.installedSources ?? {}
+  const installedFingerprints = printer?.installedFingerprints ?? {}
   const deactivatedIds = live.deactivatedIds ?? printer?.deactivatedIds ?? []
   // The orphan pass is given the PLUGIN ids only. Fed the machinery, it would synthesize a remove-only
   // card for any machinery package this build has no catalog entry for, which is the app offering to
@@ -67,14 +68,14 @@ export function deriveStoreView({ printer, catalogPlugins, catalogCollections, l
   const displayPlugins = [...browsablePlugins(catalogPlugins), ...orphans]
   const matchOpts: MatchOpts = {
     query: filters.query, channels: filters.channels, categories: filters.categories, trusts: filters.trusts,
-    statuses: filters.statuses, printerOnly: filters.printerOnly, installedIds, installedVersions, installedSources,
+    statuses: filters.statuses, printerOnly: filters.printerOnly, installedIds, installedVersions, installedSources, installedFingerprints,
     ceilingFor: filters.ceilingFor, disabledChannels: filters.disabledChannels,
   }
   const matching = displayPlugins.filter((plugin) => matchesPlugin(plugin, matchOpts))
   const showFlat = filters.categories.length > 0 || !filters.grouped
   const flatPlugins = showFlat ? sortPlugins(matching, filters.sortKey, filters.sortDir) : []
 
-  return { installedIds, installedVersions, installedSources, deactivatedIds, orphans, displayPlugins, matchOpts, showFlat, matchingPlugins: matching, flatPlugins }
+  return { installedIds, installedVersions, installedSources, installedFingerprints, deactivatedIds, orphans, displayPlugins, matchOpts, showFlat, matchingPlugins: matching, flatPlugins }
 }
 
 // The active select pick across both mutually-exclusive modes: install-select (pick not-installed) or

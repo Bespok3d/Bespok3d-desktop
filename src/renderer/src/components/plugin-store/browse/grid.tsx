@@ -24,6 +24,8 @@ export interface StoreCardContext {
   installedIds: string[]
   installedVersions: Record<string, string>
   installedSources: Record<string, string>
+  // The build each installed copy came from, as the daemon names it; absent from an older daemon.
+  installedFingerprints?: Record<string, string>
   installedChannels: Record<string, ReleaseChannel>
   deactivatedIds: string[]
   ceilingFor: CeilingResolver
@@ -60,7 +62,7 @@ function cardVariant(plugin: Plugin, ctx: StoreCardContext, installed: Installed
 }
 
 function cardProps(plugin: Plugin, ctx: StoreCardContext) {
-  const installed = installedFromRecords(ctx.installedVersions, ctx.installedSources, ctx.ceilingFor, ctx.disabledChannels)
+  const installed = installedFromRecords(ctx.installedVersions, ctx.installedSources, ctx.ceilingFor, ctx.disabledChannels, ctx.installedFingerprints)
   const variant = cardVariant(plugin, ctx, installed)
   const installedSourceUrl = ctx.installedSources[plugin.id]
   const installedVariant = plugin.sources.find((source) => source.registryUrl === installedSourceUrl)

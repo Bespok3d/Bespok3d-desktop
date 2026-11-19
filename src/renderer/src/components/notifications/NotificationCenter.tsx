@@ -59,9 +59,10 @@ export interface NotificationCenterProps {
   onOpenPlugin: (pluginId: string) => void
   installedVersions: Record<string, string>
   installedSources: Record<string, string>
+  installedFingerprints?: Record<string, string>
 }
 
-export function NotificationCenter({ onOpenSettings, onOpenPlugin, installedVersions, installedSources }: NotificationCenterProps) {
+export function NotificationCenter({ onOpenSettings, onOpenPlugin, installedVersions, installedSources, installedFingerprints }: NotificationCenterProps) {
   const { t } = useI18n()
   const { plugins, sources } = useCatalog()
   const { ceilingFor, disabledChannels } = useChannelPrefs()
@@ -69,7 +70,7 @@ export function NotificationCenter({ onOpenSettings, onOpenPlugin, installedVers
   const [open, setOpen] = useState(false)
   const rebootNotices = useRebootNotices()
 
-  const notices = [...buildNotices({ sources, plugins, installedVersions, installedSources, ceilingFor, disabledChannels }), ...rebootNoticeItems(rebootNotices)]
+  const notices = [...buildNotices({ sources, plugins, installedVersions, installedSources, installedFingerprints, ceilingFor, disabledChannels }), ...rebootNoticeItems(rebootNotices)]
   const visible = visibleNotices(notices, state.dismissed)
   const unread = unreadCount(notices, state)
   const visibleIds = visible.map((notice) => notice.id)

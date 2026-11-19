@@ -4,7 +4,7 @@
 // builder stays pure. Notices are derived every render with stable ids; this layer records which ids
 // the user has read or dismissed, and when each was first seen (for the relative-time label). Dismissed
 // notices are hidden; the badge counts unread, non-dismissed notices. A plugin-update id carries its
-// target version, so a new release reappears even after the previous one was dismissed; a live-condition
+// target build, so a new release or rebuild reappears even after the previous one was dismissed; a live-condition
 // notice (e.g. sources-need-auth) is re-armed each session so a still-broken state nags again.
 import type { Notice } from './notices'
 

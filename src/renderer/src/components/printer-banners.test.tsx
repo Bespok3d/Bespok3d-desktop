@@ -25,7 +25,7 @@ function makeHandlers(): BannerHandlers {
 }
 
 function renderBanners(printer: ReturnType<typeof makePrinter> | null, handlers: BannerHandlers, bundledJinniVersion?: string) {
-  return setup(<PrinterBanners selectedPrinter={printer} bundledJinniVersion={bundledJinniVersion} {...handlers} />)
+  return setup(<PrinterBanners selectedPrinter={printer} bundledJinniOffer={bundledJinniVersion ? { version: bundledJinniVersion, packageName: 'bespok3d-jinni-snapmaker-u1' } : undefined} {...handlers} />)
 }
 
 describe('PrinterBanners render + action wiring', () => {

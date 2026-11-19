@@ -18,6 +18,7 @@ export interface HeaderProps extends PrinterDropdownProps {
   onOpenPlugin: (pluginId: string) => void
   installedVersions: Record<string, string>
   installedSources: Record<string, string>
+  installedFingerprints?: Record<string, string>
   empty?: boolean
 }
 
@@ -29,11 +30,12 @@ export function Header({
   onOpenPlugin,
   installedVersions,
   installedSources,
+  installedFingerprints,
   printers,
   selectedId,
   adapterIcons,
   adapterTitles,
-  adapterJinniVersions,
+  adapterJinniOffers,
   savedPluginVars,
   onSelect,
   onAddPrinter,
@@ -57,7 +59,7 @@ export function Header({
           selectedId={selectedId}
           adapterIcons={adapterIcons}
           adapterTitles={adapterTitles}
-          adapterJinniVersions={adapterJinniVersions}
+          adapterJinniOffers={adapterJinniOffers}
           savedPluginVars={savedPluginVars}
           onSelect={onSelect}
           onAddPrinter={onAddPrinter}
@@ -70,7 +72,7 @@ export function Header({
       )}
       <div className="header-spacer" />
       <div className="header-actions">
-        <NotificationCenter onOpenSettings={onOpenSettingsPane} onOpenPlugin={onOpenPlugin} installedVersions={installedVersions} installedSources={installedSources} />
+        <NotificationCenter onOpenSettings={onOpenSettingsPane} onOpenPlugin={onOpenPlugin} installedVersions={installedVersions} installedSources={installedSources} installedFingerprints={installedFingerprints} />
         <Button
           variant="ghost"
           icon

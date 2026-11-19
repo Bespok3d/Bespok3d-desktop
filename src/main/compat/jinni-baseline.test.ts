@@ -15,7 +15,7 @@ vi.mock('../settings', () => ({
   saveSettings: (patch: Record<string, unknown>) => { storedSettings = { ...storedSettings, ...patch } },
 }))
 
-const { offeredJinniVersion } = await import('./jinni-baseline')
+const { offeredJinniBuild } = await import('./jinni-baseline')
 
 const SNAPMAKER_JINNI = 'bespok3d-jinni-snapmaker-u1'
 
@@ -39,13 +39,13 @@ describe('the jinni version this app would install', () => {
   it('names the jinni version this build ships, not the one the adapter declares', () => {
     writeCatalogue([{ name: SNAPMAKER_JINNI, version: '0.1.10' }])
 
-    expect(offeredJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBe('0.1.10')
+    expect(offeredJinniBuild({ jinniPackage: SNAPMAKER_JINNI })?.version).toBe('0.1.10')
   })
 
   it('has no version to offer when the build ships no jinni package for the adapter', () => {
     writeCatalogue([{ name: 'bespok3d-daemon', version: '0.12.23' }])
 
-    expect(offeredJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBeUndefined()
+    expect(offeredJinniBuild({ jinniPackage: SNAPMAKER_JINNI })?.version).toBeUndefined()
   })
 
   // The jinni is released as its own signed package too: a daemon release that needs a newer jinni
@@ -54,17 +54,24 @@ describe('the jinni version this app would install', () => {
     writeCatalogue([{ name: SNAPMAKER_JINNI, version: '0.1.10' }])
     storedSettings = { offeredSystemVersions: { [SNAPMAKER_JINNI]: '0.1.11' } }
 
-    expect(offeredJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBe('0.1.11')
+    expect(offeredJinniBuild({ jinniPackage: SNAPMAKER_JINNI })?.version).toBe('0.1.11')
   })
 
   it('stays on the shipped one when the published lists are behind the build', () => {
     writeCatalogue([{ name: SNAPMAKER_JINNI, version: '0.1.10' }])
     storedSettings = { offeredSystemVersions: { [SNAPMAKER_JINNI]: '0.1.9' } }
 
-    expect(offeredJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBe('0.1.10')
+    expect(offeredJinniBuild({ jinniPackage: SNAPMAKER_JINNI })?.version).toBe('0.1.10')
+  })
+
+  // The fingerprint travels with the version, so the banner can offer a same-version rebuild.
+  it('carries the fingerprint the shipped catalogue names for the jinni', () => {
+    writeCatalogue([{ name: SNAPMAKER_JINNI, version: '0.1.10', fingerprint: 'shipped' }])
+
+    expect(offeredJinniBuild({ jinniPackage: SNAPMAKER_JINNI })).toEqual({ version: '0.1.10', fingerprint: 'shipped' })
   })
 
   it('has no version to offer when the build packs no catalogue at all', () => {
-    expect(offeredJinniVersion({ jinniPackage: SNAPMAKER_JINNI })).toBeUndefined()
+    expect(offeredJinniBuild({ jinniPackage: SNAPMAKER_JINNI })?.version).toBeUndefined()
   })
 })

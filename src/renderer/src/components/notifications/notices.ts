@@ -8,9 +8,10 @@
 import type { Plugin, ReleaseChannel, SourceRow } from '../../data/types'
 import type { Section } from '../settings'
 import { updatablePlugins } from '../plugin-store/update-all'
-import { installedFromRecords, updateTargetVersion } from '../../data/channels/updates'
+import { installedFromRecords, updateTargetBuild } from '../../data/channels/updates'
 import type { InstalledOnPrinter } from '../../data/channels/updates'
 import type { CeilingResolver } from '../../data/channels'
+import type { PackageBuild } from '@bespok3d/contract'
 
 export type NoticeSeverity = 'info' | 'warn' | 'error'
 
@@ -34,6 +35,8 @@ export interface NoticeInputs {
   plugins: Plugin[]
   installedVersions: Record<string, string>
   installedSources?: Record<string, string>
+  // The build each installed copy came from, as the daemon names it; absent from an older daemon.
+  installedFingerprints?: Record<string, string>
   ceilingFor?: CeilingResolver
   disabledChannels?: ReleaseChannel[]
 }
@@ -59,21 +62,28 @@ function authNotice(sources: SourceRow[]): Notice | null {
   }
 }
 
-// One notice per installed plugin whose build on the user's channel is strictly newer. Both the filter
-// and the displayed target are the effective variant at that ceiling, so a riskier-channel build the
-// user never opted into is neither offered nor shown as "update to the version you already run". The id
-// carries the target version so dismissing one update never suppresses the next release. Acting on it
-// opens the plugin; the label promises the changelog only when the plugin actually ships one.
+// The id names the offered build, so dismissing one update never suppresses the next one: a new
+// version, or a rebuild of the same version, which only its fingerprint tells apart.
+function updateNoticeId(pluginId: string, target: PackageBuild | undefined): string {
+  const version = target?.version ?? ''
+
+  return target?.fingerprint ? `plugin-update:${pluginId}:${version}:${target.fingerprint}` : `plugin-update:${pluginId}:${version}`
+}
+
+// One notice per installed plugin whose offered build differs from the one on the printer. Both the
+// filter and the displayed target are the effective variant at that ceiling, so a riskier-channel build
+// the user never opted into is neither offered nor shown. Acting on it opens the plugin; the label
+// promises the changelog only when the plugin actually ships one.
 function updateNotices(plugins: Plugin[], installed: InstalledOnPrinter): Notice[] {
   return updatablePlugins(plugins, installed).map((plugin) => {
-    const target = updateTargetVersion(plugin, installed)
+    const target = updateTargetBuild(plugin, installed)
 
     return {
-      id: `plugin-update:${plugin.id}:${target}`,
+      id: updateNoticeId(plugin.id, target),
       severity: 'info',
       titleKey: 'notif.update.title',
       bodyKey: 'notif.update.body',
-      params: { name: plugin.title, installed: installed.versions[plugin.id], version: target ?? '' },
+      params: { name: plugin.title, installed: installed.versions[plugin.id], version: target?.version ?? '' },
       action: { kind: 'open-plugin', pluginId: plugin.id, labelKey: plugin.changelog ? 'notif.update.action' : 'notif.update.action_plugin' },
     }
   })
@@ -81,7 +91,7 @@ function updateNotices(plugins: Plugin[], installed: InstalledOnPrinter): Notice
 
 export function buildNotices(inputs: NoticeInputs): Notice[] {
   const auth = authNotice(inputs.sources)
-  const updates = updateNotices(inputs.plugins, installedFromRecords(inputs.installedVersions, inputs.installedSources, inputs.ceilingFor, inputs.disabledChannels))
+  const updates = updateNotices(inputs.plugins, installedFromRecords(inputs.installedVersions, inputs.installedSources, inputs.ceilingFor, inputs.disabledChannels, inputs.installedFingerprints))
 
   return auth ? [auth, ...updates] : updates
 }

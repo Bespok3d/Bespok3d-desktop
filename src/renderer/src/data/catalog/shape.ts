@@ -114,6 +114,7 @@ function entryToSource(variant: IndexEntry, labels: Record<string, string>): Plu
     registryUrl: variant.registry_url,
     label: variant.source_name ?? labels[variant.source_url ?? variant.registry_url] ?? '',
     version: variant.version,
+    fingerprint: variant.fingerprint,
     swVersion: variant.sw_version,
     channel: variant.channel,
     trust: variant.trust,

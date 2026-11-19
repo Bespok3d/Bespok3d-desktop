@@ -6,13 +6,14 @@ import { holdsDaemonAccess } from '../printers/record'
 import { macForIp } from '../mdns/arp'
 import { fetchDaemonStatus } from './client'
 import { fetchMetadataResponses } from './metadata-responses'
-import { expectedDaemonVersion } from './expected-version'
+import { expectedDaemonBuild, expectedDaemonVersion } from './expected-version'
+import { DAEMON_PACKAGE } from './version'
 import { unverifiedDaemonState } from './access-state'
 import type { DaemonAccessState } from './access-state'
 export type { DaemonAccessState } from './access-state'
 import { runningMachineryVersions } from '../compat/system-packages'
 import { listAdapters } from '../adapter-loader'
-import { isReleaseNewer, isDaemonVersionAtLeast, reportedVersionOrNull } from '@bespok3d/contract'
+import { isUpgradeOffered, isDaemonVersionAtLeast, reportedVersionOrNull } from '@bespok3d/contract'
 import type { CapabilitiesResult, DaemonMetadata, PrinterProblem } from '@bespok3d/contract'
 import type { SelfCheckResult } from './client'
 
@@ -77,6 +78,9 @@ export function parseCaps(caps: CapabilitiesResult, printer: CapabilitiesHost) {
     deactivatedIds: caps.deactivated ?? [],
     installedVersions,
     machineryVersions: runningMachineryVersions(machinery, listAdapters()),
+    // An older daemon sends neither map, which clears what a newer one left on the record.
+    installedFingerprints: caps.installed_fingerprints ?? {},
+    machineryFingerprints: caps.machinery_fingerprints ?? {},
     endpoints: dedupeEndpoints(reachableEndpoints),
     firmwareVersion: caps.firmware_version ?? 'unknown',
     jinniVersion: caps.jinni_version ?? 'unknown',
@@ -133,15 +137,16 @@ export function recordOrThrow(printerId: string): PrinterRecord {
   return record
 }
 
-// The printer's daemon is behind when the version this app bundles is STRICTLY NEWER than the one it
-// reports. A device on the same or a newer daemon (a dev build ahead of the app) is never nagged: the
-// app can only deploy the daemon it carries, so offering an "update" to an older version would be a
-// downgrade. Drives the "update available" signal; recomputed on every checkDaemon ping. An unknown
-// device version (a daemon too old to report one) still offers the update, to land it on a known daemon.
-export function daemonNeedsUpdate(deviceVersion: string | undefined): boolean {
+// The printer's daemon is behind when the daemon this app would install is STRICTLY NEWER than the
+// one it reports, or is the same version rebuilt (both fingerprints known, and different). A device
+// on a newer daemon (a dev build ahead of the app) is never nagged: offering an "update" to an older
+// version would be a downgrade. Drives the "update available" signal; recomputed on every checkDaemon
+// ping. An unknown device version (a daemon too old to report one) still offers the update, to land it
+// on a known daemon.
+export function daemonNeedsUpdate(deviceVersion: string | undefined, deviceFingerprint?: string): boolean {
   if (!deviceVersion) return true
 
-  return isReleaseNewer(deviceVersion, expectedDaemonVersion())
+  return isUpgradeOffered({ version: deviceVersion, fingerprint: deviceFingerprint }, expectedDaemonBuild())
 }
 
 // Whether the printer came back on a daemon at least as new as the one this build ships. The
@@ -192,7 +197,7 @@ async function daemonMetadata(record: PrinterRecord, daemonOpen: boolean): Promi
     const responses = await fetchMetadataResponses(record, DAEMON_QUERY_TIMEOUT_MS)
     if ('failure' in responses) return responses
     const { status, caps, selfCheck } = responses
-    const daemonUpdateAvailable = daemonNeedsUpdate(status.version)
+    const daemonUpdateAvailable = daemonNeedsUpdate(status.version, caps.machinery_fingerprints?.[DAEMON_PACKAGE])
     // The version this probe just read, not the one on the record: after a daemon update the record
     // still holds the old number until this same write lands, and the store would show it for a whole
     // ping cycle as an update the printer has already taken.
@@ -222,6 +227,8 @@ async function daemonMetadata(record: PrinterRecord, daemonOpen: boolean): Promi
       // Written to the record alone, this reaches the store only on the next app start, which is what
       // left the daemon card offering to install what the printer was already running all session.
       machineryVersions: parsed.machineryVersions,
+      installedFingerprints: parsed.installedFingerprints,
+      machineryFingerprints: parsed.machineryFingerprints,
       ...health,
       switchedOff: selfCheck?.switched_off === true,
       jinniVersion: parsed.jinniVersion,

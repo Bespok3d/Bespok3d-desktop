@@ -13,7 +13,7 @@ import type { PrinterForceActions } from './PrinterForceMenu'
 import { PrinterDeployMenu } from './PrinterDeployMenu'
 import { ActiveWatchPref } from './active-watch-pref'
 import type { Printer } from '../../../../data/types'
-import { statusDotClass, updateCallout, printerAdapter } from '../../../../data/printers'
+import { statusDotClass, updateCallout, printerAdapter, adapterJinniOffer } from '../../../../data/printers'
 import { formatDateTime } from '../../../../utils/datetime'
 import { useI18n } from '../../../../i18n/context'
 import './printers.css'
@@ -145,8 +145,8 @@ function PrinterActionsRow({ printer, adapters, onEnrollPrinter, onRepair, onRec
   const { t } = useI18n()
   const action = printerPrimaryAction(printer)
   const forceActions: PrinterForceActions = { onEnroll: onEnrollPrinter, onRecover, onRepair, onReinstall }
-  const adapterJinni = printerAdapter(adapters, printer)?.jinniVersion
-  const callout = updateCallout(printer, adapterJinni)
+  const jinniOffer = adapterJinniOffer(printerAdapter(adapters, printer))
+  const callout = updateCallout(printer, jinniOffer)
   // The Force flows all run an SSH op, so they are pointless on an offline printer that cannot be
   // reached; hide the menu there (the primary action is already hidden for offline). Force is for the
   // install that enrolled the printer, so it keys on our own enrollment, not on a granted access.
@@ -154,7 +154,7 @@ function PrinterActionsRow({ printer, adapters, onEnrollPrinter, onRepair, onRec
 
   return (
     <>
-      {callout && <PrinterUpdateCallout kind={callout} adapterJinniVersion={adapterJinni} onUpdateDaemon={() => onUpdateDaemon(printer.id)} onUpdateJinni={() => onUpdateJinni(printer.id)} />}
+      {callout && <PrinterUpdateCallout kind={callout} adapterJinniVersion={jinniOffer?.version} onUpdateDaemon={() => onUpdateDaemon(printer.id)} onUpdateJinni={() => onUpdateJinni(printer.id)} />}
       <div className="printer-row-actions">
         {action === 'enroll' && <Button variant="primary" size="sm" className="enroll-cta" onClick={() => onEnrollPrinter(printer.id)}>{t('printers.enroll')}</Button>}
         {action === 'repair' && <Button variant="primary" size="sm" onClick={() => onRepair(printer.id)}>{t('printers.repair')}</Button>}

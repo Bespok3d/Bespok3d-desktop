@@ -26,6 +26,7 @@ export interface PluginMacro {
 }
 
 export type { PluginConfigType, PluginConfigScope, PluginConfigField, IndexConfigField } from './plugin-config'
+export type { LocalPackageInfo, AddLocalResult } from './local-package'
 
 export interface PluginEndpoint {
   label: string
@@ -39,6 +40,9 @@ export interface PluginSource {
   registryUrl: string
   label: string
   version: string
+  // The build fingerprint of this variant's package (a sha256 of the builder version plus the
+  // contents), when the list names one. Any difference from the installed one is offered as an update.
+  fingerprint?: string
   // The packaged upstream version this variant ships, when it wraps an external project (e.g. Fluidd
   // 1.37.2). Absent for a plugin that wraps nothing. Shown as the primary version, plugin version in
   // brackets.
@@ -156,6 +160,9 @@ export interface IndexEntry {
   name: string
   title: string
   version: string
+  // The build fingerprint of the package (a sha256 of the builder version plus the contents), when
+  // the list names one (absent on older lists).
+  fingerprint?: string
   sw_version?: string
   description: string
   tagline: string
@@ -242,20 +249,6 @@ export interface CatalogPayload {
   drops: string[]
   // Every list that failed to load, root or sub-list, with the plugins its last good copy listed.
   failures: SourceFailure[]
-}
-
-// One sideloaded (drag-dropped) package after ingest. `metadataComplete` is false when catalog fields
-// (title/description/tagline/category/channel) are missing, so the UI can hint without rejecting it.
-export interface LocalPackageInfo {
-  id: string
-  version: string
-  title: string
-  metadataComplete: boolean
-}
-
-export interface AddLocalResult {
-  added: LocalPackageInfo[]
-  errors: { file: string; message: string }[]
 }
 
 export interface Category {

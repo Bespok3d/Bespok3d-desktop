@@ -4,10 +4,15 @@
 // expected to be running. The daemon ships as its own signed package so a daemon fix reaches printers
 // without an app release behind it: when the published lists offer a newer one than this build
 // carries, that is the version the app installs and the version it expects back.
+import type { PackageBuild } from '@bespok3d/contract'
 import { bundledRegistryDir } from '../registry/bundled-dir'
-import { installableVersion } from '../registry/offered-versions'
-import { DAEMON_PACKAGE, daemonVersionInRegistry } from './version'
+import { installableBuild } from '../registry/offered-versions'
+import { DAEMON_PACKAGE, daemonBuildInRegistry } from './version'
+
+export function expectedDaemonBuild(): PackageBuild {
+  return installableBuild(DAEMON_PACKAGE, daemonBuildInRegistry(bundledRegistryDir()))
+}
 
 export function expectedDaemonVersion(): string {
-  return installableVersion(DAEMON_PACKAGE, daemonVersionInRegistry(bundledRegistryDir()))
+  return expectedDaemonBuild().version
 }

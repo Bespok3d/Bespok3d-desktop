@@ -56,7 +56,7 @@ export function useInstallState(printer: Printer | null | undefined, onPrinterUp
         setLiveInstalledIds(Object.keys(caps.installed))
         setLiveInstalledVersions(caps.installed)
         setLiveDeactivatedIds(caps.deactivated ?? [])
-        onPrinterUpdate?.(applyToId(printerId, { endpoints: caps.endpoints, installedVersions: caps.installed, deactivatedIds: caps.deactivated ?? [] }))
+        onPrinterUpdate?.(applyToId(printerId, { endpoints: caps.endpoints, installedVersions: caps.installed, installedFingerprints: caps.installed_fingerprints ?? {}, deactivatedIds: caps.deactivated ?? [] }))
       })
       // A failed live fetch must NOT blank the installed set: fall back to null so the selector uses
       // the last-known installed list from the printer record. Blanking to [] would hide every
@@ -90,6 +90,8 @@ interface UpdateAllDeps {
   installedIds: string[]
   installedVersions: Record<string, string>
   installedSources: Record<string, string>
+  // The build each installed copy came from, as the daemon names it; absent from an older daemon.
+  installedFingerprints?: Record<string, string>
   savedVars: Record<string, string>
   ceilingFor: CeilingResolver
   disabledChannels: ReleaseChannel[]
@@ -105,7 +107,7 @@ interface UpdateAllDeps {
 // while the printer is printing there is no update-all, exactly as there is no single install.
 export function useUpdateAll(deps: UpdateAllDeps): { updatableCount: number; updateBlock: InstallBlock | null; updateAll: () => void } {
   const { t } = useI18n()
-  const installed = installedFromRecords(deps.installedVersions, deps.installedSources, deps.ceilingFor, deps.disabledChannels)
+  const installed = installedFromRecords(deps.installedVersions, deps.installedSources, deps.ceilingFor, deps.disabledChannels, deps.installedFingerprints)
   const plan = buildUpdatePlan(deps.plugins, deps.collections, deps.installedIds, installed, deps.savedVars)
   const updatableCount = updateAllCount(plan)
   const updateBlock = batchBlockReason(t, { printerId: deps.printerId, printActive: deps.printActive, blockedActions: deps.blockedActions })

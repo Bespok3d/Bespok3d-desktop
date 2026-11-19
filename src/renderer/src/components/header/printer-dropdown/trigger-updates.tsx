@@ -4,6 +4,7 @@ import { useI18n } from '../../../i18n/context'
 import { useUpdateFlags } from './usePrinterUpdates'
 import { IconArrowUp } from '../../../design-system/icons'
 import type { Printer } from '../../../data/types'
+import type { JinniOffer } from '../../../data/printers'
 
 type UpdateTone = 'daemon' | 'jinni' | 'plugin'
 
@@ -20,14 +21,14 @@ function Badge({ tone, title, children }: { tone: UpdateTone; title: string; chi
 // The closed trigger's compact attention badges: an amber daemon badge, a sage adapter (jinni) badge,
 // and the plugin-update count. Managed-gated via useUpdateFlags so an offline printer wears none. The
 // closed state shows only these badges; the full "X available" wording lives in the open rows.
-export function TriggerUpdates({ printer, adapterJinniVersion }: { printer: Printer; adapterJinniVersion?: string }) {
+export function TriggerUpdates({ printer, adapterJinniOffer }: { printer: Printer; adapterJinniOffer?: JinniOffer }) {
   const { t } = useI18n()
-  const { daemon, jinni, pluginUpdates } = useUpdateFlags(printer, adapterJinniVersion)
+  const { daemon, jinni, pluginUpdates } = useUpdateFlags(printer, adapterJinniOffer)
 
   return (
     <>
       {daemon && <Badge tone="daemon" title={t('printers.daemon_update', { version: window.b3d.daemonExpectedVersion })}>{t('printers.daemon_badge')}</Badge>}
-      {jinni && <Badge tone="jinni" title={t('printers.jinni_update', { version: adapterJinniVersion ?? '' })}>{t('printers.jinni_badge')}</Badge>}
+      {jinni && <Badge tone="jinni" title={t('printers.jinni_update', { version: adapterJinniOffer?.version ?? '' })}>{t('printers.jinni_badge')}</Badge>}
       {pluginUpdates > 0 && <Badge tone="plugin" title={t('printers.plugin_updates', { count: pluginUpdates })}>{String(pluginUpdates)}</Badge>}
     </>
   )

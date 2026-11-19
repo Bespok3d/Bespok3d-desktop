@@ -9,10 +9,10 @@
 // The bytes cross the same verifier either way, and a signature that does not check out fails the op
 // loudly, because putting other bytes on the printer while the app names the published version would
 // be a lie the user cannot see.
-import { isReleaseNewer } from '@bespok3d/contract'
+import { isUpgradeOffered } from '@bespok3d/contract'
 import { loadCatalog } from '../registry'
 import { bundledRegistryDir } from '../registry/bundled-dir'
-import { shippedPackageVersion } from '../registry/shipped-version'
+import { shippedPackageBuild } from '../registry/shipped-version'
 import { forgetOfferedSystemVersion, rememberOfferedSystemVersion } from '../registry/offered-versions'
 import type { MergedEntry } from '../registry/model'
 import { discardCachedArchive, resolveArchiveBytes } from './catalog-archive'
@@ -30,17 +30,17 @@ export async function openSystemPackage(packageName: string): Promise<BundledPac
     discardCachedArchive(offered)
     throw refusal
   })
-  rememberOfferedSystemVersion(offered.name, offered.version)
+  rememberOfferedSystemVersion(offered.name, offered.version, offered.fingerprint)
 
   return publishedPackage
 }
 
 async function offeredEntry(packageName: string): Promise<MergedEntry | undefined> {
-  const shipped = shippedPackageVersion(bundledRegistryDir(), packageName)
+  const shipped = shippedPackageBuild(bundledRegistryDir(), packageName)
   const catalog = await loadCatalog()
   const published = catalog.plugins.find((candidate) => candidate.name === packageName)
 
-  return shipped && published && isReleaseNewer(shipped, published.version) ? published : undefined
+  return shipped && published && isUpgradeOffered(shipped, published) ? published : undefined
 }
 
 // A printer that answers on port 22 and nothing else still enrolls: no route to the release means the

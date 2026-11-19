@@ -3,7 +3,10 @@
 import { describe, it, expect } from 'vitest'
 import { repairBannerCondition, recoverBannerCondition, repairOrRecover, rootAccessBannerCondition, isWithinExpectedRestart, driftBannerCondition, driftedPluginCount, printerProblemBannerCondition, printerProblemCount, jinniBannerCondition, rebootBannerCondition } from './printer-banners'
 import { jinniLags } from '../data/printers'
+import type { JinniOffer } from '../data/printers'
 import type { Printer } from '../data/types'
+
+const BUNDLED_JINNI: JinniOffer = { version: '0.1.0', packageName: 'bespok3d-jinni-snapmaker-u1' }
 
 const BASE: Printer = {
   id: 'p1', nick: 'Test', model: 'test', adapter: 'snapmaker-u1',
@@ -293,35 +296,35 @@ describe('rebootBannerCondition', () => {
 
 describe('jinniLags', () => {
   it('lags when the deployed version differs from the bundled one', () => {
-    expect(jinniLags('0.0.9', '0.1.0')).toBe(true)
+    expect(jinniLags({ jinniVersion: '0.0.9' }, BUNDLED_JINNI)).toBe(true)
   })
 
   it('does not lag when the versions match', () => {
-    expect(jinniLags('0.1.0', '0.1.0')).toBe(false)
+    expect(jinniLags({ jinniVersion: '0.1.0' }, BUNDLED_JINNI)).toBe(false)
   })
 
   it('never lags when the device reports an unknown version (daemon too old to report)', () => {
-    expect(jinniLags('unknown', '0.1.0')).toBe(false)
-    expect(jinniLags(undefined, '0.1.0')).toBe(false)
+    expect(jinniLags({ jinniVersion: 'unknown' }, BUNDLED_JINNI)).toBe(false)
+    expect(jinniLags({ jinniVersion: undefined }, BUNDLED_JINNI)).toBe(false)
   })
 })
 
 describe('jinniBannerCondition', () => {
   it('is true for a managed printer whose jinni lags, outside the restart window', () => {
-    expect(jinniBannerCondition({ ...MANAGED, jinniVersion: '0.0.9' }, '0.1.0')).toBe(true)
+    expect(jinniBannerCondition({ ...MANAGED, jinniVersion: '0.0.9' }, BUNDLED_JINNI)).toBe(true)
   })
 
   it('is false when the jinni is current', () => {
-    expect(jinniBannerCondition({ ...MANAGED, jinniVersion: '0.1.0' }, '0.1.0')).toBe(false)
+    expect(jinniBannerCondition({ ...MANAGED, jinniVersion: '0.1.0' }, BUNDLED_JINNI)).toBe(false)
   })
 
   it('is false when the printer is not managed', () => {
-    expect(jinniBannerCondition({ ...MANAGED, status: 'online', jinniVersion: '0.0.9' }, '0.1.0')).toBe(false)
+    expect(jinniBannerCondition({ ...MANAGED, status: 'online', jinniVersion: '0.0.9' }, BUNDLED_JINNI)).toBe(false)
   })
 
   it('is suppressed inside the expected-restart window', () => {
     const futureUntil = 10_000
     const currentInstant = 5_000
-    expect(jinniBannerCondition({ ...MANAGED, jinniVersion: '0.0.9', expectedRestartUntil: futureUntil }, '0.1.0', currentInstant)).toBe(false)
+    expect(jinniBannerCondition({ ...MANAGED, jinniVersion: '0.0.9', expectedRestartUntil: futureUntil }, BUNDLED_JINNI, currentInstant)).toBe(false)
   })
 })

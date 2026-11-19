@@ -57,7 +57,7 @@ interface DetailPanelInputs {
 export function StoreDetailPanel({ plugin, printer, view, channelPrefs, printActive, blockedActions, savedPluginVars, onSaveVars, scopeFor, onOperationDone, history, catalogPlugins, tabRequest, onSelectPlugin, onTabRequest }: DetailPanelInputs) {
   const { primary, disabledChannels, ceilingFor, setPref } = channelPrefs
   const installedVersion = view.installedVersions[plugin.id]
-  const installed = installedFromRecords(view.installedVersions, printer?.installedSources, ceilingFor, disabledChannels)
+  const installed = installedFromRecords(view.installedVersions, printer?.installedSources, ceilingFor, disabledChannels, printer?.installedFingerprints)
 
   return (
     <B3dRefProvider onRef={(ref) => openDocRef(ref, catalogPlugins, onSelectPlugin, onTabRequest)}>

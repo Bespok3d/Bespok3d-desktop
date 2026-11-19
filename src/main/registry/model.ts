@@ -35,6 +35,10 @@ export type PackageTrust = 'project' | 'community' | 'unknown'
 export interface IndexEntry {
   name: string
   version: string
+  // The build fingerprint (a sha256 of the builder version plus the contents) of the package this
+  // entry points at. Any difference from the installed one is offered; an entry packed before
+  // fingerprints existed has none.
+  fingerprint?: string
   [field: string]: unknown
 }
 

@@ -91,6 +91,8 @@ function onDaemonResult(printer: Printer, result: DaemonResult, set: SetPrinters
   if (result.installedIds !== undefined) patch.installedIds = result.installedIds
   if (result.installedVersions !== undefined) patch.installedVersions = result.installedVersions
   if (result.machineryVersions !== undefined) patch.machineryVersions = result.machineryVersions
+  if (result.installedFingerprints !== undefined) patch.installedFingerprints = result.installedFingerprints
+  if (result.machineryFingerprints !== undefined) patch.machineryFingerprints = result.machineryFingerprints
   if (result.daemonDrift !== undefined) patch.daemonDrift = result.daemonDrift
   if (result.printerProblems !== undefined) patch.printerProblems = result.printerProblems
   if (result.rebootRequired !== undefined) patch.rebootRequired = result.rebootRequired
@@ -194,7 +196,7 @@ export async function pingAndUpdate(printer: Printer, set: SetPrinters): Promise
 export async function refreshEndpoints(printerId: string, set: SetPrinters): Promise<void> {
   try {
     const caps = await window.b3d.store.capabilities(printerId)
-    set(applyToId(printerId, { endpoints: caps.endpoints, installedVersions: caps.installed }))
+    set(applyToId(printerId, { endpoints: caps.endpoints, installedVersions: caps.installed, installedFingerprints: caps.installed_fingerprints ?? {} }))
   } catch {
     return
   }

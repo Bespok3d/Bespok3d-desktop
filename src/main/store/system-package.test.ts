@@ -11,13 +11,16 @@ const publishedList = vi.hoisted(() => ({ plugins: [] as unknown[] }))
 const downloads = vi.hoisted(() => ({ askedFor: null as unknown, bytes: Buffer.alloc(0) as Buffer, fails: false }))
 const shippedCatalogue = vi.hoisted(() => ({ dir: '' }))
 const forgotten = vi.hoisted(() => ({ packages: [] as string[] }))
-const remembered = vi.hoisted(() => ({ offers: {} as Record<string, string> }))
+const remembered = vi.hoisted(() => ({ offers: {} as Record<string, string>, fingerprints: {} as Record<string, string | undefined> }))
 
 vi.mock('../registry', () => ({ loadCatalog: async () => ({ plugins: publishedList.plugins }) }))
 vi.mock('../registry/bundled-dir', () => ({ bundledRegistryDir: () => shippedCatalogue.dir }))
 vi.mock('../registry/offered-versions', () => ({
   forgetOfferedSystemVersion: (packageName: string) => { forgotten.packages = [...forgotten.packages, packageName] },
-  rememberOfferedSystemVersion: (packageName: string, version: string) => { remembered.offers = { ...remembered.offers, [packageName]: version } },
+  rememberOfferedSystemVersion: (packageName: string, version: string, fingerprint?: string) => {
+    remembered.offers = { ...remembered.offers, [packageName]: version }
+    remembered.fingerprints = { ...remembered.fingerprints, [packageName]: fingerprint }
+  },
 }))
 vi.mock('./catalog-archive', () => ({
   discardCachedArchive: () => true,
@@ -45,14 +48,14 @@ function archiveMarked(marker: string): Buffer {
   return archive.toBuffer()
 }
 
-function publishedEntry(name: string, version: string): unknown {
-  return { name, version, download_url: `https://releases.example/${name}-${version}.b3`, trust: 'project', signer: null, registry_url: 'https://index.example/index.json' }
+function publishedEntry(name: string, version: string, fingerprint?: string): unknown {
+  return { name, version, fingerprint, download_url: `https://releases.example/${name}-${version}.b3`, trust: 'project', signer: null, registry_url: 'https://index.example/index.json' }
 }
 
 function shippedArchive(name: string, version: string, marker: string): unknown {
   writeFileSync(join(shippedCatalogue.dir, `${name}.b3`), archiveMarked(marker))
 
-  return { name, version, download_url: `${name}.b3` }
+  return { name, version, fingerprint: `${name}-shipped-fingerprint`, download_url: `${name}.b3` }
 }
 
 beforeEach(() => {
@@ -62,6 +65,7 @@ beforeEach(() => {
   downloads.bytes = archiveMarked('published bytes')
   forgotten.packages = []
   remembered.offers = {}
+  remembered.fingerprints = {}
   shippedCatalogue.dir = mkdtempSync(join(tmpdir(), 'b3d-shipped-'))
   const shipped = [shippedArchive(DAEMON, SHIPPED_DAEMON, 'shipped daemon'), shippedArchive(JINNI, SHIPPED_JINNI, 'shipped jinni')]
   writeFileSync(join(shippedCatalogue.dir, 'index.json'), JSON.stringify({ plugins: shipped }))
@@ -122,6 +126,28 @@ describe('the machinery this app puts on a printer', () => {
   })
 })
 
+describe('a machinery package republished under the same version', () => {
+  // A daemon rebuilt and republished under the same version number used to stay off every printer,
+  // because only a higher version moved the app off the copy in its build.
+  it('is the published daemon when the lists offer the same version built from different bytes', async () => {
+    publishedList.plugins = [publishedEntry(DAEMON, SHIPPED_DAEMON, 'rebuilt-fingerprint')]
+
+    const opened = await openSystemPackage(DAEMON)
+
+    expect(opened.payloadBytes('daemon.py').toString()).toBe('published bytes')
+    expect(remembered.fingerprints).toEqual({ [DAEMON]: 'rebuilt-fingerprint' })
+  })
+
+  it('is the shipped daemon when the same-version published entry names no fingerprint', async () => {
+    publishedList.plugins = [publishedEntry(DAEMON, SHIPPED_DAEMON)]
+
+    const opened = await openSystemPackage(DAEMON)
+
+    expect(opened.payloadBytes('daemon.py').toString()).toBe('shipped daemon')
+    expect(downloads.askedFor).toBeNull()
+  })
+})
+
 describe('a machine the published lists cannot move forward', () => {
   it('installs the copy the build ships when the lists name no machinery at all', async () => {
     publishedList.plugins = [publishedEntry('spoolman', '9.9.9')]
@@ -133,8 +159,8 @@ describe('a machine the published lists cannot move forward', () => {
     expect(downloads.askedFor).toBeNull()
   })
 
-  it('is never dragged backwards by a published list that is behind the build', async () => {
-    publishedList.plugins = [publishedEntry(DAEMON, '0.12.24')]
+  it.each([undefined, 'older-fingerprint'])('is never dragged backwards by a published list that is behind the build (fingerprint %s)', async (publishedFingerprint) => {
+    publishedList.plugins = [publishedEntry(DAEMON, '0.12.24', publishedFingerprint)]
 
     const opened = await openSystemPackage(DAEMON)
 

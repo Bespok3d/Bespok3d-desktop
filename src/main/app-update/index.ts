@@ -8,6 +8,8 @@ import { reportEvent } from '../analytics'
 import { loadSettings, saveSettings, type RepoCoords } from '../settings'
 import { APP_CHANNEL, releaseRepository } from '../channel'
 import { autoUpdateFeed } from './feed'
+import type { ReleaseInfo } from '../git-host/connector'
+import { offerSameVersionRebuilds, recordDownloadedBuild, recordFirstBuild, recordLandedBuild } from './same-version-rebuild'
 import { updateProblemFromError, type UpdateProblem } from './problem'
 import { readPublishedReleases, fetchReleaseInstallers, downloadPublicAsset, isReleasePageUrl } from './public-releases'
 import { checkIntervalMs, pickPlatformAsset, type UpdateFrequency } from './schedule'
@@ -16,6 +18,7 @@ import {
   autoInstallPayload,
   manualUpdatePayload,
   newestChannelRelease,
+  installedChannelRelease,
   toReleaseRows,
   type UpdateAvailablePayload,
   type AppReleaseListing,
@@ -89,12 +92,19 @@ async function emitAvailable(getMainWindow: WindowGetter, updateInfo: UpdateInfo
 function wireListeners(getMainWindow: WindowGetter): void {
   if (listenersWired) return
   listenersWired = true
+  recordLandedBuild()
+  offerSameVersionRebuilds()
   autoUpdater.on('update-available', (updateInfo: UpdateInfo) => { void emitAvailable(getMainWindow, updateInfo) })
-  autoUpdater.on('update-not-available', () => sendToRenderer(getMainWindow, 'app-update:none', app.getVersion()))
+  autoUpdater.on('update-not-available', (updateInfo: UpdateInfo) => {
+    recordFirstBuild(updateInfo)
+    sendToRenderer(getMainWindow, 'app-update:none', app.getVersion())
+  })
   autoUpdater.on('download-progress', (progress: ProgressInfo) =>
     sendToRenderer(getMainWindow, 'app-update:progress', progress.percent))
-  autoUpdater.on('update-downloaded', (updateInfo: UpdateInfo) =>
-    sendToRenderer(getMainWindow, 'app-update:downloaded', updateInfo.version))
+  autoUpdater.on('update-downloaded', (updateInfo: UpdateInfo) => {
+    recordDownloadedBuild(updateInfo)
+    sendToRenderer(getMainWindow, 'app-update:downloaded', updateInfo.version)
+  })
   autoUpdater.on('error', (error: Error) => reportError(getMainWindow, error))
 }
 
@@ -123,16 +133,23 @@ function ensureConfigured(getMainWindow: WindowGetter): boolean {
   return true
 }
 
-async function readApplicableUpdate() {
-  const appRepo = resolveAppRepo()
-  if (!appRepo) return { appRepo, release: null, problem: null }
-  const { releases, problem } = await readPublishedReleases(appRepo)
-  if (problem) return { appRepo, release: null, problem }
-
-  return { appRepo, release: newestChannelRelease(releases, app.getVersion(), APP_CHANNEL.buildFlavor), problem: null }
+interface UpdateRead {
+  appRepo: RepoCoords | null
+  releases: ReleaseInfo[]
+  release: ReleaseInfo | null
+  problem: UpdateProblem | null
 }
 
-function reportNoUpdateRead(getMainWindow: WindowGetter, updateRead: Awaited<ReturnType<typeof readApplicableUpdate>>): boolean {
+async function readApplicableUpdate(): Promise<UpdateRead> {
+  const appRepo = resolveAppRepo()
+  if (!appRepo) return { appRepo, releases: [], release: null, problem: null }
+  const { releases, problem } = await readPublishedReleases(appRepo)
+  if (problem) return { appRepo, releases, release: null, problem }
+
+  return { appRepo, releases, release: newestChannelRelease(releases, app.getVersion(), APP_CHANNEL.buildFlavor), problem: null }
+}
+
+function reportNoUpdateRead(getMainWindow: WindowGetter, updateRead: UpdateRead): boolean {
   if (updateRead.problem) {
     sendProblem(getMainWindow, updateRead.problem, `Could not read the release list from github.com (${updateRead.problem})`)
 
@@ -154,7 +171,10 @@ async function checkManualUpdate(getMainWindow: WindowGetter): Promise<void> {
 
 async function runCheck(getMainWindow: WindowGetter): Promise<unknown> {
   if (!autoInstallSupported()) return checkManualUpdate(getMainWindow)
-  const updateRead = await readApplicableUpdate()
+  const versionRead = await readApplicableUpdate()
+  // No newer version: the running version's own release is still read, a rebuild may sit there.
+  const release = versionRead.release ?? installedChannelRelease(versionRead.releases, app.getVersion(), APP_CHANNEL.buildFlavor)
+  const updateRead = { ...versionRead, release }
   if (reportNoUpdateRead(getMainWindow, updateRead) || !updateRead.release || !updateRead.appRepo) return
   autoUpdater.channel = APP_CHANNEL.updateChannel
   autoUpdater.setFeedURL(autoUpdateFeed(updateRead.appRepo, updateRead.release.tag)!)
