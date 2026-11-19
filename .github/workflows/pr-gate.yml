@@ -29,7 +29,7 @@ jobs:
           # Pinned to a commit, not a branch: the shared-tooling checkout must be immutable or whoever
           # can push to lib_bespok3d changes what this gate executes. Bump this SHA when the shared
           # detectors move. The workflow-pinning guard fails the gate on any non-40-hex ref here.
-          ref: 94724bda4ce0fc13438460601a7177ec194bd12a
+          ref: 37b692c178deea3795a594ece4992601f53b1149
           path: lib_bespok3d
       - uses: actions/setup-node@v4
         with:
