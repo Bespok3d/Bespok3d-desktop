@@ -109,7 +109,26 @@ The Spoolman address, and any other web address in a plugin's settings, was trie
 computer, but the plugin uses it from the printer. The check now asks the printer to try it and shows
 what the printer got.
 
+### A fixed release is offered even when its version did not change
+
+A release fixed and published again under the same version number was never offered: the app only
+compared version numbers. The app, plugins, the printer's Bespok3d service and its helpers now
+carry a fingerprint of what is inside, so a rebuilt release shows up as an update.
+
+### Plugins with a new setting install on printers with older Bespok3d
+
+A plugin that gained a new setting, like the camera's freeze recovery, was refused by a printer
+running an older Bespok3d service. The app now sends that setting's default value along, so the
+install goes through.
+
 ### Smaller things
+
+- The install window now shows "Getting ready" and "Restarting services" steps, and its count never goes back.
+- Updating a plugin asks for any required value it is missing before it starts.
+- Update all also updates plugins whose new version changes how their settings are stored.
+- After updating or repairing the printer's Bespok3d service, the printer setup is put back by itself, so you no longer need "Put it back".
+- The access warning no longer shows while the printer is restarting after something the app started.
+- A computer that was given access to a printer, but did not set it up, is now offered Repair or Recover instead of setup.
 
 - Long jobs no longer give up after five minutes while the printer says it is still working on them.
 - Start over and retry after a failed step now do what they say: a failed printer restart is tried again, and Start over goes back to the first screen, so a refused login can be swapped for yours.

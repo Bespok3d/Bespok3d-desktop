@@ -49,6 +49,23 @@ Resetting access asks for your own SSH password instead of trying the factory on
 The Spoolman address in a plugin's settings is now tested from the printer, where the plugin uses it,
 not from your computer.
 
+### A fixed release is offered even when its version did not change
+
+The app, plugins and the printer's Bespok3d service now carry a fingerprint of what is inside, so a
+release fixed and published again under the same version shows up as an update.
+
+### Plugins with a new setting install on printers with older Bespok3d
+
+A plugin that gained a new setting is no longer refused by a printer running an older Bespok3d
+service.
+
+### Smaller fixes
+
+- Clearer install progress, and updates ask for missing required values first.
+- After updating the printer's Bespok3d service, the printer setup is put back by itself.
+- The access warning no longer shows while the printer restarts.
+- A computer given access to a printer can now Repair or Recover it.
+
 ### Security updates
 
 Electron 43.8.1 and other security updates.
