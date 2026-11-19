@@ -86,6 +86,10 @@ if (command === 'gh') {
     process.stdout.write('staging-main\\n')
     process.exit(0)
   }
+  if (argumentsList[0] === 'api' && process.env.B3D_FIXTURE_REMOTE_COMMIT_UNKNOWN === 'true') {
+    process.stderr.write('gh: Not Found (HTTP 404)\\n')
+    process.exit(1)
+  }
   if (argumentsList[0] === 'api') {
     process.stdout.write((process.env.B3D_FIXTURE_REMOTE_STATUS ?? 'ahead') + '\\n')
     process.exit(0)
@@ -295,6 +299,20 @@ test('Staging publish-only targets its built desktop dev commit', () => {
   ).map((artifactPath) => basename(artifactPath)).sort()
   assert.deepEqual(releaseAssetNames, releaseArtifacts(stagingVersion, 'staging').map((artifact) => assetName(artifact.built)).sort())
   assert.ok(result.output.includes(`Publishing `) && result.output.includes(` staging ${stagingVersion} `) && result.output.includes(' as a prerelease'))
+})
+
+test('a Staging build from a commit GitHub does not have says to push dev, before uploading', () => {
+  const result = runRelease(['staging', 'publish'], {
+    seedTarget: 'staging',
+    environment: { B3D_FIXTURE_REMOTE_COMMIT_UNKNOWN: 'true' },
+  })
+  const releaseMutations = result.commands.filter((command) =>
+    command.command === 'gh' && ['create', 'upload', 'edit'].includes(command.args[1]),
+  )
+
+  assert.notEqual(result.status, 0)
+  assert.deepEqual(releaseMutations, [])
+  assert.match(result.output, /not on GitHub\. Push dev, then publish again/)
 })
 
 test('a Staging source absent from desktop dev stops before uploading', () => {

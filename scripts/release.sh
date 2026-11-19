@@ -318,6 +318,20 @@ prerelease_flag() {
 # replaced by dashes (e.g. "Bespok3d Setup X.exe" -> "Bespok3d-Setup-X.exe") and writes the feed to
 # match, so we upload those files under the dashed name; otherwise GitHub's own space->dot rename
 # would not match the feed and Windows updates would 404.
+# GitHub answers 404 for a commit it has never seen, which is what a build from an unpushed commit
+# looks like; gh alone prints only "Not Found".
+stop_on_unreachable_staging_source() {
+  local source_commit="$1" compare_failure="$2"
+
+  if grep -q 'HTTP 404' "$compare_failure"; then
+    echo "Error: this Staging build was made from commit $source_commit, which is not on GitHub. Push dev, then publish again (no rebuild needed)." >&2
+  else
+    echo "Error: could not ask GitHub whether commit $source_commit is on the desktop dev branch: $(cat "$compare_failure")" >&2
+  fi
+  rm -f "$compare_failure"
+  exit 1
+}
+
 publish_artifacts() {
   local version="$1" target="${2:-$TARGET}" tag="v$1" artifact base staging source_commit source_label host_commit remote_branch_status
   # A dry run uploads nothing, so it has nothing to need gh for.
@@ -357,7 +371,10 @@ publish_artifacts() {
   fi
   host_commit="$source_commit"
   if [ "$target" = staging ] && [ "$DRY_RUN" = false ]; then
-    remote_branch_status=$(gh api "repos/$PUBLISH_REPO/compare/$source_commit...dev" --jq '.status')
+    compare_failure="$(mktemp)"
+    remote_branch_status=$(gh api "repos/$PUBLISH_REPO/compare/$source_commit...dev" --jq '.status' 2> "$compare_failure") \
+      || stop_on_unreachable_staging_source "$source_commit" "$compare_failure"
+    rm -f "$compare_failure"
     if [ "$remote_branch_status" != identical ] && [ "$remote_branch_status" != ahead ]; then
       echo "Error: the built Staging source commit is not on the desktop dev branch." >&2
       exit 1
