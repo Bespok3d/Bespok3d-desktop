@@ -43,8 +43,9 @@ vi.mock('./keys', () => ({
   generateKey: vi.fn(), listKeys: vi.fn(), removeKey: vi.fn(), exportPublicKey: vi.fn(),
   exportPrivateKey: vi.fn(), setDefault: vi.fn(), setAssignments: vi.fn(), setKeyIcon: vi.fn(), setPublishedAt: vi.fn(),
 }))
-vi.mock('./printers', () => ({
-  savePrinter: vi.fn(), updatePrinter: vi.fn(), loadPrinters: vi.fn().mockReturnValue([]), removePrinter: vi.fn(),
+vi.mock('./printers', async () => ({
+  savePrinter: vi.fn(), updatePrinter: vi.fn(), loadPrinters: vi.fn().mockReturnValue([]), loadPublicPrinters: vi.fn().mockReturnValue([]), removePrinter: vi.fn(),
+  withoutAccessFact: (await vi.importActual<typeof import('./printers/record')>('./printers/record')).withoutAccessFact,
   pingPrinter: vi.fn(), checkDaemon: vi.fn(), checkSshOpen: vi.fn(), resolveLiveAddress: vi.fn(),
 }))
 vi.mock('./daemon-client/expected-version', () => ({ expectedDaemonVersion: () => '0.0.0' }))
@@ -71,7 +72,7 @@ vi.mock('./dev-tools/patch-apply', () => ({ applyPatch: vi.fn() }))
 import { registerIpc } from './ipc'
 import { fetchCapabilities, reconfigurePlugin, recoverAfterReboot, fetchAccessClients, grantAccess, revokeAccess } from './daemon-client/client'
 import { enrollPrinter } from './enrollment'
-import { updatePrinter, loadPrinters } from './printers'
+import { savePrinter, updatePrinter, loadPrinters } from './printers'
 import { checkDaemonRecord } from './daemon-client/status'
 import { getAdapter } from './adapter-loader'
 import { connect } from './ssh'
@@ -129,7 +130,7 @@ describe('enroll handler refreshes daemon status', () => {
     // now refreshes the record from the live daemon as soon as enroll succeeds, so the printer shows
     // its real version (and update signal) immediately.
     vi.mocked(enrollPrinter).mockResolvedValue(undefined)
-    vi.mocked(checkDaemonRecord).mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true, accessState: 'authorized', ip: '192.0.2.23', networkInterfaces: [], daemonVersion: '0.0.0' })
+    vi.mocked(checkDaemonRecord).mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true, accessState: 'authorized', ip: '192.0.2.23', networkInterfaces: [], daemonVersion: '0.0.0' })
 
     registerIpc(() => firstWindow)
     const enroll = registeredHandlers.get('printers:enroll')
@@ -137,6 +138,22 @@ describe('enroll handler refreshes daemon status', () => {
     await enroll({}, 'printer-1', '192.0.2.5', 'snapmaker-u1', 'lava', 'pw', 22)
 
     expect(checkDaemonRecord).toHaveBeenCalledWith('printer-1')
+  })
+})
+
+// The access fact is computed from the stored credentials on every load. Writing it down would freeze a
+// stale answer into the record, so the renderer's copy never reaches the store.
+describe('the access fact never lands in the stored record', () => {
+  beforeEach(() => { vi.clearAllMocks(); registeredHandlers.clear() })
+
+  it('is dropped from a printer the renderer saves', async () => {
+    await handlerFor('printers:save')({}, { id: 'printer-1', holdsDaemonAccess: true })
+    expect(savePrinter).toHaveBeenCalledWith({ id: 'printer-1' })
+  })
+
+  it('is dropped from fields the renderer patches', async () => {
+    await handlerFor('printers:patch')({}, 'printer-1', { nick: 'Bench', holdsDaemonAccess: false })
+    expect(updatePrinter).toHaveBeenCalledWith('printer-1', { nick: 'Bench' })
   })
 })
 
@@ -177,6 +194,14 @@ describe('printers:checkWriteLayer handler (repair vs recover)', () => {
     vi.mocked(getAdapter).mockReturnValue(writeLayerAdapter(true))
     expect(await invokeCheckWriteLayer()).toBeNull()
     expect(connect).not.toHaveBeenCalled()
+  })
+
+  // The staging app was granted access to a printer another install enrolled: credentials, no
+  // enrollment log. After an OTA it must still learn whether the write layer was reset.
+  it('probes a printer this app was granted access to, with no enrollment of its own', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'printer-1', adapter: 'snapmaker-u1', ip: '192.0.2.5', daemonToken: 'T', daemonCert: 'C' } as never])
+    vi.mocked(getAdapter).mockReturnValue(writeLayerAdapter(false))
+    expect(await invokeCheckWriteLayer()).toBe(false)
   })
 
   it('returns null for a never-enrolled printer', async () => {

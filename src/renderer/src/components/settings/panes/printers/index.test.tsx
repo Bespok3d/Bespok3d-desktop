@@ -9,6 +9,7 @@ import { makePrinter, makeAdapterInfo } from '../../../../test/fixtures'
 import { PrintersPane } from './index'
 import { PrinterActionsContext } from '../../printer-actions'
 import { printerPrimaryAction } from './printer-row'
+import type { ConnectionReach } from '../../../../data/printer'
 
 const en = makeT('en')
 
@@ -32,7 +33,11 @@ function renderPane(printer: ReturnType<typeof makePrinter>, fns: ReturnType<typ
   )
 }
 
-const enrolled = { enrollmentLog: { enrolledAt: '2026-01-01', adapterId: 'snapmaker-u1', steps: [] } }
+// Holding the daemon's credentials is what makes a printer this app's to repair, whether it enrolled the
+// printer itself or was handed access by an access grant, so no fixture here carries an enrollment log.
+function withDaemonAccess(reach: ConnectionReach) {
+  return { connection: { reach, sshOpen: true }, holdsDaemonAccess: true }
+}
 
 function lastDeactivateButton(): HTMLElement {
   var matches = screen.getAllByRole('button', { name: en('printers.deactivate') })
@@ -54,9 +59,9 @@ describe('PrintersPane lifecycle actions', () => {
     expect(fns.onEnrollPrinter).toHaveBeenCalledWith('printer-1')
   })
 
-  it('repairs, not re-enrolls, an already-enrolled printer whose daemon is unreachable', async () => {
+  it('repairs, not re-enrolls, a printer whose daemon this app holds access to and that is unreachable, with no enrollment log of its own', async () => {
     var fns = handlers()
-    var { user } = renderPane(makePrinter({ status: 'online', ...enrolled }), fns)
+    var { user } = renderPane(makePrinter({ status: 'online', ...withDaemonAccess('recoverable') }), fns)
     expect(screen.queryByRole('button', { name: en('printers.enroll') })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: en('printers.repair') }))
     expect(fns.onRepairPrinter).toHaveBeenCalledWith('printer-1')
@@ -72,7 +77,7 @@ describe('PrintersPane lifecycle actions', () => {
 
   it('confirms before deactivating a managed printer', async () => {
     var fns = handlers()
-    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...enrolled }), fns)
+    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...withDaemonAccess('managed') }), fns)
     await user.click(screen.getByRole('button', { name: en('printers.deactivate') }))
 
     expect(await screen.findByText(en('printers.deactivate_summary'))).toBeInTheDocument()
@@ -84,7 +89,7 @@ describe('PrintersPane lifecycle actions', () => {
 
   it('updates the daemon from the Deploy menu and toggles the custom-SSH preference', async () => {
     var fns = handlers()
-    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...enrolled }), fns)
+    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...withDaemonAccess('managed') }), fns)
     await user.click(screen.getByRole('button', { name: en('printers.deploy') }))
     await user.click(screen.getByRole('button', { name: en('printers.update_daemon') }))
     expect(fns.onUpdateDaemon).toHaveBeenCalledWith('printer-1')
@@ -95,7 +100,7 @@ describe('PrintersPane lifecycle actions', () => {
 
   it('updates the device-side adapter (jinni) from the Deploy menu', async () => {
     var fns = handlers()
-    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...enrolled }), fns)
+    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...withDaemonAccess('managed') }), fns)
     await user.click(screen.getByRole('button', { name: en('printers.deploy') }))
     await user.click(screen.getByRole('button', { name: en('printers.update_jinni') }))
     expect(fns.onUpdateJinni).toHaveBeenCalledWith('printer-1')
@@ -105,7 +110,7 @@ describe('PrintersPane lifecycle actions', () => {
 describe('PrintersPane remove flow', () => {
   it('removes the printer from Bespok3d only when teardown is left off', async () => {
     var fns = handlers()
-    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...enrolled }), fns)
+    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...withDaemonAccess('managed') }), fns)
     await user.click(screen.getByRole('button', { name: en('printers.remove') }))
 
     expect(await screen.findByText(en('printers.remove_summary'))).toBeInTheDocument()
@@ -116,7 +121,7 @@ describe('PrintersPane remove flow', () => {
 
   it('tears Bespok3d down on the printer when the opt-in toggle is on', async () => {
     var fns = handlers()
-    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...enrolled }), fns)
+    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...withDaemonAccess('managed') }), fns)
     await user.click(screen.getByRole('button', { name: en('printers.remove') }))
     await user.click(screen.getByRole('switch', { name: en('printers.remove_also_teardown') }))
     await user.click(lastRemoveButton())
@@ -130,7 +135,8 @@ describe('PrintersPane Force menu', () => {
   // newer daemon than the app ships, which is the state a re-enroll or a repair is usually chasing.
   it('recalls each setup flow on demand for an enrolled printer, and asks for it forced', async () => {
     var fns = handlers()
-    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...enrolled }), fns)
+    var enrolledHere = { enrollmentLog: { enrolledAt: '2026-01-01', adapterId: 'snapmaker-u1', steps: [] } }
+    var { user } = renderPane(makePrinter({ status: 'managed', daemonVersion: '0.10.31-dev', ...withDaemonAccess('managed'), ...enrolledHere }), fns)
 
     await user.click(screen.getByRole('button', { name: new RegExp(en('printers.force')) }))
     await user.click(screen.getByRole('button', { name: en('printers.force_recover') }))
@@ -157,7 +163,7 @@ describe('PrintersPane Force menu', () => {
 
   it('hides the Force menu for an offline printer (its SSH flows cannot reach it)', () => {
     var fns = handlers()
-    renderPane(makePrinter({ status: 'offline', ...enrolled }), fns)
+    renderPane(makePrinter({ status: 'offline', ...withDaemonAccess('offline') }), fns)
     expect(screen.queryByRole('button', { name: new RegExp(en('printers.force')) })).not.toBeInTheDocument()
   })
 })
@@ -165,30 +171,30 @@ describe('PrintersPane Force menu', () => {
 describe('PrinterRow presentation', () => {
   it('offers a one-click daemon update on a managed row when the daemon lags', async () => {
     var fns = handlers()
-    var { user } = renderPane(makePrinter({ status: 'managed', jinniVersion: '0.1.6', daemonUpdateAvailable: true, ...enrolled }), fns)
+    var { user } = renderPane(makePrinter({ status: 'managed', jinniVersion: '0.1.6', daemonUpdateAvailable: true, ...withDaemonAccess('managed') }), fns)
     await user.click(screen.getByRole('button', { name: /Update daemon to/ }))
     expect(fns.onUpdateDaemon).toHaveBeenCalledWith('printer-1')
   })
 
   it('offers a one-click adapter (jinni) update on a managed row when the jinni lags', async () => {
     var fns = handlers()
-    var { user } = renderPane(makePrinter({ status: 'managed', jinniVersion: '0.1.5', ...enrolled }), fns)
+    var { user } = renderPane(makePrinter({ status: 'managed', jinniVersion: '0.1.5', ...withDaemonAccess('managed') }), fns)
     await user.click(screen.getByRole('button', { name: /Update adapter to 0\.1\.6/ }))
     expect(fns.onUpdateJinni).toHaveBeenCalledWith('printer-1')
   })
 
   it('shows no update callout when the daemon and adapter are current', () => {
-    renderPane(makePrinter({ status: 'managed', jinniVersion: '0.1.6', ...enrolled }), handlers())
+    renderPane(makePrinter({ status: 'managed', jinniVersion: '0.1.6', ...withDaemonAccess('managed') }), handlers())
     expect(screen.queryByRole('button', { name: /Update daemon to|Update adapter to/ })).not.toBeInTheDocument()
   })
 
   it('fills a deactivated row with a prominent Deactivated banner', () => {
-    renderPane(makePrinter({ status: 'deactivated', ...enrolled }), handlers())
+    renderPane(makePrinter({ status: 'deactivated', ...withDaemonAccess('managed') }), handlers())
     expect(screen.getByText(en('printers.deactivated_hint'))).toBeInTheDocument()
   })
 
   it('shows no Deactivated banner on a managed row', () => {
-    renderPane(makePrinter({ status: 'managed', ...enrolled }), handlers())
+    renderPane(makePrinter({ status: 'managed', ...withDaemonAccess('managed') }), handlers())
     expect(screen.queryByText(en('printers.deactivated_hint'))).not.toBeInTheDocument()
   })
 
@@ -204,7 +210,13 @@ describe('printerPrimaryAction', () => {
   })
 
   it('offers repair for an enrolled online printer (daemon unreachable)', () => {
-    expect(printerPrimaryAction(makePrinter({ status: 'online', ...enrolled }))).toBe('repair')
+    expect(printerPrimaryAction(makePrinter({ status: 'online', ...withDaemonAccess('recoverable') }))).toBe('repair')
+  })
+
+  // The OTA case: mDNS sees the printer before any probe ran, so there is no connection yet. The access
+  // fact comes with the printer from load, so Repair shows from the first frame, not Enroll.
+  it('offers repair for a printer this app holds access to that mDNS sees before any probe', () => {
+    expect(printerPrimaryAction(makePrinter({ status: 'online', holdsDaemonAccess: true }))).toBe('repair')
   })
 
   it('manages a managed printer and reactivates a deactivated one', () => {
@@ -213,7 +225,7 @@ describe('printerPrimaryAction', () => {
   })
 
   it('offers nothing while checking or fully offline', () => {
-    expect(printerPrimaryAction(makePrinter({ status: 'checking', ...enrolled }))).toBe('none')
-    expect(printerPrimaryAction(makePrinter({ status: 'offline', ...enrolled }))).toBe('none')
+    expect(printerPrimaryAction(makePrinter({ status: 'checking', ...withDaemonAccess('offline') }))).toBe('none')
+    expect(printerPrimaryAction(makePrinter({ status: 'offline', ...withDaemonAccess('offline') }))).toBe('none')
   })
 })

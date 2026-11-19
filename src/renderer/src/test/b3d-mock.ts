@@ -150,7 +150,7 @@ function mockKeys(override: Partial<B3d['keys']> = {}): B3d['keys'] {
 function mockPrinters(channels: Channels, override: Partial<B3d['printers']> = {}): B3d['printers'] {
   return {
     load: resolved([]), save: voidFn(), patch: voidFn(), remove: voidFn(), ping: resolved(true),
-    checkSshOpen: resolved(true), checkWriteLayer: resolved(null), checkDaemon: resolved({ isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '', networkInterfaces: [] }),
+    checkSshOpen: resolved(true), checkWriteLayer: resolved(null), checkDaemon: resolved({ isManaged: false, holdsDaemonAccess: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '', networkInterfaces: [] }),
     adapterGet: resolved(makeAdapterInfo()), adaptersList: resolved([makeAdapterInfo()]),
     checkSsh: resolved({ ok: true }), enroll: voidFn(), cancelOp: voidFn(), onEnrollProgress: sub(channels.enrollProgress),
     watchPrintState: voidFn(), unwatchPrintState: voidFn(), onPrintState: sub(channels.printState),

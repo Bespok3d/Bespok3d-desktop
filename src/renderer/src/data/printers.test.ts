@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Printer } from './types'
 
 type Reach = 'managed' | 'recoverable' | 'alive-no-ssh' | 'offline'
-type CheckDaemonResult = { isManaged: boolean; reach?: Reach; sshOpen?: boolean; daemonVersion?: string; daemonUpdateAvailable?: boolean }
+type CheckDaemonResult = { isManaged: boolean; holdsDaemonAccess: boolean; reach?: Reach; sshOpen?: boolean; daemonVersion?: string; daemonUpdateAvailable?: boolean }
 
 type CapsResult = { endpoints: Array<{ label: string; url: string }>; installed: Record<string, string> }
 
@@ -29,7 +29,7 @@ import type { DiscoveredPrinterRecord } from '../env'
 
 const BASE: Printer = {
   id: 'p1', nick: 'Test', model: 'test', adapter: 'test',
-  host: 'test.local', ip: '1.2.3.4', status: 'online', installedIds: [],
+  host: 'test.local', ip: '1.2.3.4', status: 'online', installedIds: [], holdsDaemonAccess: false,
 }
 
 const ENROLLED: Printer = {
@@ -169,42 +169,42 @@ describe('pingAndUpdate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetPrinterProbe('p1')
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'offline', sshOpen: false })
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: false, reach: 'offline', sshOpen: false })
     mockCheckWriteLayer.mockResolvedValue(null)
   })
 
   it('stays put on a single unreachable probe, then goes offline on the second (hysteresis)', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'offline', sshOpen: false })
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: false, reach: 'offline', sshOpen: false })
     expect((await runUpdate(BASE))?.status).toBe('online')
     expect((await runUpdate(BASE))?.status).toBe('offline')
   })
 
   it('sets the printer to managed when the daemon answers', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true })
     expect((await runUpdate(ENROLLED))?.status).toBe('managed')
   })
 
   it('records the connection reach on a managed answer', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true })
     expect((await runUpdate(ENROLLED))?.connection).toEqual({ reach: 'managed', sshOpen: true, accessState: 'authorized' })
   })
 
   it('sets the printer to online and records reach when the daemon is down but SSH is up', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true })
     const result = await runUpdate(ENROLLED)
     expect(result?.status).toBe('online')
     expect(result?.connection).toEqual({ reach: 'recoverable', sshOpen: true })
   })
 
   it('stores daemonVersion and daemonUpdateAvailable from the daemon answer', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true, daemonVersion: '0.0.9', daemonUpdateAvailable: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true, daemonVersion: '0.0.9', daemonUpdateAvailable: true })
     const result = await runUpdate(ENROLLED)
     expect(result?.daemonVersion).toBe('0.0.9')
     expect(result?.daemonUpdateAvailable).toBe(true)
   })
 
   it('keeps a non-enrolled reachable printer online', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: false, reach: 'recoverable', sshOpen: true })
     expect((await runUpdate(BASE))?.status).toBe('online')
   })
 })
@@ -215,7 +215,7 @@ describe('pingAndUpdate', () => {
 // repair banner cannot show. Only the SECOND consecutive miss downgrades status to online + reach to
 // recoverable, at which point the repair banner is the right thing to show.
 describe('connection hiccup does not jump the repair banner', () => {
-  const MANAGED: Printer = { ...ENROLLED, status: 'managed', connection: { reach: 'managed', sshOpen: true } }
+  const MANAGED: Printer = { ...ENROLLED, status: 'managed', connection: { reach: 'managed', sshOpen: true }, holdsDaemonAccess: true }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -224,7 +224,7 @@ describe('connection hiccup does not jump the repair banner', () => {
   })
 
   it('holds managed + shows no repair banner on the first missed probe', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true })
     const afterOne = await runUpdate(MANAGED)
     expect(afterOne?.status).toBe('managed')
     expect(afterOne?.connection).toEqual({ reach: 'managed', sshOpen: true })
@@ -232,7 +232,7 @@ describe('connection hiccup does not jump the repair banner', () => {
   })
 
   it('shows the repair banner only after the second consecutive miss', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true })
     const afterOne = await runUpdate(MANAGED)
     const afterTwo = await runUpdate(afterOne!)
     expect(afterTwo?.status).toBe('online')
@@ -241,10 +241,10 @@ describe('connection hiccup does not jump the repair banner', () => {
   })
 
   it('clears the strike (no banner) when the daemon answers again before the second miss', async () => {
-    mockCheckDaemon.mockResolvedValueOnce({ isManaged: false, reach: 'recoverable', sshOpen: true })
+    mockCheckDaemon.mockResolvedValueOnce({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true })
     const afterMiss = await runUpdate(MANAGED)
     expect(repairBannerCondition(afterMiss!)).toBe(false)
-    mockCheckDaemon.mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true })
     const recovered = await runUpdate(afterMiss!)
     expect(recovered?.status).toBe('managed')
     expect(repairBannerCondition(recovered!)).toBe(false)
@@ -270,7 +270,7 @@ describe('pingAndUpdate write-layer probe (repair vs recover)', () => {
   })
 
   it('probes once for a recoverable enrolled printer and caches the verdict', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true })
     mockCheckWriteLayer.mockResolvedValue(false)
     const result = await foldUpdaters(ENROLLED)
     expect(mockCheckWriteLayer).toHaveBeenCalledWith('p1')
@@ -278,31 +278,31 @@ describe('pingAndUpdate write-layer probe (repair vs recover)', () => {
   })
 
   it('does not probe a custom-credential printer (defers to the op-time backstop)', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true })
     await foldUpdaters({ ...ENROLLED, customSshCredentials: true })
     expect(mockCheckWriteLayer).not.toHaveBeenCalled()
   })
 
   it('does not re-probe once a verdict is cached', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true })
     await foldUpdaters({ ...ENROLLED, writeLayerIntact: true })
     expect(mockCheckWriteLayer).not.toHaveBeenCalled()
   })
 
-  it('does not probe an unenrolled printer', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true })
+  it('does not probe a printer whose daemon this app holds no access to', async () => {
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: false, reach: 'recoverable', sshOpen: true })
     await foldUpdaters(BASE)
     expect(mockCheckWriteLayer).not.toHaveBeenCalled()
   })
 
   it('does not probe when the printer is not recoverable', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: false, reach: 'alive-no-ssh', sshOpen: false })
+    mockCheckDaemon.mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'alive-no-ssh', sshOpen: false })
     await foldUpdaters(ENROLLED)
     expect(mockCheckWriteLayer).not.toHaveBeenCalled()
   })
 
   it('clears a cached verdict when the daemon answers again (a future OTA re-probes)', async () => {
-    mockCheckDaemon.mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true })
+    mockCheckDaemon.mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true })
     const result = await foldUpdaters({ ...ENROLLED, writeLayerIntact: false })
     expect(result?.writeLayerIntact).toBeUndefined()
   })

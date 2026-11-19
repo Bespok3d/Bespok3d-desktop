@@ -111,7 +111,7 @@ describe('PrinterDropdown adapter icon', () => {
 })
 
 function statePrinter(status: Printer['status'], reach?: ConnectionReach): Printer {
-  const connection = reach ? { reach, sshOpen: reach === 'managed' || reach === 'recoverable' } : undefined
+  const connection = reach ? { reach, sshOpen: reach === 'managed' || reach === 'recoverable', holdsDaemonAccess: false } : undefined
 
   return makePrinter({ id: 'printer-1', nick: 'Alpha', status, connection })
 }

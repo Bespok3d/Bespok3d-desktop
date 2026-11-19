@@ -42,7 +42,7 @@ function chooseAccessOrEnrollment(printer: Printer, fromAdd: boolean, forced: bo
 }) {
   window.b3d.printers.checkDaemon(printer.id).then((result) => {
     const selectedPrinter = result.ip ? { ...printer, ip: result.ip } : printer
-    const decision = daemonAccessDecision({ accessState: result.accessState, isManaged: result.isManaged, enrolled: Boolean(printer.enrollmentLog), hasAccessIdentity: Boolean(printer.accessIdentity) })
+    const decision = daemonAccessDecision({ accessState: result.accessState, isManaged: result.isManaged, holdsDaemonAccess: result.holdsDaemonAccess })
     if (decision === 'access' || decision === 'identity-warning') setters.setAccessModal({ printer: selectedPrinter, state: result.accessState as AccessModal['state'], fromAdd, forced })
     else if (decision === 'blocked' || (result.accessState === 'authorized' && fromAdd)) return
     else startEnrollWhenSshOpen(selectedPrinter, fromAdd, forced, setters.setRootAccessGate, setters.setEnrollProposal, setters.setEnrollModal)

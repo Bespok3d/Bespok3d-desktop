@@ -98,7 +98,7 @@ describe('migrationNoticeShows', () => {
   })
 
   it('waits behind a printer asking to be repaired', () => {
-    const broken = junior({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, enrollmentLog: { enrolledAt: '2026-06-16T22:03:00Z', adapterId: 'snapmaker-u1', steps: [] } })
+    const broken = junior({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true })
     expect(migrationNoticeShows(broken)).toBe(false)
   })
 })

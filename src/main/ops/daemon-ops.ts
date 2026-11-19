@@ -3,6 +3,7 @@
 import type { BrowserWindow } from 'electron'
 import { updatePrinter, loadPrinters } from '../printers'
 import type { PrinterRecord } from '../printers'
+import { holdsDaemonAccess } from '../printers/record'
 import { DAEMON_PORT } from '../printers/ports'
 import { getAdapter } from '../adapter-loader'
 import type { AdapterDefinition, EnrollContext, EnrollStep, SshCredentials } from '../adapter-loader'
@@ -115,7 +116,7 @@ async function guardWriteLayer(adapter: AdapterDefinition, ssh: SshSession): Pro
 // overlay was reset by a firmware OTA (full Recover).
 export async function checkWriteLayer(printerId: string): Promise<boolean | null> {
   const record = loadPrinters().find((rec) => rec.id === printerId)
-  if (!record || !record.enrollmentLog || record.customSshCredentials) return null
+  if (!record || !holdsDaemonAccess(record) || record.customSshCredentials) return null
   const adapter = getAdapter(record.adapter)
   if (!adapter) return null
   const { sshUser, sshPasswordHint, sshPort } = adapter.defaults

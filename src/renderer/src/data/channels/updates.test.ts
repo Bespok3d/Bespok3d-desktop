@@ -29,6 +29,7 @@ function makePrinter(installedVersions: Record<string, string>): Printer {
     status: 'managed',
     installedIds: Object.keys(installedVersions),
     installedVersions,
+    holdsDaemonAccess: false,
   }
 }
 

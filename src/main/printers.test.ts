@@ -218,6 +218,25 @@ describe('toPublicRecord: redacts daemon secrets for the renderer', () => {
   })
 })
 
+// The staging app was granted access to a printer another install enrolled: it holds credentials but
+// no enrollment log. Reading the log alone hid the recover offer from it after an OTA.
+describe('the access fact every loaded printer carries to the renderer', () => {
+  const printer: PrinterRecord = { ...SAMPLE_PRINTER }
+
+  it.each([
+    ['the token only', { daemonToken: 'T' }],
+    ['the certificate only', { daemonCert: 'C' }],
+    ['the access identity only', { accessIdentity: 'I' }],
+    ['the enrollment log only', { enrollmentLog: { enrolledAt: '2026-01-01', adapterId: 'snapmaker-u1', steps: [] } }],
+  ])('is true for a printer holding %s', (_held, heldFields) => {
+    expect(toPublicRecord({ ...printer, ...heldFields }).holdsDaemonAccess).toBe(true)
+  })
+
+  it('is false for a printer this app never had access to', () => {
+    expect(toPublicRecord(printer).holdsDaemonAccess).toBe(false)
+  })
+})
+
 describe('mergeCapture', () => {
   it('appends a new value newest-last', () => {
     expect(mergeCapture(['a'], 'b', 50)).toEqual(['a', 'b'])

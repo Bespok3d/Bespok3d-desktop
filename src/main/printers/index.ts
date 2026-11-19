@@ -6,8 +6,8 @@
 export type {
   EnrollmentLog, EnrollmentLogStep, DriftReport, PrinterProblem, PrinterRecord, PublicPrinterRecord, ConnectionReach,
 } from './record'
-export { toPublicRecord } from './record'
-export { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter } from './store'
+export { toPublicRecord, withoutAccessFact } from './record'
+export { savePrinter, loadPrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter } from './store'
 export { mergeCapture, appendPluginCapture, pluginCaptures } from './captures'
 export { pingPrinter, checkDaemon, probeDaemonPort, checkSshOpen, checkMoonraker, gradeReach, probeService } from './probe'
 export { resolveLiveAddress, knownAddresses } from './resolve'

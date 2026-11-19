@@ -11,16 +11,21 @@ vi.mock('./client', () => ({
 }))
 vi.mock('./expected-version', () => ({ expectedDaemonVersion: () => '0.12.12-dev' }))
 vi.mock('./license-client', () => ({ fetchDaemonLicense: vi.fn() }))
-vi.mock('../printers', () => ({
-  loadPrinters: vi.fn().mockReturnValue([]), updatePrinter: vi.fn(), probeDaemonPort: vi.fn().mockResolvedValue('refused'),
-  checkMoonraker: vi.fn(), checkSshOpen: vi.fn(), sshPortOf: vi.fn().mockReturnValue(22), resolveLiveAddress: vi.fn().mockResolvedValue('192.0.2.5'),
-  knownAddresses: vi.fn().mockReturnValue([]),
-  gradeReach: (moonrakerOpen: boolean, sshOpen: boolean) => {
-    if (sshOpen) return 'recoverable'
+vi.mock('../printers', () => {
+  const loadPrinters = vi.fn().mockReturnValue([])
 
-    return moonrakerOpen ? 'alive-no-ssh' : 'offline'
-  },
-}))
+  return {
+    loadPrinters, loadPrinter: (id: string) => loadPrinters().find((saved: { id: string }) => saved.id === id) ?? null,
+    updatePrinter: vi.fn(), probeDaemonPort: vi.fn().mockResolvedValue('refused'),
+    checkMoonraker: vi.fn(), checkSshOpen: vi.fn(), sshPortOf: vi.fn().mockReturnValue(22), resolveLiveAddress: vi.fn().mockResolvedValue('192.0.2.5'),
+    knownAddresses: vi.fn().mockReturnValue([]),
+    gradeReach: (moonrakerOpen: boolean, sshOpen: boolean) => {
+      if (sshOpen) return 'recoverable'
+
+      return moonrakerOpen ? 'alive-no-ssh' : 'offline'
+    },
+  }
+})
 vi.mock('../mdns/arp', () => ({ macForIp: vi.fn().mockReturnValue(undefined) }))
 
 import {
@@ -210,7 +215,7 @@ function mockDaemonAnswers(version: string): void {
 describe('checkDaemonRecord (connection ladder)', () => {
   it('reports offline when the printer record is unknown', async () => {
     vi.mocked(loadPrinters).mockReturnValue([])
-    expect(await checkDaemonRecord('missing')).toEqual({ isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '', networkInterfaces: [] })
+    expect(await checkDaemonRecord('missing')).toEqual({ isManaged: false, holdsDaemonAccess: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '', networkInterfaces: [] })
   })
 
   it('grades the moonraker/ssh ladder when the daemon does not answer', async () => {
@@ -218,7 +223,7 @@ describe('checkDaemonRecord (connection ladder)', () => {
     vi.mocked(probeDaemonPort).mockResolvedValue('refused')
     vi.mocked(checkMoonraker).mockResolvedValue(true)
     vi.mocked(checkSshOpen).mockResolvedValue(true)
-    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, reach: 'recoverable', sshOpen: true, accessState: 'daemon-absent', ip: '192.0.2.5', networkInterfaces: [] })
+    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true, accessState: 'daemon-absent', ip: '192.0.2.5', networkInterfaces: [] })
   })
 
   it('asks the SSH port the printer really uses, not always the standard one', async () => {
@@ -251,6 +256,45 @@ describe('checkDaemonRecord (connection ladder)', () => {
     const result = await checkDaemonRecord('p1')
 
     expect(result.machineryVersions).toEqual({ 'bespok3d-daemon': '0.12.23' })
+  })
+})
+
+// After an OTA the daemon stops answering. The renderer offers repair or recover only when it knows this
+// app holds access to that daemon, and the credentials behind that fact never leave main.
+describe('checkDaemonRecord says whether this app holds access to the daemon', () => {
+  function printerAnswersOnlySsh(): void {
+    vi.mocked(probeDaemonPort).mockResolvedValue('refused')
+    vi.mocked(checkMoonraker).mockResolvedValue(true)
+    vi.mocked(checkSshOpen).mockResolvedValue(true)
+  }
+
+  it('says yes for a printer this app was granted access to, with no enrollment of its own', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.5', daemonToken: 'T', daemonCert: 'C' } as never])
+    printerAnswersOnlySsh()
+
+    expect((await checkDaemonRecord('p1')).holdsDaemonAccess).toBe(true)
+  })
+
+  it('says no for a printer this app never had access to', async () => {
+    vi.mocked(loadPrinters).mockReturnValue([{ id: 'p1', ip: '192.0.2.5' } as never])
+    printerAnswersOnlySsh()
+
+    expect((await checkDaemonRecord('p1')).holdsDaemonAccess).toBe(false)
+  })
+
+  it('says yes when the access was granted while the probe was still running', async () => {
+    const beforeGrant = { id: 'p1', ip: '192.0.2.5' }
+    vi.mocked(loadPrinters).mockReturnValueOnce([beforeGrant as never]).mockReturnValue([{ ...beforeGrant, daemonToken: 'T', daemonCert: 'C' } as never])
+    printerAnswersOnlySsh()
+
+    expect((await checkDaemonRecord('p1')).holdsDaemonAccess).toBe(true)
+  })
+
+  it('says yes on the managed answer too', async () => {
+    mockManagedRecord()
+    mockDaemonAnswers('0.12.12-dev')
+
+    expect((await checkDaemonRecord('p1')).holdsDaemonAccess).toBe(true)
   })
 })
 
@@ -398,7 +442,7 @@ describe('checkDaemonRecord follows a moved or recycled IP (Bug B)', () => {
     vi.mocked(probeDaemonPort).mockResolvedValue('refused')
     vi.mocked(checkMoonraker).mockResolvedValue(false)
     vi.mocked(checkSshOpen).mockResolvedValue(false)
-    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '192.0.2.5', networkInterfaces: [] })
+    expect(await checkDaemonRecord('p1')).toEqual({ isManaged: false, holdsDaemonAccess: true, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '192.0.2.5', networkInterfaces: [] })
   })
 
   it('follows the printer to the live IP (resolved among candidates) and re-probes + returns it', async () => {

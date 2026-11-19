@@ -7,7 +7,7 @@ import { screen, act, waitFor, within } from '@testing-library/react'
 import { setup } from './test/harness'
 import { makeEnrollEvent } from './test/fixtures'
 import { makeT } from './i18n'
-import type { PrinterRecord } from '../../main/printers'
+import type { PrinterRecord } from './env'
 import { showsUnreleasedFeatures } from './utils/unreleased-features'
 import App from './App'
 
@@ -25,7 +25,7 @@ const enrolledRecord = {
   id: 'printer-1', nick: 'Alpha', model: 'Snapmaker U1', adapter: 'snapmaker-u1',
   host: 'alpha.local', ip: '192.0.2.1', status: 'online', installedIds: ['spoolman'],
   enrollmentLog: { enrolledAt: '2026-01-01', adapterId: 'snapmaker-u1', steps: [] },
-  daemonToken: 'T', daemonCert: 'C',
+  holdsDaemonAccess: true,
 } as unknown as PrinterRecord
 
 // A printer that answers "the daemon is not there" is not graded on that one answer: the app probes
@@ -37,7 +37,7 @@ function renderApp(printersOverride: Record<string, unknown>, records: PrinterRe
 }
 
 function freshAccessFixture(id: string): PrinterRecord {
-  return { id, nick: 'Fixture U1', model: 'Snapmaker U1', adapter: 'snapmaker-u1', host: 'fixture.local', ip: '192.0.2.23', status: 'online', installedIds: [] } as unknown as PrinterRecord
+  return { id, nick: 'Fixture U1', model: 'Snapmaker U1', adapter: 'snapmaker-u1', host: 'fixture.local', ip: '192.0.2.23', status: 'online', installedIds: [], holdsDaemonAccess: false } as unknown as PrinterRecord
 }
 
 describe('App flow: a known enrolled printer whose daemon went down (groups 2-4)', () => {
@@ -47,7 +47,7 @@ describe('App flow: a known enrolled printer whose daemon went down (groups 2-4)
   ])('routes a $clientContext through request and grant without SSH enrollment', async ({ printerId, ip }) => {
     const freshProfilePrinter = {
       id: printerId, nick: 'Fixture U1', model: 'Snapmaker U1', adapter: 'snapmaker-u1',
-      host: 'fixture.local', ip, status: 'online', installedIds: [],
+      host: 'fixture.local', ip, status: 'online', installedIds: [], holdsDaemonAccess: false,
     } as unknown as PrinterRecord
     var accessStatus = vi.fn().mockResolvedValueOnce('pending').mockResolvedValueOnce('granted')
     var { user, b3d } = renderApp({
@@ -124,7 +124,7 @@ describe('App flow: requests never fall through to enrollment', () => {
   it('keeps explicit enrollment available when the daemon is confirmed absent', async () => {
     const settingsPrinter = freshAccessFixture('fixture-absent-daemon')
     var { user, b3d } = renderApp({
-      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true, accessState: 'daemon-absent', ip: settingsPrinter.ip, networkInterfaces: [] }),
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, holdsDaemonAccess: false, reach: 'recoverable', sshOpen: true, accessState: 'daemon-absent', ip: settingsPrinter.ip, networkInterfaces: [] }),
     }, [settingsPrinter])
     await user.click(screen.getByRole('button', { name: en('header.settings') }))
     await user.click(screen.getByRole('button', { name: en('set.printers') }))
@@ -183,7 +183,7 @@ describe('App flow: canceled access and re-enrollment choices', () => {
   it('a write-layer-intact printer offers Repair, and clicking it runs the daemon repair', async () => {
     var repair = vi.fn().mockResolvedValue(undefined)
     var { user } = renderApp({
-      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }),
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true }),
       checkWriteLayer: vi.fn().mockResolvedValue(true),
       repair,
     })
@@ -198,7 +198,7 @@ describe('App flow: canceled access and re-enrollment choices', () => {
 
   it('a post-OTA printer (write layer reset) offers Recover, not Repair, and Recover starts the re-enroll', async () => {
     var { user, b3d } = renderApp({
-      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }),
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true }),
       checkWriteLayer: vi.fn().mockResolvedValue(false),
     })
     await screen.findByRole('button', { name: en('banner.recover_action') }, AFTER_THE_CONFIRMING_PROBE)
@@ -216,7 +216,7 @@ describe('App flow: canceled access and re-enrollment choices', () => {
         store: { recover },
         printers: {
           load: vi.fn().mockResolvedValue([enrolledRecord]),
-          checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }),
+          checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true }),
           checkWriteLayer: vi.fn().mockResolvedValue(false),
         },
       },
@@ -236,7 +236,7 @@ describe('App flow: repair and uninstall check root access first', () => {
   it('a repair with root access off shows the root-access window, and Retry opens the repair', async () => {
     var repair = vi.fn().mockResolvedValue(undefined)
     var { user } = renderApp({
-      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }),
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true }),
       checkWriteLayer: vi.fn().mockResolvedValue(true),
       checkSshOpen: vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true),
       repair,
@@ -255,7 +255,7 @@ describe('App flow: repair and uninstall check root access first', () => {
   it('an uninstall with root access off shows the root-access window and removes nothing', async () => {
     var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
     var { user, b3d } = renderApp({
-      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }),
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true }),
       checkSshOpen: vi.fn().mockResolvedValue(false),
     }, [managedRecord])
     await user.click(screen.getByRole('button', { name: en('header.settings') }))
@@ -286,7 +286,7 @@ async function chooseDeployItem(user: ReturnType<typeof renderApp>['user'], item
 describe('App flow: recovery, updates and deactivation check root access first', () => {
   it('a recovery with root access off shows the root-access window, and Retry opens the recovery', async () => {
     var { user, b3d } = renderApp({
-      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }),
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true }),
       checkWriteLayer: vi.fn().mockResolvedValue(false),
       checkSshOpen: vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true),
     })
@@ -304,7 +304,7 @@ describe('App flow: recovery, updates and deactivation check root access first',
   ] as const)('a $action with root access off shows the root-access window and runs nothing', async ({ itemKey, call }) => {
     var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
     var { user, b3d } = renderApp({
-      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }),
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true }),
       checkSshOpen: vi.fn().mockResolvedValue(false),
     }, [managedRecord])
     await openPrintersSettings(user)
@@ -318,7 +318,7 @@ describe('App flow: recovery, updates and deactivation check root access first',
   it('a deactivation with root access off shows the root-access window and runs nothing', async () => {
     var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
     var { user, b3d } = renderApp({
-      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }),
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true }),
       checkSshOpen: vi.fn().mockResolvedValue(false),
     }, [managedRecord])
     await openPrintersSettings(user)
@@ -337,7 +337,7 @@ describe('App flow: reactivation and the reboot check root access first', () => 
     { action: 'reboot', actionKey: 'banner.reboot_action', daemonAnswer: { rebootRequired: ['unknown-reason'] }, call: 'reboot' },
   ] as const)('a $action with root access off shows the root-access window and runs nothing', async ({ actionKey, daemonAnswer, call }) => {
     var { user, b3d } = renderApp({
-      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true, ...daemonAnswer }),
+      checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true, ...daemonAnswer }),
       checkSshOpen: vi.fn().mockResolvedValue(false),
     })
     await user.click(await screen.findByRole('button', { name: en(actionKey) }))
@@ -353,7 +353,7 @@ describe('App flow: reactivation and the reboot check root access first', () => 
 describe('App flow: a deactivation waiting on the reboot', () => {
   it('shows the printer deactivated while the window still waits on the reboot', async () => {
     var managedRecord = { ...enrolledRecord, status: 'managed' } as unknown as PrinterRecord
-    var { user, b3d, emit } = renderApp({ checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true }) }, [managedRecord])
+    var { user, b3d, emit } = renderApp({ checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true }) }, [managedRecord])
     await openPrintersSettings(user)
     await user.click(await screen.findByRole('button', { name: en('printers.deactivate') }))
     const deactivateConfirm = (await screen.findByText(en('printers.deactivate_title', { name: 'Alpha' }))).closest('[role="dialog"]') as HTMLElement
@@ -380,7 +380,7 @@ describe('App flow: a managed printer whose plugin state drifted (group 5)', () 
     var { user } = setup(<App />, {
       b3d: { store: { recover }, printers: {
         load: vi.fn().mockResolvedValue([managedRecord]),
-        checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, reach: 'managed', sshOpen: true, daemonDrift: [{ pluginId: 'spoolman', symlinkIssueCount: 2 }] }),
+        checkDaemon: vi.fn().mockResolvedValue({ isManaged: true, holdsDaemonAccess: true, reach: 'managed', sshOpen: true, daemonDrift: [{ pluginId: 'spoolman', symlinkIssueCount: 2 }] }),
       } },
     })
     await user.click(await screen.findByRole('button', { name: en('banner.drift_action') }))

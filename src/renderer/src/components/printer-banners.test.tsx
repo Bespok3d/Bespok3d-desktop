@@ -28,12 +28,10 @@ function renderBanners(printer: ReturnType<typeof makePrinter> | null, handlers:
   return setup(<PrinterBanners selectedPrinter={printer} bundledJinniVersion={bundledJinniVersion} {...handlers} />)
 }
 
-const enrolled = { enrollmentLog: { enrolledAt: '2026-01-01', adapterId: 'snapmaker-u1', steps: [] } }
-
 describe('PrinterBanners render + action wiring', () => {
   it('shows the selected printer access state and routes review to that record', async () => {
     var handlers = makeHandlers()
-    var printer = makePrinter({ id: 'printer-2', status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false, accessState: 'identity-changed' } })
+    var printer = makePrinter({ id: 'printer-2', status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false, accessState: 'identity-changed' }, holdsDaemonAccess: false })
     var { user } = renderBanners(printer, handlers)
     expect(screen.getByText(en('banner.access_identity_changed', { name: printer.nick || printer.model }))).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: en('banner.access_action') }))
@@ -41,17 +39,17 @@ describe('PrinterBanners render + action wiring', () => {
     expect(handlers.onRepair).not.toHaveBeenCalled()
   })
 
-  it('shows the repair banner for an enrolled, SSH-reachable printer and repairs on click', async () => {
+  it('shows the repair banner for an SSH-reachable printer whose daemon this app holds access to, and repairs on click', async () => {
     var handlers = makeHandlers()
-    var printer = makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, ...enrolled })
+    var printer = makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true })
     var { user } = renderBanners(printer, handlers)
     await user.click(screen.getByRole('button', { name: en('banner.repair_action') }))
     expect(handlers.onRepair).toHaveBeenCalledWith('printer-1')
   })
 
-  it('shows the recover banner (not repair) once the probe finds the write layer reset, and recovers on click', async () => {
+  it('shows the recover banner (not repair) once the probe finds the write layer reset, with no enrollment log of its own, and recovers on click', async () => {
     var handlers = makeHandlers()
-    var printer = makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, writeLayerIntact: false, ...enrolled })
+    var printer = makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true, writeLayerIntact: false })
     var { user } = renderBanners(printer, handlers)
     expect(screen.queryByRole('button', { name: en('banner.repair_action') })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: en('banner.recover_action') }))
@@ -60,7 +58,7 @@ describe('PrinterBanners render + action wiring', () => {
   })
 
   it('shows an informational enable-root banner (no action) when alive but SSH is off', () => {
-    var printer = makePrinter({ status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false }, ...enrolled })
+    var printer = makePrinter({ status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false }, holdsDaemonAccess: true })
     var { container } = renderBanners(printer, makeHandlers())
     expect(screen.getByText(en('banner.root_access_body', { name: printer.nick || printer.model }))).toBeInTheDocument()
     expect(container.querySelector('button')).toBeNull()
@@ -126,19 +124,19 @@ describe('PrinterBanners maintenance actions', () => {
   })
 
   it('suppresses banners during the expected-restart window', () => {
-    var printer = makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, expectedRestartUntil: Date.now() + 100000, ...enrolled })
+    var printer = makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true, expectedRestartUntil: Date.now() + 100000 })
     var { container } = renderBanners(printer, makeHandlers())
     expect(container.querySelector('button')).toBeNull()
   })
 
   it('holds the access banner during the expected-restart window', () => {
-    var printer = makePrinter({ status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false, accessState: 'identity-changed' }, expectedRestartUntil: Date.now() + 100000 })
+    var printer = makePrinter({ status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false, accessState: 'identity-changed' }, holdsDaemonAccess: false, expectedRestartUntil: Date.now() + 100000 })
     renderBanners(printer, makeHandlers())
     expect(screen.queryByText(en('banner.access_identity_changed', { name: printer.nick || printer.model }))).not.toBeInTheDocument()
   })
 
   it('shows the access banner again once the expected-restart window is over', () => {
-    var printer = makePrinter({ status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false, accessState: 'identity-changed' }, expectedRestartUntil: Date.now() - 1 })
+    var printer = makePrinter({ status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false, accessState: 'identity-changed' }, holdsDaemonAccess: false, expectedRestartUntil: Date.now() - 1 })
     renderBanners(printer, makeHandlers())
     expect(screen.getByText(en('banner.access_identity_changed', { name: printer.nick || printer.model }))).toBeInTheDocument()
   })

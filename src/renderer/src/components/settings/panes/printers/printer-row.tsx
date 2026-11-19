@@ -20,15 +20,16 @@ import './printers.css'
 
 export type PrinterPrimaryAction = 'enroll' | 'repair' | 'manage' | 'reactivate' | 'none'
 
-// An online printer that was already enrolled is not a candidate for enrollment: its daemon is just
-// unreachable right now, so it gets Repair (the lightweight redeploy that keeps the pinned cert/token),
-// mirroring the main-window repair banner. Enroll is reserved for a printer never enrolled.
+// An online printer this app already holds daemon access to (enrolled here, or granted access) is not a
+// candidate for enrollment: its daemon is just unreachable right now, so it gets Repair (the lightweight
+// redeploy that keeps the pinned cert/token), mirroring the main-window repair banner. Enroll is
+// reserved for a printer we hold no access to.
 export function printerPrimaryAction(printer: Printer): PrinterPrimaryAction {
   if (printer.status === 'deactivated') return 'reactivate'
   if (printer.status === 'managed') return 'manage'
   if (printer.status !== 'online') return 'none'
 
-  return printer.enrollmentLog ? 'repair' : 'enroll'
+  return printer.holdsDaemonAccess ? 'repair' : 'enroll'
 }
 
 interface PrinterRowProps {
@@ -147,7 +148,8 @@ function PrinterActionsRow({ printer, adapters, onEnrollPrinter, onRepair, onRec
   const adapterJinni = printerAdapter(adapters, printer)?.jinniVersion
   const callout = updateCallout(printer, adapterJinni)
   // The Force flows all run an SSH op, so they are pointless on an offline printer that cannot be
-  // reached; hide the menu there (the primary action is already hidden for offline).
+  // reached; hide the menu there (the primary action is already hidden for offline). Force is for the
+  // install that enrolled the printer, so it keys on our own enrollment, not on a granted access.
   const showForce = Boolean(printer.enrollmentLog) && printer.status !== 'offline'
 
   return (

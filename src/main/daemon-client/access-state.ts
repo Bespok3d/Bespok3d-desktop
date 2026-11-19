@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { X509Certificate } from 'crypto'
 import type { PrinterRecord } from '../printers'
+import { holdsDaemonAccess } from '../printers/record'
 import { DaemonHttpError } from './transport'
 import { fetchDaemonLicense } from './license-client'
 
@@ -28,7 +29,7 @@ function rejectedAccessState(record: PrinterRecord, failure: unknown, licenseFin
 export async function unverifiedDaemonState(record: PrinterRecord, failure?: unknown): Promise<DaemonAccessState> {
   try {
     const license = await fetchDaemonLicense(record.ip)
-    if (!record.daemonToken && !record.daemonCert && !record.accessIdentity && !record.enrollmentLog) return 'present-awaiting-access'
+    if (!holdsDaemonAccess(record)) return 'present-awaiting-access'
 
     return rejectedAccessState(record, failure, license.certificateFingerprint)
   } catch {

@@ -19,15 +19,15 @@ export function isWithinExpectedRestart(printer: Printer, now: number): boolean 
   return typeof until === 'number' && now < until
 }
 
-// An enrolled, recoverable printer (daemon down, SSH open) needs either a daemon Repair or a full
+// A recoverable printer this app holds daemon access to (daemon down, SSH open) needs either a daemon Repair or a full
 // Recover. The one-shot writeLayerIntact probe is the discriminator: false means a firmware OTA reset
 // the overlay so only a full re-enroll sticks; true (or not-yet-probed) means a daemon glitch a Repair
 // fixes. The brief pre-probe window defaulting to Repair is safe: the op-time write-layer backstop
 // stops a repair that cannot stick and routes it to Recovery.
 export function repairOrRecover(
-  args: { reach: ConnectionReach | undefined; enrolled: boolean; withinRestart: boolean; writeLayerIntact: boolean | undefined },
+  args: { reach: ConnectionReach | undefined; holdsDaemonAccess: boolean; withinRestart: boolean; writeLayerIntact: boolean | undefined },
 ): 'recover' | 'repair' | null {
-  if (!args.enrolled || args.withinRestart || args.reach !== 'recoverable') return null
+  if (!args.holdsDaemonAccess || args.withinRestart || args.reach !== 'recoverable') return null
 
   return args.writeLayerIntact === false ? 'recover' : 'repair'
 }
@@ -38,7 +38,7 @@ function bannerAction(printer: Printer, now: number): 'recover' | 'repair' | nul
 
   return repairOrRecover({
     reach: printer.connection?.reach,
-    enrolled: Boolean(printer.enrollmentLog),
+    holdsDaemonAccess: printer.holdsDaemonAccess,
     withinRestart: isWithinExpectedRestart(printer, now),
     writeLayerIntact: printer.writeLayerIntact,
   })

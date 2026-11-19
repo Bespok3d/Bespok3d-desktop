@@ -91,6 +91,8 @@ describe('a switched-off printer with no daemon left to answer', () => {
   })
 })
 
+const DAEMON_GONE_ANSWER = { isManaged: false, holdsDaemonAccess: true, reach: 'recoverable', sshOpen: true }
+
 // A firmware update takes the daemon with it, and after it there is no daemon left to answer, so the
 // repair-vs-recover verdict taken before the update was never revisited: the printer was offered a
 // daemon repair it cannot survive instead of the full recovery that rebuilds it.
@@ -98,17 +100,64 @@ describe('a daemon that was answering and now is not', () => {
   it('drops the verdict taken while it was answering, and asks the printer again', async () => {
     var seen: Printer[] = [makePrinter({
       id: 'printer-after-reflash', status: 'managed', writeLayerIntact: true,
-      connection: { reach: 'managed', sshOpen: true },
+      connection: { reach: 'managed', sshOpen: true }, holdsDaemonAccess: true,
       enrollmentLog: { enrolledAt: '2026-01-01', adapterId: 'snapmaker-u1', steps: [] },
     })]
     const checkWriteLayer = vi.fn().mockResolvedValue(false)
-    vi.stubGlobal('b3d', { printers: { checkDaemon: vi.fn().mockResolvedValue({ isManaged: false, reach: 'recoverable', sshOpen: true }), checkWriteLayer } })
+    vi.stubGlobal('b3d', { printers: { checkDaemon: vi.fn().mockResolvedValue(DAEMON_GONE_ANSWER), checkWriteLayer } })
 
     await pingAndUpdate(seen[0], (update) => { seen = update(seen) })
     await pingAndUpdate(seen[0], (update) => { seen = update(seen) })
 
     expect(checkWriteLayer).toHaveBeenCalledWith('printer-after-reflash')
     expect(seen[0].writeLayerIntact).toBe(false)
+  })
+})
+
+// The staging app on a printer the release app enrolled holds the daemon's credentials through an
+// access grant and keeps no enrollment log. It was never asked about the write layer, so after a
+// firmware update it showed the yellow dot and offered neither a repair nor a recover.
+describe('a printer this app reached through an access grant, after a firmware update', () => {
+  function grantedPrinter(): Printer {
+    return makePrinter({ id: 'printer-granted', status: 'online', connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true })
+  }
+
+  async function writeLayerAskedAfter(answer: Record<string, unknown>): Promise<ReturnType<typeof vi.fn>> {
+    var seen: Printer[] = [grantedPrinter()]
+    const checkWriteLayer = vi.fn().mockResolvedValue(false)
+    vi.stubGlobal('b3d', { printers: { checkDaemon: vi.fn().mockResolvedValue(answer), checkWriteLayer } })
+    await pingAndUpdate(seen[0], (update) => { seen = update(seen) })
+
+    return checkWriteLayer
+  }
+
+  it('asks the printer whether its write layer survived, with no enrollment log of its own', async () => {
+    expect(await writeLayerAskedAfter(DAEMON_GONE_ANSWER)).toHaveBeenCalledWith('printer-granted')
+  })
+
+  it('never asks about a printer whose daemon this app holds no access to', async () => {
+    expect(await writeLayerAskedAfter({ ...DAEMON_GONE_ANSWER, holdsDaemonAccess: false })).not.toHaveBeenCalled()
+  })
+})
+
+// The access fact rides on the printer itself, not on its connection, so a probe that could not ask
+// main must leave it as loaded rather than wipe it with the connection it rebuilds.
+describe('the access fact a probe carries', () => {
+  async function afterPing(printer: Printer): Promise<Printer> {
+    var seen: Printer[] = [printer]
+    await pingAndUpdate(printer, (update) => { seen = update(seen) })
+
+    return seen[0]
+  }
+
+  it('takes it from the printer answer', async () => {
+    vi.stubGlobal('b3d', { printers: { checkDaemon: vi.fn().mockResolvedValue(DAEMON_GONE_ANSWER), checkWriteLayer: vi.fn().mockResolvedValue(null) } })
+    expect((await afterPing(makePrinter({ status: 'online' }))).holdsDaemonAccess).toBe(true)
+  })
+
+  it('keeps the one the printer was loaded with when main could not be asked', async () => {
+    vi.stubGlobal('b3d', { printers: { checkDaemon: vi.fn().mockRejectedValue(new Error('ipc gone')), checkWriteLayer: vi.fn() } })
+    expect((await afterPing(makePrinter({ status: 'online', holdsDaemonAccess: true }))).holdsDaemonAccess).toBe(true)
   })
 })
 
@@ -148,7 +197,7 @@ async function waitAfterAnswers(printer: Printer, answers: TimedAnswer[]): Promi
 }
 
 function waitingPrinter(id: string): Printer {
-  return makePrinter({ id, expectedRestartUntil: WAIT_START + 5 * 60 * 1000, connection: { reach: 'managed', sshOpen: true } })
+  return makePrinter({ id, expectedRestartUntil: WAIT_START + 5 * 60 * 1000, connection: { reach: 'managed', sshOpen: true }, holdsDaemonAccess: true })
 }
 
 describe('the wait on a restart we started', () => {

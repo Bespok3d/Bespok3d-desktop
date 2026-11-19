@@ -129,11 +129,11 @@ export function RowOnlineDaemonDown() {
 }
 
 export function RowNeedsRepair() {
-  return <Row printer={makePrinter({ nick: 'unU1', status: 'online', connection: { reach: 'recoverable', sshOpen: true } })} />
+  return <Row printer={makePrinter({ nick: 'unU1', status: 'online', connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true })} />
 }
 
 export function RowRootAccessOff() {
-  return <Row printer={makePrinter({ nick: 'unU1', status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false } })} />
+  return <Row printer={makePrinter({ nick: 'unU1', status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false }, holdsDaemonAccess: false })} />
 }
 
 export function RowChecking() {

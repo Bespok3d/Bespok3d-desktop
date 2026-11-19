@@ -7,14 +7,14 @@ import type { Printer } from '../data/types'
 
 const BASE: Printer = {
   id: 'p1', nick: 'Test', model: 'test', adapter: 'snapmaker-u1',
-  host: 'test.local', ip: '1.2.3.4', status: 'online', installedIds: [],
+  host: 'test.local', ip: '1.2.3.4', status: 'online', installedIds: [], holdsDaemonAccess: false,
 }
 
 // Enrolled, daemon down, but reachable over SSH: the repairable case.
 const ENROLLED: Printer = {
   ...BASE,
   enrollmentLog: { enrolledAt: '2026-05-25T00:00:00Z', adapterId: 'snapmaker-u1', steps: [] },
-  connection: { reach: 'recoverable', sshOpen: true },
+  connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true,
 }
 
 describe('repairBannerCondition', () => {
@@ -27,7 +27,7 @@ describe('repairBannerCondition', () => {
   })
 
   it('is false when the daemon is reachable (managed)', () => {
-    expect(repairBannerCondition({ ...ENROLLED, status: 'managed', connection: { reach: 'managed', sshOpen: true } })).toBe(false)
+    expect(repairBannerCondition({ ...ENROLLED, status: 'managed', connection: { reach: 'managed', sshOpen: true }, holdsDaemonAccess: true })).toBe(false)
   })
 
   it('is false for an unenrolled printer even when online', () => {
@@ -35,11 +35,11 @@ describe('repairBannerCondition', () => {
   })
 
   it('is false when the printer is alive but SSH is off (enable-root case, not repairable)', () => {
-    expect(repairBannerCondition({ ...ENROLLED, connection: { reach: 'alive-no-ssh', sshOpen: false } })).toBe(false)
+    expect(repairBannerCondition({ ...ENROLLED, connection: { reach: 'alive-no-ssh', sshOpen: false }, holdsDaemonAccess: true })).toBe(false)
   })
 
   it('is false when the printer is offline', () => {
-    expect(repairBannerCondition({ ...ENROLLED, status: 'offline', connection: { reach: 'offline', sshOpen: false } })).toBe(false)
+    expect(repairBannerCondition({ ...ENROLLED, status: 'offline', connection: { reach: 'offline', sshOpen: false }, holdsDaemonAccess: true })).toBe(false)
   })
 
   it('is false while inside an expected-restart window', () => {
@@ -62,7 +62,7 @@ describe('repairBannerCondition', () => {
 })
 
 describe('repairOrRecover (the post-OTA discriminator)', () => {
-  const recoverable = { reach: 'recoverable' as const, enrolled: true, withinRestart: false }
+  const recoverable = { reach: 'recoverable' as const, holdsDaemonAccess: true, withinRestart: false }
 
   it('routes to recover when the write layer was reset (false)', () => {
     expect(repairOrRecover({ ...recoverable, writeLayerIntact: false })).toBe('recover')
@@ -76,8 +76,8 @@ describe('repairOrRecover (the post-OTA discriminator)', () => {
     expect(repairOrRecover({ ...recoverable, writeLayerIntact: undefined })).toBe('repair')
   })
 
-  it('is null for an unenrolled printer', () => {
-    expect(repairOrRecover({ ...recoverable, enrolled: false, writeLayerIntact: false })).toBeNull()
+  it('is null for a printer whose daemon this app holds no access to', () => {
+    expect(repairOrRecover({ ...recoverable, holdsDaemonAccess: false, writeLayerIntact: false })).toBeNull()
   })
 
   it('is null when not recoverable', () => {
@@ -112,7 +112,7 @@ describe('recoverBannerCondition vs repairBannerCondition (mutually exclusive)',
 
 describe('rootAccessBannerCondition', () => {
   it('is true for an enrolled printer that is alive but has SSH off', () => {
-    expect(rootAccessBannerCondition({ ...ENROLLED, connection: { reach: 'alive-no-ssh', sshOpen: false } })).toBe(true)
+    expect(rootAccessBannerCondition({ ...ENROLLED, connection: { reach: 'alive-no-ssh', sshOpen: false }, holdsDaemonAccess: true })).toBe(true)
   })
 
   it('is false when the printer is reachable over SSH (repair case instead)', () => {
@@ -120,15 +120,15 @@ describe('rootAccessBannerCondition', () => {
   })
 
   it('is true for an unenrolled printer too: root access is needed to enroll it', () => {
-    expect(rootAccessBannerCondition({ ...BASE, connection: { reach: 'alive-no-ssh', sshOpen: false } })).toBe(true)
+    expect(rootAccessBannerCondition({ ...BASE, connection: { reach: 'alive-no-ssh', sshOpen: false }, holdsDaemonAccess: false })).toBe(true)
   })
 
   it('is suppressed inside the expected-restart window', () => {
-    expect(rootAccessBannerCondition({ ...ENROLLED, connection: { reach: 'alive-no-ssh', sshOpen: false }, expectedRestartUntil: 10_000 }, 5_000)).toBe(false)
+    expect(rootAccessBannerCondition({ ...ENROLLED, connection: { reach: 'alive-no-ssh', sshOpen: false }, holdsDaemonAccess: true, expectedRestartUntil: 10_000 }, 5_000)).toBe(false)
   })
 
   it('is false while still checking, even when a stale reach says alive-no-ssh', () => {
-    expect(rootAccessBannerCondition({ ...ENROLLED, status: 'checking', connection: { reach: 'alive-no-ssh', sshOpen: false } })).toBe(false)
+    expect(rootAccessBannerCondition({ ...ENROLLED, status: 'checking', connection: { reach: 'alive-no-ssh', sshOpen: false }, holdsDaemonAccess: true })).toBe(false)
   })
 })
 
@@ -146,10 +146,27 @@ describe('isWithinExpectedRestart', () => {
   })
 })
 
+// The staging app on a printer the release app enrolled: it reached the daemon through an access grant,
+// so it holds the credentials but never ran the enrollment and keeps no log of one.
+const GRANTED: Printer = {
+  ...BASE,
+  connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true,
+}
+
+describe('a printer this app reached through an access grant, never enrolled from here', () => {
+  it('is offered the repair once its daemon stops answering', () => {
+    expect(repairBannerCondition(GRANTED)).toBe(true)
+  })
+
+  it('is offered the recover once the firmware update reset its write layer', () => {
+    expect(recoverBannerCondition({ ...GRANTED, writeLayerIntact: false })).toBe(true)
+  })
+})
+
 const MANAGED: Printer = {
   ...ENROLLED,
   status: 'managed',
-  connection: { reach: 'managed', sshOpen: true },
+  connection: { reach: 'managed', sshOpen: true }, holdsDaemonAccess: true,
 }
 
 const DRIFTED: Printer = {

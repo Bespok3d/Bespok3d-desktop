@@ -99,13 +99,29 @@ type PrinterSecretKey = 'daemonToken' | 'daemonCert' | 'accessIdentity'
 
 // The renderer-safe projection of a printer: the full record minus the daemon credentials. This is
 // the single source the renderer's PrinterRecord type re-exports, so the redaction is enforced at
-// compile time and cannot drift from a hand-maintained subset.
-export type PublicPrinterRecord = Omit<PrinterRecord, PrinterSecretKey>
+// compile time and cannot drift from a hand-maintained subset. The renderer cannot see the credentials,
+// so main tells it the one fact they stand for, on every load.
+export type PublicPrinterRecord = Omit<PrinterRecord, PrinterSecretKey> & { holdsDaemonAccess: boolean }
+
+// Whether this app holds access to the daemon on this printer, so Bespok3d is installed there. An
+// install that enrolled the printer holds the credentials and the enrollment log; an install that was
+// granted access later holds only the credentials. Both are the same fact, and every guard reads it here.
+export function holdsDaemonAccess(record: PrinterRecord): boolean {
+  return Boolean(record.daemonToken || record.daemonCert || record.accessIdentity || record.enrollmentLog)
+}
 
 export function toPublicRecord(record: PrinterRecord): PublicPrinterRecord {
   const { daemonToken: _daemonToken, daemonCert: _daemonCert, accessIdentity: _accessIdentity, ...publicRecord } = record
 
-  return publicRecord
+  return { ...publicRecord, holdsDaemonAccess: holdsDaemonAccess(record) }
+}
+
+// The access fact is worked out from the credentials on every load, so the copy the renderer sends back
+// in a save or a patch is never stored: on disk it could only go stale.
+export function withoutAccessFact<Fields extends Partial<PublicPrinterRecord>>(fields: Fields): Omit<Fields, 'holdsDaemonAccess'> {
+  const { holdsDaemonAccess: _accessFact, ...storedFields } = fields
+
+  return storedFields
 }
 
 // The rung the connection ladder reached for a printer whose daemon did not answer: SSH up so we can

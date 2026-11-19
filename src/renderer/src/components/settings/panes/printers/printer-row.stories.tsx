@@ -78,7 +78,7 @@ export function OnlineUnenrolled() {
 }
 
 export function OnlineEnrolledNeedsRepair() {
-  return <Pane printer={makePrinter({ status: 'online', jinniVersion: ADAPTER_JINNI, connection: { reach: 'recoverable', sshOpen: true }, ...ENROLLED })} />
+  return <Pane printer={makePrinter({ status: 'online', jinniVersion: ADAPTER_JINNI, connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true, ...ENROLLED })} />
 }
 
 export function Deactivated() {

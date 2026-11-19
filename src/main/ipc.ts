@@ -22,7 +22,7 @@ import {
   importKeyFromProfile,
 } from './keys'
 import { listPublishedAccountKeys } from './publisher/published-keys'
-import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, pingPrinter, sshLoginAnswers, probeService, resolveLiveAddress } from './printers'
+import { savePrinter, loadPrinters, loadPublicPrinters, updatePrinter, removePrinter, withoutAccessFact, pingPrinter, sshLoginAnswers, probeService, resolveLiveAddress } from './printers'
 import type { PublicPrinterRecord } from './printers'
 import { setAddressResolver, askPrinterToReach } from './daemon-client/client'
 import { offeredJinniVersion } from './compat/jinni-baseline'
@@ -93,11 +93,11 @@ function registerKeyHandlers(): void {
 
 function registerPrinterHandlers(getMainWindow: () => BrowserWindow): void {
   ipcMain.handle('printers:load', () => loadPublicPrinters())
-  ipcMain.handle('printers:save', (_ev, record: PublicPrinterRecord) => savePrinter(record))
+  ipcMain.handle('printers:save', (_ev, record: PublicPrinterRecord) => savePrinter(withoutAccessFact(record)))
   // Field-level merge so a renderer write touches only the named fields and can never clobber a
   // daemon credential it does not hold. Returns nothing: the merged record carries the secrets, and
   // the renderer updates its own state optimistically.
-  ipcMain.handle('printers:patch', (_ev, id: string, fields: Partial<PublicPrinterRecord>): void => { updatePrinter(id, fields) })
+  ipcMain.handle('printers:patch', (_ev, id: string, fields: Partial<PublicPrinterRecord>): void => { updatePrinter(id, withoutAccessFact(fields)) })
   ipcMain.handle('printers:remove', (_ev, id) => removePrinter(id))
   ipcMain.handle('printers:ping', (_ev, ip) => pingPrinter(ip))
   ipcMain.handle('printers:checkSshOpen', (_ev, printerId: string, ip: string) => sshLoginAnswers(printerId, ip))

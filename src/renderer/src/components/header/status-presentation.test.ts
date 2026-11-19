@@ -6,13 +6,13 @@ import type { Printer, ConnectionReach } from '../../data/types'
 
 const BASE: Printer = {
   id: 'p1', nick: 'Test', model: 'test', adapter: 'snapmaker-u1',
-  host: 'test.local', ip: '1.2.3.4', status: 'online', installedIds: [],
+  host: 'test.local', ip: '1.2.3.4', status: 'online', installedIds: [], holdsDaemonAccess: false,
 }
 
 function withState(status: Printer['status'], reach?: ConnectionReach): Printer {
   if (!reach) return { ...BASE, status, connection: undefined }
 
-  return { ...BASE, status, connection: { reach, sshOpen: reach === 'managed' || reach === 'recoverable' } }
+  return { ...BASE, status, connection: { reach, sshOpen: reach === 'managed' || reach === 'recoverable' }, holdsDaemonAccess: false }
 }
 
 describe('statusReasonKey (the full status x reach matrix)', () => {

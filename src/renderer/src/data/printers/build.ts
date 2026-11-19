@@ -24,6 +24,7 @@ export function buildPrinter(
       status: 'checking',
       customSshCredentials,
       installedIds: [],
+      holdsDaemonAccess: false,
     }
   }
 
@@ -37,5 +38,6 @@ export function buildPrinter(
     status: 'checking',
     customSshCredentials,
     installedIds: [],
+    holdsDaemonAccess: false,
   }
 }

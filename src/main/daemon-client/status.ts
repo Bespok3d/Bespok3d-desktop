@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { updatePrinter, loadPrinters, probeDaemonPort, checkSshOpen, checkMoonraker, gradeReach, resolveLiveAddress, knownAddresses, sshPortOf } from '../printers'
+import { updatePrinter, loadPrinter, loadPrinters, probeDaemonPort, checkSshOpen, checkMoonraker, gradeReach, resolveLiveAddress, knownAddresses, sshPortOf } from '../printers'
 import type { ConnectionReach, PrinterRecord, DriftReport } from '../printers'
+import { holdsDaemonAccess } from '../printers/record'
 import { macForIp } from '../mdns/arp'
 import { fetchDaemonStatus } from './client'
 import { fetchMetadataResponses } from './metadata-responses'
@@ -24,6 +25,9 @@ export interface DaemonAnswer extends DaemonMetadata {
 
 export interface CheckDaemonResult extends DaemonAnswer {
   isManaged: boolean
+  // This app holds access to the daemon on this printer, so a daemon that stopped answering is one to
+  // repair or recover, never a printer to enroll from scratch. The credentials behind it stay in main.
+  holdsDaemonAccess: boolean
   accessState: DaemonAccessState
   reach: ConnectionReach
   sshOpen: boolean
@@ -34,6 +38,9 @@ export interface CheckDaemonResult extends DaemonAnswer {
   // dropdown's "Also reachable at" line so a flip-flopping lease is shown, not a confusing mystery.
   networkInterfaces: Array<{ ip: string }>
 }
+
+// What one address answered: the result before the app adds what it knows about the printer itself.
+type ProbedAddress = Omit<CheckDaemonResult, 'holdsDaemonAccess' | 'ip' | 'networkInterfaces'>
 
 const VERIFY_REQUEST_TIMEOUT_MS = 5000
 const VERIFY_RETRY_DELAY_MS = 2000
@@ -230,7 +237,7 @@ async function daemonMetadata(record: PrinterRecord, daemonOpen: boolean): Promi
 // The connection ladder for one address: confirm the daemon (managed), else grade the remaining
 // surfaces (Moonraker for "alive", SSH for "we can still fix or enroll it") so the app always knows
 // what is going on and which action to offer, instead of a bare reachable/unreachable.
-async function probeAddress(record: PrinterRecord): Promise<Omit<CheckDaemonResult, 'ip' | 'networkInterfaces'>> {
+async function probeAddress(record: PrinterRecord): Promise<ProbedAddress> {
   const daemonPortState = await probeDaemonPort(record.ip)
   const daemonOpen = daemonPortState === 'open'
   const metadataResult = await daemonMetadata(record, daemonOpen)
@@ -261,12 +268,20 @@ function accessStateForPortResult(reach: ConnectionReach, daemonPortState: 'open
 // grades a healthy printer dead/rootless and never leaves a later op pointed at a stale IP.
 export async function checkDaemonRecord(printerId: string): Promise<CheckDaemonResult> {
   const record = loadPrinters().find((rec) => rec.id === printerId)
-  if (!record) return { isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '', networkInterfaces: [] }
+  if (!record) return { isManaged: false, holdsDaemonAccess: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: '', networkInterfaces: [] }
   const atRecorded = await probeAddress(record)
-  if (atRecorded.isManaged) return { ...atRecorded, ip: record.ip, networkInterfaces: knownAddresses(printerId) }
-  if (atRecorded.accessState !== 'daemon-absent' && atRecorded.accessState !== 'offline') return { ...atRecorded, ip: record.ip, networkInterfaces: knownAddresses(printerId) }
+  if (atRecorded.isManaged) return answeredAt(record, atRecorded, record.ip)
+  if (atRecorded.accessState !== 'daemon-absent' && atRecorded.accessState !== 'offline') return answeredAt(record, atRecorded, record.ip)
   const liveIp = await resolveLiveAddress(printerId)
   const reprobed = liveIp === record.ip ? atRecorded : await probeAddress({ ...record, ip: liveIp })
 
-  return { ...reprobed, ip: liveIp, networkInterfaces: knownAddresses(printerId) }
+  return answeredAt(record, reprobed, liveIp)
+}
+
+// The access fact is read off the record as it is now, not as it was when the probe started: a grant or
+// an enrollment that finished during a probe of several seconds must not be reported as missing.
+function answeredAt(record: PrinterRecord, probed: ProbedAddress, answeringIp: string): CheckDaemonResult {
+  const current = loadPrinter(record.id) ?? record
+
+  return { ...probed, holdsDaemonAccess: holdsDaemonAccess(current), ip: answeringIp, networkInterfaces: knownAddresses(record.id) }
 }

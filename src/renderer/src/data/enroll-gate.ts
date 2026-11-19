@@ -8,17 +8,17 @@ import type { DaemonAccessState } from '../../../main/daemon-client/status'
 
 export type AccessPromptState = Extract<DaemonAccessState, 'present-awaiting-access' | 'credentials-rejected' | 'certificate-missing' | 'identity-changed'>
 
-// After the daemon probe: a managed daemon that is NOT ours (we never enrolled it and hold no access
-// grant) means another computer owns it, so we ask for access instead of enrolling (which would clobber
+// After the daemon probe: a managed daemon that is NOT ours (we hold no credentials for it, neither from
+// enrolling it nor from an access grant) means another computer owns it, so we ask for access instead of enrolling (which would clobber
 // its ACL). Anything else falls through to the SSH-based enroll path.
 export function daemonAccessDecision(
-  args: { accessState?: DaemonAccessState; isManaged: boolean; enrolled: boolean; hasAccessIdentity: boolean },
+  args: { accessState?: DaemonAccessState; isManaged: boolean; holdsDaemonAccess: boolean },
 ): 'access' | 'identity-warning' | 'blocked' | 'enroll-path' {
   if (args.accessState === 'present-awaiting-access' || args.accessState === 'credentials-rejected') return 'access'
   if (args.accessState === 'identity-changed' || args.accessState === 'certificate-missing') return 'identity-warning'
   if (args.accessState === 'offline' || args.accessState === 'unrecognized') return 'blocked'
   if (args.accessState) return 'enroll-path'
-  if (args.isManaged && !args.enrolled && !args.hasAccessIdentity) return 'access'
+  if (args.isManaged && !args.holdsDaemonAccess) return 'access'
 
   return 'enroll-path'
 }

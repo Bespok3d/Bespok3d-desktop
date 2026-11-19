@@ -19,17 +19,17 @@ function Banner({ printer, bundledJinniVersion }: { printer: Printer; bundledJin
 
 // Daemon down but the printer answers over SSH: the lightweight redeploy that keeps the pinned cert.
 export function NeedsRepair() {
-  return <Banner printer={makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, ...ENROLLED })} />
+  return <Banner printer={makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true, ...ENROLLED })} />
 }
 
 // A firmware update reset the overlay (write layer gone): a full recover, not a repair.
 export function NeedsRecovery() {
-  return <Banner printer={makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, writeLayerIntact: false, ...ENROLLED })} />
+  return <Banner printer={makePrinter({ status: 'online', connection: { reach: 'recoverable', sshOpen: true }, holdsDaemonAccess: true, writeLayerIntact: false, ...ENROLLED })} />
 }
 
 // Alive but root access (SSH) is off: informational, the fix is on the device.
 export function RootAccessOff() {
-  return <Banner printer={makePrinter({ status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false }, ...ENROLLED })} />
+  return <Banner printer={makePrinter({ status: 'online', connection: { reach: 'alive-no-ssh', sshOpen: false }, holdsDaemonAccess: true, ...ENROLLED })} />
 }
 
 export function Deactivated() {

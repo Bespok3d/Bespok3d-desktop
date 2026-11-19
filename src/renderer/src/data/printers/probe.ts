@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Printer, ConnectionReach, PrinterConnection } from '../types'
 import type { DaemonMetadata } from '@bespok3d/contract'
-import type { DaemonAccessState } from '../../../../main/daemon-client/status'
+import type { CheckDaemonResult, DaemonAccessState } from '../../../../main/daemon-client/status'
 import { applyToId, changeById, type SetPrinters } from './list'
 import { statusAfterProbe, type ProbeStatus } from './status'
 import { usesTheirOwnLogin } from './login'
@@ -15,6 +15,7 @@ interface DaemonResult extends DaemonMetadata {
   machineryVersions?: Record<string, string>
   reach?: ConnectionReach
   sshOpen?: boolean
+  holdsDaemonAccess: CheckDaemonResult['holdsDaemonAccess']
   ip?: string
   networkInterfaces?: Array<{ label?: string; ip: string }>
 }
@@ -80,7 +81,7 @@ function daemonAnswered(report: DaemonResult): boolean {
 }
 
 function onDaemonResult(printer: Printer, result: DaemonResult, set: SetPrinters): void {
-  const patch: Partial<Printer> = { status: statusFromDaemon(result), deactivated: result.switchedOff === true, connection: { reach: 'managed', sshOpen: true, accessState: 'authorized' }, daemonVersion: result.daemonVersion, daemonUpdateAvailable: result.daemonUpdateAvailable }
+  const patch: Partial<Printer> = { status: statusFromDaemon(result), deactivated: result.switchedOff === true, connection: { reach: 'managed', sshOpen: true, accessState: 'authorized' }, holdsDaemonAccess: result.holdsDaemonAccess, daemonVersion: result.daemonVersion, daemonUpdateAvailable: result.daemonUpdateAvailable }
   // The printer answered on this address; adopt it so the dropdown and every SSH op use the live IP,
   // not the lease it had at app start (otherwise an op SSHes to a stale IP after the printer moved).
   if (result.ip && result.ip !== printer.ip) patch.ip = result.ip
@@ -118,14 +119,14 @@ export function resetPrinterProbe(id: string): void {
 // Printers whose one-shot write-layer probe is in flight, so overlapping pings never SSH twice.
 const writeLayerChecksInFlight = new Set<string>()
 
-// Decide repair-vs-recover once per recoverable episode: an enrolled printer whose daemon is down but
+// Decide repair-vs-recover once per recoverable episode: a printer we hold access to whose daemon is down but
 // SSH is open gets a single SSH verifyEnrolled probe (never on the ping ladder). Gated on the cached
 // verdict being unset and not already running; custom-credential printers are skipped (no creds to
 // auto-probe) and fall back to the op-time write-layer backstop.
 function maybeCheckWriteLayer(printer: Printer, detail: PrinterConnection, set: SetPrinters): void {
   if (detail.reach !== 'recoverable') return
   if (printer.deactivated) return
-  if (!printer.enrollmentLog || usesTheirOwnLogin(printer)) return
+  if (!printer.holdsDaemonAccess || usesTheirOwnLogin(printer)) return
   if (printer.writeLayerIntact !== undefined) return
   if (writeLayerChecksInFlight.has(printer.id)) return
   writeLayerChecksInFlight.add(printer.id)
@@ -167,7 +168,7 @@ function statusWhileSwitchedOff(reach: ConnectionReach): Printer['status'] {
 // refreshes daemon metadata; anything lower stores the reach so the banners can offer the right action.
 export async function pingAndUpdate(printer: Printer, set: SetPrinters): Promise<void> {
   const report = await checkDaemonResult(printer.id)
-  const safe: DaemonResult = report ?? { isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', ip: printer.ip }
+  const safe: DaemonResult = report ?? { isManaged: false, reach: 'offline', sshOpen: false, accessState: 'offline', holdsDaemonAccess: printer.holdsDaemonAccess, ip: printer.ip }
   const decision = statusAfterProbe(printer.status, targetStatus(safe), probeMisses.get(printer.id) ?? 0)
   probeMisses.set(printer.id, decision.misses)
   if (daemonAnswered(safe)) onAnswerDuringRestart(printer, set)
@@ -176,7 +177,7 @@ export async function pingAndUpdate(printer: Printer, set: SetPrinters): Promise
 
  return }
   const detail = decision.status === 'managed' ? { reach: 'managed' as const, sshOpen: true } : connectionDetail(safe)
-  const patch: Partial<Printer> = { status: printer.deactivated ? statusWhileSwitchedOff(detail.reach) : decision.status, connection: detail }
+  const patch: Partial<Printer> = { status: printer.deactivated ? statusWhileSwitchedOff(detail.reach) : decision.status, connection: detail, holdsDaemonAccess: safe.holdsDaemonAccess }
   // Adopt the address the printer just answered on even when it is not managed (it may have moved to a
   // new lease), so a repair/enroll/recover op targets the live IP rather than the stale recorded one.
   if (safe.ip && safe.ip !== printer.ip) patch.ip = safe.ip

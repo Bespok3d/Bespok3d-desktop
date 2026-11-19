@@ -47,6 +47,10 @@ export interface Printer extends ConfigTruthRecords, PrinterPackageHistory {
   iconImage?: string
   iconSize?: number
   enrollmentLog?: EnrollmentLog
+  // Whether this app holds access to the printer's daemon. Main decides it from the stored credentials,
+  // which never reach this side, and sends it with every load and every probe. An access grant gives
+  // credentials with no enrollment of our own, so the enrollment log cannot answer it.
+  holdsDaemonAccess: boolean
   accessIdentity?: string
   daemonVersion?: string
   daemonUpdateAvailable?: boolean

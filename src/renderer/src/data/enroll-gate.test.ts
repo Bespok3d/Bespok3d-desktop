@@ -4,42 +4,38 @@ import { describe, it, expect } from 'vitest'
 import { daemonAccessDecision, enrollPathDecision } from './enroll-gate'
 
 describe('daemonAccessDecision (a managed daemon we do not own)', () => {
-  it('asks for access when a managed daemon is foreign (not enrolled, no access grant)', () => {
-    expect(daemonAccessDecision({ isManaged: true, enrolled: false, hasAccessIdentity: false })).toBe('access')
+  it('asks for access when a managed daemon is foreign (we hold no access to it)', () => {
+    expect(daemonAccessDecision({ isManaged: true, holdsDaemonAccess: false })).toBe('access')
   })
 
-  it('takes the enroll path when the managed daemon is one we enrolled', () => {
-    expect(daemonAccessDecision({ isManaged: true, enrolled: true, hasAccessIdentity: false })).toBe('enroll-path')
-  })
-
-  it('takes the enroll path when we already hold an access grant', () => {
-    expect(daemonAccessDecision({ isManaged: true, enrolled: false, hasAccessIdentity: true })).toBe('enroll-path')
+  it('takes the enroll path when we hold access to the managed daemon, by enrolling it or by a grant', () => {
+    expect(daemonAccessDecision({ isManaged: true, holdsDaemonAccess: true })).toBe('enroll-path')
   })
 
   it('takes the enroll path when no daemon answers at all', () => {
-    expect(daemonAccessDecision({ isManaged: false, enrolled: false, hasAccessIdentity: false })).toBe('enroll-path')
+    expect(daemonAccessDecision({ isManaged: false, holdsDaemonAccess: false })).toBe('enroll-path')
   })
 
   it('requests access for a present daemon when this profile has no credentials', () => {
-    expect(daemonAccessDecision({ accessState: 'present-awaiting-access', isManaged: false, enrolled: false, hasAccessIdentity: false })).toBe('access')
+    expect(daemonAccessDecision({ accessState: 'present-awaiting-access', isManaged: false, holdsDaemonAccess: false })).toBe('access')
   })
 
   it('offers approval again for a rejected saved token even when an identity remains', () => {
-    expect(daemonAccessDecision({ accessState: 'credentials-rejected', isManaged: false, enrolled: true, hasAccessIdentity: true })).toBe('access')
+    expect(daemonAccessDecision({ accessState: 'credentials-rejected', isManaged: false, holdsDaemonAccess: true })).toBe('access')
   })
 
   it('blocks changed or missing certificates behind an explicit warning path', () => {
-    expect(daemonAccessDecision({ accessState: 'identity-changed', isManaged: false, enrolled: true, hasAccessIdentity: true })).toBe('identity-warning')
-    expect(daemonAccessDecision({ accessState: 'certificate-missing', isManaged: false, enrolled: true, hasAccessIdentity: true })).toBe('identity-warning')
+    expect(daemonAccessDecision({ accessState: 'identity-changed', isManaged: false, holdsDaemonAccess: true })).toBe('identity-warning')
+    expect(daemonAccessDecision({ accessState: 'certificate-missing', isManaged: false, holdsDaemonAccess: true })).toBe('identity-warning')
   })
 
   it('blocks unknown and offline probes from the SSH enrollment path', () => {
-    expect(daemonAccessDecision({ accessState: 'unrecognized', isManaged: false, enrolled: false, hasAccessIdentity: false })).toBe('blocked')
-    expect(daemonAccessDecision({ accessState: 'offline', isManaged: false, enrolled: false, hasAccessIdentity: false })).toBe('blocked')
+    expect(daemonAccessDecision({ accessState: 'unrecognized', isManaged: false, holdsDaemonAccess: false })).toBe('blocked')
+    expect(daemonAccessDecision({ accessState: 'offline', isManaged: false, holdsDaemonAccess: false })).toBe('blocked')
   })
 
   it('keeps confirmed daemon absence eligible for explicit enrollment', () => {
-    expect(daemonAccessDecision({ accessState: 'daemon-absent', isManaged: false, enrolled: false, hasAccessIdentity: false })).toBe('enroll-path')
+    expect(daemonAccessDecision({ accessState: 'daemon-absent', isManaged: false, holdsDaemonAccess: false })).toBe('enroll-path')
   })
 })
 
