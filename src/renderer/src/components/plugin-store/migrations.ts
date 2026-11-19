@@ -80,6 +80,11 @@ export function buildUpdatePlan(plugins: Plugin[], collections: Collection[], in
   }
 }
 
+// Every spec one Update all sends: the newer versions and the plugins arriving with a migration.
+export function planSpecs(plan: UpdateAllPlan): PluginUpdateSpec[] {
+  return [...plan.updates, ...plan.migrations.flatMap((migration) => migration.arrivingSpecs)]
+}
+
 // What the Update button counts: a plugin to update and a plugin to change are each one thing the
 // press will do.
 export function updateAllCount(plan: UpdateAllPlan): number {

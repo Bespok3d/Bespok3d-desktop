@@ -4,12 +4,7 @@ import { ipcMain, type BrowserWindow } from 'electron'
 import { updatePrinter, removePrinter, resolveLiveAddress, type PrinterRecord } from '../printers'
 import { getAdapter } from '../adapter-loader'
 import { bespok3dRootOn } from '../adapter-loader/bespok3d-root'
-import {
-  bespok3dIncludeCommand,
-  KLIPPER_INCLUDE,
-  MOONRAKER_INCLUDE,
-  patchS90lmd,
-} from '@adapters/snapmaker-u1/client/snapmaker-u1'
+import { patchS90lmd, writeBespok3dIncludes } from '@adapters/snapmaker-u1/client/snapmaker-u1'
 import type { SshSession } from '../ssh'
 import { runSshOp } from './op-runner'
 import { waitForDaemon, tailDaemonLog } from './daemon-log'
@@ -40,11 +35,6 @@ async function runDeactivate(win: BrowserWindow, printerId: string, ip: string, 
   updatePrinter(printerId, { deactivated: true, status: 'deactivated', deactivatedAt: new Date().toISOString() })
 }
 
-async function reactivateRestoreIncludes(ssh: SshSession, printerData: string): Promise<void> {
-  await ssh.exec(bespok3dIncludeCommand(`${printerData}/config/printer.cfg`, KLIPPER_INCLUDE))
-  await ssh.exec(bespok3dIncludeCommand(`${printerData}/config/moonraker.conf`, MOONRAKER_INCLUDE))
-}
-
 async function reactivateBootHook(ssh: SshSession): Promise<void> {
   const s90lmdContent = await ssh.getContent('/etc/init.d/S90lmd')
   const patched = patchS90lmd(s90lmdContent)
@@ -67,10 +57,9 @@ async function runReactivate(win: BrowserWindow, printerId: string, ip: string, 
   const record = recordOrThrow(printerId)
   const adapter = getAdapter(record.adapter)
   const bespok3d = bespok3dRootOn(adapter)
-  const printerData = adapter?.envVars.find((envVar) => envVar.name === 'PRINTER_DATA')?.value ?? '/oem/printer_data'
   await runSshOp(win, printerId, { host: ip, port, user, password }, (ssh) => [
     { id: 'remove-marker', label: 'Removing deactivated marker', detail: 'Clears the deactivated flag from the printer workspace', run: async () => { await ssh.exec(`rm -f ${bespok3d}/etc/deactivated`) } },
-    { id: 'restore-includes', label: 'Restoring plugin includes', detail: 'Re-adds Klipper and Moonraker include lines above the SAVE_CONFIG boundary', run: () => reactivateRestoreIncludes(ssh, printerData) },
+    { id: 'restore-includes', label: 'Restoring plugin includes', detail: 'Re-adds Klipper and Moonraker include lines above the SAVE_CONFIG boundary', run: () => writeBespok3dIncludes(ssh) },
     { id: 'restore-boot-hook', label: 'Restoring boot hook', detail: 'Re-patches S90lmd to invoke S99bespok3d at boot', run: () => reactivateBootHook(ssh) },
     { id: 'start-daemon', label: 'Starting the daemon', detail: 'Starts the bespok3d daemon process', run: async () => { await ssh.exec(`${bespok3d}/etc/init.d/autostart/s10bespok3d-daemon start`) } },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => tailDaemonLog(ssh, `${bespok3d}/var/log/daemon.log`)) },

@@ -228,8 +228,9 @@ describe('recovery while it is putting the plugins back', () => {
       />,
     )
 
-    expect(screen.getByText(en('batch_progress.count', { done: 1, total: 2 }))).toBeInTheDocument()
-    expect(container.querySelector('.batch-row.done')?.textContent).toContain('rfid-ntag')
+    expect(screen.getByText(en('batch_progress.count', { done: 2, total: 4 }))).toBeInTheDocument()
+    const pluginRows = Array.from(container.querySelectorAll('.batch-row-id'))
+    expect(pluginRows.find((rowLabel) => rowLabel.textContent === 'rfid-ntag')?.parentElement).toHaveClass('done')
     expect(container.querySelector('.batch-row.installing')?.textContent).toContain('spoolman')
     expect(screen.getByText('Place config')).toBeInTheDocument()
   })

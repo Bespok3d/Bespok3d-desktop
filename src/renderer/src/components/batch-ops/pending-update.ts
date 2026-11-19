@@ -10,8 +10,8 @@ export interface PendingUpdate {
 
 // An update batch waits for the user to read it before it runs. Both entry points (the store's Update
 // All and the header dropdown) ask first, and what the user confirms is what is sent: the dialog hands
-// back the specs, which carry the source picked per plugin and may differ from the ones offered. The
-// plugins being replaced by a set are not the user's to re-source, so they ride through untouched.
+// back the plan, whose specs carry the source picked per plugin and any value the user was asked for,
+// so they may differ from the ones offered.
 export function usePendingUpdate(startUpdateBatch: (printerId: string, plan: UpdateAllPlan) => void) {
   const [pendingUpdate, setPendingUpdate] = useState<PendingUpdate | null>(null)
 
@@ -19,10 +19,10 @@ export function usePendingUpdate(startUpdateBatch: (printerId: string, plan: Upd
     setPendingUpdate({ printerId, plan })
   }
 
-  function confirmUpdateAll(specs: PluginUpdateSpec[]) {
+  function confirmUpdateAll(plan: UpdateAllPlan) {
     const pending = pendingUpdate
     setPendingUpdate(null)
-    if (pending) startUpdateBatch(pending.printerId, { updates: specs, migrations: pending.plan.migrations })
+    if (pending) startUpdateBatch(pending.printerId, plan)
   }
 
   function cancelUpdateAll() {

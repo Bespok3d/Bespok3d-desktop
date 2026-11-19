@@ -8,6 +8,7 @@ import { PRIMARY_PORT } from '../../../data/ports/allocator'
 import type { PortClaim } from '../../../data/ports'
 import { httpPortError, httpPortValue } from '../../../data/ports'
 import { configAddressError } from '../../../data/address'
+import { toggleOffValue, toggleOnValue } from '../../../data/plugin-config'
 import { useI18n } from '../../../i18n/context'
 import { formatDateTime } from '../../../utils/datetime'
 import { knownFailureKey } from '../../../utils/knownFailures'
@@ -42,12 +43,23 @@ function PortRoleButtons({ value, portClaim, onChange }: { value: string; portCl
   )
 }
 
+// A toggle's saved text is the plugin's own word for on or off ("1", "0"), which tells the user nothing.
+function shownValue(t: TFunction, field: PluginConfigField, value: string, emptyLabel: string): string {
+  if (!value) return emptyLabel
+  if (field.type !== 'toggle') return value
+  if (value === toggleOnValue(field)) return t('store.config_on')
+  if (value === toggleOffValue(field)) return t('store.config_off')
+
+  return value
+}
+
 function ConfigRow({ field, value, emptyLabel, editing, scope, scopeDisabledChoice, onEdit, onChange, onScopeChange, portClaim }: {
   field: PluginConfigField; value: string; emptyLabel: string; editing: boolean
   scope?: ScopeChoice; scopeDisabledChoice?: ScopeChoice
   onEdit: () => void; onChange: (next: string) => void
   onScopeChange?: ScopeFlipHandler; portClaim?: PortClaim
 }) {
+  const { t } = useI18n()
   const canEdit = field.userEditable !== false
   const isPort = field.type === 'http-port'
 
@@ -58,7 +70,7 @@ function ConfigRow({ field, value, emptyLabel, editing, scope, scopeDisabledChoi
         ? <FieldInput field={field} value={value} onChange={onChange} />
         : (
           <button className="config-value" disabled={!canEdit} onClick={onEdit}>
-            {value || emptyLabel}
+            {shownValue(t, field, value, emptyLabel)}
           </button>
         )}
       {isPort && editing && canEdit && <PortRoleButtons value={value} portClaim={portClaim} onChange={onChange} />}

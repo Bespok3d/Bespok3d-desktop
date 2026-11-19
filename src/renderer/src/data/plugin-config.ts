@@ -29,6 +29,16 @@ export interface PluginConfigField {
   offValue?: string
 }
 
+// A toggle saves the text its manifest names for on and off ("1" and "0", say); a manifest that names
+// none saves "true" and "false".
+export function toggleOnValue(field: PluginConfigField): string {
+  return field.onValue ?? 'true'
+}
+
+export function toggleOffValue(field: PluginConfigField): string {
+  return field.offValue ?? 'false'
+}
+
 // The wire shape of a config field as an index entry carries it: `scope` stays optional there
 // because published manifests predate the key. Normalized to the strict domain shape below.
 export type IndexConfigField = Omit<PluginConfigField, 'scope'> & { scope?: PluginConfigScope }

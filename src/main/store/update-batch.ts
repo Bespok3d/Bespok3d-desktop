@@ -25,7 +25,8 @@ import { sendUpload } from './progress'
 import { capsOrFallback } from './record-sync'
 import { withoutFilesThePrinterHolds } from './partial-package'
 import { missingDependencyIds } from './missing-deps'
-import { requestsWithPrinterVars } from './printer-vars'
+import { withPrinterVars } from './printer-vars'
+import { catalogVariantOrNone } from './catalog-variant'
 import type { PackageOrigin } from './catalog-variant'
 import { reportEvent } from '../analytics'
 
@@ -222,8 +223,8 @@ function guardedPoster(post: BatchPoster): BatchPoster {
 
 async function runStoreBatch(win: BrowserWindow, printerId: string, requested: PluginUpdateSpec[], post: BatchPoster): Promise<BatchResult> {
   const record = getManagedRecord(printerId)
-  const specs = await requestsWithPrinterVars(record, requested)
   const catalog = (await loadCatalog()).plugins
+  const specs = await Promise.all(requested.map((spec) => withPrinterVars(record, spec, catalogVariantOrNone(catalog, spec.pluginId, originOf(spec)))))
   const printer = await printerAsItStands(record)
   // The ordered plan (deps first) is decided here; the renderer renders every row up front, then ticks
   // each as streamBatchProgress mirrors the daemon's live feed, so a batch is never an opaque spinner.

@@ -2,10 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { DaemonHttpError } from './client'
 import { malformedPackageMessage } from '../store/malformed-package'
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
+import { isRecord } from '../is-record'
 
 // The user-facing name of a blocked-action token (ADR-0037: the daemon and jinni emit machine
 // tokens, the client names them). Klipper and Moonraker are product names; the display is described

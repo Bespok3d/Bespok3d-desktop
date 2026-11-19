@@ -179,7 +179,7 @@ async function runStoreInstall(
   const depEntries = await checkedDependencies(record, catalog, channel, missingDeps)
   await installDepsInOrder(win, record, pluginId, depEntries)
   sendProgress(win, printerId, pluginId, 'Sending to printer…')
-  const { vars: sentVars } = await withPrinterVars(record, { pluginId, vars })
+  const { vars: sentVars } = await withPrinterVars(record, { pluginId, vars }, entry)
   const { log, packageTrust } = await sendPackage(win, record, entry, pluginId, sentVars)
   sendProgress(win, printerId, pluginId, 'Updating plugin list…')
   // The install succeeded on the device, so its source/channel provenance is now true regardless of

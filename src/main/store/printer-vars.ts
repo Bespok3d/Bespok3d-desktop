@@ -1,31 +1,29 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PrinterRecord } from '../printers'
+import type { MergedEntry } from '../registry/model'
 import { fetchPluginConfig } from '../daemon-client/client'
 import { DAEMON_QUERY_TIMEOUT_MS } from '../daemon-client/status'
-
-type PluginVars = Record<string, string>
+import { declaredDefaults } from './declared-defaults'
+import { varsToSend, type PluginVars, type PrinterVars } from './vars-to-send'
 
 interface PluginRequest {
   pluginId: string
   vars?: PluginVars
 }
 
-// An app that never configured a plugin (a second computer, a cleared profile) holds none of its
-// settings, and the printer refuses a required setting that arrives empty. The printer keeps the values
-// it was last given, so those fill the gaps; a value this app holds is the user's latest word and wins.
-export function varsWithPrinterFallback(appVars: PluginVars | undefined, printerVars: PluginVars | null): PluginVars {
-  return { ...(printerVars ?? {}), ...(appVars ?? {}) }
+async function printerVarsOf(record: PrinterRecord, pluginId: string): Promise<PrinterVars> {
+  return fetchPluginConfig(record, pluginId, DAEMON_QUERY_TIMEOUT_MS).then(
+    (saved) => saved ?? {},
+    (): PrinterVars => 'unreadable',
+  )
 }
 
-// A printer that cannot answer leaves the app's own values as they were: the printer still refuses a
-// missing required setting and says which, so nothing goes through on a guess.
-export async function withPrinterVars<Request extends PluginRequest>(record: PrinterRecord, request: Request): Promise<Request> {
-  const printerVars = await fetchPluginConfig(record, request.pluginId, DAEMON_QUERY_TIMEOUT_MS).catch(() => null)
+// The entry is the one whose package goes to the printer, so the defaults are that build's own. A plugin
+// the catalog does not list has none to give.
+export async function withPrinterVars<Request extends PluginRequest>(record: PrinterRecord, request: Request, entry: MergedEntry | undefined): Promise<Request> {
+  const printerVars = await printerVarsOf(record, request.pluginId)
+  const defaults = entry ? declaredDefaults(entry) : {}
 
-  return { ...request, vars: varsWithPrinterFallback(request.vars, printerVars) }
-}
-
-export function requestsWithPrinterVars<Request extends PluginRequest>(record: PrinterRecord, requests: Request[]): Promise<Request[]> {
-  return Promise.all(requests.map((request) => withPrinterVars(record, request)))
+  return { ...request, vars: varsToSend(request.vars, printerVars, defaults) }
 }

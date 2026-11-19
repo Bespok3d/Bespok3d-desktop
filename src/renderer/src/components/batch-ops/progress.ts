@@ -22,6 +22,7 @@ export interface BatchProgressState {
   // The plugins whose turn the printer said had ended, so a row shows its final mark at once.
   turnEndedIds: string[]
   phaseLabel: string | null
+  // Stays true once the services restart began, so the finished run still tells whether it had one.
   restarting: boolean
   done: boolean
 }
@@ -41,7 +42,7 @@ export function reduceBatchProgress(prev: BatchProgressState | null, printerId: 
   if (event.type === 'phase') return { ...prev, phaseLabel: event.label, failedIds: markFailed(prev, event.ok) }
   if (event.type === 'outcome') return reduceOutcome(prev, event)
 
-  return { ...prev, done: true, restarting: false }
+  return { ...prev, done: true }
 }
 
 function reducePlugin(prev: BatchProgressState, pluginId: string): BatchProgressState {
@@ -98,17 +99,53 @@ export function rowStatus(state: BatchProgressState, pluginId: string): RowStatu
   return 'pending'
 }
 
-// Plugins finished so far, for the "X of N" count and the bar: every row whose turn is over, so the
-// count matches the marks shown, includes a row the printer settled before it started any plugin,
-// and never goes back.
-export function completedCount(state: BatchProgressState): number {
-  return state.ids.filter((pluginId) => turnIsOver(state, pluginId)).length
+function preparingIsOver(state: BatchProgressState): boolean {
+  return state.startedIds.length > 0 || state.turnEndedIds.length > 0 || state.restarting || state.done
 }
 
-// The row the list keeps in view: the plugin installing now, or the restart row that follows the
-// plugins once the services restart. -1 (no row) before the first plugin starts.
-export function activeRowIndex(state: BatchProgressState): number {
-  if (state.restarting) return state.ids.length
+export function preparingStatus(state: BatchProgressState): RowStatus {
+  return preparingIsOver(state) ? 'done' : 'installing'
+}
 
-  return state.current === null ? -1 : state.ids.indexOf(state.current)
+export function restartStatus(state: BatchProgressState): RowStatus {
+  if (state.done) return state.restarting ? 'done' : 'skipped'
+
+  return state.restarting ? 'installing' : 'pending'
+}
+
+interface StepState {
+  status: RowStatus
+  isNow: boolean
+}
+
+// One row of the shown list. A plugin row is named by its plugin id, the two other steps by their kind.
+export type ProgressStep = StepState & ({ kind: 'plugin'; pluginId: string } | { kind: 'prepare' | 'restart' })
+
+function pluginStep(state: BatchProgressState, pluginId: string): ProgressStep {
+  return { kind: 'plugin', pluginId, status: rowStatus(state, pluginId), isNow: !state.done && pluginId === state.current }
+}
+
+// The list in the order it is shown, so the rows drawn, the total and the row kept in view come from one
+// place. Getting ready and the services restart are steps of their own: the restart is where Klipper
+// loads the new plugins and it takes longer than all the plugins together.
+export function progressSteps(state: BatchProgressState): ProgressStep[] {
+  return [
+    { kind: 'prepare', status: preparingStatus(state), isNow: !preparingIsOver(state) },
+    ...state.ids.map((pluginId) => pluginStep(state, pluginId)),
+    { kind: 'restart', status: restartStatus(state), isNow: state.restarting && !state.done },
+  ]
+}
+
+// Steps finished so far, for the "X of N" count and the bar: getting ready, every plugin row whose turn
+// is over (so the count matches the marks shown and never goes back), and the restart once the printer
+// says the batch is done. The count only reaches N when the work really has.
+export function completedCount(state: BatchProgressState): number {
+  const pluginsOver = state.ids.filter((pluginId) => turnIsOver(state, pluginId)).length
+
+  return Number(preparingIsOver(state)) + pluginsOver + Number(state.done)
+}
+
+// -1 (no row) while no step is running.
+export function activeRowIndex(steps: ProgressStep[]): number {
+  return steps.findIndex((step) => step.isNow)
 }

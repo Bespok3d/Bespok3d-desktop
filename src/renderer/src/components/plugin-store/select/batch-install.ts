@@ -49,9 +49,10 @@ export function pluginsNeedingConfig(selected: Plugin[]): Plugin[] {
   return selected.filter((plugin) => requiredFields(plugin).length > 0)
 }
 
-// The capture screen's starting values: each plugin's required fields, prefilled separately.
-export function initialBatchValues(plugins: Plugin[], savedVars: Record<string, string>): CapturedPluginValues {
-  return Object.fromEntries(plugins.map((plugin) => [plugin.id, initialConfigValues(requiredFields(plugin), savedVars)]))
+// The capture screen's starting values: each plugin's required fields, prefilled separately, with the
+// values already known for that one plugin (an update knows what the printer runs) over the saved ones.
+export function initialBatchValues(plugins: Plugin[], savedVars: Record<string, string>, knownValues: CapturedPluginValues = {}): CapturedPluginValues {
+  return Object.fromEntries(plugins.map((plugin) => [plugin.id, initialConfigValues(requiredFields(plugin), { ...savedVars, ...knownValues[plugin.id] })]))
 }
 
 // The captured values safe to save under their bare field key: a key two plugins share would make

@@ -634,6 +634,14 @@ describe('settings an update carries when this app holds none', () => {
     await runStoreUpdateBatch({} as BrowserWindow, 'printer-1', [{ pluginId: 'idle-timeout', vars: { PORT: '8080' } }])
     expect(varsSentToThePrinter()).toEqual({ PORT: '8080' })
   })
+
+  it('fills a setting nobody saved with the default the plugin declares', async () => {
+    stubTheBatchAround(packageWith(HONEST_MANIFEST))
+    const withDefault = { ...LISTED_ENTRY, config: [{ key: 'CAMERA_FREEZE_RECOVERY', type: 'toggle', default: true }] } as MergedEntry
+    vi.mocked(loadCatalog).mockResolvedValue({ plugins: [withDefault] } as never)
+    await updateBatch()
+    expect(varsSentToThePrinter()).toEqual({ CAMERA_FREEZE_RECOVERY: 'true' })
+  })
 })
 
 // Lucio's order (2026-11-10): an update sends only the files the printer does not already hold as signed.

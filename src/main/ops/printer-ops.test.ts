@@ -12,7 +12,7 @@ import type { BatchResult } from '../daemon-client/batch-result'
 // that finds them asks electron whether this is a packaged build.
 vi.mock('electron', () => ({ ipcMain: { handle: vi.fn() }, app: { isPackaged: false } }))
 vi.mock('@adapters/snapmaker-u1/client/snapmaker-u1', () => ({
-  patchS90lmd: (text: string) => text, bespok3dIncludeCommand: () => 'true', KLIPPER_INCLUDE: '', MOONRAKER_INCLUDE: '',
+  patchS90lmd: (text: string) => text, writeBespok3dIncludes: vi.fn(),
 }))
 vi.mock('../printers', () => ({ updatePrinter: vi.fn(), removePrinter: vi.fn(), resolveLiveAddress: vi.fn(async () => null) }))
 vi.mock('../adapter-loader', () => ({ getAdapter: vi.fn(() => undefined) }))
@@ -30,6 +30,7 @@ import { bespok3dRemovalCommand, registerPrinterOperationHandlers } from './prin
 import { recoverPackages } from '../daemon-client/client'
 import { restoreChangedFiles } from '../store/restore-changed-files'
 import { runSshOp } from './op-runner'
+import { writeBespok3dIncludes } from '@adapters/snapmaker-u1/client/snapmaker-u1'
 
 describe('bespok3dRemovalCommand', () => {
   const command = bespok3dRemovalCommand()
@@ -75,5 +76,15 @@ describe('restarting the plugins', () => {
 
     expect(answer).toEqual(reapplied)
     expect(vi.mocked(restoreChangedFiles).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(recoverPackages).mock.invocationCallOrder[0])
+  })
+
+  it('puts the Bespok3d lines back in every settings file the printer starts from', async () => {
+    vi.mocked(writeBespok3dIncludes).mockClear()
+    vi.mocked(recoverPackages).mockResolvedValue({ ok: true, results: [] })
+    vi.mocked(runSshOp).mockImplementation((_win, _printerId, _credentials, buildSteps) => runOpStepsOn(PRINTER_ON_THE_BENCH, buildSteps))
+
+    await reactivateHandler()({}, 'printer-1', '192.0.2.10', 'root', 'example', 22)
+
+    expect(vi.mocked(writeBespok3dIncludes)).toHaveBeenCalledWith(PRINTER_ON_THE_BENCH)
   })
 })

@@ -6,6 +6,7 @@ import type { BatchFailure, BatchVariant } from './variant'
 import type { BatchProgressState } from './progress'
 import type { BatchResult } from '../../../../main/daemon-client/batch-result'
 import type { PluginMigration, UpdateAllPlan } from '../plugin-store/migrations'
+import { planSpecs } from '../plugin-store/migrations'
 
 // The slots of useBatchOps one Update All drives. It is a single click for the user, so it is a
 // single busy flag and a single report no matter how many legs it takes on the printer.
@@ -25,7 +26,7 @@ const NOTHING_TO_DO: BatchResult = { ok: true, results: [] }
 
 // Every spec the click will send, from both legs, so the install gate weighs the whole thing once.
 function planSources(plan: UpdateAllPlan): Array<string | undefined> {
-  return batchSources([...plan.updates, ...plan.migrations.flatMap((migration) => migration.arrivingSpecs)])
+  return batchSources(planSpecs(plan))
 }
 
 function removeRetired(printerId: string, migrations: PluginMigration[]): Promise<BatchResult> {

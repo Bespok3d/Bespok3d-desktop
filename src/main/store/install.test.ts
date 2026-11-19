@@ -174,6 +174,14 @@ describe('runStoreInstall with settings the printer already holds', () => {
     const [, , , sentVars] = vi.mocked(installPlugin).mock.calls[0]
     expect(sentVars).toEqual({ PORT: '7999' })
   })
+
+  it('fills a setting nobody saved with the default the plugin declares', async () => {
+    stubTheHappyPathAround(packageWith(HONEST_MANIFEST))
+    vi.mocked(findCatalogVariant).mockReturnValue({ ...LISTED_ENTRY, config: [{ key: 'CAMERA_FREEZE_RECOVERY', type: 'toggle', default: true }] } as MergedEntry)
+    await installGuarded({} as BrowserWindow, 'printer-1', 'idle-timeout', { PORT: '7999' })
+    const [, , , sentVars] = vi.mocked(installPlugin).mock.calls[0]
+    expect(sentVars).toEqual({ CAMERA_FREEZE_RECOVERY: 'true', PORT: '7999' })
+  })
 })
 
 // The store page shows what the plugin's own repo last released, so the install has to fetch THAT

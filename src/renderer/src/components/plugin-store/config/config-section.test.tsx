@@ -69,3 +69,23 @@ describe('PluginConfigSection', () => {
     expect(screen.getByText(unansweredCall)).toBeInTheDocument()
   })
 })
+
+// The camera plugin saves its freeze-recovery toggle as "1", and the installed view showed that "1"
+// where the user expects to read whether the setting is on.
+describe('an installed toggle setting', () => {
+  const freezeRecovery: PluginConfigField = { key: 'CAMERA_FREEZE_RECOVERY', label: 'Wake a frozen built-in camera', type: 'toggle', scope: 'global', onValue: '1', offValue: '0' }
+
+  function shownFor(saved: string): string {
+    var { container } = setup(<PluginConfigSection fields={[freezeRecovery]} current={{ CAMERA_FREEZE_RECOVERY: saved }} installed printerId="printer-1" pluginId="u1-hw-camera" />)
+
+    return container.querySelector('.config-value')?.textContent ?? ''
+  }
+
+  it('reads On for the plugin word for on', () => {
+    expect(shownFor('1')).toBe(en('store.config_on'))
+  })
+
+  it('reads Off for the plugin word for off', () => {
+    expect(shownFor('0')).toBe(en('store.config_off'))
+  })
+})

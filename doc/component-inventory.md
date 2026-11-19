@@ -8,7 +8,7 @@ component, hook, or primitive. Reinvention is a hard-rule violation (feedback_re
 A blank purpose just means nobody has written a one-line `//` comment above that export yet; add one
 as you touch the file.
 
-300 exported components + hooks across 22 areas.
+301 exported components + hooks across 22 areas.
 
 ## Common primitives
 
@@ -127,7 +127,7 @@ as you touch the file.
 ## Feature: batch-ops
 
 - `BatchFailedModal` (component) - [components/batch-ops/FailedModal.tsx](../src/renderer/src/components/batch-ops/FailedModal.tsx) - The verdict a user meets is a sentence. A refusal while a print is running is already one (it names
-- `BatchInstallProgress` (component) - [components/batch-ops/InstallProgress.tsx](../src/renderer/src/components/batch-ops/InstallProgress.tsx) - The live batch-install modal: the ordered plugin list with each row ticking pending -> installing
+- `BatchInstallProgress` (component) - [components/batch-ops/InstallProgress.tsx](../src/renderer/src/components/batch-ops/InstallProgress.tsx) - The live batch-install modal: getting ready, the ordered plugin list, then the services restart, each
 - `BatchOpModal` (component) - [components/batch-ops/index.tsx](../src/renderer/src/components/batch-ops/index.tsx) - A batch op (recover / update-all / install-selected) shows the same two-step UI: live progress while
 - `BatchReportModal` (component) - [components/batch-ops/ReportModal.tsx](../src/renderer/src/components/batch-ops/ReportModal.tsx) - However a batch op ends, the user meets the same thing: what it was, one line saying how it went,
 - `OtaRecoveryResultsModal` (component) - [components/batch-ops/ResultsModal.tsx](../src/renderer/src/components/batch-ops/ResultsModal.tsx)
@@ -329,6 +329,7 @@ as you touch the file.
 
 - `UpdateConfirmDialog` (component) - [components/update-confirm/index.tsx](../src/renderer/src/components/update-confirm/index.tsx) - What the update is about to do, before it does it: one line per plugin with the two versions and
 - `UpdateConfirmGate` (component) - [components/update-confirm/UpdateConfirmGate.tsx](../src/renderer/src/components/update-confirm/UpdateConfirmGate.tsx) - The dialog needs the catalog and the user's channel ceiling to read a batch back to them, and those
+- `useValuesCapture` (hook) - [components/update-confirm/values-capture.ts](../src/renderer/src/components/update-confirm/values-capture.ts) - The step between "Update" and the batch: a plugin with a required setting nobody gave a value to is
 
 ## Feature: upload
 

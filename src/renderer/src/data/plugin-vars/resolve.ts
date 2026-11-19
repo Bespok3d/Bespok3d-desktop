@@ -1,12 +1,13 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PluginConfigField } from '../types'
+import { toggleOffValue } from '../plugin-config'
 import { GLOBAL_SCOPE, localScopeKey, type ScopedPluginVars } from './types'
 
 // The field type's natural default: what a value means when nothing was ever chosen. Single-sourced
 // here for every consumer of the fallback chain (scope resolution here, form seeding in the store UI).
 export function typeDefault(field: PluginConfigField): string {
-  if (field.type === 'toggle') return field.offValue ?? 'false'
+  if (field.type === 'toggle') return toggleOffValue(field)
   if (field.type === 'select') return field.options?.[0] ?? ''
 
   return ''

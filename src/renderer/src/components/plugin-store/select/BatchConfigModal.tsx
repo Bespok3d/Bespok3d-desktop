@@ -12,6 +12,13 @@ import { httpPortError } from '../../../data/ports'
 import { initialBatchValues, requiredFields } from './batch-install'
 import type { CapturedPluginValues } from './batch-install'
 
+export type BatchConfigPurpose = 'install' | 'update'
+
+const PURPOSE_TEXT = {
+  install: { body: 'batch_config.body', confirm: 'batch_config.install' },
+  update: { body: 'batch_config.update_body', confirm: 'batch_config.update' },
+} as const
+
 function requiredValuesUsable(plugin: Plugin, values: Record<string, string>): boolean {
   const fields = requiredFields(plugin)
 
@@ -52,9 +59,11 @@ function PluginConfigGroup({ plugin, values, scopes, onField, onScopeChange }: {
 // The per-field scope control (All printers / This printer) renders when the flow threads scope
 // choices (both production flows do); the choices stay flow-state until the capture is confirmed,
 // so a cancelled batch saves nothing, values and scopes alike.
-export function BatchConfigModal({ plugins, savedVars, busy, scopes, onScopeChange, onCancel, onConfirm }: {
+export function BatchConfigModal({ plugins, savedVars, knownValues, purpose = 'install', busy, scopes, onScopeChange, onCancel, onConfirm }: {
   plugins: Plugin[]
   savedVars: Record<string, string>
+  knownValues?: CapturedPluginValues
+  purpose?: BatchConfigPurpose
   busy: boolean
   scopes?: Record<string, ScopeChoice>
   onScopeChange?: (fieldKey: string, choice: ScopeChoice) => void
@@ -62,7 +71,8 @@ export function BatchConfigModal({ plugins, savedVars, busy, scopes, onScopeChan
   onConfirm: (captured: CapturedPluginValues) => void
 }) {
   const { t } = useI18n()
-  const [values, setValues] = useState(() => initialBatchValues(plugins, savedVars))
+  const [values, setValues] = useState(() => initialBatchValues(plugins, savedVars, knownValues))
+  const text = PURPOSE_TEXT[purpose]
   const ready = plugins.every((plugin) => requiredValuesUsable(plugin, values[plugin.id] ?? {}))
 
   function setField(pluginId: string, key: string, value: string) {
@@ -73,7 +83,7 @@ export function BatchConfigModal({ plugins, savedVars, busy, scopes, onScopeChan
     <Modal onClose={onCancel} className="batch-config-modal">
       <div className="modal-head">
         <h2>{t('batch_config.title')}</h2>
-        <p>{t('batch_config.body')}</p>
+        <p>{t(text.body)}</p>
       </div>
       <div className="batch-config-scroll">
         {plugins.map((plugin) => (
@@ -83,7 +93,7 @@ export function BatchConfigModal({ plugins, savedVars, busy, scopes, onScopeChan
       <div className="batch-config-foot">
         <Button variant="outline" onClick={onCancel} disabled={busy}>{t('btn.cancel')}</Button>
         <Button variant="primary" onClick={() => onConfirm(values)} disabled={!ready || busy}>
-          {t('batch_config.install', { count: plugins.length })}
+          {t(text.confirm, { count: plugins.length })}
         </Button>
       </div>
     </Modal>
