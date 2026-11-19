@@ -4,22 +4,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Drive the route choice without a socket: the batch posters differ only in the path they POST to, and
 // that path is the Bug A app-side fix (install-selected must hit install-batch, not update-batch).
-vi.mock('./transport', () => ({
+vi.mock('./transport', async (importOriginal) => ({
+  ...await importOriginal<typeof import('./transport')>(),
   doRequest: vi.fn().mockResolvedValue(JSON.stringify({ ok: true, results: [] })),
   LONG_OP_TIMEOUT_MS: 1,
-  DaemonHttpError: class DaemonHttpError extends Error {
-    statusCode: number
-    detail: unknown
-    constructor(statusCode: number, detail: unknown, message: string) {
-      super(message)
-      this.statusCode = statusCode
-      this.detail = detail
-    }
-  },
 }))
 
 import { DaemonHttpError, doRequest } from './transport'
-import { installBatchPackages, recoverAfterReboot, recoverPackages, repairOrRecover, updateBatchPackages } from './packages-client'
+import { installBatchPackages, recoverAfterReboot, recoverPackages, repairOrRecover, repairSetupOnly, updateBatchPackages, wireSetupAfterDaemonMove } from './packages-client'
 import type { PrinterRecord } from '../printers'
 
 const record = { ip: '127.0.0.1', daemonCert: 'C', daemonToken: 'T' } as unknown as PrinterRecord
@@ -80,6 +72,18 @@ describe('repairing a printer after an OTA', () => {
     expect(postedPaths()).toEqual(['/packages/repair-setup'])
   })
 
+  it('answers nothing to wire when the printer says the setup repair is not the fix', async () => {
+    vi.mocked(doRequest).mockRejectedValueOnce(new DaemonHttpError(409, { error: 'needs_recover' }, 'conflict'))
+
+    await expect(repairSetupOnly(record)).resolves.toBeNull()
+  })
+
+  it('passes on a print-blocked refusal of the setup repair', async () => {
+    vi.mocked(doRequest).mockRejectedValueOnce(new DaemonHttpError(409, { error: 'blocked', blocked_actions: ['klipper'] }, 'conflict'))
+
+    await expect(repairSetupOnly(record)).rejects.toThrow('conflict')
+  })
+
   it('tells the printer nothing about a reboot when no reboot follows, so it keeps its services restart', async () => {
     await recoverPackages(record)
 
@@ -92,6 +96,40 @@ describe('repairing a printer after an OTA', () => {
     await repairOrRecover(record, false)
 
     expect(vi.mocked(doRequest).mock.calls.map((call) => call[5])).toEqual([1, 1])
+  })
+})
+
+describe('wiring the setup after a daemon or jinni move', () => {
+  beforeEach(() => vi.mocked(doRequest).mockReset().mockResolvedValue(JSON.stringify({ ok: true, results: [] })))
+
+  it('asks the printer for the setup repair only, never the full recover', async () => {
+    await wireSetupAfterDaemonMove(record)
+
+    expect(postedPaths()).toEqual(['/packages/repair-setup'])
+  })
+
+  it('leaves it to the printer report on a daemon too old to have the setup repair', async () => {
+    vi.mocked(doRequest).mockRejectedValueOnce(new DaemonHttpError(404, 'Not Found', 'not found'))
+
+    await expect(wireSetupAfterDaemonMove(record)).resolves.toBeUndefined()
+  })
+
+  it('leaves it to the printer report when a print started meanwhile', async () => {
+    vi.mocked(doRequest).mockRejectedValueOnce(new DaemonHttpError(409, { error: 'blocked', blocked_actions: ['klipper'] }, 'conflict'))
+
+    await expect(wireSetupAfterDaemonMove(record)).resolves.toBeUndefined()
+  })
+
+  it('passes on any other refusal', async () => {
+    vi.mocked(doRequest).mockRejectedValueOnce(new DaemonHttpError(409, { error: 'printing' }, 'conflict'))
+
+    await expect(wireSetupAfterDaemonMove(record)).rejects.toThrow('conflict')
+  })
+
+  it('passes on a printer that could not be asked', async () => {
+    vi.mocked(doRequest).mockRejectedValueOnce(new Error('connection reset'))
+
+    await expect(wireSetupAfterDaemonMove(record)).rejects.toThrow('connection reset')
   })
 })
 

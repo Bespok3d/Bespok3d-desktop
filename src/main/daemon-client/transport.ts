@@ -50,6 +50,12 @@ export function isNotFound(failure: unknown): boolean {
   return failure instanceof DaemonHttpError && failure.statusCode === 404
 }
 
+// The daemon's 409 names why it refused in `detail.error`.
+export function printerRefusedFor(failure: unknown, refusalReason: string): boolean {
+  return failure instanceof DaemonHttpError && failure.statusCode === 409
+    && (failure.detail as { error?: string } | null)?.error === refusalReason
+}
+
 function parseDaemonDetail(text: string): unknown {
   try {
     return (JSON.parse(text) as { detail?: unknown }).detail ?? text

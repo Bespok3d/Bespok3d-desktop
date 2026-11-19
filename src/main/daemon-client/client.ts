@@ -22,6 +22,7 @@ export {
   recoverPackages,
   recoverAfterReboot,
   repairOrRecover,
+  wireSetupAfterDaemonMove,
   uninstallBatch,
   updateBatchPackages,
   installBatchPackages,

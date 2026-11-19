@@ -15,6 +15,7 @@ import { runSshOp } from './op-runner'
 import type { OpStep } from './op-runner'
 import { waitForDaemon, tailDaemonLog } from './daemon-log'
 import { recordOrThrow, verifyDaemonVersion } from '../daemon-client/status'
+import { wireSetupAfterDaemonMove } from '../daemon-client/client'
 import { expectedDaemonVersion } from '../daemon-client/expected-version'
 import { offeredJinniVersion } from '../compat/jinni-baseline'
 import { assertNotADaemonDowngrade, assertPairLandedTogether, assertPrinterNotPrinting, keepingNewerInstalledDaemon, reportedDaemonVersion } from '../compat'
@@ -139,6 +140,36 @@ async function runningDaemonVersion(record: PrinterRecord): Promise<string> {
   return (await reportedDaemonVersion(record)) ?? expectedDaemonVersion()
 }
 
+async function saveFittingPair(record: PrinterRecord, saveTheMove: () => void | Promise<void>): Promise<void> {
+  await assertPairLandedTogether(record)
+  await saveTheMove()
+}
+
+// The pair that landed is read back and saved before anything runs through it, so a failed wiring
+// never loses a move that landed. A new daemon or jinni can check settings files the old one never
+// wired, so the printer flagged itself as not set up right until someone pressed "Put it back": the
+// move wires them itself, as a step the screen shows like any other.
+function landedPairSteps(record: PrinterRecord, saveTheMove: () => void | Promise<void>): OpStep[] {
+  return [
+    { id: 'save-pair', label: 'Saving the daemon and jinni that landed', detail: 'Reads back the daemon and jinni that landed, refuses a pair that does not fit, and saves the pair that does', run: () => saveFittingPair(record, saveTheMove) },
+    { id: 'wire-setup', label: 'Putting the printer setup back', detail: 'Puts the printer setup back the way the new daemon or jinni checks it, so the printer does not flag itself as not set up', run: () => wireSetupAfterDaemonMove(record) },
+  ]
+}
+
+async function saveRepair(printerId: string, record: PrinterRecord): Promise<void> {
+  updatePrinter(printerId, { status: 'managed', daemonVersion: await runningDaemonVersion(record), daemonUpdateAvailable: false })
+}
+
+// deploy-daemon redeploys the jinni too, so record both at the version the app just installed: the
+// jinni-update banner must not flash between this save and the next capabilities ping.
+function saveDaemonUpdate(printerId: string, adapter: AdapterDefinition): void {
+  updatePrinter(printerId, { status: 'managed', daemonVersion: expectedDaemonVersion(), daemonUpdateAvailable: false, daemonUpdatedAt: new Date().toISOString(), jinniVersion: offeredJinniVersion(adapter) ?? adapter.jinniVersion })
+}
+
+function saveJinniUpdate(printerId: string, adapter: AdapterDefinition): void {
+  updatePrinter(printerId, { status: 'managed', jinniVersion: offeredJinniVersion(adapter) ?? adapter.jinniVersion })
+}
+
 export async function runRepair(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number, forced = false): Promise<void> {
   const { record, adapter, ctx } = daemonOpContext(printerId, ip, { user, password, port })
   await assertSafeToMoveDaemon(record, forced)
@@ -149,9 +180,8 @@ export async function runRepair(win: BrowserWindow, printerId: string, ip: strin
     bootScriptStep(adapter, ssh, ctx),
     { id: 'start-daemon', label: 'Starting the daemon', detail: 'Deploys the corrected autostart script, frees port 4269, and starts the daemon', run: () => runAdapterStep(adapter, DAEMON_START_STEP_ID, ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
+    ...landedPairSteps(record, () => saveRepair(printerId, record)),
   ])
-  await assertPairLandedTogether(record)
-  updatePrinter(printerId, { status: 'managed', daemonVersion: await runningDaemonVersion(record), daemonUpdateAvailable: false })
 }
 
 export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
@@ -163,11 +193,8 @@ export async function runUpdateDaemon(win: BrowserWindow, printerId: string, ip:
     bootScriptStep(adapter, ssh, ctx),
     { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Deploys the autostart script, frees port 4269, and restarts the daemon', run: () => runAdapterStep(adapter, DAEMON_START_STEP_ID, ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon and confirms it restarted on the expected version', run: async () => { await waitForDaemon(ip, () => tailDaemonLog(ssh)); await verifyDaemonVersion(record) } },
+    ...landedPairSteps(record, () => saveDaemonUpdate(printerId, adapter)),
   ])
-  await assertPairLandedTogether(record)
-  // deploy-daemon redeploys the jinni too, so record both at the version the app just installed: the
-  // jinni-update banner must not flash between this save and the next capabilities ping.
-  updatePrinter(printerId, { status: 'managed', daemonVersion: expectedDaemonVersion(), daemonUpdateAvailable: false, daemonUpdatedAt: new Date().toISOString(), jinniVersion: offeredJinniVersion(adapter) ?? adapter.jinniVersion })
 }
 
 export async function runUpdateJinni(win: BrowserWindow, printerId: string, ip: string, user: string, password: string, port: number): Promise<void> {
@@ -179,7 +206,6 @@ export async function runUpdateJinni(win: BrowserWindow, printerId: string, ip: 
     { id: 'deploy-jinni', label: 'Updating the adapter jinni', detail: 'Re-uploads only the device-side adapter; the daemon source, cert, and plugins are left untouched', run: (progress) => runAdapterStep(adapter, JINNI_DEPLOY_STEP_ID, ssh, { ...ctx, onProgress: progress, sendChangedFilesOnly: true }) },
     { id: 'start-daemon', label: 'Restarting the daemon', detail: 'Restarts the daemon so it loads the updated jinni', run: () => runAdapterStep(adapter, DAEMON_START_STEP_ID, ssh, ctx) },
     { id: 'verify-daemon', label: 'Verifying the daemon', detail: 'Waits for the daemon to accept connections on port 4269', run: () => waitForDaemon(ip, () => tailDaemonLog(ssh)) },
+    ...landedPairSteps(record, () => saveJinniUpdate(printerId, adapter)),
   ])
-  await assertPairLandedTogether(record)
-  updatePrinter(printerId, { status: 'managed', jinniVersion: offeredJinniVersion(adapter) ?? adapter.jinniVersion })
 }

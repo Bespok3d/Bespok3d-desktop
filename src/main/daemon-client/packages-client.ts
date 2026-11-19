@@ -4,7 +4,7 @@ import type { PrinterRecord } from '../printers'
 import type { InstallLogPhase, InstallLog } from '@bespok3d/contract'
 import type { BatchResult } from './batch-result'
 import { manifestWarningsIn } from './batch-result'
-import { DaemonHttpError, doRequest, LONG_OP_TIMEOUT_MS, type UploadProgressFn } from './transport'
+import { DaemonHttpError, doRequest, isNotFound, LONG_OP_TIMEOUT_MS, printerRefusedFor, type UploadProgressFn } from './transport'
 
 function toInstallLog(text: string): InstallLog {
   const result = JSON.parse(text) as { plugin_id: string; ok: boolean; log: InstallLogPhase[] }
@@ -147,22 +147,35 @@ export async function recoverAfterReboot(record: PrinterRecord, attemptsLeft = A
   }
 }
 
-function printerAskedForTheFullRecover(error: unknown): boolean {
-  return error instanceof DaemonHttpError && error.statusCode === 409
-    && (error.detail as { error?: string } | null)?.error === 'needs_recover'
-}
-
-// A printer that only lost its setup (the include lines) gets just that put back, with no plugin
-// re-applied. The printer refuses that smaller repair whenever its selfcheck reports anything more, and
-// only then is every plugin put back (Bespok3d-desktop#30).
-export async function repairOrRecover(record: PrinterRecord, rebootFollows: boolean): Promise<BatchResult> {
+// Puts back only the printer's own setup (the include lines), with no plugin re-applied. Null when the
+// printer refuses it: its selfcheck reports nothing wrong, or more than its setup.
+export async function repairSetupOnly(record: PrinterRecord): Promise<BatchResult | null> {
   try {
     return parseBatchResult(await doRequest(record, 'POST', '/packages/repair-setup', undefined, undefined, LONG_OP_TIMEOUT_MS))
   } catch (error) {
-    if (!printerAskedForTheFullRecover(error)) throw error
+    if (!printerRefusedFor(error, 'needs_recover')) throw error
 
-    return recoverPackages(record, rebootFollows)
+    return null
   }
+}
+
+// A daemon that predates the setup repair has nothing new to wire, and a printer that started a print
+// meanwhile is not touched. Either way the printer's own report still says what is wrong.
+function setupLeftForThePrinterReport(failure: unknown): void {
+  if (isNotFound(failure) || printerRefusedFor(failure, 'blocked')) return
+  throw failure
+}
+
+// A new daemon or jinni can check settings files the old one never wired, so the printer flagged itself
+// as not set up right until someone pressed "Put it back". A daemon or jinni move wires them itself.
+export async function wireSetupAfterDaemonMove(record: PrinterRecord): Promise<void> {
+  await repairSetupOnly(record).catch(setupLeftForThePrinterReport)
+}
+
+// A printer that only lost its setup gets just that put back. Only when the printer refuses that
+// smaller repair is every plugin put back (Bespok3d-desktop#30).
+export async function repairOrRecover(record: PrinterRecord, rebootFollows: boolean): Promise<BatchResult> {
+  return (await repairSetupOnly(record)) ?? recoverPackages(record, rebootFollows)
 }
 
 export interface BatchUpdatePackage {

@@ -151,13 +151,14 @@ describe('every path that moves a daemon asks first and records last', () => {
     expect(jinni.indexOf('assertPrinterNotPrinting')).toBeLessThan(jinni.indexOf('runSshOp'))
   })
 
-  it('reads the landed pair back before writing the record, on all three ops', () => {
-    const recorded = daemonOps.split('updatePrinter(printerId, { status:')
+  it('saves a move only through the landed pair read-back, on all three ops', () => {
+    const ops = daemonOps.slice(daemonOps.indexOf('export async function runRepair'))
+    const fittingPairSaver = daemonOps.slice(daemonOps.indexOf('async function saveFittingPair'), daemonOps.indexOf('function landedPairSteps'))
 
-    expect(recorded).toHaveLength(4)
-    recorded.slice(0, 3).forEach((upTo) => {
-      expect(upTo).toContain('assertPairLandedTogether')
-    })
+    expect(ops).not.toContain('updatePrinter(')
+    expect(ops.match(/landedPairSteps\(record, \(\) => save\w+\(/g) ?? []).toHaveLength(3)
+    expect(fittingPairSaver.indexOf('assertPairLandedTogether')).toBeGreaterThan(0)
+    expect(fittingPairSaver.indexOf('assertPairLandedTogether')).toBeLessThan(fittingPairSaver.indexOf('saveTheMove()'))
   })
 
   // Forcing waives the version question only. A print running on the printer is the user's, so no menu
