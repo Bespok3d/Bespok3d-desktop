@@ -835,6 +835,7 @@
   "notif.auth.body": "Une ou plusieurs sources de plugins sont privées. Connectez-vous à GitHub pour les charger.",
   "notif.update.title": "{name}",
   "notif.update.body": "Mise à jour disponible : v{installed} vers v{version}.",
+  "notif.update.other_list_body": "Le dépôt {list} propose une nouvelle mise à jour pour votre {name}. De {installed} à {version}. Vous voudrez peut-être y jeter un œil",
   "notif.update.action": "Voir le changelog",
   "notif.update.action_plugin": "Voir le plugin",
   "notif.screen_stuck_reboot.title": "{name} a redémarré toute seule",

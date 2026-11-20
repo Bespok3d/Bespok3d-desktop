@@ -9,6 +9,7 @@ import type { Notice, NoticeAction } from './notices'
 import { visibleNotices, unreadCount, relativeTime } from './notice-state'
 import { useNoticeState } from './useNoticeState'
 import type { Section } from '../settings'
+import type { PluginPageView } from '../plugin-store/detail/StoreDetailPanel'
 import { useChannelPrefs } from '../common/hooks/useChannelPrefs'
 import cx from '../../utils/cx'
 import { Button } from '../common/Button'
@@ -56,7 +57,7 @@ function NoticeItem({ notice, isRead, seenAt, now, onAct, onMarkRead, onDismiss 
 
 export interface NotificationCenterProps {
   onOpenSettings: (pane: Section) => void
-  onOpenPlugin: (pluginId: string) => void
+  onOpenPlugin: (pluginId: string, view?: PluginPageView) => void
   installedVersions: Record<string, string>
   installedSources: Record<string, string>
   installedFingerprints?: Record<string, string>
@@ -85,7 +86,7 @@ export function NotificationCenter({ onOpenSettings, onOpenPlugin, installedVers
   function runAction(action: NoticeAction): void {
     setOpen(false)
     if (action.kind === 'open-settings') onOpenSettings(action.pane)
-    else onOpenPlugin(action.pluginId)
+    else onOpenPlugin(action.pluginId, action.view)
   }
 
   function act(notice: Notice): void {

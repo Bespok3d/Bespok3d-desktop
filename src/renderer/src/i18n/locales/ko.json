@@ -835,6 +835,7 @@
   "notif.auth.body": "하나 이상의 플러그인 소스가 비공개입니다. GitHub에 로그인해 불러오세요.",
   "notif.update.title": "{name}",
   "notif.update.body": "업데이트 사용 가능: v{installed}에서 v{version}(으)로.",
+  "notif.update.other_list_body": "{list} 저장소에서 {name}의 새 업데이트를 제공합니다. {installed}에서 {version}(으)로. 확인해 보세요",
   "notif.update.action": "변경 기록 보기",
   "notif.update.action_plugin": "플러그인 보기",
   "notif.screen_stuck_reboot.title": "{name} 프린터가 자동으로 다시 시작했습니다",

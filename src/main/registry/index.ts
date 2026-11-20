@@ -17,7 +17,7 @@ import { bundledRegistryDir } from './bundled-dir'
 import { loadSettings } from '../settings'
 import { stampListingRefreshed } from './listing-freshness'
 import { userLocalSourceUrl, userLocalIndexExists } from './local'
-import { APP_CHANNEL, officialIndexUrl } from '../channel'
+import { APP_CHANNEL, officialListUrl } from '../channel'
 import type { AppChannel } from '../channel'
 
 export type { CatalogResult } from './model'
@@ -30,12 +30,7 @@ function bundledRegistryRef(): RegistryRef {
 // git-host.json can never drop it. The bundled offline copy is listed first so locally built
 // plugins shadow the published ones (same name + version).
 export function officialRemoteSources(channel: AppChannel): ConfiguredSource[] {
-  const indexUrl = officialIndexUrl(channel)
-
-  return channel.indexBranches.map((branch) => officialSource(
-    branch === 'dev' ? `${indexUrl}?ref=dev` : indexUrl,
-    channel, branch,
-  ))
+  return channel.indexBranches.map((branch) => officialSource(officialListUrl(channel, branch), channel, branch))
 }
 
 function officialSource(url: string, channel: AppChannel, branch: string): ConfiguredSource {

@@ -40,3 +40,24 @@ describe('tier version selection', () => {
     expect(install).toHaveBeenCalledWith('printer-1', 'demo', undefined, [], TIER_URL, 'stable')
   })
 })
+
+describe('opening on a requested variant', () => {
+  const plugin = makePlugin({ id: 'demo', sources: [makeSource({ registryUrl: LIVE_URL }), makeSource({ registryUrl: TIER_URL, label: 'Bespok3d Official prerelease', version: '1.1.0-pre', channel: 'testing' })] })
+
+  function renderOnVersions(initialVariantKey?: string, installedSource = LIVE_URL) {
+    setup(
+      <PluginPanel plugin={plugin} installed hasUpdate installedSource={installedSource} installedVersion="1.0.0" initialTab="versions" initialVariantKey={initialVariantKey} printerId="printer-1" allInstalledIds={['demo']} onClose={vi.fn()} onOperationDone={vi.fn()} />,
+      { withCatalog: true, b3d: { registry: { catalog: vi.fn().mockResolvedValue(tierCatalog()) } } },
+    )
+
+    return document.querySelector('.panel-sources .source-row.selected') as HTMLElement
+  }
+
+  it('selects the variant an update notice names, on its own list', () => {
+    expect(renderOnVersions(`${TIER_URL}::testing`)).toHaveTextContent('Bespok3d Official prerelease')
+  })
+
+  it('falls back to the installed variant when the requested one is not offered', () => {
+    expect(renderOnVersions(`${LIVE_URL}::experiment`, TIER_URL)).toHaveTextContent('Bespok3d Official prerelease')
+  })
+})

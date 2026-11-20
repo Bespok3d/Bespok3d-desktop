@@ -6,6 +6,7 @@ import type { CeilingResolver } from '../../data/channels'
 import { applyToId } from '../../data/printers'
 import { refreshInstallProvenance } from './install-provenance'
 import { useI18n } from '../../i18n/context'
+import type { PluginPageView, TabRequest } from './detail/StoreDetailPanel'
 import { batchBlockReason } from './batch-gate'
 import type { InstallBlock } from './panel/install-gate'
 import type { Collection } from '../../data/collections'
@@ -120,18 +121,48 @@ export function useUpdateAll(deps: UpdateAllDeps): { updatableCount: number; upd
   return { updatableCount, updateBlock, updateAll }
 }
 
-// Open a plugin's detail panel when an external focus is requested (e.g. drag-drop "install now"),
-// then clear the request so it fires once.
-export function useFocusPanel(
-  focusPluginId: string | null | undefined,
-  plugins: Plugin[],
-  open: (plugin: Plugin) => void,
-  onHandled: (() => void) | undefined,
-): void {
+// A plugin page an outside caller asks the store to open, and the view it opens on when one is named.
+interface PanelFocus {
+  pluginId: string | null | undefined
+  view: PluginPageView | null | undefined
+}
+
+// How the store opens a panel and asks it for a view (the panelPlugin/tabRequest setters it owns).
+interface PanelOpener {
+  open: (plugin: Plugin) => void
+  requestTab: (next: (prev: TabRequest | null) => TabRequest) => void
+}
+
+// The bumped nonce re-applies the view even when the panel is already open on that plugin.
+function openPanelOnView(target: Plugin, view: PluginPageView | null | undefined, opener: PanelOpener): void {
+  opener.open(target)
+  if (!view) return
+  opener.requestTab((prev) => ({ ...view, id: target.id, nonce: (prev?.nonce ?? 0) + 1 }))
+}
+
+// Open a plugin's detail panel when an external focus is requested (e.g. drag-drop "install now", or an
+// update notice naming the Versions tab), then clear the request so it fires once.
+function useFocusPanel(focus: PanelFocus, plugins: Plugin[], opener: PanelOpener, onHandled: (() => void) | undefined): void {
   useEffect(() => {
-    if (!focusPluginId) return
-    const target = plugins.find((plugin) => plugin.id === focusPluginId)
-    if (target) open(target)
+    if (!focus.pluginId) return
+    const target = plugins.find((plugin) => plugin.id === focus.pluginId)
+    if (target) openPanelOnView(target, focus.view, opener)
     onHandled?.()
-  }, [focusPluginId, plugins])
+  }, [focus.pluginId, focus.view, plugins])
+}
+
+// The plugin whose detail panel is open, and the view it was asked to open on. Closing the panel or
+// moving to another plugin ends that view, so the plugin's next open starts fresh rather than on the
+// tab and variant a notice once named. A request for the same plugin is kept, so its nonce still counts up.
+export function usePluginPanel(focus: PanelFocus, plugins: Plugin[], onFocusHandled: (() => void) | undefined) {
+  const [panelPlugin, setPanelPlugin] = useState<Plugin | null>(null)
+  const [tabRequest, setTabRequest] = useState<TabRequest | null>(null)
+  useFocusPanel(focus, plugins, { open: selectPanelPlugin, requestTab: setTabRequest }, onFocusHandled)
+
+  function selectPanelPlugin(plugin: Plugin | null) {
+    setPanelPlugin(plugin)
+    setTabRequest((request) => (request && request.id === plugin?.id ? request : null))
+  }
+
+  return { panelPlugin, tabRequest, selectPanelPlugin, requestTab: setTabRequest }
 }

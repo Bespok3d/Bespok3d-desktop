@@ -11,6 +11,14 @@ export function officialIndexUrl(channel: AppChannel): string {
   return `github:Bespok3d/main-index/${channel.indexAssets[0]}`
 }
 
+// The official list each index branch publishes: the main branch is the live list, the dev branch the
+// prerelease list beside it.
+export function officialListUrl(channel: AppChannel, branch: string): string {
+  const indexUrl = officialIndexUrl(channel)
+
+  return branch === 'dev' ? `${indexUrl}?ref=dev` : indexUrl
+}
+
 export function releaseRepository(channel: AppChannel): { owner: string; repo: string } | null {
   const repository = channel.releaseRepository
   if (!repository) return null

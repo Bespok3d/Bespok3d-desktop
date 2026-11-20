@@ -31,7 +31,7 @@ function App() {
   const { theme, setTheme, setThemeOverride, resolved, density, setDensity, storeGrouped, setStoreGrouped } = useDisplayPrefs()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsPane, setSettingsPane] = useState<Section | undefined>(undefined)
-  const { mode, setMode, focusPluginId, openPluginPage, clearPluginFocus } = usePaneSelection()
+  const { mode, setMode, focusPluginId, focusView, openPluginPage, clearPluginFocus } = usePaneSelection()
   const [workbenchLayout, setWorkbenchLayout] = useState<'A' | 'B'>('A')
   function subscribeOpenSettings() {
     return window.b3d.appUpdate.onOpenSettings(() => { setSettingsPane('update'); setSettingsOpen(true) })
@@ -58,7 +58,7 @@ function App() {
     if (printers.length === 0) return <FirstRun discovered={discovered} onOpenAdd={actions.openAdd} onOpenManual={actions.openManual} onRescan={actions.handleRescan} />
     if (mode === 'create') return <Create printer={selectedPrinter} layout={workbenchLayout} onSetLayout={(next) => { setWorkbenchLayout(next); window.b3d.settings.set({ workbenchLayout: next }) }} />
 
-    return <PluginStore printer={selectedPrinter} density={density} grouped={storeGrouped} onPrinterUpdate={setPrinters} savedPluginVars={savedPluginVars} onSaveVars={(save) => pluginVars.saveFor(selectedPrinterKey, save)} scopeFor={(field) => pluginVars.scopeFor(selectedPrinterKey, field)} onUpdateAll={actions.handleUpdateAll} updatingAll={actions.updatingAll} onInstallSelected={actions.handleInstallBatch} installingSelected={actions.installingBatch} onUninstallSelected={actions.handleUninstallBatch} onMigrateSelected={actions.handleMigrateBatch} uninstallingSelected={actions.uninstallingBatch} focusPluginId={focusPluginId} onFocusHandled={clearPluginFocus} onConnectGitHub={() => { setSettingsPane('git-host'); setSettingsOpen(true) }} />
+    return <PluginStore printer={selectedPrinter} density={density} grouped={storeGrouped} onPrinterUpdate={setPrinters} savedPluginVars={savedPluginVars} onSaveVars={(save) => pluginVars.saveFor(selectedPrinterKey, save)} scopeFor={(field) => pluginVars.scopeFor(selectedPrinterKey, field)} onUpdateAll={actions.handleUpdateAll} updatingAll={actions.updatingAll} onInstallSelected={actions.handleInstallBatch} installingSelected={actions.installingBatch} onUninstallSelected={actions.handleUninstallBatch} onMigrateSelected={actions.handleMigrateBatch} uninstallingSelected={actions.uninstallingBatch} focusPluginId={focusPluginId} focusView={focusView} onFocusHandled={clearPluginFocus} onConnectGitHub={() => { setSettingsPane('git-host'); setSettingsOpen(true) }} />
   }
 
   return (

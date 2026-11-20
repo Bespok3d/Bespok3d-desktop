@@ -19,6 +19,7 @@ vi.mock('./listing-freshness', () => ({ stampListingRefreshed: mocks.stampListin
 import { configuredSources, loadCatalog, officialRemoteSources } from './index'
 import { APP_CHANNELS } from '../channel'
 import { normalizeRegistryUrl } from './resolve/url'
+import { saveSettings } from '../settings'
 
 const OFFICIAL_URL = 'github:Bespok3d/main-index/index.json'
 
@@ -191,5 +192,19 @@ describe('catalog refresh keeps each alternative bound to its source evidence', 
       [OFFICIAL_URL, 'project', 'Bespok3d'],
       ['github:Bespok3d/main-index/index.json?ref=dev', 'unknown', null],
     ])
+  })
+})
+
+// A source switched off in the Repositories pane never reaches the resolver, so nothing it lists can
+// be offered as an update. The settings live in this test's temporary user-data folder.
+describe('a switched-off source', () => {
+  it('is left out of the lists the catalog reads', async () => {
+    mocks.resolveCatalog.mockResolvedValue(resolvedInto([]))
+    saveSettings({ disabledSources: [OFFICIAL_URL] })
+    await loadCatalog().finally(() => saveSettings({ disabledSources: [] }))
+    const readUrls = mocks.resolveCatalog.mock.calls[0][0].map((ref: { url: string }) => ref.url)
+
+    expect(readUrls).not.toContain(OFFICIAL_URL)
+    expect(readUrls).toContain(configuredSources()[0].url)
   })
 })

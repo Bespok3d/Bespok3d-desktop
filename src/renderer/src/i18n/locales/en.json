@@ -796,6 +796,7 @@
   "notif.auth.body": "One or more plugin sources are private. Sign in to GitHub to load them.",
   "notif.update.title": "{name}",
   "notif.update.body": "Update available: v{installed} to v{version}.",
+  "notif.update.other_list_body": "The {list} repository is offering a new update for your {name}. From {installed} to {version}. You might want to check it out",
   "notif.update.action": "View changelog",
   "notif.update.action_plugin": "View plugin",
   "notif.screen_stuck_reboot.title": "{name} restarted itself",

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { useState } from 'react'
 import { useI18n } from '../../i18n/context'
-import type { Plugin, Printer, PluginConfigField } from '../../data/types'
+import type { Printer, PluginConfigField } from '../../data/types'
 import { managedPrinterId } from '../../data/printers'
 import type { PluginVarsSave, ScopeChoice } from '../../data/plugin-vars'
 import type { Collection } from '../../data/collections'
@@ -20,7 +20,7 @@ import { SafetyNoticeOverlay } from './safety/RecoveryModal'
 import { Toolbar, FilterShoulder, useFacetState } from './browse/Toolbar'
 import type { SortKey, SortDir } from './browse/filters'
 import type { PluginMigration, UpdateAllPlan } from './migrations'
-import { useInstallState, useUpdateAll, useFocusPanel } from './state'
+import { useInstallState, useUpdateAll, usePluginPanel } from './state'
 import { useChannelPrefs } from '../common/hooks/useChannelPrefs'
 import { deriveStoreView, activeSelection } from './browse/view-model'
 import { StoreMain } from './browse/grid'
@@ -29,7 +29,7 @@ import { CollectionSection } from './browse/CollectionSection'
 import { FailedLists } from './browse/FailedLists'
 import { CollectionDetailPanel } from './detail/CollectionDetailPanel'
 import { StoreDetailPanel } from './detail/StoreDetailPanel'
-import type { TabRequest } from './detail/StoreDetailPanel'
+import type { PluginPageView } from './detail/StoreDetailPanel'
 import './plugin-store.css'
 
 interface PluginStoreProps {
@@ -52,6 +52,8 @@ interface PluginStoreProps {
   onMigrateSelected?: (printerId: string, migration: PluginMigration) => void
   // When set (e.g. after a drag-drop "install now"), open that plugin's detail panel, then clear it.
   focusPluginId?: string | null
+  // The view that plugin's page opens on (an update notice opens Versions on the offering list).
+  focusView?: PluginPageView | null
   onFocusHandled?: () => void
   // Open Settings to the Git Host pane, for the empty-store sign-in CTA when a private source is locked.
   onConnectGitHub?: () => void
@@ -92,7 +94,7 @@ function StoreLoading() {
 }
 
 // gate-allow components_without_story: the store shell; its surfaces (browse cards, the detail/config/collection panels) each have their own catalog stories, and a full-store story needs live catalog+printer+install providers that just re-render the running app.
-export function PluginStore({ printer, density, grouped = false, onPrinterUpdate, savedPluginVars, onSaveVars, scopeFor, onUpdateAll, updatingAll = false, onInstallSelected, installingSelected = false, onUninstallSelected, uninstallingSelected = false, onMigrateSelected, focusPluginId, onFocusHandled, onConnectGitHub }: PluginStoreProps) {
+export function PluginStore({ printer, density, grouped = false, onPrinterUpdate, savedPluginVars, onSaveVars, scopeFor, onUpdateAll, updatingAll = false, onInstallSelected, installingSelected = false, onUninstallSelected, uninstallingSelected = false, onMigrateSelected, focusPluginId, focusView, onFocusHandled, onConnectGitHub }: PluginStoreProps) {
   const managedId = managedPrinterId(printer)
   const [query, setQuery] = useState('')
   const facets = useFacetState()
@@ -100,9 +102,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
-  const [panelPlugin, setPanelPlugin] = useState<Plugin | null>(null)
   const [panelCollection, setPanelCollection] = useState<Collection | null>(null)
-  const [tabRequest, setTabRequest] = useState<TabRequest | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const { plugins: catalogPlugins, collections, loading, refresh, sources, failures } = useCatalog()
   const channelPrefs = useChannelPrefs()
@@ -122,7 +122,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
 
   // A b3d:// link or a dropped file names a package by id, and only what the store shows may be opened
   // that way. The daemon and the jinni are not in that set: their update belongs to the printer.
-  useFocusPanel(focusPluginId, displayPlugins, setPanelPlugin, onFocusHandled)
+  const { panelPlugin, tabRequest, selectPanelPlugin, requestTab } = usePluginPanel({ pluginId: focusPluginId, view: focusView }, displayPlugins, onFocusHandled)
 
   function onSort(key: SortKey) {
     if (key === sortKey) { setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -155,7 +155,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
         {matchingPlugins.length === 0 ? (
           <EmptyStore reason={emptyStoreReason(displayPlugins.length > 0, sources)} onConnectGitHub={() => onConnectGitHub?.()} />
         ) : (
-          <StoreMain showFlat={showFlat} flatPlugins={flatPlugins} displayPlugins={displayPlugins} orphans={orphans} matchOpts={matchOpts} ctx={cardCtx} layout={layout} sortKey={sortKey} sortDir={sortDir} showCategory={facets.categories.length === 0} density={density} onOpen={setPanelPlugin}
+          <StoreMain showFlat={showFlat} flatPlugins={flatPlugins} displayPlugins={displayPlugins} orphans={orphans} matchOpts={matchOpts} ctx={cardCtx} layout={layout} sortKey={sortKey} sortDir={sortDir} showCategory={facets.categories.length === 0} density={density} onOpen={selectPanelPlugin}
             collectionShelf={selecting ? null : <CollectionSection collections={collections} plugins={catalogPlugins} installedIds={installedIds} onOpen={setPanelCollection} />} />
         )}
       </div>
@@ -165,7 +165,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
           plugin={panelPlugin} printer={printer} view={{ installedIds, installedVersions, deactivatedIds }} channelPrefs={channelPrefs}
           printActive={printActive} blockedActions={blockedActions} savedPluginVars={savedPluginVars} onSaveVars={onSaveVars} scopeFor={scopeFor}
           onOperationDone={onOperationDone} history={pluginHistory.get(panelPlugin.id)} catalogPlugins={catalogPlugins} tabRequest={tabRequest}
-          onSelectPlugin={setPanelPlugin} onTabRequest={setTabRequest}
+          onSelectPlugin={selectPanelPlugin} onTabRequest={requestTab}
         />
       )}
       {panelCollection && (
@@ -173,7 +173,7 @@ export function PluginStore({ printer, density, grouped = false, onPrinterUpdate
           collection={panelCollection} plugins={catalogPlugins} collections={collections} installedIds={installedIds} printerId={managedId} installing={installingSelected}
           printActive={printActive} blockedActions={blockedActions} daemonVersion={printer?.daemonVersion}
           savedPluginVars={savedPluginVars} onSaveVars={onSaveVars} onInstallSelected={onInstallSelected} onMigrateSelected={onMigrateSelected} scopeFor={scopeFor}
-          onOpenPlugin={setPanelPlugin} onClose={() => setPanelCollection(null)}
+          onOpenPlugin={selectPanelPlugin} onClose={() => setPanelCollection(null)}
         />
       )}
       <SafetyNoticeOverlay notice={safetyNotice} plugins={catalogPlugins} printer={printer} onClose={dismissSafetyNotice} />

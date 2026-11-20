@@ -835,6 +835,7 @@
   "notif.auth.body": "Eine oder mehrere Plugin-Quellen sind privat. Melde dich bei GitHub an, um sie zu laden.",
   "notif.update.title": "{name}",
   "notif.update.body": "Update verfügbar: v{installed} auf v{version}.",
+  "notif.update.other_list_body": "Das Repository {list} bietet ein neues Update für dein {name} an. Von {installed} auf {version}. Vielleicht möchtest du es dir ansehen",
   "notif.update.action": "Changelog ansehen",
   "notif.update.action_plugin": "Plugin ansehen",
   "notif.screen_stuck_reboot.title": "{name} hat sich neu gestartet",

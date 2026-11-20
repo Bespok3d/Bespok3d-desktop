@@ -71,6 +71,9 @@ interface PluginPanelProps {
   installedLog?: InstallLog
   // Detail tab to open on (e.g. from a b3d:// doc link); falls back to overview when not a real tab.
   initialTab?: string
+  // Variant to select on open (a sourceKey), e.g. the list an update notice names; ignored when the
+  // plugin no longer offers it.
+  initialVariantKey?: string
 }
 
 function PanelChangelog({ plugin }: { plugin: Plugin }) {
@@ -168,10 +171,12 @@ function CapturedTab({ printerId, plugin, installed }: { printerId?: string; plu
 }
 
 // The Versions-tab selection state: which variant (registryUrl x channel) is chosen, defaulting to the
-// installed-then-ceiling variant, plus the channel-chip picker that re-selects a channel's newest variant.
-function useVariantSelection(plugin: Plugin, ceiling: ReleaseChannel, disabledChannels: ReleaseChannel[], installedSource: string | undefined, installedChannel: ReleaseChannel | undefined, onChannelPref?: (channel: ReleaseChannel) => void) {
-  const defaultVariant = defaultSelectedVariant(plugin, ceiling, disabledChannels, installedSource, installedChannel)
-  const [selectedKey, setSelectedKey] = useState(defaultVariant ? sourceKey(defaultVariant) : undefined)
+// requested variant when the plugin offers it, else the installed-then-ceiling variant, plus the
+// channel-chip picker that re-selects a channel's newest variant.
+function useVariantSelection(plugin: Plugin, ceiling: ReleaseChannel, disabledChannels: ReleaseChannel[], installedSource: string | undefined, installedChannel: ReleaseChannel | undefined, requestedKey: string | undefined, onChannelPref?: (channel: ReleaseChannel) => void) {
+  const requestedVariant = plugin.sources.find((source) => sourceKey(source) === requestedKey)
+  const startVariant = requestedVariant ?? defaultSelectedVariant(plugin, ceiling, disabledChannels, installedSource, installedChannel)
+  const [selectedKey, setSelectedKey] = useState(startVariant ? sourceKey(startVariant) : undefined)
   // The channel chips filter which source rows show (a view), independent of selectedKey (what installs).
   // 'all' shows every row in the active source; a specific channel selects its newest variant.
   const [channelFilter, setChannelFilter] = useState<ReleaseChannel | 'all'>('all')
@@ -216,12 +221,12 @@ function VersionsTab({ plugin, ceiling, selectedKey, channelFilter, installedSou
   )
 }
 
-export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate, printerId, printActive, blockedActions, daemonVersion, installedSource, installedVersion, installedChannel, primaryChannel, channelCeiling, disabledChannels, onChannelPref, allInstalledIds, savedPluginVars, onSaveVars, scopeFor, appliedVars, appliedVarsAt, onClose, onOperationDone, history, installedLog, initialTab }: PluginPanelProps) {
+export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate, printerId, printActive, blockedActions, daemonVersion, installedSource, installedVersion, installedChannel, primaryChannel, channelCeiling, disabledChannels, onChannelPref, allInstalledIds, savedPluginVars, onSaveVars, scopeFor, appliedVars, appliedVarsAt, onClose, onOperationDone, history, installedLog, initialTab, initialVariantKey }: PluginPanelProps) {
   const { t } = useI18n()
   const { plugins, refresh } = useCatalog()
   const localRemove = useLocalRemove(plugin.id, () => { refresh(); onClose() })
   const ceiling = channelCeiling ?? primaryChannel ?? 'stable'
-  const { selectedKey, setSelectedKey, selectedVariant, channelFilter, pickChannel, pickSource } = useVariantSelection(plugin, ceiling, disabledChannels ?? [], installedSource, installedChannel, onChannelPref)
+  const { selectedKey, setSelectedKey, selectedVariant, channelFilter, pickChannel, pickSource } = useVariantSelection(plugin, ceiling, disabledChannels ?? [], installedSource, installedChannel, initialVariantKey, onChannelPref)
   // Everything about settings reads the picked version, not the merged listing: the fields shown, the
   // install gate's "is it filled in", and whether there is a Config tab at all.
   const picked = pluginAsPickedVersion(plugin, selectedVariant)

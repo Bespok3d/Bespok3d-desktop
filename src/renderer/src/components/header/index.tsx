@@ -7,18 +7,16 @@ import { PrinterDropdown } from './printer-dropdown'
 import type { PrinterDropdownProps } from './printer-dropdown'
 import { Button } from '../common/Button'
 import { NotificationCenter } from '../notifications/NotificationCenter'
+import type { NotificationCenterProps } from '../notifications/NotificationCenter'
 import type { Section } from '../settings'
 
-// The header owns the printer dropdown and forwards every dropdown prop straight through, so it extends
-// PrinterDropdownProps rather than restating them, and adds only its own chrome (theme, settings, etc.).
-export interface HeaderProps extends PrinterDropdownProps {
+// The header owns the printer dropdown and the notification center and forwards their props straight
+// through, so it extends both prop sets rather than restating them, and adds only its own chrome. The
+// center's settings opener is named onOpenSettingsPane here, since the dropdown already owns onOpenSettings.
+export interface HeaderProps extends PrinterDropdownProps, Omit<NotificationCenterProps, 'onOpenSettings'> {
   theme: 'light' | 'dark'
   onToggleTheme: () => void
   onOpenSettingsPane: (pane: Section) => void
-  onOpenPlugin: (pluginId: string) => void
-  installedVersions: Record<string, string>
-  installedSources: Record<string, string>
-  installedFingerprints?: Record<string, string>
   empty?: boolean
 }
 

@@ -16,12 +16,12 @@ function authFailedSource(): SourceRow {
 
 const en = makeT('en')
 
-function renderCenter(sources: SourceRow[], plugins: IndexEntry[] = [], installedVersions: Record<string, string> = {}) {
+function renderCenter(sources: SourceRow[], plugins: IndexEntry[] = [], installedVersions: Record<string, string> = {}, installedSources: Record<string, string> = {}) {
   const onOpenSettings = vi.fn()
   const onOpenPlugin = vi.fn()
   const payload = makeCatalogPayload(plugins, { sources })
   const rendered = setup(
-    <NotificationCenter onOpenSettings={onOpenSettings} onOpenPlugin={onOpenPlugin} installedVersions={installedVersions} installedSources={{}} />,
+    <NotificationCenter onOpenSettings={onOpenSettings} onOpenPlugin={onOpenPlugin} installedVersions={installedVersions} installedSources={installedSources} />,
     { withCatalog: true, b3d: { registry: { catalog: vi.fn().mockResolvedValue(payload) } } },
   )
 
@@ -79,7 +79,7 @@ describe('NotificationCenter', () => {
     expect(await within(bell).findByText('1')).toBeInTheDocument()
     await user.click(bell)
     await user.click(await screen.findByRole('button', { name: /view plugin/i }))
-    expect(onOpenPlugin).toHaveBeenCalledWith('spoolman')
+    expect(onOpenPlugin).toHaveBeenCalledWith('spoolman', undefined)
   })
 
   it('re-arms the auth notice on mount so a still-broken state shows unread again', async () => {
@@ -98,6 +98,26 @@ describe('NotificationCenter', () => {
     await user.click(bell)
     await user.click(await screen.findByRole('button', { name: /dismiss all/i }))
     expect(await screen.findByText(/all caught up/i)).toBeInTheDocument()
+  })
+})
+
+const LIVE_URL = 'github:Bespok3d/main-index/index.json'
+const DEV_URL = `${LIVE_URL}?ref=dev`
+
+function loadedList(url: string, name: string): SourceRow {
+  return { ...authFailedSource(), url, name, status: 'ok', reason: null, error: null }
+}
+
+describe('the notice of an update from another list', () => {
+  it('opens the plugin on Versions with that list selected', async () => {
+    const live = makeIndexEntry({ registry_url: LIVE_URL, version: '1.0.0' })
+    const dev = makeIndexEntry({ registry_url: DEV_URL, version: '1.1.0-pre' })
+    const lists = [loadedList(LIVE_URL, 'Bespok3d Official'), loadedList(DEV_URL, 'Bespok3d Official prerelease')]
+    const { user, onOpenPlugin } = renderCenter(lists, [{ ...live, variants: [live, dev] }], { demo: '1.0.0' }, { demo: LIVE_URL })
+    await user.click(await screen.findByRole('button', { name: /notifications/i }))
+    await user.click(await screen.findByRole('button', { name: /view plugin/i }))
+
+    expect(onOpenPlugin).toHaveBeenCalledWith('demo', { tab: 'versions', variantKey: `${DEV_URL}::stable` })
   })
 })
 

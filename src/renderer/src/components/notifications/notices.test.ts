@@ -104,3 +104,53 @@ describe('buildNotices channel-aware updates', () => {
     expect(notices[0].params).toMatchObject({ installed: '0.1.5', version: '0.1.6' })
   })
 })
+
+const LIVE_URL = 'github:Bespok3d/main-index/index.json'
+const DEV_URL = `${LIVE_URL}?ref=dev`
+
+// The demo plugin as the live list and the dev list publish it, each list under its Repositories name.
+function demoOnBothLists(liveVersion: string, devVersion: string): Plugin {
+  return {
+    id: 'demo', name: 'demo', title: 'Demo', version: liveVersion,
+    sources: [
+      { registryUrl: LIVE_URL, label: 'Bespok3d Official', version: liveVersion, fingerprint: 'live-fp', channel: 'stable', trust: 'project' },
+      { registryUrl: DEV_URL, label: 'Bespok3d Official prerelease', version: devVersion, fingerprint: 'dev-fp', channel: 'testing', trust: 'project' },
+    ],
+  } as Plugin
+}
+
+function installedFrom(installedSource: string, version: string, fingerprint: string) {
+  return inputs({ installedVersions: { demo: version }, installedSources: { demo: installedSource }, installedFingerprints: { demo: fingerprint } })
+}
+
+describe('buildNotices update from another list', () => {
+  it('names the offering list and both versions, and opens Versions on that list', () => {
+    const [notice] = buildNotices({ ...installedFrom(LIVE_URL, '0.1.9', 'live-fp'), plugins: [demoOnBothLists('0.1.9', '0.2.0-pre')] })
+
+    expect(notice.bodyKey).toBe('notif.update.other_list_body')
+    expect(notice.params).toEqual({ list: 'Bespok3d Official prerelease', name: 'Demo', installed: '0.1.9', version: '0.2.0-pre' })
+    expect(notice.action).toMatchObject({ kind: 'open-plugin', pluginId: 'demo', view: { tab: 'versions', variantKey: `${DEV_URL}::testing` } })
+  })
+
+  it('names the offering list in the id, so dismissing it never hides the same version from another list', () => {
+    const [notice] = buildNotices({ ...installedFrom(LIVE_URL, '0.1.9', 'live-fp'), plugins: [demoOnBothLists('0.1.9', '0.2.0-pre')] })
+
+    expect(notice.id).toBe(`plugin-update:demo:0.2.0-pre:dev-fp:${DEV_URL}`)
+  })
+
+  it('offers the switch back to the live copy through the same notice once live releases it', () => {
+    const [notice] = buildNotices({ ...installedFrom(DEV_URL, '0.1.9-pre', 'dev-fp'), plugins: [demoOnBothLists('0.1.9', '0.1.9-pre')] })
+
+    expect(notice.bodyKey).toBe('notif.update.other_list_body')
+    expect(notice.id).toBe(`plugin-update:demo:0.1.9:live-fp:${LIVE_URL}`)
+    expect(notice.params).toMatchObject({ list: 'Bespok3d Official', installed: '0.1.9-pre', version: '0.1.9' })
+    expect(notice.action).toMatchObject({ view: { tab: 'versions', variantKey: `${LIVE_URL}::stable` } })
+  })
+
+  it('keeps the plain notice, with no view, for an update from the list the copy came from', () => {
+    const [notice] = buildNotices({ ...installedFrom(LIVE_URL, '0.1.8', 'old-fp'), plugins: [demoOnBothLists('0.1.9', '0.1.9-pre')] })
+
+    expect(notice.bodyKey).toBe('notif.update.body')
+    expect(notice.action).not.toHaveProperty('view')
+  })
+})

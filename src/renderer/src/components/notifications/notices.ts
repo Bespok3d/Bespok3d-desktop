@@ -5,10 +5,12 @@
 // around the UI. Adding a consumer = adding a derivation, not a new banner. All inputs are plain data
 // so this stays unit-testable without React. Actions are descriptors (not closures) so the builder is
 // pure; the NotificationCenter maps a descriptor to a real handler.
-import type { Plugin, ReleaseChannel, SourceRow } from '../../data/types'
+import type { Plugin, PluginSource, ReleaseChannel, SourceRow } from '../../data/types'
 import type { Section } from '../settings'
 import { updatablePlugins } from '../plugin-store/update-all'
-import { installedFromRecords, updateTargetBuild } from '../../data/channels/updates'
+import { installedFromRecords, updateTargetBuild, updateVariant } from '../../data/channels/updates'
+import { sourceKey } from '../plugin-store/panel/tabs/sources'
+import type { PluginPageView } from '../plugin-store/detail/StoreDetailPanel'
 import type { InstalledOnPrinter } from '../../data/channels/updates'
 import type { CeilingResolver } from '../../data/channels'
 import type { PackageBuild } from '@bespok3d/contract'
@@ -17,7 +19,7 @@ export type NoticeSeverity = 'info' | 'warn' | 'error'
 
 export type NoticeAction =
   | { kind: 'open-settings'; pane: Section; labelKey: string }
-  | { kind: 'open-plugin'; pluginId: string; labelKey: string }
+  | { kind: 'open-plugin'; pluginId: string; labelKey: string; view?: PluginPageView }
 
 export interface Notice {
   id: string
@@ -63,30 +65,48 @@ function authNotice(sources: SourceRow[]): Notice | null {
 }
 
 // The id names the offered build, so dismissing one update never suppresses the next one: a new
-// version, or a rebuild of the same version, which only its fingerprint tells apart.
+// version, or a rebuild of the same version, which only its fingerprint tells apart. An update from
+// another list also names that list, so dismissing one list's offer never hides the same version on another.
 function updateNoticeId(pluginId: string, target: PackageBuild | undefined): string {
   const version = target?.version ?? ''
 
   return target?.fingerprint ? `plugin-update:${pluginId}:${version}:${target.fingerprint}` : `plugin-update:${pluginId}:${version}`
 }
 
-// One notice per installed plugin whose offered build differs from the one on the printer. Both the
-// filter and the displayed target are the effective variant at that ceiling, so a riskier-channel build
-// the user never opted into is neither offered nor shown. Acting on it opens the plugin; the label
-// promises the changelog only when the plugin actually ships one.
-function updateNotices(plugins: Plugin[], installed: InstalledOnPrinter): Notice[] {
-  return updatablePlugins(plugins, installed).map((plugin) => {
-    const target = updateTargetBuild(plugin, installed)
+// The variant an update comes from when that is a named list other than the one the installed copy
+// came from: a newer build on another list that is on, or the live release of the prerelease it runs.
+function otherListVariant(plugin: Plugin, installed: InstalledOnPrinter): PluginSource | undefined {
+  const installedSource = installed.sources?.[plugin.id]
+  const variant = updateVariant(plugin, installed)
+  if (!installedSource || !variant?.label || variant.registryUrl === installedSource) return undefined
 
-    return {
-      id: updateNoticeId(plugin.id, target),
-      severity: 'info',
-      titleKey: 'notif.update.title',
-      bodyKey: 'notif.update.body',
-      params: { name: plugin.title, installed: installed.versions[plugin.id], version: target?.version ?? '' },
-      action: { kind: 'open-plugin', pluginId: plugin.id, labelKey: plugin.changelog ? 'notif.update.action' : 'notif.update.action_plugin' },
-    }
-  })
+  return variant
+}
+
+// Both the filter and the displayed target are the effective variant at that ceiling, so a
+// riskier-channel build the user never opted into is neither offered nor shown. Acting on it opens the
+// plugin; the label promises the changelog only when the plugin actually ships one. An update from
+// another list names that list and opens the Versions tab with its variant already selected.
+function updateNotice(plugin: Plugin, installed: InstalledOnPrinter): Notice {
+  const target = updateTargetBuild(plugin, installed)
+  const fromList = otherListVariant(plugin, installed)
+  const params = { name: plugin.title, installed: installed.versions[plugin.id], version: target?.version ?? '' }
+  const action: NoticeAction = { kind: 'open-plugin', pluginId: plugin.id, labelKey: plugin.changelog ? 'notif.update.action' : 'notif.update.action_plugin' }
+  const notice: Notice = { id: updateNoticeId(plugin.id, target), severity: 'info', titleKey: 'notif.update.title', bodyKey: 'notif.update.body', params, action }
+  if (!fromList) return notice
+
+  return {
+    ...notice,
+    id: `${notice.id}:${fromList.registryUrl}`,
+    bodyKey: 'notif.update.other_list_body',
+    params: { ...params, list: fromList.label },
+    action: { ...action, view: { tab: 'versions', variantKey: sourceKey(fromList) } },
+  }
+}
+
+// One notice per installed plugin whose offered build differs from the one on the printer.
+function updateNotices(plugins: Plugin[], installed: InstalledOnPrinter): Notice[] {
+  return updatablePlugins(plugins, installed).map((plugin) => updateNotice(plugin, installed))
 }
 
 export function buildNotices(inputs: NoticeInputs): Notice[] {

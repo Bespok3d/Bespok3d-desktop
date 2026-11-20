@@ -835,6 +835,7 @@
   "notif.auth.body": "一个或多个插件来源是私有的。登录 GitHub 以加载它们。",
   "notif.update.title": "{name}",
   "notif.update.body": "有可用更新：v{installed} 到 v{version}。",
+  "notif.update.other_list_body": "{list} 仓库为你的 {name} 提供了新的更新。从 {installed} 到 {version}。你可以看看",
   "notif.update.action": "查看更新日志",
   "notif.update.action_plugin": "查看插件",
   "notif.screen_stuck_reboot.title": "{name} 已自动重启",
