@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useI18n } from '../../i18n/context'
+import { interpolate } from '../../i18n'
 import { IconBell, IconCheck, IconClose } from '../../design-system/icons'
 import { useCatalog } from '../../data/catalog'
 import { buildNotices, LIVE_CONDITION_NOTICE_IDS } from './notices'
@@ -26,6 +27,27 @@ interface NoticeItemProps {
   onDismiss: () => void
 }
 
+// The template is split at the bold param, so the param shows in bold wherever each language puts it.
+function NoticeBody({ notice }: { notice: Notice }) {
+  const { t } = useI18n()
+  const boldParam = notice.boldParam
+  if (!boldParam) return <>{t(notice.bodyKey, notice.params)}</>
+
+  const boldValue = String(notice.params?.[boldParam] ?? '')
+  const pieces = t(notice.bodyKey).split(`{${boldParam}}`)
+
+  return (
+    <>
+      {pieces.map((piece, position) => (
+        <Fragment key={position}>
+          {position > 0 && <strong>{boldValue}</strong>}
+          {interpolate(piece, notice.params)}
+        </Fragment>
+      ))}
+    </>
+  )
+}
+
 function NoticeItem({ notice, isRead, seenAt, now, onAct, onMarkRead, onDismiss }: NoticeItemProps) {
   const { t } = useI18n()
   const action = notice.action
@@ -35,7 +57,7 @@ function NoticeItem({ notice, isRead, seenAt, now, onAct, onMarkRead, onDismiss 
       <span className={cx('notif-dot', isRead && 'read')} aria-hidden="true" />
       <div className="notif-item-text">
         <div className="notif-item-title">{t(notice.titleKey, notice.params)}</div>
-        <div className="notif-item-body">{t(notice.bodyKey, notice.params)}</div>
+        <div className="notif-item-body"><NoticeBody notice={notice} /></div>
         <div className="notif-item-time">{relativeTime(seenAt, now)}</div>
         {action && (
           <Button variant="primary" size="sm" onClick={() => onAct(notice)}>{t(action.labelKey)}</Button>

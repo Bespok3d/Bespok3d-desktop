@@ -27,6 +27,8 @@ export interface Notice {
   titleKey: string
   bodyKey: string
   params?: Record<string, string | number>
+  // The param the body shows in bold, such as the name of the list offering an update.
+  boldParam?: string
   action?: NoticeAction
   // When the thing it reports happened; without it the notice shows when the app first saw it.
   happenedAt?: number
@@ -85,13 +87,13 @@ function otherListVariant(plugin: Plugin, installed: InstalledOnPrinter): Plugin
 
 // Both the filter and the displayed target are the effective variant at that ceiling, so a
 // riskier-channel build the user never opted into is neither offered nor shown. Acting on it opens the
-// plugin; the label promises the changelog only when the plugin actually ships one. An update from
-// another list names that list and opens the Versions tab with its variant already selected.
+// plugin page, where the update installs. An update from another list names that list in bold and opens
+// the Versions tab with its variant already selected.
 function updateNotice(plugin: Plugin, installed: InstalledOnPrinter): Notice {
   const target = updateTargetBuild(plugin, installed)
   const fromList = otherListVariant(plugin, installed)
   const params = { name: plugin.title, installed: installed.versions[plugin.id], version: target?.version ?? '' }
-  const action: NoticeAction = { kind: 'open-plugin', pluginId: plugin.id, labelKey: plugin.changelog ? 'notif.update.action' : 'notif.update.action_plugin' }
+  const action: NoticeAction = { kind: 'open-plugin', pluginId: plugin.id, labelKey: 'notif.update.action' }
   const notice: Notice = { id: updateNoticeId(plugin.id, target), severity: 'info', titleKey: 'notif.update.title', bodyKey: 'notif.update.body', params, action }
   if (!fromList) return notice
 
@@ -100,6 +102,7 @@ function updateNotice(plugin: Plugin, installed: InstalledOnPrinter): Notice {
     id: `${notice.id}:${fromList.registryUrl}`,
     bodyKey: 'notif.update.other_list_body',
     params: { ...params, list: fromList.label },
+    boldParam: 'list',
     action: { ...action, view: { tab: 'versions', variantKey: sourceKey(fromList) } },
   }
 }

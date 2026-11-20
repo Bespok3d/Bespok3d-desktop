@@ -14,7 +14,7 @@ export function offerSameVersionRebuilds(): void {
   const updater = autoUpdater as unknown as { isUpdateAvailable: UpdateDecision }
   const versionDecision = updater.isUpdateAvailable.bind(autoUpdater)
   updater.isUpdateAvailable = async function decideUpdate(updateInfo: UpdateInfo): Promise<boolean> {
-    if (isRebuildOfInstalled(updateInfo, app.getVersion(), loadSettings().installedBuild)) return isOfferedToThisApp(updateInfo)
+    if (isRebuildOfInstalled(updateInfo, app.getVersion(), loadSettings().installedBuild, executableStamp())) return isOfferedToThisApp(updateInfo)
 
     return versionDecision(updateInfo)
   }
@@ -29,20 +29,25 @@ async function isOfferedToThisApp(updateInfo: UpdateInfo): Promise<boolean> {
 }
 
 export function recordFirstBuild(updateInfo: UpdateInfo): void {
-  const record = firstBuildRecord(updateInfo, app.getVersion(), loadSettings().installedBuild)
+  const record = firstBuildRecord(updateInfo, app.getVersion(), loadSettings().installedBuild, executableStamp())
   if (record) saveSettings({ installedBuild: record })
 }
 
 // An AppImage runs from a read-only mount whose files keep the times the build stored, so the
-// AppImage file itself, which the updater writes anew, is what an install replaces.
-function executableStamp(): number {
-  return statSync(process.env.APPIMAGE ?? process.execPath).mtimeMs
+// AppImage file itself, which the updater writes anew, is what an install replaces. An AppImage moved
+// while it runs leaves no file to read, and the update check must still work then.
+function executableStamp(): number | undefined {
+  return statSync(process.env.APPIMAGE ?? process.execPath, { throwIfNoEntry: false })?.mtimeMs
 }
 
 // A downloaded update may never install (the restart can fail), so its fingerprint waits until the
 // app runs it.
 export function recordDownloadedBuild(updateInfo: UpdateInfo): void {
-  saveSettings({ pendingBuild: { version: updateInfo.version, digest: buildDigest(updateInfo), executableStamp: executableStamp() } })
+  const stamp = executableStamp()
+  // With no stamp, an older download left pending would be taken for the build this download installs.
+  const pendingBuild = stamp === undefined ? undefined : { version: updateInfo.version, digest: buildDigest(updateInfo), executableStamp: stamp }
+
+  saveSettings({ pendingBuild })
 }
 
 export function recordLandedBuild(): void {

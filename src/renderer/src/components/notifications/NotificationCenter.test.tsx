@@ -69,7 +69,7 @@ describe('NotificationCenter', () => {
     expect(await screen.findByText(/all caught up/i)).toBeInTheDocument()
   })
 
-  it('opens the plugin from an update notice (View plugin when it ships no changelog)', async () => {
+  it('opens the plugin from an update notice with Update now', async () => {
     const { user, onOpenPlugin } = renderCenter(
       [],
       [makeIndexEntry({ name: 'spoolman', title: 'Spoolman', version: '0.2.0' })],
@@ -78,7 +78,7 @@ describe('NotificationCenter', () => {
     const bell = await screen.findByRole('button', { name: /notifications/i })
     expect(await within(bell).findByText('1')).toBeInTheDocument()
     await user.click(bell)
-    await user.click(await screen.findByRole('button', { name: /view plugin/i }))
+    await user.click(await screen.findByRole('button', { name: /update now/i }))
     expect(onOpenPlugin).toHaveBeenCalledWith('spoolman', undefined)
   })
 
@@ -115,9 +115,21 @@ describe('the notice of an update from another list', () => {
     const lists = [loadedList(LIVE_URL, 'Bespok3d Official'), loadedList(DEV_URL, 'Bespok3d Official prerelease')]
     const { user, onOpenPlugin } = renderCenter(lists, [{ ...live, variants: [live, dev] }], { demo: '1.0.0' }, { demo: LIVE_URL })
     await user.click(await screen.findByRole('button', { name: /notifications/i }))
-    await user.click(await screen.findByRole('button', { name: /view plugin/i }))
+    await user.click(await screen.findByRole('button', { name: /update now/i }))
 
     expect(onOpenPlugin).toHaveBeenCalledWith('demo', { tab: 'versions', variantKey: `${DEV_URL}::stable` })
+  })
+
+  it('shows the name of the offering list in bold inside the message', async () => {
+    const live = makeIndexEntry({ registry_url: LIVE_URL, version: '1.0.0' })
+    const dev = makeIndexEntry({ registry_url: DEV_URL, version: '1.1.0-pre' })
+    const lists = [loadedList(LIVE_URL, 'Bespok3d Official'), loadedList(DEV_URL, 'Bespok3d Official prerelease')]
+    const { user } = renderCenter(lists, [{ ...live, variants: [live, dev] }], { demo: '1.0.0' }, { demo: LIVE_URL })
+    await user.click(await screen.findByRole('button', { name: /notifications/i }))
+
+    const listName = await screen.findByText('Bespok3d Official prerelease')
+    expect(listName.tagName).toBe('STRONG')
+    expect(listName.parentElement?.textContent).toBe(en('notif.update.other_list_body', { list: 'Bespok3d Official prerelease', name: 'Demo Plugin', installed: '1.0.0', version: '1.1.0-pre' }))
   })
 })
 

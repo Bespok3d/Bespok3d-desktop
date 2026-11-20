@@ -81,9 +81,13 @@ export interface AppSettings {
   analyticsConsent?: 'granted' | 'refused'
 }
 
+// executableStamp is the modification time of the executable that ran the build when it was recorded.
+// A build put in place outside the updater changes that file, so a record whose stamp no longer
+// matches describes a build that has left. Records saved before the stamp existed carry none.
 export interface InstalledBuild {
   version: string
   digest: string
+  executableStamp?: number
 }
 
 // executableStamp is the modification time of the executable that downloaded the build: installing

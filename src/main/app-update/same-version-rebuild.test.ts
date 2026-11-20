@@ -20,7 +20,7 @@ import { statSync } from 'fs'
 import { autoUpdater } from 'electron-updater'
 import { loadSettings, saveSettings } from '../settings'
 import { buildDigest } from './build-digest'
-import { offerSameVersionRebuilds, recordDownloadedBuild, recordLandedBuild } from './same-version-rebuild'
+import { offerSameVersionRebuilds, recordDownloadedBuild, recordFirstBuild, recordLandedBuild } from './same-version-rebuild'
 
 const RUNNING_EXECUTABLE_STAMP = 1000
 
@@ -33,7 +33,7 @@ function updaterDecision(updateInfo: UpdateInfo): Promise<boolean> {
 }
 
 function settingsWith(extra: Partial<ReturnType<typeof loadSettings>>): ReturnType<typeof loadSettings> {
-  return { installedBuild: { version: '1.0.0', digest: buildDigest(publishedBuild('1.0.0', 'first-build')) }, ...extra } as ReturnType<typeof loadSettings>
+  return { installedBuild: { version: '1.0.0', digest: buildDigest(publishedBuild('1.0.0', 'first-build')), executableStamp: RUNNING_EXECUTABLE_STAMP }, ...extra } as ReturnType<typeof loadSettings>
 }
 
 beforeAll(() => {
@@ -74,6 +74,51 @@ describe('the app update decision', () => {
 
     await expect(updaterDecision(publishedBuild('1.0.0', 'second-build'))).resolves.toBe(false)
   })
+
+  it('does not offer the running build again after it was installed without the updater', async () => {
+    vi.mocked(loadSettings).mockReturnValue(settingsWith({ installedBuild: { version: '1.0.0', digest: buildDigest(publishedBuild('1.0.0', 'first-build')) } }))
+
+    await expect(updaterDecision(publishedBuild('1.0.0', 'running-build'))).resolves.toBe(false)
+  })
+})
+
+describe('an executable moved while it runs', () => {
+  beforeEach(() => {
+    vi.mocked(statSync).mockReturnValue(undefined)
+  })
+
+  it('leaves every decision to the updater instead of failing the check', async () => {
+    await expect(updaterDecision(publishedBuild('1.0.0', 'second-build'))).resolves.toBe(false)
+    expect(updaterVersionDecision).toHaveBeenCalledTimes(1)
+  })
+
+  it('records no build, since nothing tells which one runs', () => {
+    const pendingBuild = { version: '1.0.0', digest: buildDigest(publishedBuild('1.0.0', 'second-build')), executableStamp: RUNNING_EXECUTABLE_STAMP }
+    vi.mocked(loadSettings).mockReturnValue(settingsWith({ pendingBuild }))
+
+    recordFirstBuild(publishedBuild('1.0.0', 'running-build'))
+    recordLandedBuild()
+
+    expect(saveSettings).not.toHaveBeenCalled()
+  })
+
+  it('clears the pending download, so an older one is never taken for the build this download installs', () => {
+    recordDownloadedBuild(publishedBuild('1.0.0', 'second-build'))
+
+    expect(saveSettings).toHaveBeenCalledWith({ pendingBuild: undefined })
+  })
+})
+
+describe('the build a check records', () => {
+  it('replaces a record the running executable did not take with the published build', () => {
+    vi.mocked(loadSettings).mockReturnValue(settingsWith({ installedBuild: { version: '1.0.0', digest: 'old-digest', executableStamp: RUNNING_EXECUTABLE_STAMP - 1 } }))
+
+    recordFirstBuild(publishedBuild('1.0.0', 'running-build'))
+
+    expect(saveSettings).toHaveBeenCalledWith({
+      installedBuild: { version: '1.0.0', digest: buildDigest(publishedBuild('1.0.0', 'running-build')), executableStamp: RUNNING_EXECUTABLE_STAMP },
+    })
+  })
 })
 
 describe('the build a download records', () => {
@@ -91,7 +136,7 @@ describe('the build a download records', () => {
 
     recordDownloadedBuild(publishedBuild('1.0.0', 'second-build'))
 
-    expect(statSync).toHaveBeenCalledWith('/home/user/Bespok3d.AppImage')
+    expect(statSync).toHaveBeenCalledWith('/home/user/Bespok3d.AppImage', { throwIfNoEntry: false })
   })
 
   it('becomes the installed build once the app runs a new executable', () => {
@@ -100,7 +145,7 @@ describe('the build a download records', () => {
 
     recordLandedBuild()
 
-    expect(saveSettings).toHaveBeenCalledWith({ installedBuild: { version: '1.0.0', digest: 'second-digest' }, pendingBuild: undefined })
+    expect(saveSettings).toHaveBeenCalledWith({ installedBuild: { version: '1.0.0', digest: 'second-digest', executableStamp: RUNNING_EXECUTABLE_STAMP }, pendingBuild: undefined })
   })
 
   it('stays pending while the executable that downloaded it still runs', () => {

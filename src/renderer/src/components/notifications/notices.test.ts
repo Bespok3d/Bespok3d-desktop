@@ -75,11 +75,9 @@ describe('buildNotices update notices', () => {
     expect(buildNotices(inputs({ plugins: [plugin('camera-hw-accel', '0.1.0')], installedVersions: { 'camera-hw-accel': '0.1.2' } }))).toEqual([])
   })
 
-  it('labels the update action by whether the plugin actually ships a changelog', () => {
-    const withLog = buildNotices(inputs({ plugins: [{ ...plugin('a-plugin', '0.2.0'), changelog: 'CHANGELOG.md' } as Plugin], installedVersions: { 'a-plugin': '0.1.0' } }))
-    const noLog = buildNotices(inputs({ plugins: [plugin('b-plugin', '0.2.0')], installedVersions: { 'b-plugin': '0.1.0' } }))
-    expect(withLog[0].action?.labelKey).toBe('notif.update.action')
-    expect(noLog[0].action?.labelKey).toBe('notif.update.action_plugin')
+  it('labels every update action as the update it opens', () => {
+    const [notice] = buildNotices(inputs({ plugins: [plugin('a-plugin', '0.2.0')], installedVersions: { 'a-plugin': '0.1.0' } }))
+    expect(notice.action?.labelKey).toBe('notif.update.action')
   })
 })
 
@@ -129,6 +127,8 @@ describe('buildNotices update from another list', () => {
 
     expect(notice.bodyKey).toBe('notif.update.other_list_body')
     expect(notice.params).toEqual({ list: 'Bespok3d Official prerelease', name: 'Demo', installed: '0.1.9', version: '0.2.0-pre' })
+    expect(notice.boldParam).toBe('list')
+    expect(notice.action?.labelKey).toBe('notif.update.action')
     expect(notice.action).toMatchObject({ kind: 'open-plugin', pluginId: 'demo', view: { tab: 'versions', variantKey: `${DEV_URL}::testing` } })
   })
 

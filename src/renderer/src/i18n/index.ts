@@ -53,14 +53,17 @@ export function makeT(localeCode: string, customDict?: Record<string, string>): 
   const enDict = LOCALE_DATA['en']
 
   return function t(key, params) {
-    const base = dict[key] ?? enDict[key] ?? key
-    if (!params) return base
-
-    return Object.entries(params).reduce(
-      (acc, [paramKey, paramVal]) => acc.split(`{${paramKey}}`).join(String(paramVal)),
-      base
-    )
+    return interpolate(dict[key] ?? enDict[key] ?? key, params)
   }
+}
+
+export function interpolate(template: string, params?: Record<string, string | number>): string {
+  if (!params) return template
+
+  return Object.entries(params).reduce(
+    (acc, [paramKey, paramVal]) => acc.split(`{${paramKey}}`).join(String(paramVal)),
+    template
+  )
 }
 
 export function detectSystemLocale(): string {
