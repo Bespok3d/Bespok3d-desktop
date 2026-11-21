@@ -1,108 +1,86 @@
-name: Bug report
-description: Something in the app does not work
+# SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+name: Report a problem
+description: "Something does not work the way it should"
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time. The more of this you fill in, the fewer rounds of
-        "which version?" before anyone can act on it.
+        ## Is this the right place?
 
-        A problem with a **plugin** belongs in that plugin's own repository. This form is for the
-        desktop app itself: finding a printer, enrolling it, browsing the store, installing.
+        Bespok3d is the store. It is not the plugins, and it is not the printer support.
+
+        | Your issue is about | Open it here |
+        | --- | --- |
+        | The Bespok3d app (finding a printer, the store, installing) | [Bespok3d-desktop](https://github.com/Bespok3d/Bespok3d-desktop/issues/new/choose) |
+        | One plugin (camera, RFID, Spoolman, ...) | That plugin's own repository. [See all our repositories](https://github.com/orgs/Bespok3d/repositories) |
+        | Adding (enrolling) a printer, or a printer we do not support yet | [adapters](https://github.com/Bespok3d/adapters/issues/new/choose) |
+        | An idea for a new plugin | [main-index](https://github.com/Bespok3d/main-index/issues/new/choose) |
+
+        **This page is for the Bespok3d app itself.** Anything else, please open it in the right place.
+
+  - type: checkboxes
+    id: before-you-start
+    attributes:
+      label: Before you start
+      options:
+        - label: "I am sure this is the right repository (see the table above)"
+          required: true
+        - label: "I searched the existing issues and this is not a duplicate"
+          required: true
 
   - type: textarea
-    id: what-happened
+    id: description
     attributes:
-      label: What happened
-      description: What you did, and what the app did instead of what you expected.
-      placeholder: |
-        I clicked Install on the camera plugin and the app showed "enrollment lost" instead.
-        I expected the plugin to install.
+      label: "What is the problem"
+      description: "Tell us in a few words what goes wrong."
     validations:
       required: true
 
   - type: textarea
     id: reproduce
     attributes:
-      label: How to reproduce it
-      description: The steps, from a freshly started app, that get back to the problem.
+      label: "How to make it happen again"
+      description: "The steps, one per line, from the start."
       placeholder: |
         1. Open the app
-        2. Pick the printer
-        3. Open the store and click Install on ...
-        4. The screen shows ...
+        2. Click ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: "What happened"
+      description: "The broken result you saw. A screenshot or the error text helps a lot."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "What you expected"
+      description: "What should have happened instead."
     validations:
       required: true
 
   - type: input
     id: app-version
     attributes:
-      label: App version
-      description: The version in the app's About panel. On macOS that is the Bespok3d menu, About Bespok3d.
-      placeholder: 0.7.0-beta
+      label: "App version"
+      description: "In the app: Settings > About."
     validations:
       required: true
 
-  - type: dropdown
+  - type: textarea
     id: os
     attributes:
-      label: Which build are you running
-      options:
-        - macOS, Apple silicon (arm64 dmg or zip)
-        - macOS, Intel (dmg or zip)
-        - Windows (Setup exe)
-        - Linux, x86_64 (AppImage)
-        - Linux, arm64 (AppImage)
-        - Built it myself from source
+      label: "Computer system and version"
+      description: "If it happened on more than one computer, write one per line."
+      placeholder: |
+        macOS 15.2
+        Windows 11 24H2
     validations:
       required: true
-
-  - type: input
-    id: os-version
-    attributes:
-      label: Operating system version
-      placeholder: macOS 15.5, Windows 11 23H2, Ubuntu 24.04
-    validations:
-      required: true
-
-  - type: input
-    id: printer
-    attributes:
-      label: Printer and firmware
-      description: Leave blank if the problem happens before any printer is involved.
-      placeholder: Snapmaker U1, firmware 1.5.1
-
-  - type: input
-    id: daemon-version
-    attributes:
-      label: Daemon version
-      description: Shown on the printer's page in the app once it is enrolled.
-      placeholder: 0.12.19
-
-  - type: textarea
-    id: errors
-    attributes:
-      label: Error text
-      description: >
-        Anything the app printed on screen, in full. If you started the app from a terminal, the
-        output there too. This is pasted into a code block for you, no backticks needed.
-      render: text
-
-  - type: textarea
-    id: media
-    attributes:
-      label: Screenshots or a video
-      description: >
-        Drag files straight into this box. A short screen recording is often faster than
-        describing what you saw.
-
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Before you post
-      options:
-        - label: I searched the existing issues and this is not one of them
-          required: true
-        - label: The text and images above contain no printer serial, no network address I mind sharing, and no access token
-          required: true

@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: Copyright (C) 2026 unlucio and the Bespok3d contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+name: General comment
+description: Anything else you want to tell us
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Is this the right place?
+
+        Bespok3d is the store. It is not the plugins, and it is not the printer support.
+
+        | Your issue is about | Open it here |
+        | --- | --- |
+        | The Bespok3d app (finding a printer, the store, installing) | [Bespok3d-desktop](https://github.com/Bespok3d/Bespok3d-desktop/issues/new/choose) |
+        | One plugin (camera, RFID, Spoolman, ...) | That plugin's own repository. [See all our repositories](https://github.com/orgs/Bespok3d/repositories) |
+        | Adding (enrolling) a printer, or a printer we do not support yet | [adapters](https://github.com/Bespok3d/adapters/issues/new/choose) |
+        | An idea for a new plugin | [main-index](https://github.com/Bespok3d/main-index/issues/new/choose) |
+
+        **This page is for the Bespok3d app itself.** Anything else, please open it in the right place.
+
+  - type: checkboxes
+    id: before-you-start
+    attributes:
+      label: Before you start
+      options:
+        - label: "I am sure this is the right repository (see the table above)"
+          required: true
+        - label: "I searched the existing issues and this is not a duplicate"
+          required: true
+
+  - type: textarea
+    id: comment
+    attributes:
+      label: "Your comment"
+      description: "Anything you want to tell us that is not a problem or a suggestion."
+    validations:
+      required: true
