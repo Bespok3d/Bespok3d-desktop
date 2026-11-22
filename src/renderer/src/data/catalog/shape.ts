@@ -123,6 +123,9 @@ function entryToSource(variant: IndexEntry, labels: Record<string, string>): Plu
     downloadUrl: variant.download_url,
     config: variant.config?.map(withExplicitScope),
     migration: migrationTermsOf(variant),
+    description: variant.description,
+    docUrl: fetchableDocUrl(variant.doc_url),
+    changelogUrl: fetchableDocUrl(variant.changelog_url),
   }
 }
 

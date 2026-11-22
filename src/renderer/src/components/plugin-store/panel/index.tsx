@@ -235,7 +235,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
   const { multiVars, multiScopes, portClaim } = configState
   // A deep link can request a starting tab; else on an update open straight to the changelog so the
   // user sees what changed before updating. An unavailable tab is corrected by the activeTab guard.
-  const [tab, setTab] = useState<DetailTab>((initialTab as DetailTab) ?? (hasUpdate && hasReleaseNotes(plugin) ? 'changelog' : 'overview'))
+  const [tab, setTab] = useState<DetailTab>((initialTab as DetailTab) ?? (hasUpdate && hasReleaseNotes(picked) ? 'changelog' : 'overview'))
   const installVars = multiFields ? configState.sendVars : undefined
   const portProblem = httpPortError(multiFields ?? [], installVars ?? {})
   const missingDeps = resolveMissingDeps(plugins, plugin.id, allInstalledIds ?? [])
@@ -273,11 +273,11 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
         <PanelHead plugin={plugin} installed={installed} deactivated={deactivated} hasUpdate={hasUpdate} installedVersion={installedVersion} packageTrust={printer?.installedPackageTrust?.[plugin.id]} />
         {showTabs && <PanelTabs tabs={tabs} active={activeTab} onTab={setTab} />}
         <div className="panel-scroll">
-          {activeTab === 'overview' && <PanelBody plugin={plugin} missingDeps={missingDeps} installed={installed} />}
+          {activeTab === 'overview' && <PanelBody plugin={picked} missingDeps={missingDeps} installed={installed} />}
           {activeTab === 'versions' && (
             <VersionsTab plugin={plugin} ceiling={ceiling} selectedKey={selectedKey} channelFilter={channelFilter} installedSource={installedSource} installedChannel={installedChannel} installedVersion={installedVersion} onPickChannel={pickChannel} onPickSource={pickSource} onSelect={setSelectedKey} onRemoveLocal={isSideloaded(plugin) ? localRemove.request : undefined} t={t} />
           )}
-          {activeTab === 'doc' && <PanelDoc plugin={plugin} />}
+          {activeTab === 'doc' && <PanelDoc plugin={picked} />}
           {activeTab === 'config' && (
             <PanelConfigArea
               plugin={picked} installed={installed} printerId={printerId} printerSelected={!!printer} portClaim={portClaim}
@@ -286,7 +286,7 @@ export function PluginPanel({ plugin, printer, installed, deactivated, hasUpdate
               onMultiVars={configState.setMultiVars}
             />
           )}
-          {activeTab === 'changelog' && <PanelChangelog plugin={plugin} />}
+          {activeTab === 'changelog' && <PanelChangelog plugin={picked} />}
           {activeTab === 'license' && <PanelLicence plugin={plugin} />}
           {activeTab === 'captured' && <CapturedTab printerId={printerId} plugin={plugin} installed={installed} />}
           <PanelZones

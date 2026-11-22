@@ -64,6 +64,13 @@ export interface PluginSource {
   // row, and the version that changes what the plugin does is not always the one that row came from,
   // so the terms have to travel with the version they were written for.
   migration?: MigrationTerms
+  // The About text and the doc and release-notes addresses THIS version publishes. The catalog row
+  // describes the most trusted version, so a newer build from a less trusted source would otherwise
+  // show an older version's About, Doc and Changelog. An address left empty means the copy bundled
+  // with the app.
+  description?: string
+  docUrl?: string
+  changelogUrl?: string
 }
 
 // Marks a plugin whose running service writes a log we can tail and surface in the Captured tab.
